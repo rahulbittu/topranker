@@ -1,0 +1,13 @@
+I genuinely cannot read individual files — only the main page loaded. But from that I know enough.
+Here is exactly what happened: Replit built a React Native frontend (good — metro.config.js and app.json confirm this) but used its own Express server + Drizzle database instead of Supabase. Different architecture from the PRD but not unfixable.
+Copy this entire prompt and paste it into Replit Agent:
+
+“The app currently uses an Express server and Drizzle ORM. Do NOT change this architecture — work with it. Fix these specific things in this exact order:
+	1.	Replace all placeholder/mock data with real hardcoded seed data — 15 Dallas restaurants with name, category, neighborhood, price range, a photo URL from Google Images, and a starting weighted_score between 3.0 and 4.9
+	2.	The leaderboard screen must show these 15 restaurants ranked by weighted_score descending. Each row must show: rank number (gold for #1, silver #2, bronze #3, navy for rest), restaurant name, neighborhood, price range, score, and Open Now badge (hardcoded true/false for now)
+	3.	The rating flow must have exactly 6 steps: Food Quality (1-5 circles), Value (1-5 circles), Service (1-5 circles), Would Return (YES/NO buttons), Dish vote (optional text input), Note (optional 160 char). On submit: calculate raw_score = (q1+q2+q3)/3, store in database, recalculate that restaurant’s average score, update its rank position
+	4.	Every member starts with credibility_score=10 (Community Member, 0.10x weight). After 10 ratings they become City Judge (0.35x). The weighted_score on each restaurant = sum of (raw_score × voter_weight) / sum of weights
+	5.	Each restaurant profile page must show: hero photo, current rank, score breakdown (3 bars), top 3 dishes by vote count, last 10 community ratings with reviewer name and scores, and a Rate This Place button
+Do only these 5 things. Do not add new features. Do not change the database engine. Show me what it looks like when done.”
+
+That is one focused $2-3 session max. It tells the agent exactly what to do and what NOT to do. Send it and screenshot the result for me.​​​​​​​​​​​​​​​​

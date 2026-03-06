@@ -1,7 +1,7 @@
 import React from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, Linking, Share, Dimensions,
+  Platform, ActivityIndicator, Linking, Share, Dimensions, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -233,9 +233,13 @@ export default function BusinessProfileScreen() {
       >
         {/* SECTION 1: Hero Image with Gradient Overlay */}
         <View style={styles.heroImageContainer}>
-          <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
-            <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
-          </View>
+          {business.photoUrl ? (
+            <Image source={{ uri: business.photoUrl }} style={styles.heroImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
+              <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
+            </View>
+          )}
           <View style={styles.heroGradientTop} />
           <View style={styles.heroGradientBottom} />
 

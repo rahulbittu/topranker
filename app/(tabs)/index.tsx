@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Animated, ActivityIndicator,
+  ScrollView, Platform, Animated, ActivityIndicator, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -109,9 +109,13 @@ function BusinessRow({ item }: { item: MappedBusiness }) {
         testID={`leaderboard-row-${item.rank}`}
       >
         <View style={styles.photoContainer}>
-          <View style={styles.photoPlaceholder}>
-            <Ionicons name="restaurant-outline" size={22} color={Colors.textTertiary} />
-          </View>
+          {item.photoUrl ? (
+            <Image source={{ uri: item.photoUrl }} style={styles.photoImage} />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <Ionicons name="restaurant-outline" size={22} color={Colors.textTertiary} />
+            </View>
+          )}
           <RankBadge rank={item.rank} />
         </View>
 
@@ -342,6 +346,11 @@ const styles = StyleSheet.create({
     width: PHOTO_SIZE,
     height: PHOTO_SIZE,
     position: "relative" as const,
+  },
+  photoImage: {
+    width: PHOTO_SIZE,
+    height: PHOTO_SIZE,
+    borderRadius: 12,
   },
   photoPlaceholder: {
     width: PHOTO_SIZE,
