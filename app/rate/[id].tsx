@@ -255,10 +255,10 @@ export default function RateScreen() {
         <Ionicons name="lock-closed-outline" size={48} color={Colors.textTertiary} />
         <Text style={[styles.errorText, { marginTop: 16 }]}>Sign in to rate businesses</Text>
         <TouchableOpacity
-          style={[styles.goldButton, { marginTop: 16, width: "100%" }]}
+          style={[styles.primaryButton, { marginTop: 16, width: "100%" }]}
           onPress={() => router.replace("/auth/login")}
         >
-          <Text style={styles.goldButtonText}>Sign In</Text>
+          <Text style={styles.primaryButtonText}>Sign In</Text>
         </TouchableOpacity>
       </View>
     );
@@ -287,7 +287,7 @@ export default function RateScreen() {
         <View style={styles.confirmInner}>
           <Animated.View style={[styles.confirmIconWrap, confirmIconStyle]}>
             <View style={styles.confirmIconCircle}>
-              <Ionicons name="checkmark" size={40} color="#000" />
+              <Ionicons name="checkmark" size={40} color="#FFFFFF" />
             </View>
           </Animated.View>
 
@@ -305,17 +305,17 @@ export default function RateScreen() {
                 <Text style={styles.rankBoxLabel}>Before</Text>
                 <Text style={styles.rankBoxNum}>#{prevRank}</Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color={Colors.gold} />
+              <Ionicons name="arrow-forward" size={20} color={Colors.textTertiary} />
               <View style={[styles.rankBox, newRank < prevRank && styles.rankBoxImproved]}>
                 <Text style={styles.rankBoxLabel}>After</Text>
-                <Text style={[styles.rankBoxNum, newRank < prevRank && { color: Colors.greenBright }]}>
+                <Text style={[styles.rankBoxNum, newRank < prevRank && { color: Colors.green }]}>
                   #{newRank}
                 </Text>
               </View>
             </Animated.View>
             {newRank < prevRank && (
               <View style={styles.movedUpBanner}>
-                <Ionicons name="trending-up" size={14} color={Colors.greenBright} />
+                <Ionicons name="trending-up" size={14} color={Colors.green} />
                 <Text style={styles.movedUpText}>Your rating helped this business move up!</Text>
               </View>
             )}
@@ -323,7 +323,7 @@ export default function RateScreen() {
 
           <Animated.View entering={FadeInUp.delay(600).duration(500)} style={styles.tierProgressCard}>
             <View style={styles.tierProgressHeader}>
-              <View style={styles.tierBadge}>
+              <View style={styles.tierBadgeRow}>
                 <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
                 <Text style={styles.tierBadgeText}>{tierDisplayName}</Text>
               </View>
@@ -357,11 +357,11 @@ export default function RateScreen() {
           </Animated.View>
 
           <TouchableOpacity
-            style={[styles.goldButton, { width: "100%", marginTop: 8 }]}
+            style={[styles.primaryButton, { width: "100%", marginTop: 8 }]}
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
-            <Ionicons name="checkmark" size={20} color="#000" />
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </View>
@@ -616,7 +616,7 @@ export default function RateScreen() {
                   <Ionicons
                     name={wouldReturn ? "checkmark-circle" : "close-circle"}
                     size={20}
-                    color={wouldReturn ? Colors.greenBright : Colors.redBright}
+                    color={wouldReturn ? Colors.green : Colors.red}
                   />
                   <Text style={styles.summaryItemLabel}>Return</Text>
                 </View>
@@ -659,7 +659,7 @@ export default function RateScreen() {
 
       {!!submitError && (
         <View style={styles.errorBanner}>
-          <Ionicons name="alert-circle" size={16} color={Colors.redBright} />
+          <Ionicons name="alert-circle" size={16} color={Colors.red} />
           <Text style={styles.errorBannerText}>{submitError}</Text>
         </View>
       )}
@@ -693,16 +693,16 @@ export default function RateScreen() {
         )}
         <TouchableOpacity
           style={[
-            styles.goldButton,
+            styles.primaryButton,
             { flex: 1 },
-            !canProceed() && styles.goldButtonDisabled,
+            !canProceed() && styles.primaryButtonDisabled,
           ]}
           onPress={goNext}
           activeOpacity={0.8}
           disabled={!canProceed() || submitMutation.isPending}
           testID="next-step"
         >
-          <Text style={[styles.goldButtonText, !canProceed() && styles.goldButtonTextDisabled]}>
+          <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
             {submitMutation.isPending
               ? "Submitting..."
               : step === 6
@@ -711,7 +711,7 @@ export default function RateScreen() {
             }
           </Text>
           {step < 6 && canProceed() && (
-            <Ionicons name="arrow-forward" size={18} color="#000" />
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           )}
         </TouchableOpacity>
       </View>
@@ -720,8 +720,8 @@ export default function RateScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  errorText: { color: Colors.text, textAlign: "center", marginTop: 40, fontFamily: "Inter_400Regular" },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  errorText: { color: Colors.text, textAlign: "center", marginTop: 40, fontFamily: "DMSans_400Regular" },
 
   navBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -729,31 +729,30 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
   stepIndicator: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_600SemiBold",
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
   },
-  stepIndicatorOf: { color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  stepIndicatorOf: { color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   progressContainer: {
     flexDirection: "row", gap: 4, paddingHorizontal: 20, marginTop: 8,
   },
   progressDot: {
-    flex: 1, height: 3, borderRadius: 2, backgroundColor: Colors.surface,
+    flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E0E0E0",
   },
   progressDotComplete: { backgroundColor: Colors.gold },
-  progressDotCurrent: { backgroundColor: Colors.goldDim },
+  progressDotCurrent: { backgroundColor: Colors.textTertiary },
 
   businessHeader: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
   rateLabel: {
     fontSize: 11, fontWeight: "600" as const, color: Colors.textTertiary,
-    fontFamily: "Inter_600SemiBold", letterSpacing: 1.5,
+    fontFamily: "DMSans_600SemiBold", letterSpacing: 1.5,
   },
   businessName: {
     fontSize: 24, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5, marginTop: 2,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, marginTop: 2,
   },
 
   stepArea: { flex: 1, paddingHorizontal: 20, justifyContent: "center" },
@@ -762,14 +761,14 @@ const styles = StyleSheet.create({
   stepHeader: { gap: 4 },
   stepNumber: {
     fontSize: 32, fontWeight: "700" as const, color: Colors.gold,
-    fontFamily: "Inter_700Bold", letterSpacing: -1,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -1,
   },
   stepTitle: {
     fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
   stepSubtitle: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
 
   circleRow: {
@@ -777,24 +776,24 @@ const styles = StyleSheet.create({
   },
   circle: {
     width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 2, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: "#E0E0E0",
   },
   circleActive: {
-    backgroundColor: Colors.gold, borderColor: Colors.gold,
+    backgroundColor: Colors.text, borderColor: Colors.text,
   },
   circleNum: {
     fontSize: 20, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
   },
-  circleNumActive: { color: "#000" },
+  circleNumActive: { color: "#FFFFFF" },
 
   circleLabelRow: {
     flexDirection: "row", justifyContent: "center", gap: 12, marginTop: -4,
   },
   circleLabelItem: { width: CIRCLE_SIZE, alignItems: "center" },
   circleLabelText: {
-    fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center",
   },
 
@@ -803,20 +802,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
   },
   selectedBadgeText: {
-    fontSize: 14, color: Colors.gold, fontFamily: "Inter_600SemiBold",
+    fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold",
   },
 
   yesNoRow: { flexDirection: "row", gap: 16, marginTop: 16 },
   yesNoBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 28, borderRadius: 20,
-    backgroundColor: Colors.surface, borderWidth: 2, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: "#E0E0E0",
   },
   yesNoBtnYes: { backgroundColor: Colors.green, borderColor: Colors.green },
   yesNoBtnNo: { backgroundColor: Colors.red, borderColor: Colors.red },
   yesNoText: {
     fontSize: 18, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "Inter_700Bold", letterSpacing: 1,
+    fontFamily: "DMSans_700Bold", letterSpacing: 1,
   },
   yesNoTextActive: { color: "#fff" },
 
@@ -825,35 +824,34 @@ const styles = StyleSheet.create({
   },
   dishPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: Colors.surface, paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 20,
   },
   dishPillSelected: {
-    backgroundColor: Colors.gold, borderColor: Colors.gold,
+    backgroundColor: Colors.text,
   },
   dishPillText: {
-    fontSize: 14, color: Colors.text, fontFamily: "Inter_500Medium",
+    fontSize: 14, color: Colors.text, fontFamily: "DMSans_500Medium",
   },
-  dishPillTextSelected: { color: "#000" },
+  dishPillTextSelected: { color: "#FFFFFF" },
   dishVoteBadge: {
-    backgroundColor: Colors.surfaceRaised, paddingHorizontal: 6,
+    backgroundColor: "#E0E0E0", paddingHorizontal: 6,
     paddingVertical: 2, borderRadius: 8,
   },
-  dishVoteBadgeSelected: { backgroundColor: "rgba(0,0,0,0.2)" },
+  dishVoteBadgeSelected: { backgroundColor: "rgba(255,255,255,0.2)" },
   dishVoteCount: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_600SemiBold",
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_600SemiBold",
   },
-  dishVoteCountSelected: { color: "#000" },
+  dishVoteCountSelected: { color: "#FFFFFF" },
 
   dishInputWrap: { gap: 4 },
   dishInput: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
-    fontSize: 15, color: Colors.text, fontFamily: "Inter_400Regular",
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,
+    fontSize: 15, color: Colors.text, fontFamily: "DMSans_400Regular",
   },
   dishSuggestions: {
-    backgroundColor: Colors.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
+    backgroundColor: "#FFFFFF", borderRadius: 10,
+    overflow: "hidden", ...Colors.cardShadow,
   },
   dishSuggestionItem: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -861,10 +859,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   dishSuggestionText: {
-    fontSize: 14, color: Colors.text, fontFamily: "Inter_500Medium",
+    fontSize: 14, color: Colors.text, fontFamily: "DMSans_500Medium",
   },
   dishSuggestionCount: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
   dishSelectedDisplay: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -872,49 +870,49 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   dishSelectedText: {
-    fontSize: 14, color: Colors.gold, fontFamily: "Inter_600SemiBold", flex: 1,
+    fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold", flex: 1,
   },
 
   noteInputWrap: { gap: 4 },
   noteInput: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
-    fontSize: 15, color: Colors.text, fontFamily: "Inter_400Regular",
-    borderWidth: 1, borderColor: Colors.border, minHeight: 100,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,
+    fontSize: 15, color: Colors.text, fontFamily: "DMSans_400Regular",
+    minHeight: 100,
     textAlignVertical: "top" as const,
   },
   noteCounter: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "right",
   },
   noteCounterWarn: { color: Colors.gold },
-  noteCounterMax: { color: Colors.redBright },
+  noteCounterMax: { color: Colors.red },
 
   summaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16, gap: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, gap: 12,
+    ...Colors.cardShadow,
   },
   summaryTitle: {
     fontSize: 10, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "Inter_700Bold", letterSpacing: 1.5,
+    fontFamily: "DMSans_700Bold", letterSpacing: 1.5,
   },
   summaryGrid: { flexDirection: "row", justifyContent: "space-around" },
   summaryItem: { alignItems: "center", gap: 4 },
   summaryItemVal: {
     fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
   },
   summaryItemLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
   summaryScoreRow: {
     flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center",
     paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
   },
   summaryWeightLabel: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   summaryWeightVal: {
-    fontSize: 16, fontWeight: "700" as const, fontFamily: "Inter_700Bold",
+    fontSize: 16, fontWeight: "700" as const, fontFamily: "PlayfairDisplay_700Bold",
   },
   tierDot: { width: 8, height: 8, borderRadius: 4 },
 
@@ -922,34 +920,33 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: 20, paddingTop: 12,
     borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: Colors.background,
+    backgroundColor: "#FFFFFF",
   },
   skipBtn: {
     paddingHorizontal: 16, paddingVertical: 14,
   },
   skipBtnText: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_500Medium",
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
   },
-  goldButton: {
-    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 16,
+  primaryButton: {
+    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
     alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6,
   },
-  goldButtonDisabled: {
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  primaryButtonDisabled: {
+    backgroundColor: Colors.surfaceRaised,
   },
-  goldButtonText: {
-    fontSize: 16, fontWeight: "700" as const, color: "#000", fontFamily: "Inter_700Bold",
+  primaryButtonText: {
+    fontSize: 16, fontWeight: "700" as const, color: "#FFFFFF", fontFamily: "DMSans_700Bold",
   },
-  goldButtonTextDisabled: { color: Colors.textTertiary },
+  primaryButtonTextDisabled: { color: Colors.textTertiary },
 
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.redFaint, borderRadius: 10, padding: 12,
     marginHorizontal: 20, marginBottom: 8,
-    borderWidth: 1, borderColor: "rgba(176,48,48,0.3)",
   },
   errorBannerText: {
-    fontSize: 13, color: Colors.redBright, fontFamily: "Inter_500Medium", flex: 1,
+    fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium", flex: 1,
   },
 
   confirmInner: {
@@ -958,25 +955,25 @@ const styles = StyleSheet.create({
   },
   confirmIconWrap: { marginBottom: 4 },
   confirmIconCircle: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.gold,
+    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.text,
     alignItems: "center", justifyContent: "center",
   },
   confirmTitle: {
     fontSize: 26, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5, textAlign: "center",
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, textAlign: "center",
   },
   confirmSub: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
     textAlign: "center", marginBottom: 8,
   },
   rankChangeCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 16,
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16,
     padding: 16, alignItems: "center", gap: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   rankChangeTitle: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
   },
   rankChangeRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   rankBox: {
@@ -985,11 +982,11 @@ const styles = StyleSheet.create({
   },
   rankBoxImproved: { backgroundColor: Colors.greenFaint },
   rankBoxLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
   rankBoxNum: {
     fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
   movedUpBanner: {
     flexDirection: "row", alignItems: "center", gap: 5,
@@ -997,52 +994,52 @@ const styles = StyleSheet.create({
     paddingVertical: 5, borderRadius: 6,
   },
   movedUpText: {
-    fontSize: 11, color: Colors.greenBright, fontFamily: "Inter_500Medium",
+    fontSize: 11, color: Colors.green, fontFamily: "DMSans_500Medium",
   },
 
   tierProgressCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, gap: 8, borderWidth: 1, borderColor: Colors.border,
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14,
+    padding: 16, gap: 8, ...Colors.cardShadow,
   },
   tierProgressHeader: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
-  tierBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
+  tierBadgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   tierBadgeText: {
-    fontSize: 13, color: Colors.text, fontFamily: "Inter_600SemiBold",
+    fontSize: 13, color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
   tierScoreText: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   tierBarOuter: {
-    height: 6, borderRadius: 3, backgroundColor: Colors.surfaceRaised, overflow: "hidden",
+    height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", overflow: "hidden",
   },
-  tierBarInner: { height: "100%", borderRadius: 3 },
+  tierBarInner: { height: "100%", borderRadius: 2 },
   tierNextText: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 
   scoreBreakdownCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, gap: 8, borderWidth: 1, borderColor: Colors.border,
+    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14,
+    padding: 16, gap: 8, ...Colors.cardShadow,
   },
   scoreBreakdownRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
   scoreBreakdownLabel: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   scoreBreakdownVal: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
   },
   scoreBreakdownDivider: { height: 1, backgroundColor: Colors.border },
   scoreBreakdownLabelBold: {
     fontSize: 14, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "DMSans_700Bold",
   },
   scoreBreakdownValBold: {
     fontSize: 20, fontWeight: "700" as const, color: Colors.gold,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
   },
 });

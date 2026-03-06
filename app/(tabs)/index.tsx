@@ -29,62 +29,27 @@ interface MappedBusiness {
   image?: any;
 }
 
-function RankBadge({ rank }: { rank: number }) {
-  const isGold = rank === 1;
-  const isSilver = rank === 2;
-  const isBronze = rank === 3;
-  const isTop3 = rank <= 3;
-
-  const badgeStyle = isGold
-    ? styles.rankOverlayGold
-    : isSilver
-    ? styles.rankOverlaySilver
-    : isBronze
-    ? styles.rankOverlayBronze
-    : styles.rankOverlayDefault;
-
-  const textStyle = isGold
-    ? styles.rankTextGold
-    : isSilver
-    ? styles.rankTextSilver
-    : isBronze
-    ? styles.rankTextBronze
-    : styles.rankTextDefault;
-
-  return (
-    <View style={[styles.rankOverlay, badgeStyle]}>
-      <Text style={textStyle}>{rank}</Text>
-    </View>
-  );
-}
-
-function OpenStatusDot({ isOpen }: { isOpen?: boolean }) {
+function OpenStatusText({ isOpen }: { isOpen?: boolean }) {
   if (isOpen === undefined || isOpen === null) return null;
   return (
-    <View style={styles.statusRow}>
-      <View style={[styles.statusDot, isOpen ? styles.statusOpen : styles.statusClosed]} />
-      <Text style={[styles.statusText, isOpen ? styles.statusTextOpen : styles.statusTextClosed]}>
-        {isOpen ? "Open" : "Closed"}
-      </Text>
-    </View>
+    <Text style={[
+      styles.statusText,
+      { color: isOpen ? Colors.green : Colors.red, textTransform: "uppercase" as const }
+    ]}>
+      {isOpen ? "Open" : "Closed"}
+    </Text>
   );
 }
 
 function MovementIndicator({ delta }: { delta: number }) {
   if (delta > 0) {
     return (
-      <View style={[styles.moveBadge, { backgroundColor: Colors.greenFaint }]}>
-        <Ionicons name="arrow-up" size={9} color={Colors.rankUp} />
-        <Text style={[styles.moveText, { color: Colors.rankUp }]}>{delta}</Text>
-      </View>
+      <Text style={styles.moveUp}>↑{delta}</Text>
     );
   }
   if (delta < 0) {
     return (
-      <View style={[styles.moveBadge, { backgroundColor: Colors.redFaint }]}>
-        <Ionicons name="arrow-down" size={9} color={Colors.rankDown} />
-        <Text style={[styles.moveText, { color: Colors.rankDown }]}>{Math.abs(delta)}</Text>
-      </View>
+      <Text style={styles.moveDown}>↓{Math.abs(delta)}</Text>
     );
   }
   return null;
@@ -97,6 +62,7 @@ function BusinessRow({ item }: { item: MappedBusiness }) {
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
 
   const isFirst = item.rank === 1;
+  const rankColor = isFirst ? Colors.gold : item.rank <= 3 ? "#AAAAAA" : "#CCCCCC";
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
@@ -105,7 +71,7 @@ function BusinessRow({ item }: { item: MappedBusiness }) {
         onPressIn={onPressIn}
         onPressOut={onPressOut}
         onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-        style={[styles.row, isFirst && styles.rowFirst]}
+        style={styles.row}
         testID={`leaderboard-row-${item.rank}`}
       >
         <View style={styles.photoContainer}>
@@ -116,26 +82,21 @@ function BusinessRow({ item }: { item: MappedBusiness }) {
               <Ionicons name="restaurant-outline" size={22} color={Colors.textTertiary} />
             </View>
           )}
-          <RankBadge rank={item.rank} />
         </View>
 
+        <Text style={[styles.rankNum, { color: rankColor }]}>
+          {item.rank}
+        </Text>
+
         <View style={styles.rowInfo}>
-          <View style={styles.rowTitleRow}>
-            <Text style={[styles.rowName, isFirst && styles.rowNameFirst]} numberOfLines={1}>
-              {item.name}
+          <Text style={styles.rowName} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.rowMeta}>
+            <Text style={styles.rowNeighborhood} numberOfLines={1}>
+              {item.neighborhood}{item.priceRange ? ` · ${item.priceRange}` : ""}
             </Text>
-            {item.isChallenger && (
-              <View style={styles.challengerBadge}>
-                <Ionicons name="flash" size={8} color={Colors.gold} />
-              </View>
-            )}
           </View>
-          <Text style={styles.rowNeighborhood} numberOfLines={1}>{item.neighborhood}</Text>
           <View style={styles.rowMetaLeft}>
-            <OpenStatusDot isOpen={item.isOpenNow} />
-            {item.priceRange ? (
-              <Text style={styles.priceRange}>{item.priceRange}</Text>
-            ) : null}
+            <OpenStatusText isOpen={item.isOpenNow} />
             <MovementIndicator delta={item.rankDelta} />
           </View>
         </View>
@@ -168,11 +129,7 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <Text style={styles.brandTitle}>TOP RANKER</Text>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerIconBtn}>
-            <Ionicons name="map-outline" size={20} color={Colors.textSecondary} />
-          </TouchableOpacity>
           <TouchableOpacity style={styles.citySelector}>
-            <Ionicons name="location-sharp" size={14} color={Colors.gold} />
             <Text style={styles.citySelectorText}>Dallas</Text>
             <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -191,7 +148,7 @@ export default function LeaderboardScreen() {
             <TouchableOpacity
               key={cat}
               onPress={() => setActiveCategory(cat)}
-              style={[styles.tab, isActive && styles.tabActive]}
+              style={styles.tab}
               testID={`category-tab-${cat}`}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
@@ -231,11 +188,10 @@ export default function LeaderboardScreen() {
   );
 }
 
-const PHOTO_SIZE = 64;
-const ROW_HEIGHT = 88;
+const PHOTO_SIZE = 56;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
 
   header: {
     flexDirection: "row",
@@ -247,9 +203,9 @@ const styles = StyleSheet.create({
   },
   brandTitle: {
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "700",
     color: Colors.gold,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: 2,
   },
   headerRight: {
@@ -257,53 +213,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  headerIconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
   citySelector: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
   },
   citySelectorText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "600",
     color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
   },
 
   tabs: { flexGrow: 0 },
   tabsContainer: {
     paddingHorizontal: 20,
-    gap: 20,
+    gap: 24,
     flexDirection: "row",
   },
   tab: {
     paddingBottom: 10,
     position: "relative" as const,
   },
-  tabActive: {},
   tabText: {
     fontSize: 14,
     color: Colors.textTertiary,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_400Regular",
   },
   tabTextActive: {
-    color: Colors.gold,
-    fontFamily: "Inter_600SemiBold",
+    color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
   },
   tabUnderline: {
     position: "absolute" as const,
@@ -320,32 +259,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  list: { paddingHorizontal: 14, gap: 6, paddingTop: 6 },
+  list: { paddingHorizontal: 14, gap: 8, paddingTop: 6 },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
-  emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
-  emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "Inter_400Regular", marginTop: 4 },
+  emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
 
   row: {
     flexDirection: "row",
     alignItems: "center",
-    height: ROW_HEIGHT,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    paddingVertical: 12,
     gap: 12,
-  },
-  rowFirst: {
-    backgroundColor: "#1A2840",
-    borderColor: Colors.goldDim,
+    ...Colors.cardShadow,
   },
 
   photoContainer: {
     width: PHOTO_SIZE,
     height: PHOTO_SIZE,
-    position: "relative" as const,
   },
   photoImage: {
     width: PHOTO_SIZE,
@@ -360,85 +293,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rankOverlay: {
-    position: "absolute" as const,
-    bottom: -4,
-    right: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: Colors.surface,
-  },
-  rankOverlayGold: {
-    backgroundColor: Colors.gold,
-  },
-  rankOverlaySilver: {
-    backgroundColor: Colors.silver,
-  },
-  rankOverlayBronze: {
-    backgroundColor: Colors.bronze,
-  },
-  rankOverlayDefault: {
-    backgroundColor: Colors.surfaceRaised,
-    borderColor: Colors.border,
-  },
-  rankTextGold: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#000",
-    fontFamily: "Inter_700Bold",
-  },
-  rankTextSilver: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#1B2A4A",
-    fontFamily: "Inter_700Bold",
-  },
-  rankTextBronze: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFF",
-    fontFamily: "Inter_700Bold",
-  },
-  rankTextDefault: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    fontFamily: "Inter_600SemiBold",
+
+  rankNum: {
+    fontSize: 28,
+    fontFamily: "PlayfairDisplay_700Bold",
+    minWidth: 30,
+    textAlign: "center",
   },
 
   rowInfo: { flex: 1, justifyContent: "center", gap: 2 },
-  rowTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
   rowName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
     color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "DMSans_600SemiBold",
     letterSpacing: -0.2,
     flexShrink: 1,
   },
-  rowNameFirst: { color: Colors.gold },
-  challengerBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    backgroundColor: Colors.goldFaint,
+  rowMeta: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(201,151,58,0.25)",
   },
   rowNeighborhood: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
   },
   rowMetaLeft: {
     flexDirection: "row",
@@ -447,51 +326,21 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  statusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusOpen: {
-    backgroundColor: Colors.greenBright,
-  },
-  statusClosed: {
-    backgroundColor: Colors.redBright,
-  },
   statusText: {
     fontSize: 11,
-    fontFamily: "Inter_500Medium",
-  },
-  statusTextOpen: {
-    color: Colors.greenBright,
-  },
-  statusTextClosed: {
-    color: Colors.redBright,
+    fontFamily: "DMSans_600SemiBold",
+    letterSpacing: 0.5,
   },
 
-  priceRange: {
+  moveUp: {
     fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    color: Colors.green,
+    fontFamily: "DMSans_500Medium",
   },
-
-  moveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  moveText: {
-    fontSize: 10,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
+  moveDown: {
+    fontSize: 11,
+    color: Colors.red,
+    fontFamily: "DMSans_500Medium",
   },
 
   scoreBlock: {
@@ -500,20 +349,19 @@ const styles = StyleSheet.create({
     minWidth: 56,
   },
   scoreValue: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: "700",
     color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: -0.5,
   },
   scoreValueFirst: {
     color: Colors.gold,
-    fontSize: 24,
   },
   ratingCount: {
-    fontSize: 10,
+    fontSize: 12,
     color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
     marginTop: 1,
   },
 });

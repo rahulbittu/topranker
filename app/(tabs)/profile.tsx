@@ -20,11 +20,7 @@ function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
   const displayName = TIER_DISPLAY_NAMES[tier];
   return (
-    <View style={[styles.tierBadge, { borderColor: color, backgroundColor: `${color}18` }]}>
-      {tier === "top" && <Ionicons name="trophy" size={12} color={color} />}
-      {tier === "trusted" && <Ionicons name="shield-checkmark" size={12} color={color} />}
-      {tier === "regular" && <Ionicons name="star" size={12} color={color} />}
-      {tier === "new" && <Ionicons name="person" size={12} color={color} />}
+    <View style={[styles.tierBadge, { borderColor: color }]}>
       <Text style={[styles.tierBadgeText, { color }]}>{displayName.toUpperCase()}</Text>
     </View>
   );
@@ -145,12 +141,6 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
           <Text style={styles.profileName}>{profile.displayName}</Text>
           <Text style={styles.username}>@{profile.username}</Text>
           <TierBadge tier={tier} />
-          {profile.isFoundingMember && (
-            <View style={styles.foundingBadge}>
-              <Ionicons name="diamond" size={10} color={Colors.gold} />
-              <Text style={styles.foundingText}>FOUNDING MEMBER</Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -303,7 +293,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   content: { paddingHorizontal: 16, gap: 12 },
   header: {
     paddingTop: 4, paddingBottom: 4,
@@ -311,12 +301,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
   logoutBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
 
   loggedOutContainer: {
@@ -324,129 +313,121 @@ const styles = StyleSheet.create({
   },
   loggedOutIcon: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
   loggedOutTitle: {
     fontSize: 22, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", textAlign: "center",
+    fontFamily: "PlayfairDisplay_700Bold", textAlign: "center",
   },
   loggedOutSub: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
     textAlign: "center", lineHeight: 20, paddingHorizontal: 20,
   },
   signInButton: {
-    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
+    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 15,
     paddingHorizontal: 60, marginTop: 8,
   },
-  signInButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
+  signInButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
   signUpLink: {
-    fontSize: 13, color: Colors.gold, fontFamily: "Inter_500Medium",
+    fontSize: 13, color: Colors.gold, fontFamily: "DMSans_500Medium",
   },
   tierInfoSectionCompact: { gap: 10, marginTop: 24, width: "100%" },
 
   profileCard: {
-    backgroundColor: Colors.surface, borderRadius: 18, padding: 16,
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,
-    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   avatarCircle: {
     width: 60, height: 60, borderRadius: 30,
-    backgroundColor: Colors.goldFaint,
-    borderWidth: 2, borderColor: Colors.goldDim,
+    backgroundColor: Colors.surfaceRaised,
     alignItems: "center", justifyContent: "center",
   },
-  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
+  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
   profileInfo: { gap: 4 },
   profileName: {
     fontSize: 20, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.3,
+    fontFamily: "DMSans_700Bold", letterSpacing: -0.3,
   },
-  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   tierBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     borderWidth: 1, alignSelf: "flex-start",
   },
-  tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
-  foundingBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-    backgroundColor: Colors.goldFaint, alignSelf: "flex-start",
-  },
-  foundingText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.8 },
 
   credibilityCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, gap: 14,
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
+    gap: 14, ...Colors.cardShadow,
   },
   credScoreRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
-  credScore: { fontSize: 48, fontWeight: "800", fontFamily: "Inter_700Bold", letterSpacing: -2 },
+  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
+  credScore: { fontSize: 48, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -2 },
   credWeightBox: { alignItems: "center", gap: 2 },
-  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
-  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
+  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   credProgress: { gap: 6 },
   credProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
-  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
-  progressBarBg: { height: 6, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
-  progressBarFill: { height: "100%", borderRadius: 3 },
+  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold" },
+  progressBarBg: { height: 4, backgroundColor: Colors.surfaceRaised, borderRadius: 2, overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: 2 },
 
   statsRow: {
-    flexDirection: "row", backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
+    flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
   },
   statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
   statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
-  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   breakdownCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, gap: 10,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 16,
+    gap: 10, ...Colors.cardShadow,
   },
-  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", marginBottom: 2 },
   breakdownRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  breakdownLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
-  breakdownValue: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  breakdownLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  breakdownValue: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   breakdownTotal: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingTop: 6, marginTop: 2,
   },
-  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
-  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   historyRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: "#FFFFFF", borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   historyLeft: { gap: 2 },
-  historyName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  historyDate: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  historyName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  historyDate: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   historyRight: { alignItems: "flex-end", gap: 2 },
-  historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
-  historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
+  historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   tierInfoSection: { gap: 10, marginTop: 8 },
   tierList: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
   },
   tierRow: {
     flexDirection: "row", alignItems: "center", gap: 10,
@@ -456,12 +437,12 @@ const styles = StyleSheet.create({
   tierRowActive: { backgroundColor: Colors.goldFaint },
   tierDot: { width: 8, height: 8, borderRadius: 4 },
   tierRowInfo: { flex: 1, gap: 1 },
-  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
-  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
-  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   currentBadge: {
     backgroundColor: Colors.goldFaint,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
 });

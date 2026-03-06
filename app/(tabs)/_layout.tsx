@@ -1,7 +1,6 @@
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
-import { BlurView } from "expo-blur";
 import { Platform, StyleSheet, View } from "react-native";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -32,30 +31,27 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
-  const isIOS = Platform.OS === "ios";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.gold,
+        tabBarActiveTintColor: Colors.tabIconSelected,
         tabBarInactiveTintColor: Colors.tabIconDefault,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : Colors.surface,
-          borderTopWidth: isWeb ? 1 : 0,
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
           borderTopColor: Colors.border,
           elevation: 0,
+          shadowOpacity: 0,
           ...(isWeb ? { height: 84 } : {}),
         },
-        tabBarBackground: () =>
-          isIOS ? (
-            <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : isWeb ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]} />
-          ) : null,
+        tabBarBackground: () => (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+        ),
         tabBarLabelStyle: {
-          fontFamily: "Inter_500Medium",
+          fontFamily: "DMSans_500Medium",
           fontSize: 11,
         },
       }}
