@@ -39,10 +39,19 @@ export type Category = keyof typeof CATEGORY_MAP;
 export const CATEGORIES: Category[] = [
   "Restaurants",
   "Fast Food",
+  "Fine Dining",
   "Cafes",
+  "Bakeries",
+  "Bubble Tea",
+  "Ice Cream",
   "Street Food",
   "Bars",
-  "Bakeries",
+  "Breweries",
+  "Casual Dining",
+  "Buffets",
+  "Brunch",
+  "Dessert Bars",
+  "Food Halls",
 ];
 
 export type CredibilityTier = "community" | "city" | "trusted" | "top";

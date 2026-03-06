@@ -2,15 +2,19 @@
 
 ## Overview
 
-A dark-themed mobile leaderboard app for local businesses in Dallas. Communities rank restaurants, cafes, street food, bars, bakeries, and fast food using weighted credibility-based voting. Features live challenger events, member credibility tiers, and rich business profiles.
+A dark-themed mobile leaderboard app for local businesses in Dallas. Communities rank restaurants, cafes, street food, bars, bakeries, and fast food using weighted credibility-based voting. Features live challenger events, member credibility tiers, 6-step rating flow, dish voting, anomaly detection, and rich business profiles.
 
 ## Architecture
 
 - **Frontend**: Expo Router (React Native) — file-based routing
 - **Backend**: Express.js (TypeScript) on port 5000
-- **Database**: PostgreSQL via Drizzle ORM (6 tables: members, businesses, ratings, challengers, rank_history, business_claims)
+- **Database**: PostgreSQL via Drizzle ORM (13 tables)
 - **Auth**: Passport.js (local strategy) + express-session with connect-pg-simple
 - **State**: React Query for server state, AuthContext for auth session
+
+## Database Schema (13 tables)
+
+members, businesses, ratings, challengers, rank_history, business_claims, dishes, dish_votes, business_photos, qr_scans, rating_flags, member_badges, credibility_penalties
 
 ## App Structure
 
@@ -19,29 +23,29 @@ app/
   _layout.tsx              # Root stack (AuthProvider + QueryClient)
   (tabs)/
     _layout.tsx            # Tab bar (NativeTabs + liquid glass on iOS 26)
-    index.tsx              # Leaderboard screen (useQuery → /api/leaderboard)
-    challenger.tsx         # Live challenge events (useQuery → /api/challengers/active)
-    search.tsx             # Discover/search (useQuery → /api/businesses/search)
-    profile.tsx            # Member profile (useQuery → /api/members/me, logged-out fallback)
-  business/[id].tsx        # Business profile detail (param is slug, fetches /api/businesses/:slug)
-  rate/[id].tsx            # Rating submission modal (param is slug, POST /api/ratings, auth guard)
+    index.tsx              # Leaderboard screen — PRD Section 5 layout
+    challenger.tsx         # Live challenge events
+    search.tsx             # Discover/search
+    profile.tsx            # Member profile
+  business/[id].tsx        # Business profile — 9 sections per PRD Section 6
+  rate/[id].tsx            # 6-step rating flow per PRD Section 7-8
   auth/
-    login.tsx              # Login screen (modal)
-    signup.tsx             # Signup screen (modal)
+    login.tsx              # Login screen — dark navy with Google button (disabled)
+    signup.tsx             # Signup screen — dark navy with tier preview
 lib/
-  api.ts                   # API fetch helpers + response mappers (mapApiBusiness, mapApiRating)
-  auth-context.tsx         # AuthProvider + useAuth hook (login/signup/logout/refreshUser)
-  data.ts                  # Constants, types, credibility tiers, formatTimeAgo/formatCountdown helpers
+  api.ts                   # API fetch helpers + response mappers
+  auth-context.tsx         # AuthProvider + useAuth hook
+  data.ts                  # Constants, types, credibility engine, tier helpers
   query-client.ts          # React Query client + apiRequest + getApiUrl
 server/
   index.ts                 # Express entry point
-  routes.ts                # All API routes (leaderboard, businesses, ratings, auth, challengers, members)
-  storage.ts               # Drizzle CRUD operations + credibility algorithm
-  auth.ts                  # Passport.js setup + session management
+  routes.ts                # API routes with 16-step rating submission
+  storage.ts               # Drizzle CRUD + credibility algorithm + anomaly detection
+  auth.ts                  # Passport.js setup
   db.ts                    # Database connection pool
-  seed.ts                  # Seed script (31 businesses, 2 challengers, demo user)
+  seed.ts                  # Seed script (35 businesses, dishes, 2 challengers, demo user)
 shared/
-  schema.ts                # Drizzle schema (6 tables)
+  schema.ts                # Drizzle schema (13 tables)
 constants/
   colors.ts                # Design system tokens (dark navy palette)
 ```
@@ -49,10 +53,11 @@ constants/
 ## API Endpoints
 
 - `GET /api/leaderboard?city=&category=&limit=` — ranked businesses
-- `GET /api/businesses/:slug` — business detail + recent ratings
+- `GET /api/businesses/:slug` — business detail + recent ratings + dishes
 - `GET /api/businesses/search?q=&city=&category=` — search businesses
 - `GET /api/businesses/:id/ratings?page=&per_page=` — paginated ratings
-- `POST /api/ratings` (auth required) — submit rating (server calculates weight/score)
+- `GET /api/dishes/search?business_id=&q=` — dish search with fuzzy matching
+- `POST /api/ratings` (auth required) — 16-step rating submission
 - `GET /api/members/me` (auth required) — member profile with credibility breakdown
 - `GET /api/challengers/active?city=` — active challenger events
 - `POST /api/auth/signup` — create account
@@ -60,48 +65,50 @@ constants/
 - `POST /api/auth/logout` — logout
 - `GET /api/auth/me` — current session user
 
-## Data Mapping (API → Frontend)
+## Rating Columns
 
-- `rankPosition` → `rank`
-- `totalRatings` → `ratingCount`
-- `inChallenger` → `isChallenger`
-- `weightedScore` as string → `parseFloat()`
-- `tags` as comma-separated string → `.split(",")`
-- Business navigation uses `slug` (passed as `[id]` param)
+- q1Score: primary quality (food/drinks/service quality depending on category)
+- q2Score: value for money
+- q3Score: service/experience
+
+## Credibility Tier System (PRD Section 9)
+
+| Tier | Key | Weight | Color | Score Range |
+|------|-----|--------|-------|-------------|
+| Community Member | community | 0.10x | #556677 | 10–99 |
+| City Judge | city | 0.35x | #4A7FBB | 100–299 |
+| Trusted Judge | trusted | 0.70x | #7B4EA8 | 300–599 |
+| Top Judge | top | 1.00x | #C9973A | 600–1000 |
+
+## Credibility Formula
+
+Base(10) + Volume(2pts/rating, max 200) + Diversity(15pts/category, max 100) + Age(0.5pts/day, max 100) + Variance(×60, max 150) + Helpfulness(max 100) - Penalties
+
+## Anomaly Detection (6 flags)
+
+burst_velocity, perfect_score_pattern, one_star_bomber, single_business_fixation, new_account_high_volume, coordinated_new_account_burst
+
+## Categories (15 food categories)
+
+Restaurants, Fast Food, Fine Dining, Cafes, Bakeries, Bubble Tea, Ice Cream, Street Food, Bars, Breweries, Casual Dining, Buffets, Brunch, Dessert Bars, Food Halls
 
 ## Demo User
 
 - Email: alex@demo.com
 - Password: demo123
-- Tier: regular
+- Tier: city (credibility score ~142)
 
 ## Design System
 
 - **Background**: #0D1B2A (dark navy)
 - **Surface/Cards**: #1B2A4A
 - **Raised Surface**: #243452
-- **Border**: #2E3F5C / #3A4F6E
-- **Gold accent**: #C9973A — used for #1 rank, scores, CTAs, Top Reviewer tier
+- **Gold accent**: #C9973A — #1 rank, scores, CTAs, Top Judge tier
 - **Silver**: #9AAABB — #2 rank
 - **Bronze**: #CD7F32 — #3 rank
-- **Green**: #1A6B3C (dark) / #22C55E (bright) — upward movement
-- **Red**: #B03030 (dark) / #EF4444 (bright) — downward movement / challengers
 - **Font**: Inter (400 Regular, 500 Medium, 600 SemiBold, 700 Bold)
-
-## Categories
-
-Restaurants, Cafes, Street Food, Bars, Bakeries, Fast Food
-
-## Credibility Tier System
-
-| Tier | Key | Weight | Color | Score Range |
-|------|-----|--------|-------|-------------|
-| New Member | new | 0.50x | #556677 | 10–99 |
-| Regular | regular | 0.35x | #4A7FBB | 100–299 |
-| Trusted | trusted | 0.70x | #7B4EA8 | 300–599 |
-| Top Reviewer | top | 1.00x | #C9973A | 600–1000 |
 
 ## Workflows
 
 - `Start Backend` — runs `npm run server:dev` on port 5000
-- `Start Frontend` — runs `npm run expo:dev` on port 8081
+- `Start Frontend` — runs `npm run expo:dev` on port 8081 (console output type)
