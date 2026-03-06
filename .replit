@@ -65,19 +65,6 @@ task = "workflow.run"
 args = "Start Frontend"
 
 [[workflows.workflow]]
-name = "Start Backend"
-author = "agent"
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run server:dev"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
-
-[[workflows.workflow]]
 name = "Start Frontend"
 author = "agent"
 mode = "sequential"
@@ -89,3 +76,15 @@ outputType = "console"
 task = "shell.exec"
 args = "npm run expo:dev"
 waitForPort = 8081
+
+[[workflows.workflow]]
+name = "Start Backend"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run server:dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
