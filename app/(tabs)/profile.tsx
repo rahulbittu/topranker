@@ -7,35 +7,31 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import {
-  MOCK_USER, TIER_COLORS, getTierProgress, formatTimeAgo,
-  CredibilityTier,
+  MOCK_USER, TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
+  getTierRequirements, formatTimeAgo,
+  CredibilityTier, TIER_SCORE_RANGES,
 } from "@/lib/data";
 
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
+  const displayName = TIER_DISPLAY_NAMES[tier];
   return (
     <View style={[styles.tierBadge, { borderColor: color, backgroundColor: `${color}18` }]}>
-      {tier === "Top Reviewer" && <Ionicons name="trophy" size={12} color={color} />}
-      {tier === "Trusted" && <Ionicons name="shield-checkmark" size={12} color={color} />}
-      {tier === "Regular" && <Ionicons name="star" size={12} color={color} />}
-      {tier === "New Member" && <Ionicons name="person" size={12} color={color} />}
-      <Text style={[styles.tierBadgeText, { color }]}>{tier.toUpperCase()}</Text>
+      {tier === "top" && <Ionicons name="trophy" size={12} color={color} />}
+      {tier === "trusted" && <Ionicons name="shield-checkmark" size={12} color={color} />}
+      {tier === "regular" && <Ionicons name="star" size={12} color={color} />}
+      {tier === "new" && <Ionicons name="person" size={12} color={color} />}
+      <Text style={[styles.tierBadgeText, { color }]}>{displayName.toUpperCase()}</Text>
     </View>
   );
 }
 
-function ScoreDots({ score }: { score: number }) {
+function BreakdownRow({ label, value, icon }: { label: string; value: string; icon: string }) {
   return (
-    <View style={styles.scoreDots}>
-      {[1, 2, 3, 4, 5].map(n => (
-        <View
-          key={n}
-          style={[
-            styles.dot,
-            n <= Math.round(score) ? styles.dotFilled : styles.dotEmpty,
-          ]}
-        />
-      ))}
+    <View style={styles.breakdownRow}>
+      <Ionicons name={icon as any} size={14} color={Colors.textTertiary} />
+      <Text style={styles.breakdownLabel}>{label}</Text>
+      <Text style={styles.breakdownValue}>{value}</Text>
     </View>
   );
 }
@@ -43,10 +39,16 @@ function ScoreDots({ score }: { score: number }) {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const user = MOCK_USER;
-  const progress = getTierProgress(user.tier, user.ratingsSubmitted, user.categoriesCovered.length);
+  const tierReqs = getTierRequirements(user.tier, user.credibilityScore, user.totalRatings, user.totalCategories, user.daysActive, user.ratingVariance, 0);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const memberDays = Math.floor((Date.now() - user.joinedAt) / 86400000);
+  const tierColor = TIER_COLORS[user.tier];
+  const weight = TIER_WEIGHTS[user.tier];
+  const scoreRange = TIER_SCORE_RANGES[user.tier];
+  const nextRange = tierReqs.nextTier ? TIER_SCORE_RANGES[tierReqs.nextTier] : null;
+  const progressToNext = nextRange
+    ? Math.min(((user.credibilityScore - scoreRange.min) / (nextRange.min - scoreRange.min)) * 100, 100)
+    : 100;
 
   return (
     <ScrollView
@@ -67,46 +69,106 @@ export default function ProfileScreen() {
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>{user.name}</Text>
+          <Text style={styles.username}>@{user.username}</Text>
           <TierBadge tier={user.tier} />
-          <Text style={styles.memberSince}>Member for {memberDays} days</Text>
+          {user.isFoundingMember && (
+            <View style={styles.foundingBadge}>
+              <Ionicons name="diamond" size={10} color={Colors.gold} />
+              <Text style={styles.foundingText}>FOUNDING MEMBER</Text>
+            </View>
+          )}
         </View>
+      </View>
+
+      <View style={styles.credibilityCard}>
+        <View style={styles.credScoreRow}>
+          <View>
+            <Text style={styles.credScoreLabel}>Credibility Score</Text>
+            <Text style={[styles.credScore, { color: tierColor }]}>{user.credibilityScore}</Text>
+          </View>
+          <View style={styles.credWeightBox}>
+            <Text style={styles.credWeightLabel}>Vote Weight</Text>
+            <Text style={[styles.credWeight, { color: tierColor }]}>{weight.toFixed(2)}x</Text>
+          </View>
+        </View>
+
+        {tierReqs.nextTier && (
+          <View style={styles.credProgress}>
+            <View style={styles.credProgressHeader}>
+              <Text style={styles.credProgressLabel}>
+                Progress to {TIER_DISPLAY_NAMES[tierReqs.nextTier]}
+              </Text>
+              <Text style={styles.credProgressPct}>{Math.round(progressToNext)}%</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${progressToNext}%` as any, backgroundColor: tierColor }]} />
+            </View>
+          </View>
+        )}
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{user.ratingsSubmitted}</Text>
+          <Text style={styles.statNum}>{user.totalRatings}</Text>
           <Text style={styles.statLabel}>Ratings</Text>
         </View>
         <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{user.categoriesCovered.length}</Text>
+          <Text style={styles.statNum}>{user.totalCategories}</Text>
           <Text style={styles.statLabel}>Categories</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statNum, { color: Colors.green }]}>{user.businessesHelpedUp}</Text>
-          <Text style={styles.statLabel}>Helped Up</Text>
+          <Text style={styles.statNum}>{user.daysActive}</Text>
+          <Text style={styles.statLabel}>Days Active</Text>
         </View>
       </View>
 
-      {progress.next && (
-        <View style={styles.progressSection}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Progress to {progress.next}</Text>
-            <Text style={styles.progressPct}>{Math.round(progress.progressPercent)}%</Text>
-          </View>
-          <View style={styles.progressBarBg}>
-            <View
-              style={[styles.progressBarFill, { width: `${progress.progressPercent}%` as any }]}
-            />
-          </View>
-          <Text style={styles.progressCriteria}>{progress.criteriaText}</Text>
+      <View style={styles.breakdownCard}>
+        <Text style={styles.breakdownTitle}>Score Breakdown</Text>
+        <BreakdownRow label="Base points" value={`+${user.credibilityBreakdown.basePoints}`} icon="person-outline" />
+        <BreakdownRow label="Rating volume" value={`+${user.credibilityBreakdown.ratingPoints}`} icon="star-outline" />
+        <BreakdownRow label="Category diversity" value={`+${user.credibilityBreakdown.diversityBonus}`} icon="grid-outline" />
+        <BreakdownRow label="Account age" value={`+${Math.round(user.credibilityBreakdown.ageBonus)}`} icon="time-outline" />
+        <BreakdownRow label="Rating variance" value={`+${Math.round(user.credibilityBreakdown.varianceBonus)}`} icon="analytics-outline" />
+        <BreakdownRow label="Helpfulness" value={`+${user.credibilityBreakdown.helpfulnessBonus}`} icon="hand-left-outline" />
+        {user.credibilityBreakdown.flagPenalty > 0 && (
+          <BreakdownRow label="Flag penalties" value={`-${user.credibilityBreakdown.flagPenalty}`} icon="flag-outline" />
+        )}
+        <View style={styles.breakdownTotal}>
+          <Text style={styles.breakdownTotalLabel}>Total</Text>
+          <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>
+            {user.credibilityBreakdown.totalScore}
+          </Text>
+        </View>
+      </View>
+
+      {tierReqs.nextTier && tierReqs.requirements.length > 0 && (
+        <View style={styles.requirementsCard}>
+          <Text style={styles.requirementsTitle}>
+            Requirements for {TIER_DISPLAY_NAMES[tierReqs.nextTier]}
+          </Text>
+          {tierReqs.requirements.map((req, i) => (
+            <View key={i} style={styles.reqRow}>
+              <Ionicons
+                name={req.met ? "checkmark-circle" : "ellipse-outline"}
+                size={16}
+                color={req.met ? Colors.greenBright : Colors.textTertiary}
+              />
+              <Text style={[styles.reqText, req.met && styles.reqTextMet]}>{req.label}</Text>
+              {!req.met && req.current > 0 && (
+                <Text style={styles.reqProgress}>
+                  {req.current}/{req.needed}
+                </Text>
+              )}
+            </View>
+          ))}
         </View>
       )}
 
       {user.businessesHelpedUp > 0 && (
         <View style={styles.impactBanner}>
-          <Ionicons name="trending-up" size={20} color={Colors.green} />
+          <Ionicons name="trending-up" size={20} color={Colors.greenBright} />
           <Text style={styles.impactText}>
-            Your ratings contributed to <Text style={{ color: Colors.green, fontFamily: "Inter_700Bold" }}>{user.businessesHelpedUp} businesses</Text> moving up in the Dallas rankings this month.
+            Your ratings contributed to <Text style={{ color: Colors.greenBright, fontFamily: "Inter_700Bold" }}>{user.businessesHelpedUp} businesses</Text> moving up in the Dallas rankings this month.
           </Text>
         </View>
       )}
@@ -123,8 +185,8 @@ export default function ProfileScreen() {
             <Text style={styles.historyDate}>{formatTimeAgo(r.ratedAt)}</Text>
           </View>
           <View style={styles.historyRight}>
-            <Text style={styles.historyScore}>{r.score.toFixed(1)}</Text>
-            <ScoreDots score={r.score} />
+            <Text style={styles.historyScore}>{r.rawScore.toFixed(1)}</Text>
+            <Text style={styles.historyWeight}>{r.weight.toFixed(2)}x weight</Text>
           </View>
         </View>
       ))}
@@ -140,13 +202,21 @@ export default function ProfileScreen() {
       <View style={styles.tierInfoSection}>
         <Text style={styles.sectionTitle}>Credibility Tiers</Text>
         <View style={styles.tierList}>
-          {(["New Member", "Regular", "Trusted", "Top Reviewer"] as CredibilityTier[]).map(tier => (
+          {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(tier => (
             <View key={tier} style={[styles.tierRow, user.tier === tier && styles.tierRowActive]}>
               <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[tier] }]} />
-              <Text style={[styles.tierName, user.tier === tier && { color: Colors.text }]}>{tier}</Text>
+              <View style={styles.tierRowInfo}>
+                <Text style={[styles.tierName, user.tier === tier && { color: Colors.text }]}>
+                  {TIER_DISPLAY_NAMES[tier]}
+                </Text>
+                <Text style={styles.tierWeight}>{TIER_WEIGHTS[tier].toFixed(2)}x</Text>
+              </View>
+              <Text style={styles.tierRange}>
+                {TIER_SCORE_RANGES[tier].min}–{TIER_SCORE_RANGES[tier].max}
+              </Text>
               {user.tier === tier && (
                 <View style={styles.currentBadge}>
-                  <Text style={styles.currentBadgeText}>CURRENT</Text>
+                  <Text style={styles.currentBadgeText}>YOU</Text>
                 </View>
               )}
             </View>
@@ -158,300 +228,147 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  header: {
-    paddingTop: 4,
-    paddingBottom: 4,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
+  content: { paddingHorizontal: 16, gap: 12 },
+  header: { paddingTop: 4, paddingBottom: 4 },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
+    fontSize: 28, fontWeight: "700", color: Colors.text,
+    fontFamily: "Inter_700Bold", letterSpacing: -0.5,
   },
   profileCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 18,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 18, padding: 16,
+    flexDirection: "row", alignItems: "center", gap: 14,
+    borderWidth: 1, borderColor: Colors.border,
   },
   avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 60, height: 60, borderRadius: 30,
     backgroundColor: Colors.goldFaint,
-    borderWidth: 2,
-    borderColor: Colors.goldDim,
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth: 2, borderColor: Colors.goldDim,
+    alignItems: "center", justifyContent: "center",
   },
-  avatarInitial: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-  },
-  profileInfo: {
-    gap: 5,
-  },
+  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
+  profileInfo: { gap: 4 },
   profileName: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.3,
+    fontSize: 20, fontWeight: "700", color: Colors.text,
+    fontFamily: "Inter_700Bold", letterSpacing: -0.3,
   },
+  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   tierBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignSelf: "flex-start",
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+    borderWidth: 1, alignSelf: "flex-start",
   },
-  tierBadgeText: {
-    fontSize: 9,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.8,
+  tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
+  foundingBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    backgroundColor: Colors.goldFaint, alignSelf: "flex-start",
   },
-  memberSince: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+  foundingText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+
+  credibilityCard: {
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: Colors.border, gap: 14,
   },
+  credScoreRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
+  credScore: { fontSize: 48, fontWeight: "800", fontFamily: "Inter_700Bold", letterSpacing: -2 },
+  credWeightBox: { alignItems: "center", gap: 2 },
+  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
+  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  credProgress: { gap: 6 },
+  credProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
+  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
+  progressBarBg: { height: 6, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: 3 },
+
   statsRow: {
-    flexDirection: "row",
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row", backgroundColor: Colors.surface, borderRadius: 14,
+    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
   },
-  statBox: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 16,
-    gap: 4,
+  statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
+  statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
+  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
+  breakdownCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: Colors.border, gap: 10,
   },
-  statBoxMiddle: {
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderColor: Colors.border,
+  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  breakdownRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  statNum: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
+  breakdownLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
+  breakdownValue: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  breakdownTotal: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingTop: 6, marginTop: 2,
   },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
+  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "Inter_700Bold" },
+
+  requirementsCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: Colors.border, gap: 10,
   },
-  progressSection: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: 8,
-  },
-  progressHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  progressTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  progressPct: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-  },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: Colors.surfaceRaised,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: Colors.gold,
-    borderRadius: 3,
-  },
-  progressCriteria: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 17,
-  },
+  requirementsTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  reqRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  reqText: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
+  reqTextMet: { color: Colors.greenBright, textDecorationLine: "line-through" as const },
+  reqProgress: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_500Medium" },
+
   impactBanner: {
-    backgroundColor: Colors.greenFaint,
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 10,
-    borderWidth: 1,
-    borderColor: "rgba(34,197,94,0.2)",
+    backgroundColor: Colors.greenFaint, borderRadius: 14, padding: 14,
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    borderWidth: 1, borderColor: "rgba(26,107,60,0.2)",
   },
-  impactText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 19,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  sectionCount: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
+  impactText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 19 },
+
+  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
   historyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: Colors.surface, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  historyLeft: {
-    gap: 2,
-  },
-  historyName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  historyDate: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  historyRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  historyScore: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-  },
-  scoreDots: {
-    flexDirection: "row",
-    gap: 3,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotFilled: {
-    backgroundColor: Colors.gold,
-  },
-  dotEmpty: {
-    backgroundColor: Colors.surfaceRaised,
-  },
-  emptyHistory: {
-    alignItems: "center",
-    paddingVertical: 40,
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    fontFamily: "Inter_600SemiBold",
-  },
-  emptySubtext: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  tierInfoSection: {
-    gap: 10,
-    marginTop: 8,
-  },
+  historyLeft: { gap: 2 },
+  historyName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  historyDate: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  historyRight: { alignItems: "flex-end", gap: 2 },
+  historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
+  historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
+  emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
+  tierInfoSection: { gap: 10, marginTop: 8 },
   tierList: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 14,
+    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
   },
   tierRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  tierRowActive: {
-    backgroundColor: Colors.goldFaint,
-  },
-  tierDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  tierName: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-    flex: 1,
-  },
+  tierRowActive: { backgroundColor: Colors.goldFaint },
+  tierDot: { width: 8, height: 8, borderRadius: 4 },
+  tierRowInfo: { flex: 1, gap: 1 },
+  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
+  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   currentBadge: {
     backgroundColor: Colors.goldFaint,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  currentBadgeText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
+  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
 });

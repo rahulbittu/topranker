@@ -48,7 +48,7 @@ function SearchResultRow({ item }: { item: Business }) {
         <View style={[styles.resultRankBadge, item.rank === 1 && styles.resultRankBadgeGold]}>
           <Text style={[styles.resultRank, item.rank === 1 && { color: "#000" }]}>#{item.rank}</Text>
         </View>
-        <Text style={styles.resultScore}>{item.score.toFixed(1)}</Text>
+        <Text style={styles.resultScore}>{item.weightedScore.toFixed(2)}</Text>
         {item.isChallenger && <Ionicons name="flash" size={11} color={Colors.gold} />}
       </View>
     </TouchableOpacity>
@@ -56,7 +56,6 @@ function SearchResultRow({ item }: { item: Business }) {
 }
 
 function TrendingCard({ item }: { item: Business }) {
-  const gain = item.prevRank - item.rank;
   return (
     <TouchableOpacity
       style={styles.trendCard}
@@ -73,13 +72,13 @@ function TrendingCard({ item }: { item: Business }) {
       <View style={styles.trendOverlay} />
       <View style={styles.trendContent}>
         <View style={styles.trendGainBadge}>
-          <Ionicons name="arrow-up" size={9} color={Colors.green} />
-          <Text style={styles.trendGain}>+{gain}</Text>
+          <Ionicons name="arrow-up" size={9} color={Colors.greenBright} />
+          <Text style={styles.trendGain}>+{item.rankDelta}</Text>
         </View>
         <Text style={styles.trendName} numberOfLines={2}>{item.name}</Text>
         <View style={styles.trendBottom}>
           <Text style={styles.trendCat}>{item.category}</Text>
-          <Text style={styles.trendScore}>{item.score.toFixed(1)}</Text>
+          <Text style={styles.trendScore}>{item.weightedScore.toFixed(2)}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -101,7 +100,7 @@ export default function SearchScreen() {
     if (activeCategory !== "All") list = list.filter(b => b.category === activeCategory);
     if (activeFilter === "Top 10") list = list.filter(b => b.rank <= 10);
     else if (activeFilter === "Challenging") list = list.filter(b => b.isChallenger);
-    else if (activeFilter === "Trending") list = list.filter(b => b.prevRank > b.rank);
+    else if (activeFilter === "Trending") list = list.filter(b => b.rankDelta > 0);
     if (query.trim()) {
       const q = query.toLowerCase();
       list = list.filter(b =>
@@ -177,7 +176,7 @@ export default function SearchScreen() {
           <View style={styles.trendingHeader}>
             <Text style={styles.sectionLabel}>Trending This Week</Text>
             <View style={styles.trendingBadge}>
-              <Ionicons name="trending-up" size={11} color={Colors.green} />
+              <Ionicons name="trending-up" size={11} color={Colors.greenBright} />
               <Text style={styles.trendingBadgeText}>Moving up</Text>
             </View>
           </View>
@@ -265,18 +264,13 @@ const styles = StyleSheet.create({
   trendingBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: Colors.greenFaint, paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 6, borderWidth: 1, borderColor: "rgba(34,197,94,0.2)",
+    borderRadius: 6, borderWidth: 1, borderColor: "rgba(26,107,60,0.2)",
   },
-  trendingBadgeText: { fontSize: 10, color: Colors.green, fontFamily: "Inter_500Medium" },
+  trendingBadgeText: { fontSize: 10, color: Colors.greenBright, fontFamily: "Inter_500Medium" },
   trendingRow: { paddingHorizontal: 16, gap: 10, paddingBottom: 2 },
   trendCard: {
-    width: 148,
-    height: 120,
-    borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    position: "relative",
+    width: 148, height: 120, borderRadius: 14, overflow: "hidden",
+    borderWidth: 1, borderColor: Colors.border, position: "relative",
   },
   trendImage: { width: "100%", height: "100%" },
   trendImagePlaceholder: { backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center" },
@@ -293,7 +287,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.greenFaint, paddingHorizontal: 6, paddingVertical: 2,
     borderRadius: 4, alignSelf: "flex-start",
   },
-  trendGain: { fontSize: 10, fontWeight: "700", color: Colors.green, fontFamily: "Inter_700Bold" },
+  trendGain: { fontSize: 10, fontWeight: "700", color: Colors.greenBright, fontFamily: "Inter_700Bold" },
   trendName: { fontSize: 13, fontWeight: "700", color: "#fff", fontFamily: "Inter_700Bold", lineHeight: 18 },
   trendBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   trendCat: { fontSize: 10, color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular" },
@@ -305,8 +299,7 @@ const styles = StyleSheet.create({
   resultRow: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden",
-    borderWidth: 1, borderColor: Colors.border,
+    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
   },
   resultThumb: { width: 68, height: 72 },
   resultThumbPlaceholder: { backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center" },

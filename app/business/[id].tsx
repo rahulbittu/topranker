@@ -10,7 +10,7 @@ import Colors from "@/constants/colors";
 import {
   getBusinessById, getRatingsByBusiness, getChallengerById,
   formatTimeAgo, MOCK_USER, formatCountdown,
-  TIER_COLORS, Rating,
+  TIER_COLORS, TIER_DISPLAY_NAMES, Rating,
 } from "@/lib/data";
 
 function RatingBar({ label, value }: { label: string; value: number }) {
@@ -28,7 +28,7 @@ function RatingBar({ label, value }: { label: string; value: number }) {
 function DistributionChart({ ratings }: { ratings: Rating[] }) {
   const counts = [5, 4, 3, 2, 1].map(n => ({
     star: n,
-    count: ratings.filter(r => r.food !== undefined ? Math.round(r.weightedScore) === n : false).length
+    count: ratings.filter(r => Math.round(r.rawScore) === n).length
   }));
   const maxCount = Math.max(...counts.map(c => c.count), 1);
 
@@ -54,44 +54,44 @@ function DistributionChart({ ratings }: { ratings: Rating[] }) {
 
 function RatingRow({ rating }: { rating: Rating }) {
   const tierColor = TIER_COLORS[rating.userTier];
+  const tierName = TIER_DISPLAY_NAMES[rating.userTier];
   return (
     <View style={styles.ratingRow}>
       <View style={styles.ratingTop}>
         <View style={styles.ratingUser}>
           <Text style={styles.ratingName}>{rating.userName}</Text>
           <View style={[styles.tierBadge, { borderColor: tierColor, backgroundColor: `${tierColor}18` }]}>
-            <Text style={[styles.tierBadgeText, { color: tierColor }]}>{rating.userTier}</Text>
+            <Text style={[styles.tierBadgeText, { color: tierColor }]}>{tierName}</Text>
           </View>
         </View>
         <View style={styles.ratingScoreBox}>
-          <Text style={styles.ratingScore}>{rating.weightedScore.toFixed(1)}</Text>
+          <Text style={styles.ratingScore}>{rating.rawScore.toFixed(1)}</Text>
+          <Text style={styles.ratingWeight}>{rating.weight.toFixed(2)}x</Text>
           <Text style={styles.ratingTime}>{formatTimeAgo(rating.createdAt)}</Text>
         </View>
       </View>
-      {rating.food !== undefined && (
-        <View style={styles.ratingSubScores}>
-          <View style={styles.ratingSubItem}>
-            <Text style={styles.ratingSubLabel}>Food</Text>
-            <Text style={styles.ratingSubVal}>{rating.food}</Text>
-          </View>
-          <View style={styles.ratingSubItem}>
-            <Text style={styles.ratingSubLabel}>Value</Text>
-            <Text style={styles.ratingSubVal}>{rating.value}</Text>
-          </View>
-          <View style={styles.ratingSubItem}>
-            <Text style={styles.ratingSubLabel}>Service</Text>
-            <Text style={styles.ratingSubVal}>{rating.service}</Text>
-          </View>
-          <View style={styles.ratingSubItem}>
-            <Text style={styles.ratingSubLabel}>Return</Text>
-            <Ionicons
-              name={rating.wouldReturn ? "checkmark-circle" : "close-circle"}
-              size={14}
-              color={rating.wouldReturn ? Colors.green : Colors.red}
-            />
-          </View>
+      <View style={styles.ratingSubScores}>
+        <View style={styles.ratingSubItem}>
+          <Text style={styles.ratingSubLabel}>Food</Text>
+          <Text style={styles.ratingSubVal}>{rating.food}</Text>
         </View>
-      )}
+        <View style={styles.ratingSubItem}>
+          <Text style={styles.ratingSubLabel}>Value</Text>
+          <Text style={styles.ratingSubVal}>{rating.value}</Text>
+        </View>
+        <View style={styles.ratingSubItem}>
+          <Text style={styles.ratingSubLabel}>Service</Text>
+          <Text style={styles.ratingSubVal}>{rating.service}</Text>
+        </View>
+        <View style={styles.ratingSubItem}>
+          <Text style={styles.ratingSubLabel}>Return</Text>
+          <Ionicons
+            name={rating.wouldReturn ? "checkmark-circle" : "close-circle"}
+            size={14}
+            color={rating.wouldReturn ? Colors.greenBright : Colors.redBright}
+          />
+        </View>
+      </View>
       {rating.comment && (
         <Text style={styles.ratingComment}>"{rating.comment}"</Text>
       )}
@@ -106,8 +106,8 @@ export default function BusinessProfileScreen() {
   const ratings = useMemo(() => getRatingsByBusiness(id), [id]);
   const challenge = business?.challengerId ? getChallengerById(business.challengerId) : undefined;
 
-  const daysActive = Math.floor((Date.now() - MOCK_USER.joinedAt) / 86400000);
-  const hasMinDays = daysActive >= 7;
+  const daysActive = Math.floor((Date.now() - MOCK_USER.credibilityBreakdown.ageBonus * 2) / 86400000);
+  const hasMinDays = MOCK_USER.daysActive >= 7;
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -133,7 +133,6 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
-        {/* Hero Image */}
         <View style={styles.heroImageContainer}>
           {business.image ? (
             <Image source={business.image} style={styles.heroImage} resizeMode="cover" />
@@ -144,7 +143,6 @@ export default function BusinessProfileScreen() {
           )}
           <View style={styles.heroImageOverlay} />
 
-          {/* Nav buttons overlaid on image */}
           <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
               <Ionicons name="chevron-back" size={20} color="#fff" />
@@ -154,12 +152,19 @@ export default function BusinessProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Rank overlay on image */}
           <View style={styles.heroRankOverlay}>
-            <View style={[styles.heroRankBadge, business.rank === 1 && styles.heroRankBadgeGold]}>
-              <Text style={[styles.heroRankText, business.rank === 1 && styles.heroRankTextGold]}>
-                #{business.rank}
-              </Text>
+            <View style={styles.heroRankRow}>
+              <View style={[styles.heroRankBadge, business.rank === 1 && styles.heroRankBadgeGold]}>
+                <Text style={[styles.heroRankText, business.rank === 1 && styles.heroRankTextGold]}>
+                  #{business.rank}
+                </Text>
+              </View>
+              {business.isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color="#fff" />
+                  <Text style={styles.verifiedText}>Verified</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.heroNameOverlay}>{business.name}</Text>
             <Text style={styles.heroCatOverlay}>{business.category} · {business.city}</Text>
@@ -167,11 +172,10 @@ export default function BusinessProfileScreen() {
         </View>
 
         <View style={styles.body}>
-          {/* Score Card */}
           <View style={styles.scoreCard}>
             <View style={styles.scoreMain}>
-              <Text style={styles.scoreNumber}>{business.score.toFixed(1)}</Text>
-              <Text style={styles.scoreLabel}>Score</Text>
+              <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
+              <Text style={styles.scoreLabel}>Weighted Score</Text>
             </View>
             <View style={styles.scoreDivider} />
             <View style={styles.scoreStats}>
@@ -190,7 +194,6 @@ export default function BusinessProfileScreen() {
             </View>
           </View>
 
-          {/* Description */}
           <View style={styles.descCard}>
             <Text style={styles.descText}>{business.description}</Text>
             {business.featuredDish && (
@@ -201,7 +204,6 @@ export default function BusinessProfileScreen() {
             )}
           </View>
 
-          {/* Info Row */}
           <View style={styles.infoRow}>
             {business.hours && (
               <View style={styles.infoItem}>
@@ -217,7 +219,6 @@ export default function BusinessProfileScreen() {
             )}
           </View>
 
-          {/* Tags */}
           <View style={styles.tagsRow}>
             {business.tags.map(tag => (
               <View key={tag} style={styles.tag}>
@@ -226,12 +227,11 @@ export default function BusinessProfileScreen() {
             ))}
           </View>
 
-          {/* Active Challenger */}
           {challenge && countdown && (
             <View style={styles.challengeCard}>
               <View style={styles.challengeHeader}>
                 <Ionicons name="flash" size={14} color={Colors.gold} />
-                <Text style={styles.challengeTitle}>Active Challenger</Text>
+                <Text style={styles.challengeTitle}>Live Challenge</Text>
                 <View style={styles.liveBadge}>
                   <View style={styles.liveDot} />
                   <Text style={styles.liveText}>LIVE</Text>
@@ -252,12 +252,12 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
-          {/* Rate Button */}
           {hasMinDays ? (
             <TouchableOpacity
               style={styles.rateButton}
               onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.id } })}
               activeOpacity={0.85}
+              testID="rate-this-place"
             >
               <Ionicons name="star" size={17} color="#000" />
               <Text style={styles.rateButtonText}>Rate This Place</Text>
@@ -265,18 +265,17 @@ export default function BusinessProfileScreen() {
           ) : (
             <View style={styles.rateDisabled}>
               <Ionicons name="lock-closed-outline" size={15} color={Colors.textTertiary} />
-              <Text style={styles.rateDisabledText}>Build your reviewer credibility to rate this business.</Text>
+              <Text style={styles.rateDisabledText}>Account must be 7+ days old to rate.</Text>
             </View>
           )}
 
-          {/* Rating Breakdown */}
           {ratings.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Rating Breakdown</Text>
               <View style={styles.card}>
-                <RatingBar label="Food Quality" value={ratings.reduce((a, r) => a + (r.food ?? 0), 0) / ratings.length} />
-                <RatingBar label="Value" value={ratings.reduce((a, r) => a + (r.value ?? 0), 0) / ratings.length} />
-                <RatingBar label="Service" value={ratings.reduce((a, r) => a + (r.service ?? 0), 0) / ratings.length} />
+                <RatingBar label="Food Quality" value={ratings.reduce((a, r) => a + r.food, 0) / ratings.length} />
+                <RatingBar label="Value" value={ratings.reduce((a, r) => a + r.value, 0) / ratings.length} />
+                <RatingBar label="Service" value={ratings.reduce((a, r) => a + r.service, 0) / ratings.length} />
               </View>
 
               <Text style={styles.sectionTitle}>Distribution</Text>
@@ -285,7 +284,7 @@ export default function BusinessProfileScreen() {
               </View>
 
               <View style={styles.sectionRow}>
-                <Text style={styles.sectionTitle}>Recent Ratings</Text>
+                <Text style={styles.sectionTitle}>Community Ratings</Text>
                 <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
               </View>
               {ratings.map(rating => (
@@ -326,92 +325,64 @@ const styles = StyleSheet.create({
   },
   heroImageOverlay: {
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: HERO_HEIGHT,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    bottom: 0, left: 0, right: 0, height: HERO_HEIGHT,
+    backgroundColor: "rgba(13,27,42,0.55)",
   },
 
   navBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 14,
-    zIndex: 10,
+    position: "absolute", top: 0, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "space-between",
+    paddingHorizontal: 14, zIndex: 10,
   },
   navBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: "rgba(13,27,42,0.6)",
+    alignItems: "center", justifyContent: "center",
   },
 
   heroRankOverlay: {
-    position: "absolute",
-    bottom: 16,
-    left: 16,
-    right: 16,
-    gap: 4,
+    position: "absolute", bottom: 16, left: 16, right: 16, gap: 4,
   },
+  heroRankRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroRankBadge: {
     alignSelf: "flex-start",
     backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
   },
-  heroRankBadgeGold: {
-    backgroundColor: Colors.gold,
-    borderColor: Colors.gold,
-  },
+  heroRankBadgeGold: { backgroundColor: Colors.gold, borderColor: Colors.gold },
   heroRankText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#fff",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
+    fontSize: 14, fontWeight: "800", color: "#fff",
+    fontFamily: "Inter_700Bold", letterSpacing: 0.5,
   },
   heroRankTextGold: { color: "#000" },
+  verifiedBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(74,127,187,0.3)",
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+  },
+  verifiedText: { fontSize: 10, color: "#fff", fontFamily: "Inter_500Medium" },
   heroNameOverlay: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#fff",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.7,
+    fontSize: 26, fontWeight: "700", color: "#fff",
+    fontFamily: "Inter_700Bold", letterSpacing: -0.7,
     textShadowColor: "rgba(0,0,0,0.5)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
   heroCatOverlay: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
+    fontSize: 13, color: "rgba(255,255,255,0.75)",
     fontFamily: "Inter_400Regular",
   },
 
   scoreCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 14,
+    paddingVertical: 14, flexDirection: "row", alignItems: "center",
+    borderWidth: 1, borderColor: Colors.border,
   },
   scoreMain: { flex: 1.2, alignItems: "center" },
   scoreNumber: {
-    fontSize: 36,
-    fontWeight: "800",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -1.5,
+    fontSize: 36, fontWeight: "800", color: Colors.gold,
+    fontFamily: "Inter_700Bold", letterSpacing: -1.5,
   },
   scoreLabel: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   scoreDivider: { width: 1, height: 34, backgroundColor: Colors.border },
@@ -420,33 +391,15 @@ const styles = StyleSheet.create({
   scoreStatLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
 
   descCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  descText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-  },
+  descText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular", lineHeight: 20 },
   featuredDish: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.border,
   },
-  featuredDishText: {
-    fontSize: 12,
-    color: Colors.gold,
-    fontFamily: "Inter_500Medium",
-    flex: 1,
-  },
+  featuredDishText: { fontSize: 12, color: Colors.gold, fontFamily: "Inter_500Medium", flex: 1 },
 
   infoRow: { gap: 6 },
   infoItem: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
@@ -454,31 +407,24 @@ const styles = StyleSheet.create({
 
   tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
-    backgroundColor: Colors.surface,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 6,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: Colors.border,
   },
   tagText: { fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
 
   challengeCard: {
-    backgroundColor: "#1A0A00",
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "rgba(245,197,24,0.3)",
-    gap: 8,
+    backgroundColor: "#0F2340", borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: "rgba(201,151,58,0.3)", gap: 8,
   },
   challengeHeader: { flexDirection: "row", alignItems: "center", gap: 5 },
   challengeTitle: { fontSize: 12, fontWeight: "600", color: Colors.gold, fontFamily: "Inter_600SemiBold", flex: 1 },
   liveBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "rgba(239,68,68,0.12)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
+    backgroundColor: Colors.redFaint, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.red },
-  liveText: { fontSize: 9, fontWeight: "700", color: Colors.red, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.redBright },
+  liveText: { fontSize: 9, fontWeight: "700", color: Colors.redBright, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
   challengeVs: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center" },
   challengeDefender: { fontSize: 13, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", flex: 1, textAlign: "right" },
   challengeVsText: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
@@ -530,8 +476,9 @@ const styles = StyleSheet.create({
   ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
   tierBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
   tierBadgeText: { fontSize: 9, fontWeight: "600", fontFamily: "Inter_600SemiBold", letterSpacing: 0.3 },
-  ratingScoreBox: { alignItems: "flex-end" },
+  ratingScoreBox: { alignItems: "flex-end", gap: 1 },
   ratingScore: { fontSize: 17, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  ratingWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   ratingTime: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   ratingSubScores: { flexDirection: "row", gap: 14 },
   ratingSubItem: { alignItems: "center", gap: 2 },

@@ -41,27 +41,26 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function MovementIndicator({ current, prev }: { current: number; prev: number }) {
-  const diff = prev - current;
-  if (diff > 0) {
+function MovementIndicator({ delta }: { delta: number }) {
+  if (delta > 0) {
     return (
       <View style={[styles.moveBadge, { backgroundColor: Colors.greenFaint }]}>
-        <Ionicons name="arrow-up" size={9} color={Colors.green} />
-        <Text style={[styles.moveText, { color: Colors.green }]}>{diff}</Text>
+        <Ionicons name="arrow-up" size={9} color={Colors.rankUp} />
+        <Text style={[styles.moveText, { color: Colors.rankUp }]}>{delta}</Text>
       </View>
     );
   }
-  if (diff < 0) {
+  if (delta < 0) {
     return (
       <View style={[styles.moveBadge, { backgroundColor: Colors.redFaint }]}>
-        <Ionicons name="arrow-down" size={9} color={Colors.red} />
-        <Text style={[styles.moveText, { color: Colors.red }]}>{Math.abs(diff)}</Text>
+        <Ionicons name="arrow-down" size={9} color={Colors.rankDown} />
+        <Text style={[styles.moveText, { color: Colors.rankDown }]}>{Math.abs(delta)}</Text>
       </View>
     );
   }
   return (
     <View style={[styles.moveBadge, { backgroundColor: "rgba(255,255,255,0.04)" }]}>
-      <Text style={[styles.moveText, { color: Colors.textTertiary }]}>—</Text>
+      <Text style={[styles.moveText, { color: Colors.rankStable }]}>—</Text>
     </View>
   );
 }
@@ -82,6 +81,7 @@ function BusinessRow({ item }: { item: Business }) {
         onPressOut={onPressOut}
         onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.id } })}
         style={[styles.row, isTop && styles.rowTop, item.rank === 1 && styles.rowFirst]}
+        testID={`leaderboard-row-${item.rank}`}
       >
         <View style={styles.rowLeft}>
           <RankBadge rank={item.rank} />
@@ -95,13 +95,16 @@ function BusinessRow({ item }: { item: Business }) {
                   <Ionicons name="flash" size={8} color={Colors.gold} />
                 </View>
               )}
+              {item.isVerified && (
+                <Ionicons name="checkmark-circle" size={12} color={Colors.blue} />
+              )}
             </View>
             <Text style={styles.rowNeighborhood}>{item.neighborhood}</Text>
             <View style={styles.rowMeta}>
               <Text style={[styles.rowScore, item.rank === 1 && styles.rowScoreFirst]}>
-                {item.score.toFixed(1)}
+                {item.weightedScore.toFixed(2)}
               </Text>
-              <MovementIndicator current={item.rank} prev={item.prevRank} />
+              <MovementIndicator delta={item.rankDelta} />
               {item.priceRange && (
                 <Text style={styles.priceRange}>{item.priceRange}</Text>
               )}
@@ -136,7 +139,7 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.city}>Dallas</Text>
-          <Text style={styles.subtitle}>Updated 4 minutes ago</Text>
+          <Text style={styles.subtitle}>Community-ranked · Updated live</Text>
         </View>
         <Ionicons name="trophy" size={26} color={Colors.gold} />
       </View>
@@ -152,6 +155,7 @@ export default function LeaderboardScreen() {
             key={cat}
             onPress={() => setActiveCategory(cat)}
             style={[styles.tab, activeCategory === cat && styles.tabActive]}
+            testID={`category-tab-${cat}`}
           >
             <Text style={[styles.tabText, activeCategory === cat && styles.tabTextActive]}>
               {cat}
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   rowTop: { borderColor: Colors.borderLight },
-  rowFirst: { backgroundColor: "#1A1600", borderColor: Colors.goldDim },
+  rowFirst: { backgroundColor: "#1A2840", borderColor: Colors.goldDim },
 
   rowLeft: {
     flexDirection: "row",
@@ -256,7 +260,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 11,
-    backgroundColor: "rgba(176,176,176,0.12)",
+    backgroundColor: "rgba(154,170,187,0.12)",
     borderWidth: 1,
     borderColor: Colors.silver,
     alignItems: "center",
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(245,197,24,0.25)",
+    borderColor: "rgba(201,151,58,0.25)",
   },
   rowNeighborhood: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   rowMeta: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 2 },

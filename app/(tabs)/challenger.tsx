@@ -6,7 +6,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
-import { getAllChallenges, formatCountdown, formatTimeAgo, Challenger, TIER_COLORS } from "@/lib/data";
+import { getAllChallenges, formatCountdown, formatTimeAgo, Challenger, TIER_COLORS, TIER_DISPLAY_NAMES } from "@/lib/data";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -53,7 +53,7 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderName}</Text>
           <Text style={styles.fighterLabel}>DEFENDING #1</Text>
           <Text style={styles.voteCount}>{challenge.defenderVotes.toLocaleString()}</Text>
-          <Text style={styles.voteLabel}>votes</Text>
+          <Text style={styles.voteLabel}>weighted votes</Text>
         </View>
 
         <View style={styles.vsContainer}>
@@ -66,12 +66,12 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
 
         <View style={styles.fighter}>
           <View style={styles.challengerIconBadge}>
-            <Ionicons name="flash" size={16} color={Colors.red} />
+            <Ionicons name="flash" size={16} color={Colors.redBright} />
           </View>
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerName}</Text>
           <Text style={styles.fighterLabel}>CHALLENGER</Text>
           <Text style={styles.voteCount}>{challenge.challengerVotes.toLocaleString()}</Text>
-          <Text style={styles.voteLabel}>votes</Text>
+          <Text style={styles.voteLabel}>weighted votes</Text>
         </View>
       </View>
 
@@ -112,7 +112,7 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
                 <Text style={styles.commentName}>{comment.userName}</Text>
                 <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[comment.userTier] }]} />
                 <Text style={[styles.commentTier, { color: TIER_COLORS[comment.userTier] }]}>
-                  {comment.userTier}
+                  {TIER_DISPLAY_NAMES[comment.userTier]}
                 </Text>
                 <Text style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</Text>
               </View>
@@ -140,7 +140,7 @@ export default function ChallengerScreen() {
         </View>
       </View>
       <Text style={styles.headerSub}>
-        Active head-to-head competitions. The community decides.
+        30-day head-to-head competitions. Weighted votes decide the winner.
       </Text>
 
       <ScrollView
@@ -159,10 +159,7 @@ export default function ChallengerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -181,23 +178,23 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(239,68,68,0.12)",
+    backgroundColor: Colors.redFaint,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
+    borderColor: "rgba(176,48,48,0.3)",
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: Colors.red,
+    backgroundColor: Colors.redBright,
   },
   liveText: {
     fontSize: 10,
     fontWeight: "700",
-    color: Colors.red,
+    color: Colors.redBright,
     fontFamily: "Inter_700Bold",
     letterSpacing: 1,
   },
@@ -209,10 +206,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginTop: 2,
   },
-  content: {
-    paddingHorizontal: 16,
-    gap: 16,
-  },
+  content: { paddingHorizontal: 16, gap: 16 },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: 18,
@@ -232,7 +226,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "rgba(245,197,24,0.2)",
+    borderColor: "rgba(201,151,58,0.2)",
   },
   catBadgeText: {
     fontSize: 9,
@@ -256,11 +250,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  fighter: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
+  fighter: { flex: 1, alignItems: "center", gap: 4 },
   crownBadge: {
     width: 36,
     height: 36,
@@ -269,7 +259,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(245,197,24,0.3)",
+    borderColor: "rgba(201,151,58,0.3)",
   },
   challengerIconBadge: {
     width: 36,
@@ -279,7 +269,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
+    borderColor: "rgba(176,48,48,0.3)",
   },
   fighterName: {
     fontSize: 15,
@@ -308,15 +298,8 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontFamily: "Inter_400Regular",
   },
-  vsContainer: {
-    alignItems: "center",
-    width: 40,
-  },
-  vsDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: Colors.border,
-  },
+  vsContainer: { alignItems: "center", width: 40 },
+  vsDivider: { width: 1, height: 24, backgroundColor: Colors.border },
   vsCircle: {
     width: 32,
     height: 32,
@@ -333,9 +316,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: "Inter_700Bold",
   },
-  voteBarContainer: {
-    marginBottom: 12,
-  },
+  voteBarContainer: { marginBottom: 12 },
   voteBar: {
     height: 6,
     backgroundColor: Colors.surfaceRaised,
@@ -345,7 +326,7 @@ const styles = StyleSheet.create({
   },
   voteBarChallenger: {
     height: "100%",
-    backgroundColor: Colors.red,
+    backgroundColor: Colors.redBright,
     borderRadius: 3,
   },
   voteBarLabels: {
@@ -401,13 +382,8 @@ const styles = StyleSheet.create({
     color: Colors.gold,
     fontFamily: "Inter_500Medium",
   },
-  comments: {
-    marginTop: 8,
-    gap: 12,
-  },
-  commentRow: {
-    gap: 3,
-  },
+  comments: { marginTop: 8, gap: 12 },
+  commentRow: { gap: 3 },
   commentHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -419,15 +395,8 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontFamily: "Inter_600SemiBold",
   },
-  tierDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-  },
-  commentTier: {
-    fontSize: 10,
-    fontFamily: "Inter_500Medium",
-  },
+  tierDot: { width: 5, height: 5, borderRadius: 2.5 },
+  commentTier: { fontSize: 10, fontFamily: "Inter_500Medium" },
   commentTime: {
     fontSize: 10,
     color: Colors.textTertiary,

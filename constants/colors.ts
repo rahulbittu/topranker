@@ -1,35 +1,48 @@
-const GOLD = "#F5C518";
-const GOLD_DIM = "#C9A227";
-const GOLD_FAINT = "rgba(245, 197, 24, 0.12)";
+const GOLD = "#C9973A";
+const GOLD_DIM = "#A67D2E";
+const GOLD_FAINT = "rgba(201, 151, 58, 0.12)";
+const GOLD_LIGHT = "#FEF3DC";
 
 const Colors = {
-  background: "#0A0A0A",
-  surface: "#141414",
-  surfaceRaised: "#1C1C1C",
-  border: "#2A2A2A",
-  borderLight: "#333333",
+  background: "#0D1B2A",
+  surface: "#1B2A4A",
+  surfaceRaised: "#243452",
+  border: "#2E3F5C",
+  borderLight: "#3A4F6E",
 
   gold: GOLD,
   goldDim: GOLD_DIM,
   goldFaint: GOLD_FAINT,
+  goldLight: GOLD_LIGHT,
 
-  silver: "#B0B0B0",
+  silver: "#9AAABB",
   bronze: "#CD7F32",
 
   text: "#FFFFFF",
-  textSecondary: "#999999",
-  textTertiary: "#555555",
+  textSecondary: "#9AAABB",
+  textTertiary: "#556677",
 
-  green: "#22C55E",
-  greenFaint: "rgba(34, 197, 94, 0.12)",
-  red: "#EF4444",
-  redFaint: "rgba(239, 68, 68, 0.12)",
+  green: "#1A6B3C",
+  greenBright: "#22C55E",
+  greenFaint: "rgba(26, 107, 60, 0.15)",
+  red: "#B03030",
+  redBright: "#EF4444",
+  redFaint: "rgba(176, 48, 48, 0.15)",
 
-  blue: "#3B82F6",
-  blueFaint: "rgba(59, 130, 246, 0.12)",
+  blue: "#4A7FBB",
+  blueFaint: "rgba(74, 127, 187, 0.12)",
+
+  rankUp: "#1A6B3C",
+  rankDown: "#B03030",
+  rankStable: "#556677",
+
+  tierNew: "#556677",
+  tierRegular: "#4A7FBB",
+  tierTrusted: "#7B4EA8",
+  tierTop: GOLD,
 
   tint: GOLD,
-  tabIconDefault: "#555555",
+  tabIconDefault: "#556677",
   tabIconSelected: GOLD,
 };
 

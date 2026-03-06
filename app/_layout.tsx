@@ -13,6 +13,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
+import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -21,7 +22,7 @@ function RootLayoutNav() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#0A0A0A" },
+        contentStyle: { backgroundColor: Colors.background },
         animation: "slide_from_right",
       }}
     >
@@ -51,7 +52,7 @@ export default function RootLayout() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: Colors.background }}>
           <KeyboardProvider>
             <RootLayoutNav />
           </KeyboardProvider>
