@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform,
+  Platform, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -10,7 +10,7 @@ import Colors from "@/constants/colors";
 import {
   getBusinessById, getRatingsByBusiness, getChallengerById,
   formatTimeAgo, MOCK_USER, formatCountdown,
-  TIER_COLORS, CredibilityTier, Rating,
+  TIER_COLORS, Rating,
 } from "@/lib/data";
 
 function RatingBar({ label, value }: { label: string; value: number }) {
@@ -41,7 +41,7 @@ function DistributionChart({ ratings }: { ratings: Rating[] }) {
             <View
               style={[styles.distBarFill, {
                 width: `${(count / maxCount) * 100}%` as any,
-                backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.surfaceRaised,
+                backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.borderLight,
               }]}
             />
           </View>
@@ -106,7 +106,6 @@ export default function BusinessProfileScreen() {
   const ratings = useMemo(() => getRatingsByBusiness(id), [id]);
   const challenge = business?.challengerId ? getChallengerById(business.challengerId) : undefined;
 
-  const canRate = MOCK_USER.ratingsSubmitted >= 0; // for demo, always allow
   const daysActive = Math.floor((Date.now() - MOCK_USER.joinedAt) / 86400000);
   const hasMinDays = daysActive >= 7;
 
@@ -127,15 +126,6 @@ export default function BusinessProfileScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
-      <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={22} color={Colors.text} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.reportBtn}>
-          <Ionicons name="flag-outline" size={18} color={Colors.textTertiary} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -143,215 +133,326 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
-        <View style={styles.heroSection}>
-          <View style={styles.heroRank}>
-            <Text style={styles.heroRankText}>#{business.rank}</Text>
+        {/* Hero Image */}
+        <View style={styles.heroImageContainer}>
+          {business.image ? (
+            <Image source={business.image} style={styles.heroImage} resizeMode="cover" />
+          ) : (
+            <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
+              <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
+            </View>
+          )}
+          <View style={styles.heroImageOverlay} />
+
+          {/* Nav buttons overlaid on image */}
+          <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
+              <Ionicons name="chevron-back" size={20} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navBtn}>
+              <Ionicons name="flag-outline" size={16} color="#fff" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.heroName}>{business.name}</Text>
-          <Text style={styles.heroCat}>in {business.city} {business.category}</Text>
-          <Text style={styles.heroDesc}>{business.description}</Text>
-          <View style={styles.heroTags}>
+
+          {/* Rank overlay on image */}
+          <View style={styles.heroRankOverlay}>
+            <View style={[styles.heroRankBadge, business.rank === 1 && styles.heroRankBadgeGold]}>
+              <Text style={[styles.heroRankText, business.rank === 1 && styles.heroRankTextGold]}>
+                #{business.rank}
+              </Text>
+            </View>
+            <Text style={styles.heroNameOverlay}>{business.name}</Text>
+            <Text style={styles.heroCatOverlay}>{business.category} · {business.city}</Text>
+          </View>
+        </View>
+
+        <View style={styles.body}>
+          {/* Score Card */}
+          <View style={styles.scoreCard}>
+            <View style={styles.scoreMain}>
+              <Text style={styles.scoreNumber}>{business.score.toFixed(1)}</Text>
+              <Text style={styles.scoreLabel}>Score</Text>
+            </View>
+            <View style={styles.scoreDivider} />
+            <View style={styles.scoreStats}>
+              <Text style={styles.scoreStatNum}>{business.ratingCount}</Text>
+              <Text style={styles.scoreStatLabel}>Ratings</Text>
+            </View>
+            <View style={styles.scoreDivider} />
+            <View style={styles.scoreStats}>
+              <Text style={styles.scoreStatNum}>{business.priceRange ?? "—"}</Text>
+              <Text style={styles.scoreStatLabel}>Price</Text>
+            </View>
+            <View style={styles.scoreDivider} />
+            <View style={styles.scoreStats}>
+              <Text style={[styles.scoreStatNum, { fontSize: 11 }]}>{business.neighborhood}</Text>
+              <Text style={styles.scoreStatLabel}>Area</Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <View style={styles.descCard}>
+            <Text style={styles.descText}>{business.description}</Text>
+            {business.featuredDish && (
+              <View style={styles.featuredDish}>
+                <Ionicons name="star" size={12} color={Colors.gold} />
+                <Text style={styles.featuredDishText}>{business.featuredDish}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Info Row */}
+          <View style={styles.infoRow}>
+            {business.hours && (
+              <View style={styles.infoItem}>
+                <Ionicons name="time-outline" size={13} color={Colors.textTertiary} />
+                <Text style={styles.infoText}>{business.hours}</Text>
+              </View>
+            )}
+            {business.address && (
+              <View style={styles.infoItem}>
+                <Ionicons name="location-outline" size={13} color={Colors.textTertiary} />
+                <Text style={styles.infoText}>{business.address}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Tags */}
+          <View style={styles.tagsRow}>
             {business.tags.map(tag => (
               <View key={tag} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </View>
-        </View>
 
-        <View style={styles.scoreCard}>
-          <View style={styles.scoreMain}>
-            <Text style={styles.scoreNumber}>{business.score.toFixed(1)}</Text>
-            <Text style={styles.scoreLabel}>Community Score</Text>
-          </View>
-          <View style={styles.scoreDivider} />
-          <View style={styles.scoreStats}>
-            <Text style={styles.scoreStatNum}>{business.ratingCount}</Text>
-            <Text style={styles.scoreStatLabel}>Ratings</Text>
-          </View>
-          <View style={styles.scoreDivider} />
-          <View style={styles.scoreStats}>
-            <Text style={styles.scoreStatNum}>{business.neighborhood}</Text>
-            <Text style={styles.scoreStatLabel}>Area</Text>
-          </View>
-        </View>
-
-        {challenge && countdown && (
-          <View style={styles.challengeCard}>
-            <View style={styles.challengeHeader}>
-              <Ionicons name="flash" size={16} color={Colors.gold} />
-              <Text style={styles.challengeTitle}>Active Challenger</Text>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+          {/* Active Challenger */}
+          {challenge && countdown && (
+            <View style={styles.challengeCard}>
+              <View style={styles.challengeHeader}>
+                <Ionicons name="flash" size={14} color={Colors.gold} />
+                <Text style={styles.challengeTitle}>Active Challenger</Text>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
               </View>
+              <View style={styles.challengeVs}>
+                <Text style={styles.challengeDefender}>{challenge.defenderName}</Text>
+                <Text style={styles.challengeVsText}>vs</Text>
+                <Text style={styles.challengeChallenger}>{challenge.challengerName}</Text>
+              </View>
+              <View style={styles.challengeVotes}>
+                <Text style={styles.challengeVoteNum}>{challenge.defenderVotes.toLocaleString()}</Text>
+                <Text style={styles.challengeVoteNum}>{challenge.challengerVotes.toLocaleString()}</Text>
+              </View>
+              <Text style={styles.challengeTimer}>
+                {countdown.days}d {countdown.hours}h {countdown.minutes}m remaining
+              </Text>
             </View>
-            <View style={styles.challengeVs}>
-              <Text style={styles.challengeDefender}>{challenge.defenderName}</Text>
-              <Text style={styles.challengeVsText}>vs</Text>
-              <Text style={styles.challengeChallenger}>{challenge.challengerName}</Text>
-            </View>
-            <View style={styles.challengeVotes}>
-              <Text style={styles.challengeVoteNum}>{challenge.defenderVotes.toLocaleString()}</Text>
-              <Text style={styles.challengeVoteNum}>{challenge.challengerVotes.toLocaleString()}</Text>
-            </View>
-            <Text style={styles.challengeTimer}>
-              {countdown.days}d {countdown.hours}h {countdown.minutes}m remaining
-            </Text>
-          </View>
-        )}
+          )}
 
-        {hasMinDays ? (
-          <TouchableOpacity
-            style={styles.rateButton}
-            onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.id } })}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="star" size={18} color="#000" />
-            <Text style={styles.rateButtonText}>Rate This Place</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.rateDisabled}>
-            <Ionicons name="lock-closed-outline" size={16} color={Colors.textTertiary} />
-            <Text style={styles.rateDisabledText}>
-              Build your reviewer credibility to rate this business.
-            </Text>
-          </View>
-        )}
+          {/* Rate Button */}
+          {hasMinDays ? (
+            <TouchableOpacity
+              style={styles.rateButton}
+              onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.id } })}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="star" size={17} color="#000" />
+              <Text style={styles.rateButtonText}>Rate This Place</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.rateDisabled}>
+              <Ionicons name="lock-closed-outline" size={15} color={Colors.textTertiary} />
+              <Text style={styles.rateDisabledText}>Build your reviewer credibility to rate this business.</Text>
+            </View>
+          )}
 
-        {ratings.length > 0 && (
-          <>
-            <View style={styles.sectionHeader}>
+          {/* Rating Breakdown */}
+          {ratings.length > 0 && (
+            <>
               <Text style={styles.sectionTitle}>Rating Breakdown</Text>
-            </View>
-            <View style={styles.ratingBreakdownCard}>
-              <RatingBar label="Food Quality" value={ratings.reduce((a, r) => a + (r.food ?? 0), 0) / ratings.length} />
-              <RatingBar label="Value for Money" value={ratings.reduce((a, r) => a + (r.value ?? 0), 0) / ratings.length} />
-              <RatingBar label="Service" value={ratings.reduce((a, r) => a + (r.service ?? 0), 0) / ratings.length} />
-            </View>
+              <View style={styles.card}>
+                <RatingBar label="Food Quality" value={ratings.reduce((a, r) => a + (r.food ?? 0), 0) / ratings.length} />
+                <RatingBar label="Value" value={ratings.reduce((a, r) => a + (r.value ?? 0), 0) / ratings.length} />
+                <RatingBar label="Service" value={ratings.reduce((a, r) => a + (r.service ?? 0), 0) / ratings.length} />
+              </View>
 
-            <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Distribution</Text>
-            </View>
-            <View style={styles.card}>
-              <DistributionChart ratings={ratings} />
-            </View>
+              <View style={styles.card}>
+                <DistributionChart ratings={ratings} />
+              </View>
 
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Ratings</Text>
-              <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
-            </View>
-            {ratings.map(rating => (
-              <RatingRow key={rating.id} rating={rating} />
-            ))}
-          </>
-        )}
+              <View style={styles.sectionRow}>
+                <Text style={styles.sectionTitle}>Recent Ratings</Text>
+                <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
+              </View>
+              {ratings.map(rating => (
+                <RatingRow key={rating.id} rating={rating} />
+              ))}
+            </>
+          )}
 
-        <TouchableOpacity style={styles.reportLink}>
-          <Ionicons name="flag-outline" size={13} color={Colors.textTertiary} />
-          <Text style={styles.reportLinkText}>Report Suspicious Activity</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.reportLink}>
+            <Ionicons name="flag-outline" size={12} color={Colors.textTertiary} />
+            <Text style={styles.reportLinkText}>Report Suspicious Activity</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
 }
 
+const HERO_HEIGHT = 260;
+
 const styles = StyleSheet.create({
   notFound: {
-    flex: 1,
-    backgroundColor: Colors.background,
+    flex: 1, backgroundColor: Colors.background,
+    alignItems: "center", justifyContent: "center", gap: 12,
+  },
+  notFoundText: { fontSize: 18, color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  backLink: { fontSize: 14, color: Colors.gold, fontFamily: "Inter_500Medium" },
+
+  content: { gap: 0 },
+  body: { paddingHorizontal: 14, gap: 10, paddingTop: 14 },
+
+  heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
+  heroImage: { width: "100%", height: HERO_HEIGHT },
+  heroImagePlaceholder: {
+    backgroundColor: Colors.surface,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
   },
-  notFoundText: {
-    fontSize: 18,
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
+  heroImageOverlay: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HERO_HEIGHT,
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
-  backLink: {
-    fontSize: 14,
-    color: Colors.gold,
-    fontFamily: "Inter_500Medium",
-  },
+
   navBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    backgroundColor: Colors.background,
+    paddingHorizontal: 14,
+    zIndex: 10,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surface,
+  navBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  heroRankOverlay: {
+    position: "absolute",
+    bottom: 16,
+    left: 16,
+    right: 16,
+    gap: 4,
+  },
+  heroRankBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  reportBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surface,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  content: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  heroSection: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 8,
-  },
-  heroRank: {
+  heroRankBadgeGold: {
     backgroundColor: Colors.gold,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 4,
+    borderColor: Colors.gold,
   },
   heroRankText: {
-    fontSize: 28,
-    fontWeight: "800",
-    color: "#000",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -1,
-  },
-  heroName: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-    letterSpacing: -0.8,
-  },
-  heroCat: {
     fontSize: 14,
+    fontWeight: "800",
+    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.5,
+  },
+  heroRankTextGold: { color: "#000" },
+  heroNameOverlay: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#fff",
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.7,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroCatOverlay: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.75)",
+    fontFamily: "Inter_400Regular",
+  },
+
+  scoreCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  scoreMain: { flex: 1.2, alignItems: "center" },
+  scoreNumber: {
+    fontSize: 36,
+    fontWeight: "800",
+    color: Colors.gold,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -1.5,
+  },
+  scoreLabel: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  scoreDivider: { width: 1, height: 34, backgroundColor: Colors.border },
+  scoreStats: { flex: 1, alignItems: "center", gap: 3 },
+  scoreStatNum: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", textAlign: "center" },
+  scoreStatLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
+  descCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  descText: {
+    fontSize: 13,
     color: Colors.textSecondary,
     fontFamily: "Inter_400Regular",
-  },
-  heroDesc: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
     lineHeight: 20,
-    paddingHorizontal: 20,
   },
-  heroTags: {
+  featuredDish: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: 6,
-    justifyContent: "center",
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
+  featuredDishText: {
+    fontSize: 12,
+    color: Colors.gold,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+
+  infoRow: { gap: 6 },
+  infoItem: { flexDirection: "row", alignItems: "flex-start", gap: 7 },
+  infoText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
+
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   tag: {
     backgroundColor: Colors.surface,
     borderRadius: 6,
@@ -360,362 +461,87 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  tagText: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-  },
-  scoreCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  scoreMain: {
-    flex: 1,
-    alignItems: "center",
-  },
-  scoreNumber: {
-    fontSize: 40,
-    fontWeight: "800",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -2,
-  },
-  scoreLabel: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-  scoreDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: Colors.border,
-  },
-  scoreStats: {
-    flex: 1,
-    alignItems: "center",
-    gap: 3,
-  },
-  scoreStatNum: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    textAlign: "center",
-  },
-  scoreStatLabel: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  tagText: { fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
+
   challengeCard: {
     backgroundColor: "#1A0A00",
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 14,
+    padding: 14,
     borderWidth: 1,
     borderColor: "rgba(245,197,24,0.3)",
-    gap: 10,
+    gap: 8,
   },
-  challengeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  challengeTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.gold,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-  },
+  challengeHeader: { flexDirection: "row", alignItems: "center", gap: 5 },
+  challengeTitle: { fontSize: 12, fontWeight: "600", color: Colors.gold, fontFamily: "Inter_600SemiBold", flex: 1 },
   liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(239,68,68,0.12)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(239,68,68,0.12)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: Colors.red,
-  },
-  liveText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: Colors.red,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
-  challengeVs: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    justifyContent: "center",
-  },
-  challengeDefender: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
-    flex: 1,
-    textAlign: "right",
-  },
-  challengeVsText: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  challengeChallenger: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-    flex: 1,
-  },
-  challengeVotes: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  challengeVoteNum: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-  },
-  challengeTimer: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
+  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.red },
+  liveText: { fontSize: 9, fontWeight: "700", color: Colors.red, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  challengeVs: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center" },
+  challengeDefender: { fontSize: 13, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", flex: 1, textAlign: "right" },
+  challengeVsText: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  challengeChallenger: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", flex: 1 },
+  challengeVotes: { flexDirection: "row", justifyContent: "space-around" },
+  challengeVoteNum: { fontSize: 20, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  challengeTimer: { fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_400Regular", textAlign: "center" },
+
   rateButton: {
-    backgroundColor: Colors.gold,
-    borderRadius: 14,
-    paddingVertical: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
+    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
-  rateButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#000",
-    fontFamily: "Inter_700Bold",
-  },
+  rateButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
   rateDisabled: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  rateDisabledText: {
-    fontSize: 13,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 18,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  sectionCount: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  ratingBreakdownCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  ratingBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  ratingBarLabel: {
-    width: 90,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-  },
-  ratingBarTrack: {
-    flex: 1,
-    height: 5,
-    backgroundColor: Colors.surfaceRaised,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  ratingBarFill: {
-    height: "100%",
-    backgroundColor: Colors.gold,
-    borderRadius: 3,
-  },
-  ratingBarValue: {
-    width: 28,
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "right",
-  },
+  rateDisabledText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
+
+  sectionTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", marginTop: 6 },
+  sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  sectionCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: Colors.border, gap: 10,
   },
-  distChart: {
-    gap: 7,
-  },
-  distRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  distStar: {
-    width: 12,
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
-  },
-  distBarTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: Colors.surfaceRaised,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
-  distBarFill: {
-    height: "100%",
-    borderRadius: 3,
-  },
-  distCount: {
-    width: 16,
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    textAlign: "right",
-  },
+
+  ratingBarRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  ratingBarLabel: { width: 78, fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
+  ratingBarTrack: { flex: 1, height: 5, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
+  ratingBarFill: { height: "100%", backgroundColor: Colors.gold, borderRadius: 3 },
+  ratingBarValue: { width: 28, fontSize: 12, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", textAlign: "right" },
+
+  distChart: { gap: 7 },
+  distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
+  distBarTrack: { flex: 1, height: 6, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
+  distBarFill: { height: "100%", borderRadius: 3 },
+  distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular", textAlign: "right" },
+
   ratingRow: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 13,
+    gap: 8, borderWidth: 1, borderColor: Colors.border,
   },
-  ratingTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  ratingUser: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flexWrap: "wrap",
-  },
-  ratingName: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  tierBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-  },
-  tierBadgeText: {
-    fontSize: 9,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.3,
-  },
-  ratingScoreBox: {
-    alignItems: "flex-end",
-  },
-  ratingScore: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-  },
-  ratingTime: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  ratingSubScores: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  ratingSubItem: {
-    alignItems: "center",
-    gap: 2,
-  },
-  ratingSubLabel: {
-    fontSize: 9,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
-  ratingSubVal: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  ratingComment: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    fontStyle: "italic",
-    lineHeight: 18,
-  },
+  ratingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+  ratingUser: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  tierBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
+  tierBadgeText: { fontSize: 9, fontWeight: "600", fontFamily: "Inter_600SemiBold", letterSpacing: 0.3 },
+  ratingScoreBox: { alignItems: "flex-end" },
+  ratingScore: { fontSize: 17, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  ratingTime: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  ratingSubScores: { flexDirection: "row", gap: 14 },
+  ratingSubItem: { alignItems: "center", gap: 2 },
+  ratingSubLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  ratingComment: { fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_400Regular", fontStyle: "italic", lineHeight: 17 },
+
   reportLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 16,
-    marginTop: 8,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 5, paddingVertical: 16, marginTop: 8,
   },
-  reportLinkText: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-  },
+  reportLinkText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
 });
