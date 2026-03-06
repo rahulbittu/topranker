@@ -1,0 +1,59 @@
+The Product Screens — Every View Defined
+
+The UI vision is bold and clean. Think Nielsen ratings board meets a live sports leaderboard. Numbers dominate. Rankings are large. Movement is visible. The app never hides what it is — a ranking platform where the number is the product.
+ 
+ 
+UI Direction: Dark background. Gold accent for #1. Large rank numbers — not tiny badges. Clean sans-serif. No clutter. The #1 ranking should look like a billboard, not a listing. When you open the app and see '#1 Spice Garden' in large type with a gold crown, you should feel like you found something definitive.
+ 
+SCREEN: Home — The Leaderboard
+The first thing you see is the live ranking for your city. No search required. Just the top 10 in whatever category you last used.
+ ▸  Category tabs across the top: Restaurants, Cafes, Street Food, Bars, Bakeries. Tap to switch.
+ ▸  Each listing: Large rank number (#1, #2, #3...) in bold. Business name. Neighborhood. Weighted score displayed as a clean number like 94.2, not stars.
+ ▸  Arrow indicator: green up arrow if ranking moved up today, red down arrow if it dropped, gray dash if stable.
+ ▸  Active Challenger badge on any business currently in a head-to-head competition.
+ ▸  Tap any listing to open the full business profile.
+ ▸  Sticky header shows city name and a subtle 'Rankings last updated: 4 minutes ago' timestamp.
+ 
+SCREEN: Business Profile
+The full picture of one business. Everything the community knows about it.
+ ▸  Large rank number and category at the top. '#1 in Dallas Biryani'.
+ ▸  Weighted community score — large, prominent. The number means something here.
+ ▸  Recent rating feed: the last 20 ratings from Trusted and Top Reviewer tier members, shown with their credibility tier badge.
+ ▸  Rating distribution: a simple bar chart showing the spread of ratings. Instantly reveals if ratings are suspiciously all 5-star.
+ ▸  Rate This Place button — only active after the member has been active on the platform for 7+ days. New members see: 'Build your reviewer credibility to rate this business.'
+ ▸  Active Challenger section if applicable: live vote count, days remaining, the competitor's name.
+ ▸  Report Suspicious Activity link — community moderation, always visible.
+ 
+SCREEN: Rate A Business
+The rating screen. Fast, honest, structured.
+ ▸  Four questions only. Not a text box. Not an essay. Four specific questions that cover the actual experience.
+ ▸  For restaurants: Food quality (1-5), Value for money (1-5), Service (1-5), Would you return? (Yes/No).
+ ▸  Optional: one sentence in your own words. 150 character limit. Not required.
+ ▸  Your credibility tier is shown at the bottom: 'Your rating will be counted at Trusted weight.'
+ ▸  Confirmation screen shows the business's rank before and after your rating — so you can see your vote mattered.
+ 
+SCREEN: Member Profile
+Your profile and credibility dashboard.
+ ▸  Your credibility tier displayed prominently: New Member / Regular / Trusted / Top Reviewer.
+ ▸  Number of ratings submitted, number of categories covered, how long you have been active.
+ ▸  Progress bar to next credibility tier with specific criteria: 'Rate 15 more businesses in at least 3 categories to reach Trusted.'
+ ▸  Your rating history — every business you rated, your score, when you rated it.
+ ▸  Businesses you have helped move up in ranking — a pride mechanism. 'Your ratings contributed to 3 businesses moving up in the Dallas rankings this month.'
+ 
+SCREEN: Challenger — Live Event
+The most exciting screen in the app. A live sporting event.
+ ▸  Two business names face off at the top, like a fight card. #1 vs Challenger. Both logos if available.
+ ▸  Live vote count — large numbers, updating in real time. Not percentages. Raw weighted vote counts.
+ ▸  Countdown timer: 18 days, 4 hours, 22 minutes remaining.
+ ▸  Recent ratings feed specific to this Challenger — only ratings submitted during the active window.
+ ▸  Community commentary: short text reactions from Trusted and Top Reviewer members only. Character limited. Not a forum.
+ ▸  Share button: creates a beautiful shareable image of the current vote count for Instagram/WhatsApp.
+ ▸  The winner is announced with a full-screen animation at the 30-day mark.
+ 
+SCREEN: Search and Discover
+Finding businesses outside your default city or category.
+ ▸  Search by business name, neighborhood, or category.
+ ▸  Filter by: Top 10 only, Currently Challenging, Near Me, Recently Moved Up.
+ ▸  City selector for when traveling — opens the Top 10 in the new city immediately.
+ ▸  Trending this week: the three businesses that gained the most ranking positions in the last 7 days.
+
