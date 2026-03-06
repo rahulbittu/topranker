@@ -1,14 +1,18 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ScrollView, Platform,
+  ScrollView, Platform, ActivityIndicator, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { getBusinessById, MOCK_USER, TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS } from "@/lib/data";
+import { TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS, type CredibilityTier } from "@/lib/data";
+import { useAuth } from "@/lib/auth-context";
+import { fetchBusinessBySlug } from "@/lib/api";
+import { apiRequest } from "@/lib/query-client";
 
 type Step = "form" | "confirm";
 
@@ -98,8 +102,17 @@ function YesNoPicker({
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const business = getBusinessById(id);
+  const { id: slug } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  const { data: bizData, isLoading } = useQuery({
+    queryKey: ["business", slug],
+    queryFn: () => fetchBusinessBySlug(slug),
+    enabled: !!slug,
+  });
+
+  const business = bizData?.business;
 
   const [food, setFood] = useState(0);
   const [value, setValue] = useState(0);
@@ -107,11 +120,12 @@ export default function RateScreen() {
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null);
   const [note, setNote] = useState("");
   const [step, setStep] = useState<Step>("form");
+  const [submitError, setSubmitError] = useState("");
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const tierColor = TIER_COLORS[MOCK_USER.tier];
-  const tierDisplayName = TIER_DISPLAY_NAMES[MOCK_USER.tier];
-  const voteWeight = TIER_WEIGHTS[MOCK_USER.tier];
+  const userTier = (user as any)?.credibilityTier as CredibilityTier || "new";
+  const tierColor = TIER_COLORS[userTier];
+  const tierDisplayName = TIER_DISPLAY_NAMES[userTier];
+  const voteWeight = TIER_WEIGHTS[userTier];
 
   const isComplete = food > 0 && value > 0 && service > 0 && wouldReturn !== null;
 
@@ -120,14 +134,40 @@ export default function RateScreen() {
     : 0;
   const weightedScore = rawScore * voteWeight;
 
-  const prevRank = business?.rank ?? 1;
-  const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
+  const submitMutation = useMutation({
+    mutationFn: async () => {
+      if (!business) throw new Error("Business not found");
+      const res = await apiRequest("POST", "/api/ratings", {
+        businessId: business.id,
+        foodQuality: food,
+        valueForMoney: value,
+        service,
+        wouldReturn,
+        note: note.trim() || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      qc.invalidateQueries({ queryKey: ["business", slug] });
+      qc.invalidateQueries({ queryKey: ["leaderboard"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      setStep("confirm");
+    },
+    onError: (err: Error) => {
+      setSubmitError(err.message || "Failed to submit rating");
+    },
+  });
 
-  const handleSubmit = () => {
-    if (!isComplete) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setStep("confirm");
-  };
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: topPad, alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color={Colors.gold} />
+      </View>
+    );
+  }
 
   if (!business) {
     return (
@@ -136,6 +176,24 @@ export default function RateScreen() {
       </View>
     );
   }
+
+  if (!user) {
+    return (
+      <View style={[styles.container, { paddingTop: topPad, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }]}>
+        <Ionicons name="lock-closed-outline" size={48} color={Colors.textTertiary} />
+        <Text style={[styles.errorText, { marginTop: 16 }]}>Sign in to rate businesses</Text>
+        <TouchableOpacity
+          style={[styles.submitButton, { marginTop: 16, width: "100%" }]}
+          onPress={() => router.replace("/auth/login")}
+        >
+          <Text style={styles.submitButtonText}>Sign In</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const prevRank = business.rank ?? 1;
+  const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
 
   if (step === "confirm") {
     return (
@@ -286,15 +344,26 @@ export default function RateScreen() {
           </View>
         )}
 
+        {!!submitError && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color={Colors.redBright} />
+            <Text style={styles.errorBannerText}>{submitError}</Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.submitButton, !isComplete && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
+          onPress={() => {
+            if (!isComplete) return;
+            setSubmitError("");
+            submitMutation.mutate();
+          }}
           activeOpacity={0.8}
-          disabled={!isComplete}
+          disabled={!isComplete || submitMutation.isPending}
           testID="submit-rating"
         >
           <Text style={[styles.submitButtonText, !isComplete && styles.submitButtonTextDisabled]}>
-            Submit Rating
+            {submitMutation.isPending ? "Submitting..." : "Submit Rating"}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -388,6 +457,13 @@ const styles = StyleSheet.create({
   previewRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   previewLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
   previewVal: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
+
+  errorBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.redFaint, borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: "rgba(176,48,48,0.3)",
+  },
+  errorBannerText: { fontSize: 13, color: Colors.redBright, fontFamily: "Inter_500Medium", flex: 1 },
 
   submitButton: {
     backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 17,

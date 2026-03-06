@@ -1,16 +1,32 @@
 import React, { useState, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Animated, Image,
+  ScrollView, Platform, Animated, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import {
-  CATEGORIES, Category, Business,
-  getBusinessesByCategory,
-} from "@/lib/data";
+import { CATEGORIES, type Category } from "@/lib/data";
+import { fetchLeaderboard } from "@/lib/api";
+
+interface MappedBusiness {
+  id: string;
+  name: string;
+  slug: string;
+  neighborhood: string;
+  city: string;
+  category: string;
+  weightedScore: number;
+  rank: number;
+  rankDelta: number;
+  ratingCount: number;
+  isChallenger: boolean;
+  isVerified: boolean;
+  priceRange: string | null;
+  image: any;
+}
 
 function RankBadge({ rank }: { rank: number }) {
   if (rank === 1) {
@@ -65,7 +81,7 @@ function MovementIndicator({ delta }: { delta: number }) {
   );
 }
 
-function BusinessRow({ item }: { item: Business }) {
+function BusinessRow({ item }: { item: MappedBusiness }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const onPressIn = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
@@ -79,7 +95,7 @@ function BusinessRow({ item }: { item: Business }) {
         activeOpacity={1}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.id } })}
+        onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
         style={[styles.row, isTop && styles.rowTop, item.rank === 1 && styles.rowFirst]}
         testID={`leaderboard-row-${item.rank}`}
       >
@@ -112,17 +128,9 @@ function BusinessRow({ item }: { item: Business }) {
           </View>
         </View>
 
-        {item.image ? (
-          <Image
-            source={item.image}
-            style={[styles.thumbnail, item.rank === 1 && styles.thumbnailFirst]}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-            <Ionicons name="restaurant-outline" size={18} color={Colors.textTertiary} />
-          </View>
-        )}
+        <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
+          <Ionicons name="restaurant-outline" size={18} color={Colors.textTertiary} />
+        </View>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -131,7 +139,13 @@ function BusinessRow({ item }: { item: Business }) {
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const [activeCategory, setActiveCategory] = useState<Category>("Restaurants");
-  const businesses = getBusinessesByCategory(activeCategory);
+
+  const { data: businesses = [], isLoading } = useQuery({
+    queryKey: ["leaderboard", "Dallas", activeCategory],
+    queryFn: () => fetchLeaderboard("Dallas", activeCategory, 20),
+    staleTime: 30000,
+  });
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -164,16 +178,27 @@ export default function LeaderboardScreen() {
         ))}
       </ScrollView>
 
-      <FlatList
-        data={businesses}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <BusinessRow item={item} />}
-        contentContainerStyle={[
-          styles.list,
-          { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.gold} />
+        </View>
+      ) : (
+        <FlatList
+          data={businesses}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => <BusinessRow item={item} />}
+          contentContainerStyle={[
+            styles.list,
+            { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.loadingContainer}>
+              <Text style={styles.emptyText}>No businesses found</Text>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -222,6 +247,9 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
   tabTextActive: { color: "#000" },
   list: { paddingHorizontal: 14, gap: 8 },
+
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
+  emptyText: { fontSize: 15, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
 
   row: {
     flexDirection: "row",
@@ -339,9 +367,6 @@ const styles = StyleSheet.create({
     height: THUMB_H + 16,
     borderTopRightRadius: 14,
     borderBottomRightRadius: 14,
-  },
-  thumbnailFirst: {
-    opacity: 0.9,
   },
   thumbnailPlaceholder: {
     backgroundColor: Colors.surfaceRaised,

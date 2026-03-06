@@ -1,16 +1,20 @@
 import React from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform,
+  Platform, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import {
-  MOCK_USER, TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
-  getTierRequirements, formatTimeAgo,
-  CredibilityTier, TIER_SCORE_RANGES,
+  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
+  TIER_SCORE_RANGES, formatTimeAgo,
+  type CredibilityTier,
 } from "@/lib/data";
+import { useAuth } from "@/lib/auth-context";
+import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
@@ -36,19 +40,86 @@ function BreakdownRow({ label, value, icon }: { label: string; value: string; ic
   );
 }
 
-export default function ProfileScreen() {
+function LoggedOutView() {
   const insets = useSafeAreaInsets();
-  const user = MOCK_USER;
-  const tierReqs = getTierRequirements(user.tier, user.credibilityScore, user.totalRatings, user.totalCategories, user.daysActive, user.ratingVariance, 0);
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const tierColor = TIER_COLORS[user.tier];
-  const weight = TIER_WEIGHTS[user.tier];
-  const scoreRange = TIER_SCORE_RANGES[user.tier];
-  const nextRange = tierReqs.nextTier ? TIER_SCORE_RANGES[tierReqs.nextTier] : null;
+  return (
+    <View style={[styles.container, { paddingTop: topPad }]}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profile</Text>
+      </View>
+      <View style={styles.loggedOutContainer}>
+        <View style={styles.loggedOutIcon}>
+          <Ionicons name="person-outline" size={48} color={Colors.textTertiary} />
+        </View>
+        <Text style={styles.loggedOutTitle}>Sign in to Top Ranker</Text>
+        <Text style={styles.loggedOutSub}>
+          Rate businesses, build your credibility score, and see your impact on Dallas rankings.
+        </Text>
+        <TouchableOpacity
+          style={styles.signInButton}
+          onPress={() => router.push("/auth/login")}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.signInButtonText}>Sign In</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push("/auth/signup")}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.signUpLink}>Don't have an account? Sign Up</Text>
+        </TouchableOpacity>
+
+        <View style={styles.tierInfoSectionCompact}>
+          <Text style={styles.sectionTitle}>Credibility Tiers</Text>
+          <View style={styles.tierList}>
+            {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(tier => (
+              <View key={tier} style={styles.tierRow}>
+                <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[tier] }]} />
+                <View style={styles.tierRowInfo}>
+                  <Text style={styles.tierName}>{TIER_DISPLAY_NAMES[tier]}</Text>
+                  <Text style={styles.tierWeight}>{TIER_WEIGHTS[tier].toFixed(2)}x weight</Text>
+                </View>
+                <Text style={styles.tierRange}>
+                  {TIER_SCORE_RANGES[tier].min}–{TIER_SCORE_RANGES[tier].max}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
+  const insets = useSafeAreaInsets();
+  const { logout } = useAuth();
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const tier = profile.credibilityTier as CredibilityTier;
+  const tierColor = TIER_COLORS[tier];
+  const weight = TIER_WEIGHTS[tier];
+  const scoreRange = TIER_SCORE_RANGES[tier];
+
+  const nextTierMap: Record<string, CredibilityTier | null> = {
+    new: "regular",
+    regular: "trusted",
+    trusted: "top",
+    top: null,
+  };
+  const nextTier = nextTierMap[tier];
+  const nextRange = nextTier ? TIER_SCORE_RANGES[nextTier] : null;
   const progressToNext = nextRange
-    ? Math.min(((user.credibilityScore - scoreRange.min) / (nextRange.min - scoreRange.min)) * 100, 100)
+    ? Math.min(((profile.credibilityScore - scoreRange.min) / (nextRange.min - scoreRange.min)) * 100, 100)
     : 100;
+
+  const breakdown = profile.credibilityBreakdown;
+  const totalScore = (breakdown.base || 0) + (breakdown.ratingPoints || 0) +
+    (breakdown.diversityBonus || 0) + Math.round(breakdown.ageBonus || 0) +
+    Math.round(breakdown.varianceBonus || 0) + (breakdown.helpfulnessBonus || 0) -
+    (breakdown.flagPenalty || 0);
 
   return (
     <ScrollView
@@ -61,17 +132,20 @@ export default function ProfileScreen() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+          <Ionicons name="log-out-outline" size={18} color={Colors.textTertiary} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.profileCard}>
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarInitial}>{user.name.charAt(0)}</Text>
+          <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{user.name}</Text>
-          <Text style={styles.username}>@{user.username}</Text>
-          <TierBadge tier={user.tier} />
-          {user.isFoundingMember && (
+          <Text style={styles.profileName}>{profile.displayName}</Text>
+          <Text style={styles.username}>@{profile.username}</Text>
+          <TierBadge tier={tier} />
+          {profile.isFoundingMember && (
             <View style={styles.foundingBadge}>
               <Ionicons name="diamond" size={10} color={Colors.gold} />
               <Text style={styles.foundingText}>FOUNDING MEMBER</Text>
@@ -84,7 +158,7 @@ export default function ProfileScreen() {
         <View style={styles.credScoreRow}>
           <View>
             <Text style={styles.credScoreLabel}>Credibility Score</Text>
-            <Text style={[styles.credScore, { color: tierColor }]}>{user.credibilityScore}</Text>
+            <Text style={[styles.credScore, { color: tierColor }]}>{profile.credibilityScore}</Text>
           </View>
           <View style={styles.credWeightBox}>
             <Text style={styles.credWeightLabel}>Vote Weight</Text>
@@ -92,11 +166,11 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {tierReqs.nextTier && (
+        {nextTier && (
           <View style={styles.credProgress}>
             <View style={styles.credProgressHeader}>
               <Text style={styles.credProgressLabel}>
-                Progress to {TIER_DISPLAY_NAMES[tierReqs.nextTier]}
+                Progress to {TIER_DISPLAY_NAMES[nextTier]}
               </Text>
               <Text style={styles.credProgressPct}>{Math.round(progressToNext)}%</Text>
             </View>
@@ -109,89 +183,57 @@ export default function ProfileScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{user.totalRatings}</Text>
+          <Text style={styles.statNum}>{profile.totalRatings}</Text>
           <Text style={styles.statLabel}>Ratings</Text>
         </View>
         <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{user.totalCategories}</Text>
+          <Text style={styles.statNum}>{profile.totalCategories}</Text>
           <Text style={styles.statLabel}>Categories</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{user.daysActive}</Text>
+          <Text style={styles.statNum}>{profile.daysActive}</Text>
           <Text style={styles.statLabel}>Days Active</Text>
         </View>
       </View>
 
       <View style={styles.breakdownCard}>
         <Text style={styles.breakdownTitle}>Score Breakdown</Text>
-        <BreakdownRow label="Base points" value={`+${user.credibilityBreakdown.basePoints}`} icon="person-outline" />
-        <BreakdownRow label="Rating volume" value={`+${user.credibilityBreakdown.ratingPoints}`} icon="star-outline" />
-        <BreakdownRow label="Category diversity" value={`+${user.credibilityBreakdown.diversityBonus}`} icon="grid-outline" />
-        <BreakdownRow label="Account age" value={`+${Math.round(user.credibilityBreakdown.ageBonus)}`} icon="time-outline" />
-        <BreakdownRow label="Rating variance" value={`+${Math.round(user.credibilityBreakdown.varianceBonus)}`} icon="analytics-outline" />
-        <BreakdownRow label="Helpfulness" value={`+${user.credibilityBreakdown.helpfulnessBonus}`} icon="hand-left-outline" />
-        {user.credibilityBreakdown.flagPenalty > 0 && (
-          <BreakdownRow label="Flag penalties" value={`-${user.credibilityBreakdown.flagPenalty}`} icon="flag-outline" />
+        <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
+        <BreakdownRow label="Rating volume" value={`+${breakdown.ratingPoints || 0}`} icon="star-outline" />
+        <BreakdownRow label="Category diversity" value={`+${breakdown.diversityBonus || 0}`} icon="grid-outline" />
+        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.ageBonus || 0)}`} icon="time-outline" />
+        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.varianceBonus || 0)}`} icon="analytics-outline" />
+        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulnessBonus || 0}`} icon="hand-left-outline" />
+        {(breakdown.flagPenalty || 0) > 0 && (
+          <BreakdownRow label="Flag penalties" value={`-${breakdown.flagPenalty}`} icon="flag-outline" />
         )}
         <View style={styles.breakdownTotal}>
           <Text style={styles.breakdownTotalLabel}>Total</Text>
           <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>
-            {user.credibilityBreakdown.totalScore}
+            {totalScore}
           </Text>
         </View>
       </View>
-
-      {tierReqs.nextTier && tierReqs.requirements.length > 0 && (
-        <View style={styles.requirementsCard}>
-          <Text style={styles.requirementsTitle}>
-            Requirements for {TIER_DISPLAY_NAMES[tierReqs.nextTier]}
-          </Text>
-          {tierReqs.requirements.map((req, i) => (
-            <View key={i} style={styles.reqRow}>
-              <Ionicons
-                name={req.met ? "checkmark-circle" : "ellipse-outline"}
-                size={16}
-                color={req.met ? Colors.greenBright : Colors.textTertiary}
-              />
-              <Text style={[styles.reqText, req.met && styles.reqTextMet]}>{req.label}</Text>
-              {!req.met && req.current > 0 && (
-                <Text style={styles.reqProgress}>
-                  {req.current}/{req.needed}
-                </Text>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {user.businessesHelpedUp > 0 && (
-        <View style={styles.impactBanner}>
-          <Ionicons name="trending-up" size={20} color={Colors.greenBright} />
-          <Text style={styles.impactText}>
-            Your ratings contributed to <Text style={{ color: Colors.greenBright, fontFamily: "Inter_700Bold" }}>{user.businessesHelpedUp} businesses</Text> moving up in the Dallas rankings this month.
-          </Text>
-        </View>
-      )}
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Rating History</Text>
-        <Text style={styles.sectionCount}>{user.ratingHistory.length}</Text>
+        <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
       </View>
 
-      {user.ratingHistory.map((r, i) => (
+      {profile.ratingHistory.map((r: any, i: number) => (
         <View key={i} style={styles.historyRow}>
           <View style={styles.historyLeft}>
-            <Text style={styles.historyName}>{r.businessName}</Text>
-            <Text style={styles.historyDate}>{formatTimeAgo(r.ratedAt)}</Text>
+            <Text style={styles.historyName}>{r.businessName || "Business"}</Text>
+            <Text style={styles.historyDate}>{formatTimeAgo(new Date(r.createdAt).getTime())}</Text>
           </View>
           <View style={styles.historyRight}>
-            <Text style={styles.historyScore}>{r.rawScore.toFixed(1)}</Text>
-            <Text style={styles.historyWeight}>{r.weight.toFixed(2)}x weight</Text>
+            <Text style={styles.historyScore}>{parseFloat(r.rawScore).toFixed(1)}</Text>
+            <Text style={styles.historyWeight}>{parseFloat(r.weight).toFixed(2)}x weight</Text>
           </View>
         </View>
       ))}
 
-      {user.ratingHistory.length === 0 && (
+      {profile.ratingHistory.length === 0 && (
         <View style={styles.emptyHistory}>
           <Ionicons name="star-outline" size={32} color={Colors.textTertiary} />
           <Text style={styles.emptyText}>No ratings yet</Text>
@@ -202,19 +244,19 @@ export default function ProfileScreen() {
       <View style={styles.tierInfoSection}>
         <Text style={styles.sectionTitle}>Credibility Tiers</Text>
         <View style={styles.tierList}>
-          {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(tier => (
-            <View key={tier} style={[styles.tierRow, user.tier === tier && styles.tierRowActive]}>
-              <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[tier] }]} />
+          {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(t => (
+            <View key={t} style={[styles.tierRow, tier === t && styles.tierRowActive]}>
+              <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[t] }]} />
               <View style={styles.tierRowInfo}>
-                <Text style={[styles.tierName, user.tier === tier && { color: Colors.text }]}>
-                  {TIER_DISPLAY_NAMES[tier]}
+                <Text style={[styles.tierName, tier === t && { color: Colors.text }]}>
+                  {TIER_DISPLAY_NAMES[t]}
                 </Text>
-                <Text style={styles.tierWeight}>{TIER_WEIGHTS[tier].toFixed(2)}x</Text>
+                <Text style={styles.tierWeight}>{TIER_WEIGHTS[t].toFixed(2)}x</Text>
               </View>
               <Text style={styles.tierRange}>
-                {TIER_SCORE_RANGES[tier].min}–{TIER_SCORE_RANGES[tier].max}
+                {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
               </Text>
-              {user.tier === tier && (
+              {tier === t && (
                 <View style={styles.currentBadge}>
                   <Text style={styles.currentBadgeText}>YOU</Text>
                 </View>
@@ -227,14 +269,82 @@ export default function ProfileScreen() {
   );
 }
 
+export default function ProfileScreen() {
+  const { user, isLoading: authLoading } = useAuth();
+
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: () => fetchMemberProfile(),
+    enabled: !!user,
+    staleTime: 30000,
+  });
+
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color={Colors.gold} />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <LoggedOutView />;
+  }
+
+  if (profileLoading || !profile) {
+    return (
+      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator size="large" color={Colors.gold} />
+      </View>
+    );
+  }
+
+  return <ProfileContent profile={profile} />;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingHorizontal: 16, gap: 12 },
-  header: { paddingTop: 4, paddingBottom: 4 },
+  header: {
+    paddingTop: 4, paddingBottom: 4,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
   title: {
     fontSize: 28, fontWeight: "700", color: Colors.text,
     fontFamily: "Inter_700Bold", letterSpacing: -0.5,
   },
+  logoutBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: Colors.border,
+  },
+
+  loggedOutContainer: {
+    flex: 1, paddingHorizontal: 16, paddingTop: 40, alignItems: "center", gap: 16,
+  },
+  loggedOutIcon: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  loggedOutTitle: {
+    fontSize: 22, fontWeight: "700", color: Colors.text,
+    fontFamily: "Inter_700Bold", textAlign: "center",
+  },
+  loggedOutSub: {
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+    textAlign: "center", lineHeight: 20, paddingHorizontal: 20,
+  },
+  signInButton: {
+    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
+    paddingHorizontal: 60, marginTop: 8,
+  },
+  signInButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
+  signUpLink: {
+    fontSize: 13, color: Colors.gold, fontFamily: "Inter_500Medium",
+  },
+  tierInfoSectionCompact: { gap: 10, marginTop: 24, width: "100%" },
+
   profileCard: {
     backgroundColor: Colors.surface, borderRadius: 18, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,
@@ -311,23 +421,6 @@ const styles = StyleSheet.create({
   },
   breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
   breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "Inter_700Bold" },
-
-  requirementsCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, gap: 10,
-  },
-  requirementsTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  reqRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  reqText: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
-  reqTextMet: { color: Colors.greenBright, textDecorationLine: "line-through" as const },
-  reqProgress: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_500Medium" },
-
-  impactBanner: {
-    backgroundColor: Colors.greenFaint, borderRadius: 14, padding: 14,
-    flexDirection: "row", alignItems: "flex-start", gap: 10,
-    borderWidth: 1, borderColor: "rgba(26,107,60,0.2)",
-  },
-  impactText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 19 },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },

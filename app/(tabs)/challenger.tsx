@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform,
+  View, Text, StyleSheet, ScrollView,
+  Platform, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { getAllChallenges, formatCountdown, formatTimeAgo, Challenger, TIER_COLORS, TIER_DISPLAY_NAMES } from "@/lib/data";
+import { fetchActiveChallenges, categoryToDisplay, type ApiChallenger } from "@/lib/api";
+import { formatCountdown } from "@/lib/data";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -26,18 +28,22 @@ function VoteBar({ challenger, defender }: { challenger: number; defender: numbe
   );
 }
 
-function ChallengeCard({ challenge }: { challenge: Challenger }) {
-  const countdown = formatCountdown(challenge.endDate);
-  const [expanded, setExpanded] = useState(false);
+function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
+  const endTs = new Date(challenge.endDate).getTime();
+  const startTs = new Date(challenge.startDate).getTime();
+  const countdown = formatCountdown(endTs);
 
-  const daysElapsed = Math.floor((Date.now() - challenge.startDate) / 86400000);
-  const totalDays = Math.floor((challenge.endDate - challenge.startDate) / 86400000);
+  const challengerVotes = parseFloat(challenge.challengerWeightedVotes);
+  const defenderVotes = parseFloat(challenge.defenderWeightedVotes);
+
+  const daysElapsed = Math.floor((Date.now() - startTs) / 86400000);
+  const totalDays = Math.floor((endTs - startTs) / 86400000);
 
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
         <View style={styles.catBadge}>
-          <Text style={styles.catBadgeText}>{challenge.category.toUpperCase()}</Text>
+          <Text style={styles.catBadgeText}>{categoryToDisplay(challenge.category).toUpperCase()}</Text>
         </View>
         <View style={styles.cityBadge}>
           <Ionicons name="location-sharp" size={10} color={Colors.textTertiary} />
@@ -50,9 +56,9 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
           <View style={styles.crownBadge}>
             <Ionicons name="trophy" size={16} color={Colors.gold} />
           </View>
-          <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderName}</Text>
+          <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderBusiness.name}</Text>
           <Text style={styles.fighterLabel}>DEFENDING #1</Text>
-          <Text style={styles.voteCount}>{challenge.defenderVotes.toLocaleString()}</Text>
+          <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </View>
 
@@ -68,14 +74,14 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
           <View style={styles.challengerIconBadge}>
             <Ionicons name="flash" size={16} color={Colors.redBright} />
           </View>
-          <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerName}</Text>
+          <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerBusiness.name}</Text>
           <Text style={styles.fighterLabel}>CHALLENGER</Text>
-          <Text style={styles.voteCount}>{challenge.challengerVotes.toLocaleString()}</Text>
+          <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </View>
       </View>
 
-      <VoteBar challenger={challenge.challengerVotes} defender={challenge.defenderVotes} />
+      <VoteBar challenger={challengerVotes} defender={defenderVotes} />
 
       <View style={styles.timerSection}>
         <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
@@ -86,49 +92,21 @@ function ChallengeCard({ challenge }: { challenge: Challenger }) {
       </View>
 
       <View style={styles.progressBarOuter}>
-        <View style={[styles.progressBarInner, { width: `${(daysElapsed / totalDays) * 100}%` as any }]} />
+        <View style={[styles.progressBarInner, { width: `${Math.min((daysElapsed / totalDays) * 100, 100)}%` as any }]} />
       </View>
-
-      <TouchableOpacity
-        style={styles.expandBtn}
-        onPress={() => setExpanded(!expanded)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.expandBtnText}>
-          {expanded ? "Hide commentary" : `View commentary (${challenge.recentComments.length})`}
-        </Text>
-        <Ionicons
-          name={expanded ? "chevron-up" : "chevron-down"}
-          size={14}
-          color={Colors.gold}
-        />
-      </TouchableOpacity>
-
-      {expanded && (
-        <View style={styles.comments}>
-          {challenge.recentComments.map((comment, i) => (
-            <View key={i} style={styles.commentRow}>
-              <View style={styles.commentHeader}>
-                <Text style={styles.commentName}>{comment.userName}</Text>
-                <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[comment.userTier] }]} />
-                <Text style={[styles.commentTier, { color: TIER_COLORS[comment.userTier] }]}>
-                  {TIER_DISPLAY_NAMES[comment.userTier]}
-                </Text>
-                <Text style={styles.commentTime}>{formatTimeAgo(comment.createdAt)}</Text>
-              </View>
-              <Text style={styles.commentText}>{comment.text}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 }
 
 export default function ChallengerScreen() {
   const insets = useSafeAreaInsets();
-  const challenges = getAllChallenges();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  const { data: challenges = [], isLoading } = useQuery({
+    queryKey: ["challengers", "Dallas"],
+    queryFn: () => fetchActiveChallenges("Dallas"),
+    staleTime: 30000,
+  });
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -143,17 +121,31 @@ export default function ChallengerScreen() {
         30-day head-to-head competitions. Weighted votes decide the winner.
       </Text>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
-        ]}
-      >
-        {challenges.map(ch => (
-          <ChallengeCard key={ch.id} challenge={ch} />
-        ))}
-      </ScrollView>
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.gold} />
+        </View>
+      ) : (
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
+          ]}
+        >
+          {challenges.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="flash-outline" size={32} color={Colors.textTertiary} />
+              <Text style={styles.emptyText}>No active challenges</Text>
+              <Text style={styles.emptySubtext}>Check back soon for new head-to-head matchups</Text>
+            </View>
+          ) : (
+            challenges.map((ch: ApiChallenger) => (
+              <ChallengeCard key={ch.id} challenge={ch} />
+            ))
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -207,6 +199,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   content: { paddingHorizontal: 16, gap: 16 },
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
   card: {
     backgroundColor: Colors.surface,
     borderRadius: 18,
@@ -361,52 +357,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised,
     borderRadius: 2,
     overflow: "hidden",
-    marginBottom: 14,
   },
   progressBarInner: {
     height: "100%",
     backgroundColor: Colors.gold,
     borderRadius: 2,
-  },
-  expandBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  expandBtnText: {
-    fontSize: 12,
-    color: Colors.gold,
-    fontFamily: "Inter_500Medium",
-  },
-  comments: { marginTop: 8, gap: 12 },
-  commentRow: { gap: 3 },
-  commentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  commentName: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "Inter_600SemiBold",
-  },
-  tierDot: { width: 5, height: 5, borderRadius: 2.5 },
-  commentTier: { fontSize: 10, fontFamily: "Inter_500Medium" },
-  commentTime: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
-    marginLeft: "auto",
-  },
-  commentText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 18,
   },
 });

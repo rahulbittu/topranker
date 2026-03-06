@@ -230,9 +230,12 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   setupRequestLogging(app);
 
+  const server = await registerRoutes(app);
+
   configureExpoAndLanding(app);
 
-  const server = await registerRoutes(app);
+  const { seedDatabase } = await import("./seed");
+  seedDatabase().catch((err) => console.error("Seed error:", err));
 
   setupErrorHandler(app);
 

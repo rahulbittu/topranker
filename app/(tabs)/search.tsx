@@ -1,32 +1,44 @@
 import React, { useState, useMemo } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ScrollView, Platform, Image,
+  TextInput, ScrollView, Platform, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { MOCK_BUSINESSES, Business, getTrendingBusinesses, CATEGORIES, Category } from "@/lib/data";
+import { CATEGORIES, type Category } from "@/lib/data";
+import { fetchBusinessSearch } from "@/lib/api";
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
 const CITIES = ["Dallas", "Austin", "Houston", "San Antonio", "Fort Worth"];
 
-function SearchResultRow({ item }: { item: Business }) {
+interface MappedBusiness {
+  id: string;
+  name: string;
+  slug: string;
+  neighborhood: string;
+  category: string;
+  weightedScore: number;
+  rank: number;
+  rankDelta: number;
+  isChallenger: boolean;
+  priceRange: string | null;
+  featuredDish: string | null;
+}
+
+function SearchResultRow({ item }: { item: MappedBusiness }) {
   return (
     <TouchableOpacity
       style={styles.resultRow}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.id } })}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
     >
-      {item.image ? (
-        <Image source={item.image} style={styles.resultThumb} resizeMode="cover" />
-      ) : (
-        <View style={[styles.resultThumb, styles.resultThumbPlaceholder]}>
-          <Ionicons name="restaurant-outline" size={16} color={Colors.textTertiary} />
-        </View>
-      )}
+      <View style={[styles.resultThumb, styles.resultThumbPlaceholder]}>
+        <Ionicons name="restaurant-outline" size={16} color={Colors.textTertiary} />
+      </View>
       <View style={styles.resultInfo}>
         <Text style={styles.resultName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.resultMeta}>
@@ -55,20 +67,16 @@ function SearchResultRow({ item }: { item: Business }) {
   );
 }
 
-function TrendingCard({ item }: { item: Business }) {
+function TrendingCard({ item }: { item: MappedBusiness }) {
   return (
     <TouchableOpacity
       style={styles.trendCard}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.id } })}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
     >
-      {item.image ? (
-        <Image source={item.image} style={styles.trendImage} resizeMode="cover" />
-      ) : (
-        <View style={[styles.trendImage, styles.trendImagePlaceholder]}>
-          <Ionicons name="restaurant-outline" size={20} color={Colors.textTertiary} />
-        </View>
-      )}
+      <View style={[styles.trendImage, styles.trendImagePlaceholder]}>
+        <Ionicons name="restaurant-outline" size={20} color={Colors.textTertiary} />
+      </View>
       <View style={styles.trendOverlay} />
       <View style={styles.trendContent}>
         <View style={styles.trendGainBadge}>
@@ -93,24 +101,27 @@ export default function SearchScreen() {
   const [city, setCity] = useState("Dallas");
   const [showCityPicker, setShowCityPicker] = useState(false);
 
-  const trending = getTrendingBusinesses();
+  const { data: allBusinesses = [], isLoading } = useQuery({
+    queryKey: ["search", city, query],
+    queryFn: () => fetchBusinessSearch(query, city),
+    staleTime: 15000,
+  });
 
   const filtered = useMemo(() => {
-    let list = MOCK_BUSINESSES.filter(b => b.city === city);
-    if (activeCategory !== "All") list = list.filter(b => b.category === activeCategory);
-    if (activeFilter === "Top 10") list = list.filter(b => b.rank <= 10);
-    else if (activeFilter === "Challenging") list = list.filter(b => b.isChallenger);
-    else if (activeFilter === "Trending") list = list.filter(b => b.rankDelta > 0);
-    if (query.trim()) {
-      const q = query.toLowerCase();
-      list = list.filter(b =>
-        b.name.toLowerCase().includes(q) ||
-        b.neighborhood.toLowerCase().includes(q) ||
-        b.category.toLowerCase().includes(q)
-      );
-    }
-    return list.sort((a, b) => a.rank - b.rank);
-  }, [query, activeFilter, activeCategory, city]);
+    let list = allBusinesses;
+    if (activeCategory !== "All") list = list.filter((b: MappedBusiness) => b.category === activeCategory);
+    if (activeFilter === "Top 10") list = list.filter((b: MappedBusiness) => b.rank <= 10);
+    else if (activeFilter === "Challenging") list = list.filter((b: MappedBusiness) => b.isChallenger);
+    else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
+    return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
+  }, [allBusinesses, activeFilter, activeCategory]);
+
+  const trending = useMemo(() => {
+    return allBusinesses
+      .filter((b: MappedBusiness) => b.rankDelta > 0)
+      .sort((a: MappedBusiness, b: MappedBusiness) => b.rankDelta - a.rankDelta)
+      .slice(0, 5);
+  }, [allBusinesses]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const showTrending = !query.trim() && activeFilter === "All";
@@ -181,33 +192,39 @@ export default function SearchScreen() {
             </View>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingRow}>
-            {trending.map(item => <TrendingCard key={item.id} item={item} />)}
+            {trending.map((item: MappedBusiness) => <TrendingCard key={item.id} item={item} />)}
           </ScrollView>
         </View>
       )}
 
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => <SearchResultRow item={item} />}
-        contentContainerStyle={[
-          styles.resultList,
-          { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
-        ]}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>No results</Text>
-            <Text style={styles.emptySubtext}>Try a different search or filter</Text>
-          </View>
-        }
-        ListHeaderComponent={
-          !showTrending ? (
-            <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
-          ) : null
-        }
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.gold} />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item: MappedBusiness) => item.id}
+          renderItem={({ item }: { item: MappedBusiness }) => <SearchResultRow item={item} />}
+          contentContainerStyle={[
+            styles.resultList,
+            { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
+          ]}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
+              <Text style={styles.emptyText}>No results</Text>
+              <Text style={styles.emptySubtext}>Try a different search or filter</Text>
+            </View>
+          }
+          ListHeaderComponent={
+            !showTrending ? (
+              <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
+            ) : null
+          }
+        />
+      )}
     </View>
   );
 }
@@ -292,6 +309,8 @@ const styles = StyleSheet.create({
   trendBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   trendCat: { fontSize: 10, color: "rgba(255,255,255,0.6)", fontFamily: "Inter_400Regular" },
   trendScore: { fontSize: 15, fontWeight: "700", color: "#fff", fontFamily: "Inter_700Bold" },
+
+  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
   resultList: { paddingHorizontal: 14, gap: 8, paddingTop: 4 },
   resultsCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular", paddingBottom: 4 },

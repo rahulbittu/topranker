@@ -1,17 +1,32 @@
-import React, { useMemo } from "react";
+import React from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Image,
+  Platform, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { fetchBusinessBySlug } from "@/lib/api";
 import {
-  getBusinessById, getRatingsByBusiness, getChallengerById,
-  formatTimeAgo, MOCK_USER, formatCountdown,
-  TIER_COLORS, TIER_DISPLAY_NAMES, Rating,
+  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, type CredibilityTier,
 } from "@/lib/data";
+import { useAuth } from "@/lib/auth-context";
+
+interface MappedRating {
+  id: string;
+  userName: string;
+  userTier: CredibilityTier;
+  rawScore: number;
+  weight: number;
+  food: number;
+  value: number;
+  service: number;
+  wouldReturn: boolean;
+  comment: string | null;
+  createdAt: number;
+}
 
 function RatingBar({ label, value }: { label: string; value: number }) {
   return (
@@ -25,7 +40,7 @@ function RatingBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function DistributionChart({ ratings }: { ratings: Rating[] }) {
+function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
   const counts = [5, 4, 3, 2, 1].map(n => ({
     star: n,
     count: ratings.filter(r => Math.round(r.rawScore) === n).length
@@ -52,7 +67,7 @@ function DistributionChart({ ratings }: { ratings: Rating[] }) {
   );
 }
 
-function RatingRow({ rating }: { rating: Rating }) {
+function RatingRow({ rating }: { rating: MappedRating }) {
   const tierColor = TIER_COLORS[rating.userTier];
   const tierName = TIER_DISPLAY_NAMES[rating.userTier];
   return (
@@ -101,15 +116,28 @@ function RatingRow({ rating }: { rating: Rating }) {
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const business = getBusinessById(id);
-  const ratings = useMemo(() => getRatingsByBusiness(id), [id]);
-  const challenge = business?.challengerId ? getChallengerById(business.challengerId) : undefined;
+  const { id: slug } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuth();
 
-  const daysActive = Math.floor((Date.now() - MOCK_USER.credibilityBreakdown.ageBonus * 2) / 86400000);
-  const hasMinDays = MOCK_USER.daysActive >= 7;
+  const { data, isLoading } = useQuery({
+    queryKey: ["business", slug],
+    queryFn: () => fetchBusinessBySlug(slug),
+    enabled: !!slug,
+    staleTime: 30000,
+  });
+
+  const business = data?.business;
+  const ratings = data?.ratings || [];
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  if (isLoading) {
+    return (
+      <View style={[styles.notFound, { paddingTop: topPad }]}>
+        <ActivityIndicator size="large" color={Colors.gold} />
+      </View>
+    );
+  }
 
   if (!business) {
     return (
@@ -122,8 +150,6 @@ export default function BusinessProfileScreen() {
     );
   }
 
-  const countdown = challenge ? formatCountdown(challenge.endDate) : null;
-
   return (
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
@@ -134,13 +160,9 @@ export default function BusinessProfileScreen() {
         ]}
       >
         <View style={styles.heroImageContainer}>
-          {business.image ? (
-            <Image source={business.image} style={styles.heroImage} resizeMode="cover" />
-          ) : (
-            <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
-              <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
-            </View>
-          )}
+          <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
+            <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
+          </View>
           <View style={styles.heroImageOverlay} />
 
           <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
@@ -194,15 +216,17 @@ export default function BusinessProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.descCard}>
-            <Text style={styles.descText}>{business.description}</Text>
-            {business.featuredDish && (
-              <View style={styles.featuredDish}>
-                <Ionicons name="star" size={12} color={Colors.gold} />
-                <Text style={styles.featuredDishText}>{business.featuredDish}</Text>
-              </View>
-            )}
-          </View>
+          {business.description ? (
+            <View style={styles.descCard}>
+              <Text style={styles.descText}>{business.description}</Text>
+              {business.featuredDish && (
+                <View style={styles.featuredDish}>
+                  <Ionicons name="star" size={12} color={Colors.gold} />
+                  <Text style={styles.featuredDishText}>{business.featuredDish}</Text>
+                </View>
+              )}
+            </View>
+          ) : null}
 
           <View style={styles.infoRow}>
             {business.hours && (
@@ -219,43 +243,20 @@ export default function BusinessProfileScreen() {
             )}
           </View>
 
-          <View style={styles.tagsRow}>
-            {business.tags.map(tag => (
-              <View key={tag} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
-          </View>
-
-          {challenge && countdown && (
-            <View style={styles.challengeCard}>
-              <View style={styles.challengeHeader}>
-                <Ionicons name="flash" size={14} color={Colors.gold} />
-                <Text style={styles.challengeTitle}>Live Challenge</Text>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
+          {business.tags.length > 0 && (
+            <View style={styles.tagsRow}>
+              {business.tags.map((tag: string) => (
+                <View key={tag} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
                 </View>
-              </View>
-              <View style={styles.challengeVs}>
-                <Text style={styles.challengeDefender}>{challenge.defenderName}</Text>
-                <Text style={styles.challengeVsText}>vs</Text>
-                <Text style={styles.challengeChallenger}>{challenge.challengerName}</Text>
-              </View>
-              <View style={styles.challengeVotes}>
-                <Text style={styles.challengeVoteNum}>{challenge.defenderVotes.toLocaleString()}</Text>
-                <Text style={styles.challengeVoteNum}>{challenge.challengerVotes.toLocaleString()}</Text>
-              </View>
-              <Text style={styles.challengeTimer}>
-                {countdown.days}d {countdown.hours}h {countdown.minutes}m remaining
-              </Text>
+              ))}
             </View>
           )}
 
-          {hasMinDays ? (
+          {user ? (
             <TouchableOpacity
               style={styles.rateButton}
-              onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.id } })}
+              onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.slug } })}
               activeOpacity={0.85}
               testID="rate-this-place"
             >
@@ -263,19 +264,23 @@ export default function BusinessProfileScreen() {
               <Text style={styles.rateButtonText}>Rate This Place</Text>
             </TouchableOpacity>
           ) : (
-            <View style={styles.rateDisabled}>
-              <Ionicons name="lock-closed-outline" size={15} color={Colors.textTertiary} />
-              <Text style={styles.rateDisabledText}>Account must be 7+ days old to rate.</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.rateButton}
+              onPress={() => router.push("/auth/login")}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="log-in-outline" size={17} color="#000" />
+              <Text style={styles.rateButtonText}>Sign In to Rate</Text>
+            </TouchableOpacity>
           )}
 
           {ratings.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Rating Breakdown</Text>
               <View style={styles.card}>
-                <RatingBar label="Food Quality" value={ratings.reduce((a, r) => a + r.food, 0) / ratings.length} />
-                <RatingBar label="Value" value={ratings.reduce((a, r) => a + r.value, 0) / ratings.length} />
-                <RatingBar label="Service" value={ratings.reduce((a, r) => a + r.service, 0) / ratings.length} />
+                <RatingBar label="Food Quality" value={ratings.reduce((a: number, r: MappedRating) => a + r.food, 0) / ratings.length} />
+                <RatingBar label="Value" value={ratings.reduce((a: number, r: MappedRating) => a + r.value, 0) / ratings.length} />
+                <RatingBar label="Service" value={ratings.reduce((a: number, r: MappedRating) => a + r.service, 0) / ratings.length} />
               </View>
 
               <Text style={styles.sectionTitle}>Distribution</Text>
@@ -287,7 +292,7 @@ export default function BusinessProfileScreen() {
                 <Text style={styles.sectionTitle}>Community Ratings</Text>
                 <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
               </View>
-              {ratings.map(rating => (
+              {ratings.map((rating: MappedRating) => (
                 <RatingRow key={rating.id} rating={rating} />
               ))}
             </>
@@ -413,37 +418,11 @@ const styles = StyleSheet.create({
   },
   tagText: { fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
 
-  challengeCard: {
-    backgroundColor: "#0F2340", borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: "rgba(201,151,58,0.3)", gap: 8,
-  },
-  challengeHeader: { flexDirection: "row", alignItems: "center", gap: 5 },
-  challengeTitle: { fontSize: 12, fontWeight: "600", color: Colors.gold, fontFamily: "Inter_600SemiBold", flex: 1 },
-  liveBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: Colors.redFaint, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  liveDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: Colors.redBright },
-  liveText: { fontSize: 9, fontWeight: "700", color: Colors.redBright, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
-  challengeVs: { flexDirection: "row", alignItems: "center", gap: 8, justifyContent: "center" },
-  challengeDefender: { fontSize: 13, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", flex: 1, textAlign: "right" },
-  challengeVsText: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
-  challengeChallenger: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", flex: 1 },
-  challengeVotes: { flexDirection: "row", justifyContent: "space-around" },
-  challengeVoteNum: { fontSize: 20, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  challengeTimer: { fontSize: 11, color: Colors.textSecondary, fontFamily: "Inter_400Regular", textAlign: "center" },
-
   rateButton: {
     backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
   rateButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
-  rateDisabled: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 14,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  rateDisabledText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
 
   sectionTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", marginTop: 6 },
   sectionRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
