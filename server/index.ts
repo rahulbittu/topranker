@@ -3,6 +3,7 @@ import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
+import { createProxyMiddleware } from "http-proxy-middleware";
 
 const app = express();
 const log = console.log;
@@ -186,22 +187,46 @@ function configureExpoAndLanding(app: express.Application) {
       return serveExpoManifest(platform, res);
     }
 
-    if (req.path === "/") {
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName,
-      });
-    }
-
     next();
   });
 
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
+  const metroProxy = createProxyMiddleware({
+    target: "http://localhost:8081",
+    changeOrigin: true,
+    ws: true,
+    logger: undefined,
+    on: {
+      error: (_err, _req, res) => {
+        if (res && "writeHead" in res && !res.headersSent) {
+          (res as Response).status(502).send(
+            landingPageTemplate
+              .replace(/BASE_URL_PLACEHOLDER/g, "")
+              .replace(/EXPS_URL_PLACEHOLDER/g, "")
+              .replace(/APP_NAME_PLACEHOLDER/g, appName)
+          );
+        }
+      },
+    },
+  });
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith("/api")) {
+      return next();
+    }
+
+    const platform = req.header("expo-platform");
+    if (platform && (platform === "ios" || platform === "android")) {
+      return next();
+    }
+
+    return metroProxy(req, res, next);
+  });
+
   log("Expo routing: Checking expo-platform header on / and /manifest");
+  log("Metro proxy: Forwarding web requests to localhost:8081");
 }
 
 function setupErrorHandler(app: express.Application) {
