@@ -7,11 +7,13 @@ import {
   getBusinessBySlug,
   getBusinessById,
   getBusinessRatings,
+  getBusinessDishes,
+  searchDishes,
   submitRating,
   getMemberById,
   getMemberRatings,
   getActiveChallenges,
-  calculateCredibilityScore,
+  recalculateCredibilityScore,
   searchBusinesses,
   getAllCategories,
 } from "./storage";
@@ -91,7 +93,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const city = (req.query.city as string) || "Dallas";
       const category = (req.query.category as string) || "restaurant";
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = parseInt(req.query.limit as string) || 50;
 
       const data = await getLeaderboard(city, category, limit);
       return res.json({ data });
@@ -130,8 +132,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { ratings } = await getBusinessRatings(business.id, 1, 20);
+      const dishList = await getBusinessDishes(business.id, 5);
 
-      return res.json({ data: { ...business, recentRatings: ratings } });
+      return res.json({ data: { ...business, recentRatings: ratings, dishes: dishList } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
@@ -148,6 +151,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/dishes/search", async (req: Request, res: Response) => {
+    try {
+      const businessId = req.query.business_id as string;
+      const query = (req.query.q as string) || "";
+      if (!businessId) return res.status(400).json({ error: "business_id required" });
+      const data = await searchDishes(businessId, query);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post("/api/ratings", requireAuth, async (req: Request, res: Response) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
@@ -156,21 +171,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const memberId = req.user!.id;
-      const member = await getMemberById(memberId);
-      if (!member) {
-        return res.status(401).json({ error: "Member not found" });
-      }
-
-      const daysActive = Math.floor(
-        (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
-      );
-      if (daysActive < 7) {
-        return res.status(403).json({ error: "Account must be at least 7 days old to rate" });
-      }
-
       const result = await submitRating(memberId, parsed.data);
       return res.status(201).json({ data: result });
     } catch (err: any) {
+      if (err.message.includes("7+ days")) {
+        return res.status(403).json({ error: err.message });
+      }
+      if (err.message.includes("Already rated")) {
+        return res.status(409).json({ error: err.message });
+      }
+      if (err.message.includes("suspended")) {
+        return res.status(403).json({ error: err.message });
+      }
       return res.status(400).json({ error: err.message });
     }
   });
@@ -180,7 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const member = await getMemberById(req.user!.id);
       if (!member) return res.status(404).json({ error: "Member not found" });
 
-      const { score, breakdown } = await calculateCredibilityScore(member.id);
+      const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
       const { ratings, total } = await getMemberRatings(member.id);
 
       const daysActive = Math.floor(
@@ -194,13 +206,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           username: member.username,
           email: member.email,
           city: member.city,
+          avatarUrl: member.avatarUrl,
           credibilityScore: score,
-          credibilityTier: member.credibilityTier,
+          credibilityTier: tier,
           totalRatings: member.totalRatings,
           totalCategories: member.totalCategories,
+          distinctBusinesses: member.distinctBusinesses,
           isFoundingMember: member.isFoundingMember,
           joinedAt: member.joinedAt,
           daysActive,
+          ratingVariance: parseFloat(member.ratingVariance),
           credibilityBreakdown: breakdown,
           ratingHistory: ratings,
         },

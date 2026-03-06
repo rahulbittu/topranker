@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
@@ -47,7 +47,7 @@ export default function LoginScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
-          <Ionicons name="close" size={22} color={Colors.text} />
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -58,11 +58,27 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoContainer}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="trophy" size={32} color={Colors.gold} />
+          <View style={styles.logoOuter}>
+            <View style={styles.logoInner}>
+              <Ionicons name="trophy" size={36} color={Colors.gold} />
+            </View>
           </View>
-          <Text style={styles.appName}>Top Ranker</Text>
-          <Text style={styles.tagline}>Sign in to rate and rank Dallas businesses</Text>
+          <Text style={styles.appName}>TOP RANKER</Text>
+          <Text style={styles.tagline}>Rate. Rank. Discover Dallas.</Text>
+        </View>
+
+        <TouchableOpacity style={styles.googleButton} activeOpacity={0.7} disabled>
+          <MaterialCommunityIcons name="google" size={20} color={Colors.textTertiary} />
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
+          <View style={styles.comingSoonBadge}>
+            <Text style={styles.comingSoonText}>Soon</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>or sign in with email</Text>
+          <View style={styles.dividerLine} />
         </View>
 
         {!!error && (
@@ -128,7 +144,15 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <View style={styles.demoHint}>
+          <Ionicons name="information-circle-outline" size={14} color={Colors.textTertiary} />
           <Text style={styles.demoHintText}>Demo: alex@demo.com / demo123</Text>
+        </View>
+
+        <View style={styles.browseHint}>
+          <Ionicons name="compass-outline" size={14} color={Colors.gold} />
+          <Text style={styles.browseHintText}>
+            You can browse rankings without signing in
+          </Text>
         </View>
 
         <TouchableOpacity
@@ -158,19 +182,49 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 24, paddingTop: 12, gap: 16 },
 
-  logoContainer: { alignItems: "center", gap: 8, marginBottom: 12 },
-  logoCircle: {
+  logoContainer: { alignItems: "center", gap: 10, marginBottom: 8, marginTop: 8 },
+  logoOuter: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: "rgba(201, 151, 58, 0.08)",
+    alignItems: "center", justifyContent: "center",
+  },
+  logoInner: {
     width: 64, height: 64, borderRadius: 32,
     backgroundColor: Colors.goldFaint, alignItems: "center", justifyContent: "center",
     borderWidth: 2, borderColor: Colors.goldDim,
   },
   appName: {
-    fontSize: 28, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.8,
+    fontSize: 26, fontWeight: "800" as const, color: Colors.gold,
+    fontFamily: "Inter_700Bold", letterSpacing: 3,
   },
   tagline: {
     fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
     textAlign: "center",
+  },
+
+  googleButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 15,
+    borderWidth: 1, borderColor: Colors.border, opacity: 0.55,
+  },
+  googleButtonText: {
+    fontSize: 15, fontWeight: "600" as const, color: Colors.textTertiary,
+    fontFamily: "Inter_600SemiBold",
+  },
+  comingSoonBadge: {
+    backgroundColor: Colors.surfaceRaised, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  comingSoonText: {
+    fontSize: 9, fontWeight: "700" as const, color: Colors.textTertiary,
+    fontFamily: "Inter_700Bold", letterSpacing: 0.5, textTransform: "uppercase" as const,
+  },
+
+  dividerRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  dividerText: {
+    fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular",
   },
 
   errorBanner: {
@@ -182,7 +236,7 @@ const styles = StyleSheet.create({
 
   formGroup: { gap: 6 },
   label: {
-    fontSize: 12, fontWeight: "600", color: Colors.textSecondary,
+    fontSize: 12, fontWeight: "600" as const, color: Colors.textSecondary,
     fontFamily: "Inter_600SemiBold", letterSpacing: 0.3,
   },
   inputRow: {
@@ -197,17 +251,26 @@ const styles = StyleSheet.create({
 
   submitButton: {
     backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 16,
-    alignItems: "center", justifyContent: "center", marginTop: 8,
+    alignItems: "center", justifyContent: "center", marginTop: 4,
   },
   submitButtonLoading: { opacity: 0.8 },
-  submitButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
+  submitButtonText: { fontSize: 16, fontWeight: "700" as const, color: "#000", fontFamily: "Inter_700Bold" },
 
   demoHint: {
-    alignItems: "center", paddingVertical: 8,
-    borderRadius: 8, backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border, padding: 10,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border, paddingHorizontal: 12,
   },
   demoHintText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+
+  browseHint: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 8,
+  },
+  browseHintText: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
+  },
 
   switchLink: { alignItems: "center", paddingVertical: 12 },
   switchText: { fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },

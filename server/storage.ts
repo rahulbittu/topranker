@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, asc, sql, count, ne } from "drizzle-orm";
+import { eq, and, desc, asc, sql, count, ne, gte, lte } from "drizzle-orm";
 import {
   members,
   businesses,
@@ -7,25 +7,29 @@ import {
   challengers,
   rankHistory,
   businessClaims,
+  dishes,
+  dishVotes,
+  credibilityPenalties,
   type Member,
   type Business,
   type Rating,
+  type Dish,
   type Challenger,
   type InsertRating,
 } from "@shared/schema";
 
-const TIER_WEIGHTS: Record<string, number> = {
-  new: 0.1,
-  regular: 0.35,
-  trusted: 0.7,
-  top: 1.0,
-};
-
 function getVoteWeight(credibilityScore: number): number {
-  if (credibilityScore >= 600) return 1.0;
-  if (credibilityScore >= 300) return 0.7;
-  if (credibilityScore >= 100) return 0.35;
-  return 0.1;
+  if (credibilityScore >= 600) return 1.000;
+  if (credibilityScore >= 300) return 0.700;
+  if (credibilityScore >= 100) return 0.350;
+  return 0.100;
+}
+
+function getCredibilityTier(score: number): string {
+  if (score >= 600) return "top";
+  if (score >= 300) return "trusted";
+  if (score >= 100) return "city";
+  return "community";
 }
 
 function getTierFromScore(
@@ -43,31 +47,28 @@ function getTierFromScore(
     daysActive >= 90 &&
     ratingVariance >= 1.0 &&
     activeFlagCount === 0
-  ) {
-    return "top";
-  }
+  ) return "top";
+
   if (
     score >= 300 &&
     totalRatings >= 35 &&
     totalCategories >= 3 &&
     daysActive >= 45 &&
     ratingVariance >= 0.8
-  ) {
-    return "trusted";
-  }
+  ) return "trusted";
+
   if (
     score >= 100 &&
     totalRatings >= 10 &&
     totalCategories >= 2 &&
     daysActive >= 14
-  ) {
-    return "regular";
-  }
-  return "new";
+  ) return "city";
+
+  return "community";
 }
 
 function getTemporalMultiplier(ratingAgeDays: number): number {
-  if (ratingAgeDays <= 30) return 1.0;
+  if (ratingAgeDays <= 30) return 1.00;
   if (ratingAgeDays <= 90) return 0.85;
   if (ratingAgeDays <= 180) return 0.65;
   if (ratingAgeDays <= 365) return 0.45;
@@ -103,7 +104,7 @@ export async function createMember(data: {
 export async function getLeaderboard(
   city: string,
   category: string,
-  limit: number = 10,
+  limit: number = 50,
 ): Promise<Business[]> {
   return db
     .select()
@@ -139,7 +140,7 @@ export async function getBusinessRatings(
   businessId: string,
   page: number = 1,
   perPage: number = 20,
-): Promise<{ ratings: (Rating & { memberName: string; memberTier: string })[]; total: number }> {
+): Promise<{ ratings: (Rating & { memberName: string; memberTier: string; memberAvatarUrl: string | null })[]; total: number }> {
   const offset = (page - 1) * perPage;
 
   const ratingsResult = await db
@@ -147,19 +148,23 @@ export async function getBusinessRatings(
       id: ratings.id,
       memberId: ratings.memberId,
       businessId: ratings.businessId,
-      foodQuality: ratings.foodQuality,
-      valueForMoney: ratings.valueForMoney,
-      service: ratings.service,
+      q1Score: ratings.q1Score,
+      q2Score: ratings.q2Score,
+      q3Score: ratings.q3Score,
       wouldReturn: ratings.wouldReturn,
       note: ratings.note,
       rawScore: ratings.rawScore,
       weight: ratings.weight,
       weightedScore: ratings.weightedScore,
       isFlagged: ratings.isFlagged,
+      autoFlagged: ratings.autoFlagged,
       flagReason: ratings.flagReason,
+      flagProbability: ratings.flagProbability,
+      source: ratings.source,
       createdAt: ratings.createdAt,
       memberName: members.displayName,
       memberTier: members.credibilityTier,
+      memberAvatarUrl: members.avatarUrl,
     })
     .from(ratings)
     .innerJoin(members, eq(ratings.memberId, members.id))
@@ -188,16 +193,19 @@ export async function getMemberRatings(
       id: ratings.id,
       memberId: ratings.memberId,
       businessId: ratings.businessId,
-      foodQuality: ratings.foodQuality,
-      valueForMoney: ratings.valueForMoney,
-      service: ratings.service,
+      q1Score: ratings.q1Score,
+      q2Score: ratings.q2Score,
+      q3Score: ratings.q3Score,
       wouldReturn: ratings.wouldReturn,
       note: ratings.note,
       rawScore: ratings.rawScore,
       weight: ratings.weight,
       weightedScore: ratings.weightedScore,
       isFlagged: ratings.isFlagged,
+      autoFlagged: ratings.autoFlagged,
       flagReason: ratings.flagReason,
+      flagProbability: ratings.flagProbability,
+      source: ratings.source,
       createdAt: ratings.createdAt,
       businessName: businesses.name,
     })
@@ -220,7 +228,7 @@ export async function getActiveChallenges(
   city: string,
   category?: string,
 ): Promise<any[]> {
-  let query = db
+  const challengerRows = await db
     .select()
     .from(challengers)
     .where(
@@ -230,8 +238,6 @@ export async function getActiveChallenges(
         ...(category ? [eq(challengers.category, category)] : []),
       ),
     );
-
-  const challengerRows = await query;
 
   const results = [];
   for (const c of challengerRows) {
@@ -254,56 +260,306 @@ export async function getActiveChallenges(
   return results;
 }
 
+export async function getBusinessDishes(
+  businessId: string,
+  limit: number = 5,
+): Promise<Dish[]> {
+  return db
+    .select()
+    .from(dishes)
+    .where(and(eq(dishes.businessId, businessId), eq(dishes.isActive, true)))
+    .orderBy(desc(dishes.voteCount))
+    .limit(limit);
+}
+
+export async function searchDishes(
+  businessId: string,
+  query: string,
+): Promise<Dish[]> {
+  const normalized = query.toLowerCase().trim();
+
+  if (normalized.length < 2) {
+    return getBusinessDishes(businessId, 5);
+  }
+
+  let results = await db
+    .select()
+    .from(dishes)
+    .where(
+      and(
+        eq(dishes.businessId, businessId),
+        eq(dishes.isActive, true),
+        sql`${dishes.nameNormalized} ILIKE ${normalized + "%"}`,
+      ),
+    )
+    .orderBy(desc(dishes.voteCount))
+    .limit(5);
+
+  if (results.length < 3) {
+    const containsResults = await db
+      .select()
+      .from(dishes)
+      .where(
+        and(
+          eq(dishes.businessId, businessId),
+          eq(dishes.isActive, true),
+          sql`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`,
+        ),
+      )
+      .orderBy(desc(dishes.voteCount))
+      .limit(5);
+
+    const existingIds = new Set(results.map(r => r.id));
+    for (const r of containsResults) {
+      if (!existingIds.has(r.id)) {
+        results.push(r);
+      }
+    }
+  }
+
+  return results.slice(0, 5);
+}
+
+async function detectAnomalies(
+  member: Member,
+  business: Business,
+  rawScore: number,
+): Promise<string[]> {
+  const flags: string[] = [];
+
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const [recentCount] = await db
+    .select({ count: count() })
+    .from(ratings)
+    .where(
+      and(
+        eq(ratings.memberId, member.id),
+        gte(ratings.createdAt, oneHourAgo),
+      ),
+    );
+  if (recentCount.count > 5) flags.push("burst_velocity");
+
+  if (member.totalRatings >= 10) {
+    const memberRatings = await db
+      .select({ rawScore: ratings.rawScore })
+      .from(ratings)
+      .where(eq(ratings.memberId, member.id));
+    const fiveStarCount = memberRatings.filter(r => parseFloat(r.rawScore) >= 4.8).length;
+    if (fiveStarCount / memberRatings.length > 0.90) flags.push("perfect_score_pattern");
+  }
+
+  if (rawScore <= 1.5 && member.totalRatings >= 5) {
+    const memberRatings = await db
+      .select({ rawScore: ratings.rawScore })
+      .from(ratings)
+      .where(eq(ratings.memberId, member.id));
+    const oneStarCount = memberRatings.filter(r => parseFloat(r.rawScore) <= 1.5).length;
+    if (oneStarCount / memberRatings.length > 0.60) flags.push("one_star_bomber");
+  }
+
+  if (member.totalRatings >= 8 && member.distinctBusinesses <= 2) {
+    flags.push("single_business_fixation");
+  }
+
+  const accountAgeDays = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (accountAgeDays < 7 && member.totalRatings > 15) {
+    flags.push("new_account_high_volume");
+  }
+
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [newAcctRatings] = await db
+    .select({ count: count() })
+    .from(ratings)
+    .innerJoin(members, eq(ratings.memberId, members.id))
+    .where(
+      and(
+        eq(ratings.businessId, business.id),
+        gte(ratings.createdAt, oneDayAgo),
+        gte(members.joinedAt, thirtyDaysAgo),
+      ),
+    );
+  if (newAcctRatings.count > 10) {
+    flags.push("coordinated_new_account_burst");
+  }
+
+  return flags;
+}
+
 export async function submitRating(
   memberId: string,
   data: InsertRating,
 ): Promise<{
   rating: Rating;
-  newBusinessRank: number | null;
+  newRank: number | null;
+  prevRank: number | null;
+  rankChanged: boolean;
+  rankDirection: "up" | "down" | "same";
+  newCredibilityScore: number;
   tierUpgraded: boolean;
   newTier: string;
+  dishCreated: boolean;
 }> {
   const member = await getMemberById(memberId);
   if (!member) throw new Error("Member not found");
+  if (member.isBanned) throw new Error("Account suspended");
 
   const business = await getBusinessById(data.businessId);
   if (!business) throw new Error("Business not found");
 
-  const rawScore = (data.foodQuality + data.valueForMoney + data.service) / 3;
+  const daysActive = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (daysActive < 7) throw new Error("Account must be 7+ days old to rate");
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [existingToday] = await db
+    .select({ count: count() })
+    .from(ratings)
+    .where(
+      and(
+        eq(ratings.memberId, memberId),
+        eq(ratings.businessId, data.businessId),
+        gte(ratings.createdAt, today),
+      ),
+    );
+  if (existingToday.count > 0) throw new Error("Already rated today. Come back tomorrow.");
+
+  const rawScore = (data.q1Score + data.q2Score + data.q3Score) / 3;
+
+  const anomalyFlags = await detectAnomalies(member, business, rawScore);
+  const autoFlagged = anomalyFlags.length > 0;
+
   const weight = getVoteWeight(member.credibilityScore);
   const weighted = rawScore * weight;
+
+  const source = data.qrScanId ? "qr_scan" : "app";
 
   const [rating] = await db
     .insert(ratings)
     .values({
       memberId,
       businessId: data.businessId,
-      foodQuality: data.foodQuality,
-      valueForMoney: data.valueForMoney,
-      service: data.service,
+      q1Score: data.q1Score,
+      q2Score: data.q2Score,
+      q3Score: data.q3Score,
       wouldReturn: data.wouldReturn,
       note: data.note || null,
       rawScore: rawScore.toFixed(2),
       weight: weight.toFixed(4),
       weightedScore: weighted.toFixed(4),
+      autoFlagged,
+      flagReason: autoFlagged ? anomalyFlags.join(",") : null,
+      source,
     })
     .returning();
 
-  await recalculateBusinessScore(data.businessId);
-  const newRank = await recalculateRanks(business.city, business.category);
+  let dishCreated = false;
+  if (data.dishId) {
+    await db.insert(dishVotes).values({
+      ratingId: rating.id,
+      dishId: data.dishId,
+      memberId,
+      businessId: data.businessId,
+    });
+    await db
+      .update(dishes)
+      .set({ voteCount: sql`${dishes.voteCount} + 1` })
+      .where(eq(dishes.id, data.dishId));
+  } else if (data.newDishName) {
+    const normalized = data.newDishName.toLowerCase().trim();
+    const words = normalized.split(/\s+/);
+    if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
+      const existing = await db
+        .select()
+        .from(dishes)
+        .where(
+          and(
+            eq(dishes.businessId, data.businessId),
+            eq(dishes.nameNormalized, normalized),
+          ),
+        );
+
+      let dishId: string;
+      if (existing.length > 0) {
+        dishId = existing[0].id;
+        await db
+          .update(dishes)
+          .set({ voteCount: sql`${dishes.voteCount} + 1` })
+          .where(eq(dishes.id, dishId));
+      } else {
+        const [newDish] = await db
+          .insert(dishes)
+          .values({
+            businessId: data.businessId,
+            name: data.newDishName.trim(),
+            nameNormalized: normalized,
+            suggestedBy: "community",
+            voteCount: 1,
+          })
+          .returning();
+        dishId = newDish.id;
+        dishCreated = true;
+      }
+
+      await db.insert(dishVotes).values({
+        ratingId: rating.id,
+        dishId,
+        memberId,
+        businessId: data.businessId,
+      });
+    }
+  } else if (data.noNotableDish) {
+    await db.insert(dishVotes).values({
+      ratingId: rating.id,
+      dishId: null,
+      memberId,
+      businessId: data.businessId,
+      noNotableDish: true,
+    });
+  }
 
   await updateMemberStats(memberId);
-  const tierResult = await checkTierUpgrade(memberId);
+  const { score: newScore, tier: newTier } = await recalculateCredibilityScore(memberId);
+  const oldTier = member.credibilityTier;
+  const tierUpgraded = newTier !== oldTier;
+
+  const prevRank = business.rankPosition;
+  await recalculateBusinessScore(data.businessId);
+  await recalculateRanks(business.city, business.category);
 
   await updateChallengerVotes(data.businessId, weighted);
 
+  if (data.qrScanId) {
+    const { qrScans } = await import("@shared/schema");
+    await db
+      .update(qrScans)
+      .set({ converted: true })
+      .where(eq(qrScans.id, data.qrScanId));
+  }
+
   const updatedBusiness = await getBusinessById(data.businessId);
+  const newRank = updatedBusiness?.rankPosition ?? null;
+  const rankChanged = prevRank !== newRank;
+  let rankDirection: "up" | "down" | "same" = "same";
+  if (prevRank && newRank) {
+    if (newRank < prevRank) rankDirection = "up";
+    else if (newRank > prevRank) rankDirection = "down";
+  }
 
   return {
     rating,
-    newBusinessRank: updatedBusiness?.rankPosition ?? null,
-    tierUpgraded: tierResult.upgraded,
-    newTier: tierResult.newTier,
+    newRank,
+    prevRank: prevRank ?? null,
+    rankChanged,
+    rankDirection,
+    newCredibilityScore: newScore,
+    tierUpgraded,
+    newTier,
+    dishCreated,
   };
 }
 
@@ -313,9 +569,17 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
       rawScore: ratings.rawScore,
       weight: ratings.weight,
       createdAt: ratings.createdAt,
+      isFlagged: ratings.isFlagged,
+      autoFlagged: ratings.autoFlagged,
     })
     .from(ratings)
-    .where(and(eq(ratings.businessId, businessId), eq(ratings.isFlagged, false)));
+    .where(
+      and(
+        eq(ratings.businessId, businessId),
+        eq(ratings.isFlagged, false),
+        eq(ratings.autoFlagged, false),
+      ),
+    );
 
   if (allRatings.length === 0) {
     await db
@@ -326,7 +590,7 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
   }
 
   let totalWeightedScore = 0;
-  let totalWeight = 0;
+  let totalEffectiveWeight = 0;
   let rawSum = 0;
 
   for (const r of allRatings) {
@@ -336,11 +600,13 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
     const temporal = getTemporalMultiplier(ageDays);
     const effectiveWeight = parseFloat(r.weight) * temporal;
     totalWeightedScore += parseFloat(r.rawScore) * effectiveWeight;
-    totalWeight += effectiveWeight;
+    totalEffectiveWeight += effectiveWeight;
     rawSum += parseFloat(r.rawScore);
   }
 
-  const score = totalWeight > 0 ? totalWeightedScore / totalWeight : 0;
+  const score = totalEffectiveWeight > 0
+    ? Math.round((totalWeightedScore / totalEffectiveWeight) * 1000) / 1000
+    : 0;
   const rawAvg = rawSum / allRatings.length;
 
   await db
@@ -349,7 +615,6 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
       weightedScore: score.toFixed(3),
       rawAvgScore: rawAvg.toFixed(2),
       totalRatings: allRatings.length,
-      credibilityWeightSum: totalWeight.toFixed(3),
       updatedAt: new Date(),
     })
     .where(eq(businesses.id, businessId));
@@ -362,7 +627,10 @@ export async function recalculateRanks(
   category: string,
 ): Promise<void> {
   const allBusinesses = await db
-    .select({ id: businesses.id, rankPosition: businesses.rankPosition })
+    .select({
+      id: businesses.id,
+      rankPosition: businesses.rankPosition,
+    })
     .from(businesses)
     .where(
       and(
@@ -380,7 +648,11 @@ export async function recalculateRanks(
 
     await db
       .update(businesses)
-      .set({ rankPosition: newRank, rankDelta: delta })
+      .set({
+        rankPosition: newRank,
+        rankDelta: delta,
+        prevRankPosition: oldRank,
+      })
       .where(eq(businesses.id, allBusinesses[i].id));
   }
 }
@@ -389,60 +661,25 @@ export async function updateMemberStats(memberId: string): Promise<void> {
   const [ratingCount] = await db
     .select({ count: count() })
     .from(ratings)
-    .where(eq(ratings.memberId, memberId));
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
 
   const categoryResult = await db
     .select({ category: businesses.category })
     .from(ratings)
     .innerJoin(businesses, eq(ratings.businessId, businesses.id))
-    .where(eq(ratings.memberId, memberId))
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)))
     .groupBy(businesses.category);
 
-  await db
-    .update(members)
-    .set({
-      totalRatings: ratingCount.count,
-      totalCategories: categoryResult.length,
-      lastActive: new Date(),
-    })
-    .where(eq(members.id, memberId));
-}
-
-export async function calculateCredibilityScore(memberId: string): Promise<{
-  score: number;
-  breakdown: {
-    base: number;
-    ratingPoints: number;
-    diversityBonus: number;
-    ageBonus: number;
-    varianceBonus: number;
-    helpfulnessBonus: number;
-    flagPenalty: number;
-  };
-}> {
-  const member = await getMemberById(memberId);
-  if (!member) throw new Error("Member not found");
-
-  const basePoints = 10;
-  const ratingPoints = Math.min(member.totalRatings * 2, 200);
-
-  const categoryResult = await db
-    .select({ category: businesses.category })
+  const distinctBizResult = await db
+    .select({ bizId: ratings.businessId })
     .from(ratings)
-    .innerJoin(businesses, eq(ratings.businessId, businesses.id))
-    .where(eq(ratings.memberId, memberId))
-    .groupBy(businesses.category);
-  const diversityBonus = Math.min(categoryResult.length * 15, 100);
-
-  const daysActive = Math.floor(
-    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
-  );
-  const ageBonus = Math.min(Math.floor(daysActive * 0.5), 100);
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)))
+    .groupBy(ratings.businessId);
 
   const memberRatings = await db
     .select({ rawScore: ratings.rawScore })
     .from(ratings)
-    .where(eq(ratings.memberId, memberId));
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
 
   let variance = 0;
   if (memberRatings.length > 1) {
@@ -451,11 +688,56 @@ export async function calculateCredibilityScore(memberId: string): Promise<{
     const sqDiffs = scores.map((s) => (s - mean) ** 2);
     variance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
   }
-  const varianceBonus = Math.min(Math.floor(variance * 50), 150);
 
-  let pioneerCount = 0;
-  for (const r of memberRatings) {
-    pioneerCount++;
+  await db
+    .update(members)
+    .set({
+      totalRatings: ratingCount.count,
+      totalCategories: categoryResult.length,
+      distinctBusinesses: distinctBizResult.length,
+      ratingVariance: variance.toFixed(3),
+      lastActive: new Date(),
+    })
+    .where(eq(members.id, memberId));
+}
+
+export async function recalculateCredibilityScore(memberId: string): Promise<{
+  score: number;
+  tier: string;
+  breakdown: {
+    base: number;
+    volume: number;
+    diversity: number;
+    age: number;
+    variance: number;
+    helpfulness: number;
+    penalties: number;
+  };
+}> {
+  const member = await getMemberById(memberId);
+  if (!member) throw new Error("Member not found");
+
+  const base = 10;
+  const volume = Math.min(member.totalRatings * 2, 200);
+  const diversity = Math.min(member.totalCategories * 15, 100);
+
+  const daysActive = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
+  );
+  const age = Math.min(daysActive * 0.5, 100);
+
+  const memberRatings = await db
+    .select({ rawScore: ratings.rawScore })
+    .from(ratings)
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+
+  let varianceBonus = 0;
+  if (memberRatings.length >= 5) {
+    const scores = memberRatings.map((r) => parseFloat(r.rawScore));
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const sqDiffs = scores.map((s) => (s - mean) ** 2);
+    const stddev = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
+    varianceBonus = Math.min(stddev * 60, 150);
   }
 
   const allMemberRatings = await db
@@ -464,7 +746,7 @@ export async function calculateCredibilityScore(memberId: string): Promise<{
       createdAt: ratings.createdAt,
     })
     .from(ratings)
-    .where(eq(ratings.memberId, memberId));
+    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
 
   let earlyReviewCount = 0;
   for (const r of allMemberRatings) {
@@ -478,83 +760,58 @@ export async function calculateCredibilityScore(memberId: string): Promise<{
           sql`${ratings.createdAt} < ${r.createdAt}`,
         ),
       );
-    if (countBefore.count < 5) earlyReviewCount++;
+    if (countBefore.count < 10) earlyReviewCount++;
   }
 
-  const pioneerRate = allMemberRatings.length > 0 ? earlyReviewCount / allMemberRatings.length : 0;
-  const helpfulnessBonus = Math.floor(pioneerRate * 150);
+  const pioneerRate = allMemberRatings.length > 0
+    ? earlyReviewCount / allMemberRatings.length
+    : 0;
+  const helpfulness = Math.round(pioneerRate * 100);
 
-  const [flagResult] = await db
-    .select({ count: count() })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, true)));
-  const flagPenalty = flagResult.count * 25;
+  const penaltyResult = await db
+    .select({ total: sql<number>`COALESCE(SUM(${credibilityPenalties.finalPenalty}), 0)` })
+    .from(credibilityPenalties)
+    .where(eq(credibilityPenalties.memberId, memberId));
+  const totalPenalties = Number(penaltyResult[0]?.total ?? 0);
 
-  const rawScore =
-    basePoints + ratingPoints + diversityBonus + ageBonus + varianceBonus + helpfulnessBonus - flagPenalty;
+  const rawScore = base + volume + diversity + age + varianceBonus + helpfulness - totalPenalties;
   const score = Math.max(10, Math.min(1000, Math.round(rawScore)));
 
-  return {
-    score,
-    breakdown: {
-      base: basePoints,
-      ratingPoints,
-      diversityBonus,
-      ageBonus,
-      varianceBonus,
-      helpfulnessBonus,
-      flagPenalty,
-    },
-  };
-}
-
-export async function checkTierUpgrade(
-  memberId: string,
-): Promise<{ upgraded: boolean; newTier: string }> {
-  const member = await getMemberById(memberId);
-  if (!member) throw new Error("Member not found");
-
-  const { score } = await calculateCredibilityScore(memberId);
-
-  const daysActive = Math.floor(
-    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  const memberRatings = await db
-    .select({ rawScore: ratings.rawScore })
-    .from(ratings)
-    .where(eq(ratings.memberId, memberId));
-
-  let variance = 0;
+  let ratingVariance = 0;
   if (memberRatings.length > 1) {
     const scores = memberRatings.map((r) => parseFloat(r.rawScore));
     const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
     const sqDiffs = scores.map((s) => (s - mean) ** 2);
-    variance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
+    ratingVariance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
   }
 
-  const [flagResult] = await db
-    .select({ count: count() })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, true)));
-
-  const newTier = getTierFromScore(
+  const tier = getTierFromScore(
     score,
     member.totalRatings,
     member.totalCategories,
     daysActive,
-    variance,
-    flagResult.count,
+    ratingVariance,
+    member.activeFlagCount,
   );
-
-  const upgraded = newTier !== member.credibilityTier;
 
   await db
     .update(members)
-    .set({ credibilityScore: score, credibilityTier: newTier })
+    .set({ credibilityScore: score, credibilityTier: tier })
     .where(eq(members.id, memberId));
 
-  return { upgraded, newTier };
+  return {
+    score,
+    tier,
+    breakdown: {
+      base,
+      volume,
+      diversity,
+      age: Math.round(age),
+      variance: Math.round(varianceBonus),
+      helpfulness,
+      penalties: totalPenalties,
+    },
+  };
 }
 
 export async function updateChallengerVotes(
@@ -572,7 +829,10 @@ export async function updateChallengerVotes(
     const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
     await db
       .update(challengers)
-      .set({ challengerWeightedVotes: newVotes.toFixed(3) })
+      .set({
+        challengerWeightedVotes: newVotes.toFixed(3),
+        totalVotes: sql`${challengers.totalVotes} + 1`,
+      })
       .where(eq(challengers.id, c.id));
   }
 
@@ -587,7 +847,10 @@ export async function updateChallengerVotes(
     const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
     await db
       .update(challengers)
-      .set({ defenderWeightedVotes: newVotes.toFixed(3) })
+      .set({
+        defenderWeightedVotes: newVotes.toFixed(3),
+        totalVotes: sql`${challengers.totalVotes} + 1`,
+      })
       .where(eq(challengers.id, c.id));
   }
 }

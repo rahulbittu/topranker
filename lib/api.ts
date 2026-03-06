@@ -1,5 +1,6 @@
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
+import { CATEGORY_MAP } from "@/lib/data";
 
 export interface ApiBusiness {
   id: string;
@@ -9,6 +10,8 @@ export interface ApiBusiness {
   city: string;
   neighborhood: string | null;
   address: string | null;
+  lat: string | null;
+  lng: string | null;
   phone: string | null;
   website: string | null;
   photoUrl: string | null;
@@ -16,33 +19,47 @@ export interface ApiBusiness {
   rawAvgScore: string;
   rankPosition: number | null;
   rankDelta: number;
+  prevRankPosition: number | null;
   totalRatings: number;
-  isVerified: boolean;
   isActive: boolean;
   inChallenger: boolean;
   description: string | null;
-  tags: string | null;
   priceRange: string | null;
-  hours: string | null;
-  featuredDish: string | null;
+  isOpenNow: boolean;
+  isClaimed: boolean;
+  googleRating: string | null;
+  googleMapsUrl: string | null;
+  openingHours: { weekday_text?: string[]; periods?: any[] } | null;
 }
 
 export interface ApiRating {
   id: string;
   memberId: string;
   businessId: string;
-  foodQuality: number;
-  valueForMoney: number;
-  service: number;
+  q1Score: number;
+  q2Score: number;
+  q3Score: number;
   wouldReturn: boolean;
   note: string | null;
   rawScore: string;
   weight: string;
   weightedScore: string;
   isFlagged: boolean;
+  autoFlagged: boolean;
+  source: string | null;
   createdAt: string;
   memberName?: string;
   memberTier?: string;
+  memberAvatarUrl?: string | null;
+}
+
+export interface ApiDish {
+  id: string;
+  businessId: string;
+  name: string;
+  nameNormalized: string;
+  voteCount: number;
+  isActive: boolean;
 }
 
 export interface ApiChallenger {
@@ -55,6 +72,7 @@ export interface ApiChallenger {
   endDate: string;
   challengerWeightedVotes: string;
   defenderWeightedVotes: string;
+  totalVotes: number;
   status: string;
   challengerBusiness: ApiBusiness;
   defenderBusiness: ApiBusiness;
@@ -66,42 +84,32 @@ export interface ApiMemberProfile {
   username: string;
   email: string;
   city: string;
+  avatarUrl: string | null;
   credibilityScore: number;
   credibilityTier: string;
   totalRatings: number;
   totalCategories: number;
+  distinctBusinesses: number;
   isFoundingMember: boolean;
   joinedAt: string;
   daysActive: number;
+  ratingVariance: number;
   credibilityBreakdown: {
     base: number;
-    ratingPoints: number;
-    diversityBonus: number;
-    ageBonus: number;
-    varianceBonus: number;
-    helpfulnessBonus: number;
-    flagPenalty: number;
+    volume: number;
+    diversity: number;
+    age: number;
+    variance: number;
+    helpfulness: number;
+    penalties: number;
   };
   ratingHistory: (ApiRating & { businessName: string })[];
 }
 
-const CATEGORY_MAP: Record<string, string> = {
-  Restaurants: "restaurant",
-  Cafes: "cafe",
-  "Street Food": "street_food",
-  Bars: "bar",
-  Bakeries: "bakery",
-  "Fast Food": "fast_food",
-};
-
-const CATEGORY_DISPLAY: Record<string, string> = {
-  restaurant: "Restaurants",
-  cafe: "Cafes",
-  street_food: "Street Food",
-  bar: "Bars",
-  bakery: "Bakeries",
-  fast_food: "Fast Food",
-};
+const CATEGORY_DISPLAY: Record<string, string> = {};
+for (const [display, api] of Object.entries(CATEGORY_MAP)) {
+  CATEGORY_DISPLAY[api] = display;
+}
 
 export function categoryToApi(displayName: string): string {
   return CATEGORY_MAP[displayName] || displayName.toLowerCase().replace(/\s/g, "_");
@@ -118,23 +126,26 @@ export function mapApiBusiness(biz: ApiBusiness) {
     slug: biz.slug,
     neighborhood: biz.neighborhood || "",
     city: biz.city,
-    category: categoryToDisplay(biz.category),
+    category: biz.category,
     weightedScore: parseFloat(biz.weightedScore),
     rawAvgScore: parseFloat(biz.rawAvgScore),
     rank: biz.rankPosition || 0,
-    prevRank: (biz.rankPosition || 0) + biz.rankDelta,
+    prevRank: biz.prevRankPosition,
     rankDelta: biz.rankDelta,
     ratingCount: biz.totalRatings,
     isChallenger: biz.inChallenger,
-    description: biz.description || "",
-    tags: biz.tags ? biz.tags.split(",") : [],
-    priceRange: biz.priceRange,
-    hours: biz.hours,
-    phone: biz.phone,
-    address: biz.address,
-    featuredDish: biz.featuredDish,
-    isVerified: biz.isVerified,
-    image: undefined,
+    description: biz.description || undefined,
+    priceRange: biz.priceRange || undefined,
+    phone: biz.phone || undefined,
+    website: biz.website || undefined,
+    address: biz.address || undefined,
+    photoUrl: biz.photoUrl || undefined,
+    isOpenNow: biz.isOpenNow,
+    lat: biz.lat ? parseFloat(biz.lat) : undefined,
+    lng: biz.lng ? parseFloat(biz.lng) : undefined,
+    isClaimed: biz.isClaimed,
+    googleRating: biz.googleRating ? parseFloat(biz.googleRating) : undefined,
+    openingHours: biz.openingHours || undefined,
   };
 }
 
@@ -142,12 +153,13 @@ export function mapApiRating(rating: ApiRating) {
   return {
     id: rating.id,
     userName: rating.memberName || "Anonymous",
-    userTier: (rating.memberTier || "new") as any,
+    userTier: (rating.memberTier || "community") as any,
+    userAvatarUrl: rating.memberAvatarUrl || undefined,
     rawScore: parseFloat(rating.rawScore),
     weight: parseFloat(rating.weight),
-    food: rating.foodQuality,
-    value: rating.valueForMoney,
-    service: rating.service,
+    q1: rating.q1Score,
+    q2: rating.q2Score,
+    q3: rating.q3Score,
     wouldReturn: rating.wouldReturn,
     comment: rating.note,
     createdAt: new Date(rating.createdAt).getTime(),
@@ -166,7 +178,7 @@ async function apiFetch<T>(path: string): Promise<T> {
   return json.data;
 }
 
-export async function fetchLeaderboard(city: string, category: string, limit: number = 10) {
+export async function fetchLeaderboard(city: string, category: string, limit: number = 50) {
   const apiCategory = categoryToApi(category);
   const businesses = await apiFetch<ApiBusiness[]>(
     `/api/leaderboard?city=${encodeURIComponent(city)}&category=${encodeURIComponent(apiCategory)}&limit=${limit}`,
@@ -175,12 +187,13 @@ export async function fetchLeaderboard(city: string, category: string, limit: nu
 }
 
 export async function fetchBusinessBySlug(slug: string) {
-  const data = await apiFetch<ApiBusiness & { recentRatings: ApiRating[] }>(
+  const data = await apiFetch<ApiBusiness & { recentRatings: ApiRating[]; dishes: ApiDish[] }>(
     `/api/businesses/${encodeURIComponent(slug)}`,
   );
   return {
     business: mapApiBusiness(data),
     ratings: data.recentRatings.map(mapApiRating),
+    dishes: data.dishes || [],
   };
 }
 
@@ -197,4 +210,10 @@ export async function fetchBusinessSearch(query: string, city: string, category?
   if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
   const businesses = await apiFetch<ApiBusiness[]>(path);
   return businesses.map(mapApiBusiness);
+}
+
+export async function fetchDishSearch(businessId: string, query: string) {
+  return apiFetch<ApiDish[]>(
+    `/api/dishes/search?business_id=${encodeURIComponent(businessId)}&q=${encodeURIComponent(query)}`,
+  );
 }
