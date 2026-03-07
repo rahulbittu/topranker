@@ -44,9 +44,9 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
     return (
       <LinearGradient
         colors={[AMBER, BRAND.colors.amberDark]}
-        style={[{ height, alignItems: "center", justifyContent: "center" }]}
+        style={[styles.mosaicFallback, { height }]}
       >
-        <Text style={{ fontSize: 40, color: "rgba(255,255,255,0.5)" }}>
+        <Text style={styles.mosaicFallbackEmoji}>
           {getCategoryDisplay(category || "").emoji}
         </Text>
       </LinearGradient>
@@ -55,25 +55,25 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
 
   if (photos.length === 1) {
     return (
-      <Image source={{ uri: photos[0] }} style={{ width: "100%" as any, height }} contentFit="cover" transition={200} />
+      <Image source={{ uri: photos[0] }} style={[styles.mosaicFull, { height }]} contentFit="cover" transition={200} />
     );
   }
 
   if (photos.length === 2) {
     return (
-      <View style={{ flexDirection: "row", height, gap: 2 }}>
-        <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} contentFit="cover" transition={200} />
-        <Image source={{ uri: photos[1] }} style={{ flex: 1, height }} contentFit="cover" transition={200} />
+      <View style={[styles.mosaicRow, { height }]}>
+        <Image source={{ uri: photos[0] }} style={[styles.mosaicMainPhoto, { height }]} contentFit="cover" transition={200} />
+        <Image source={{ uri: photos[1] }} style={[styles.mosaicFlex, { height }]} contentFit="cover" transition={200} />
       </View>
     );
   }
 
   return (
-    <View style={{ flexDirection: "row", height, gap: 2 }}>
-      <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} contentFit="cover" transition={200} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Image source={{ uri: photos[1] }} style={{ flex: 1 }} contentFit="cover" transition={200} />
-        <Image source={{ uri: photos[2] }} style={{ flex: 1 }} contentFit="cover" transition={200} />
+    <View style={[styles.mosaicRow, { height }]}>
+      <Image source={{ uri: photos[0] }} style={[styles.mosaicMainPhoto, { height }]} contentFit="cover" transition={200} />
+      <View style={styles.mosaicSideColumn}>
+        <Image source={{ uri: photos[1] }} style={styles.mosaicFlex} contentFit="cover" transition={200} />
+        <Image source={{ uri: photos[2] }} style={styles.mosaicFlex} contentFit="cover" transition={200} />
       </View>
     </View>
   );
@@ -93,7 +93,7 @@ function StarRating({ score }: { score: number }) {
       />
     );
   }
-  return <View style={{ flexDirection: "row", gap: 1 }}>{stars}</View>;
+  return <View style={styles.starRow}>{stars}</View>;
 }
 
 function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
@@ -108,7 +108,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
     >
-      <View style={{ position: "relative" }}>
+      <View style={styles.heroPhotoWrap}>
         <PhotoMosaic photos={photos} height={220} category={item.category} />
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.7)"]}
@@ -343,7 +343,7 @@ export default function LeaderboardScreen() {
         <LeaderboardSkeleton />
       ) : isError ? (
         <View style={styles.loadingContainer}>
-          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
+          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
           <Text style={styles.emptyText}>Could not load rankings</Text>
           <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
             <Text style={styles.retryButtonText}>Try Again</Text>
@@ -379,7 +379,7 @@ export default function LeaderboardScreen() {
           ListEmptyComponent={
             !heroBiz ? (
               <View style={styles.loadingContainer}>
-                <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
+                <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
                 <Text style={styles.emptyText}>No businesses found</Text>
                 <Text style={styles.emptySubtext}>
                   {searchQuery.trim() ? `No matches for "${searchQuery}"` : "Try a different category"}
@@ -395,6 +395,18 @@ export default function LeaderboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  errorIcon: { marginBottom: 12 },
+
+  // Photo Mosaic
+  mosaicFallback: { alignItems: "center", justifyContent: "center" },
+  mosaicFallbackEmoji: { fontSize: 40, color: "rgba(255,255,255,0.5)" },
+  mosaicFull: { width: "100%" as any },
+  mosaicRow: { flexDirection: "row", gap: 2 },
+  mosaicMainPhoto: { width: "60%" },
+  mosaicFlex: { flex: 1 },
+  mosaicSideColumn: { flex: 1, gap: 2 },
+  starRow: { flexDirection: "row", gap: 1 },
+  heroPhotoWrap: { position: "relative" as const },
 
   header: {
     flexDirection: "row",
