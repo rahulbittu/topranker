@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
   dishVoteCountText: { fontSize: 10, fontWeight: "700", color: Colors.textTertiary, fontFamily: "DMSans_700Bold" },
 
   rateButton: {
-    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 15,
+    backgroundColor: "#C49A1A", borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
   rateButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },

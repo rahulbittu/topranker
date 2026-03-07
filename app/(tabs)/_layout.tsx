@@ -41,10 +41,12 @@ function ClassicTabLayout() {
         tabBarStyle: {
           position: "absolute",
           backgroundColor: Colors.background,
-          borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          elevation: 0,
-          shadowOpacity: 0,
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+          elevation: 8,
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () => (

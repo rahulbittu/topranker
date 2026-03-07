@@ -459,6 +459,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", marginHorizontal: 16,
     backgroundColor: "#FFFFFF", borderRadius: 12, paddingHorizontal: 12,
     paddingVertical: 10, gap: 8, marginBottom: 9,
+    ...Colors.cardShadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
 
@@ -469,6 +473,10 @@ const styles = StyleSheet.create({
   viewToggle: {
     flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 8,
     overflow: "hidden",
+    ...Colors.cardShadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   viewToggleBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -482,6 +490,10 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
     backgroundColor: "#FFFFFF",
+    ...Colors.cardShadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
   },
   filterChipActive: { backgroundColor: AMBER },
   filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
@@ -494,11 +506,9 @@ const styles = StyleSheet.create({
 
   card: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "#FFFFFF", borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 16, minHeight: 96, gap: 14,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+    backgroundColor: "#FFFFFF", borderRadius: 14,
+    padding: 14, minHeight: 96, gap: 14,
+    ...Colors.cardShadow,
   },
   cardPhoto: {
     borderRadius: 8, backgroundColor: Colors.surfaceRaised,

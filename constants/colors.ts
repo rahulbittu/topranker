@@ -40,7 +40,7 @@ const Colors = {
   tierTop: AMBER,
 
   tint: AMBER,
-  tabIconDefault: "#CCCCCC",
+  tabIconDefault: "#B0B0B0",
   tabIconSelected: "#0D1B2A",
 
   shadow: "rgba(0,0,0,0.06)",

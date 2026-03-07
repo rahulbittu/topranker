@@ -196,9 +196,7 @@ export default function LeaderboardScreen() {
               onPress={() => setActiveCategory(chip.slug)}
               style={[styles.chip, isActive && styles.chipActive]}
             >
-              <View style={styles.chipEmojiBubble}>
-                <Text style={styles.chipEmoji}>{chip.emoji}</Text>
-              </View>
+              <Text style={styles.chipEmoji}>{chip.emoji}</Text>
               <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
                 {chip.label}
               </Text>
@@ -242,8 +240,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingBottom: 14,
-    paddingTop: 4,
+    paddingBottom: 10,
+    paddingTop: 2,
   },
   headerRight: {
     flexDirection: "row",
@@ -254,49 +252,51 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    ...Colors.cardShadow,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
   },
   citySelectorText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: Colors.text,
     fontFamily: "DMSans_600SemiBold",
   },
 
-  chipsRow: { flexGrow: 0, marginBottom: 10 },
+  chipsRow: { flexGrow: 0, marginBottom: 8 },
   chipsContainer: {
     paddingHorizontal: 16,
     gap: 8,
     flexDirection: "row",
+    paddingVertical: 2,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingVertical: 9,
+    borderRadius: 24,
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Colors.cardShadow,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
   chipActive: {
     backgroundColor: AMBER,
-    borderColor: AMBER,
-  },
-  chipEmojiBubble: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    alignItems: "center",
-    justifyContent: "center",
+    shadowOpacity: 0.15,
   },
   chipEmoji: {
-    fontSize: 12,
+    fontSize: 16,
   },
   chipLabel: {
     fontSize: 13,
-    fontFamily: "DMSans_500Medium",
+    fontFamily: "DMSans_600SemiBold",
     color: Colors.text,
   },
   chipLabelActive: {
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
   },
 
-  list: { paddingHorizontal: CARD_PADDING, gap: 14, paddingTop: 6 },
+  list: { paddingHorizontal: CARD_PADDING, gap: 12, paddingTop: 4 },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
@@ -327,11 +327,12 @@ const styles = StyleSheet.create({
   },
 
   cardBody: {
-    padding: 14,
-    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 4,
   },
   cardRankText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
     fontFamily: "PlayfairDisplay_700Bold",
     color: Colors.text,
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
     minWidth: 56,
   },
   cardScore: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
     color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold",
