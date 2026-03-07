@@ -274,8 +274,8 @@ export default function BusinessProfileScreen() {
             <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn}>
-              <Ionicons name="flag-outline" size={16} color="#fff" />
+            <TouchableOpacity style={styles.navBtn} onPress={handleShare}>
+              <Ionicons name="share-outline" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
