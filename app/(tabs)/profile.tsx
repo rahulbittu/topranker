@@ -84,6 +84,8 @@ function LoggedOutView() {
         <TouchableOpacity
           style={styles.googleButton}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Continue with Google (coming soon)"
           onPress={() => {
             if (Platform.OS === "web") {
               window.alert("Google sign-in coming soon!");
@@ -122,7 +124,7 @@ function LoggedOutView() {
         {/* Password field */}
         <View style={styles.inputContainer}>
           <TextInput
-            style={[styles.input, { paddingRight: 44 }]}
+            style={[styles.input, styles.inputWithEye]}
             placeholder="Password"
             placeholderTextColor={Colors.textTertiary}
             value={password}
@@ -147,10 +149,12 @@ function LoggedOutView() {
 
         {/* Sign In button */}
         <TouchableOpacity
-          style={[styles.signInButton, isSubmitting && { opacity: 0.7 }]}
+          style={[styles.signInButton, isSubmitting && styles.signInButtonLoading]}
           onPress={handleSignIn}
           activeOpacity={0.85}
           disabled={isSubmitting}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in"
         >
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#fff" />
@@ -163,6 +167,8 @@ function LoggedOutView() {
         <TouchableOpacity
           onPress={() => router.push("/auth/signup")}
           activeOpacity={0.7}
+          accessibilityRole="link"
+          accessibilityLabel="Sign up for an account"
         >
           <Text style={styles.signUpLink}>
             Don't have an account? <Text style={styles.signUpLinkBold}>Sign up</Text>
@@ -235,8 +241,8 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" }]}>{profile.displayName}</Text>
-          <Text style={[styles.username, { color: "rgba(255,255,255,0.5)" }]}>@{profile.username}</Text>
+          <Text style={[styles.profileName, styles.profileNameLight]}>{profile.displayName}</Text>
+          <Text style={[styles.username, styles.usernameLight]}>@{profile.username}</Text>
           <View style={styles.badgeRow}>
             <TierBadge tier={tier} />
             {profile.isFoundingMember && (
@@ -409,7 +415,7 @@ export default function ProfileScreen() {
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
         <Text style={styles.errorTitle}>Couldn't load your profile</Text>
         <Text style={styles.errorSubtitle}>Check your connection and try again</Text>
-        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Retry loading profile">
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -517,6 +523,7 @@ const styles = StyleSheet.create({
     position: "absolute" as const, right: 12, top: 0, bottom: 0,
     justifyContent: "center",
   },
+  inputWithEye: { paddingRight: 44 },
   signInButton: {
     backgroundColor: AMBER, borderRadius: 14, height: 52,
     alignItems: "center", justifyContent: "center",
@@ -527,6 +534,7 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     elevation: 6,
   },
+  signInButtonLoading: { opacity: 0.7 },
   signInButtonText: {
     fontSize: 15, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
   },
@@ -563,7 +571,9 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: "700", color: Colors.text,
     fontFamily: "DMSans_700Bold", letterSpacing: -0.3,
   },
+  profileNameLight: { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
   username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  usernameLight: { color: "rgba(255,255,255,0.5)" },
   tierBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
