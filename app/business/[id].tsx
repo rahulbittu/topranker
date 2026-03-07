@@ -381,6 +381,15 @@ export default function BusinessProfileScreen() {
           {business.address && (
             <View style={styles.addressCard}>
               <Text style={styles.sectionTitle}>Location</Text>
+              {Platform.OS === "web" && business.lat && business.lng && (
+                <View style={styles.mapEmbed}>
+                  <iframe
+                    src={`https://www.google.com/maps?q=${business.lat},${business.lng}&z=15&output=embed`}
+                    style={{ width: "100%", height: 180, border: "none", borderRadius: 10 } as any}
+                    loading="lazy"
+                  />
+                </View>
+              )}
               <Text style={styles.addressText}>{business.address}</Text>
               <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps}>
                 <Feather name="navigation" size={13} color={Colors.text} />
@@ -583,6 +592,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
     ...Colors.cardShadow,
   },
+  mapEmbed: { borderRadius: 10, overflow: "hidden", marginBottom: 8 },
   addressText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
   directionsBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
