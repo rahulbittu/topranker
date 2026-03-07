@@ -283,7 +283,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.mapContainer}>
-        <div ref={mapRef as any} style={{ width: "100%", height: 380 }} />
+        <div ref={mapRef as any} style={{ width: "100%", height: 420 }} />
         {!mapReady && !mapError && (
           <View style={styles.mapLoadingOverlay}>
             <ActivityIndicator size="small" color={AMBER} />
@@ -301,9 +301,9 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
             {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
               <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} />
             ) : (
-              <View style={[styles.mapBottomSheetPhoto, { backgroundColor: AMBER, alignItems: "center", justifyContent: "center" }]}>
+              <LinearGradient colors={[AMBER, "#9A7510"]} style={[styles.mapBottomSheetPhoto, { alignItems: "center", justifyContent: "center" }]}>
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>
-              </View>
+              </LinearGradient>
             )}
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
