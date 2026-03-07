@@ -19,8 +19,9 @@ import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
-import { BRAND } from "@/constants/brand";
+import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
+import { useBookmarks, type BookmarkEntry } from "@/lib/bookmarks-context";
 
 const AMBER = BRAND.colors.amber;
 
@@ -213,9 +214,32 @@ function LoggedOutView() {
   );
 }
 
+const SavedRow = React.memo(function SavedRow({ entry }: { entry: BookmarkEntry }) {
+  const catDisplay = getCategoryDisplay(entry.category);
+  return (
+    <TouchableOpacity
+      style={styles.savedRow}
+      activeOpacity={0.7}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: entry.slug } })}
+      accessibilityRole="link"
+      accessibilityLabel={`View ${entry.name}`}
+    >
+      <View style={styles.savedEmoji}>
+        <Text style={styles.savedEmojiText}>{catDisplay.emoji}</Text>
+      </View>
+      <View style={styles.savedInfo}>
+        <Text style={styles.savedName} numberOfLines={1}>{entry.name}</Text>
+        <Text style={styles.savedCategory}>{catDisplay.label}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+    </TouchableOpacity>
+  );
+});
+
 function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refetch: () => Promise<any> }) {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
+  const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const tier = profile.credibilityTier as CredibilityTier;
@@ -377,6 +401,24 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Ionicons name="star-outline" size={32} color={Colors.textTertiary} />
           <Text style={styles.emptyText}>No ratings yet</Text>
           <Text style={styles.emptySubtext}>Rate businesses to build your credibility</Text>
+        </View>
+      )}
+
+      {/* Saved Places */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Saved Places</Text>
+        <Text style={styles.sectionCount}>{bookmarkCount}</Text>
+      </View>
+
+      {savedList.length > 0 ? (
+        savedList.slice(0, 10).map(entry => (
+          <SavedRow key={entry.id} entry={entry} />
+        ))
+      ) : (
+        <View style={styles.emptyHistory}>
+          <Ionicons name="bookmark-outline" size={28} color={Colors.textTertiary} />
+          <Text style={styles.emptyText}>No saved places yet</Text>
+          <Text style={styles.emptySubtext}>Tap the bookmark icon on any business to save it</Text>
         </View>
       )}
 
@@ -698,6 +740,22 @@ const styles = StyleSheet.create({
   historyRight: { alignItems: "flex-end", gap: 2 },
   historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
   historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+
+  savedRow: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Colors.surface, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+    gap: 12, ...Colors.cardShadow,
+  },
+  savedEmoji: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: Colors.goldFaint,
+    alignItems: "center", justifyContent: "center",
+  },
+  savedEmojiText: { fontSize: 18 },
+  savedInfo: { flex: 1, gap: 2 },
+  savedName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  savedCategory: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },

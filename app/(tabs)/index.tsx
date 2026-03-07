@@ -18,6 +18,7 @@ import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
+import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -211,6 +212,8 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const saved = isBookmarked(item.id);
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -243,6 +246,15 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
         ]}>
           <Text style={styles.rankBadgeText}>{rankLabel}</Text>
         </View>
+        <TouchableOpacity
+          style={styles.cardBookmarkBtn}
+          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+        >
+          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={14} color={saved ? AMBER : "#fff"} />
+        </TouchableOpacity>
       </View>
       <View style={styles.rankedInfo}>
         <View style={styles.rankedRow1}>
@@ -809,6 +821,17 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#fff",
     fontFamily: "PlayfairDisplay_900Black",
+  },
+  cardBookmarkBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   rankedInfo: {
     padding: 12,

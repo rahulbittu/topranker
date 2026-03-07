@@ -19,6 +19,7 @@ import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/j
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
+import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -98,6 +99,8 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const saved = isBookmarked(item.id);
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
 
@@ -117,6 +120,15 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
         <View style={styles.discoverRankBadge}>
           <Text style={styles.discoverRankBadgeText}>{rankLabel}</Text>
         </View>
+        <TouchableOpacity
+          style={styles.cardBookmarkBtn}
+          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
+        >
+          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={12} color={saved ? AMBER : "#fff"} />
+        </TouchableOpacity>
       </View>
       <View style={styles.cardInfo}>
         <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
@@ -728,6 +740,12 @@ const styles = StyleSheet.create({
   },
   discoverRankBadgeText: {
     fontSize: 12, fontWeight: "800", color: "#fff", fontFamily: "PlayfairDisplay_900Black",
+  },
+  cardBookmarkBtn: {
+    position: "absolute", top: 6, right: 6,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center", justifyContent: "center",
   },
   cardInfo: { padding: 10, gap: 4 },
   cardName: {

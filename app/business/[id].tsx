@@ -397,7 +397,7 @@ export default function BusinessProfileScreen() {
             <View style={styles.navBtnGroup}>
               <TouchableOpacity
                 style={styles.navBtn}
-                onPress={() => { if (business) { toggleBookmark(business.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
+                onPress={() => { if (business) { toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={saved ? "Remove from saved" : "Save this business"}
