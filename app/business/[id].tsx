@@ -287,8 +287,9 @@ export default function BusinessProfileScreen() {
   const handleShare = async () => {
     Haptics.selectionAsync();
     try {
+      const shareUrl = Platform.OS === "web" ? window.location.href : "";
       await Share.share({
-        message: `Check out ${business.name} on Top Ranker! Ranked ${getRankDisplay(business.rank)} with a ${business.weightedScore.toFixed(2)} score.`,
+        message: `Check out ${business.name} on Top Ranker! Ranked ${getRankDisplay(business.rank)} with a ${business.weightedScore.toFixed(2)} score.${shareUrl ? ` ${shareUrl}` : ""}`,
       });
     } catch {}
   };
