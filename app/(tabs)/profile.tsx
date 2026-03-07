@@ -235,7 +235,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" }]}>{profile.displayName}</Text>
           <Text style={[styles.username, { color: "rgba(255,255,255,0.5)" }]}>@{profile.username}</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={styles.badgeRow}>
             <TierBadge tier={tier} />
             {profile.isFoundingMember && (
               <View style={styles.foundingBadge}>
@@ -555,6 +555,7 @@ const styles = StyleSheet.create({
     fontSize: 8, fontWeight: "700", color: "#FFD700",
     fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
   },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   profileInfo: { gap: 4 },
   profileName: {
     fontSize: 20, fontWeight: "700", color: Colors.text,
