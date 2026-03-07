@@ -94,7 +94,7 @@ function StarRating({ score }: { score: number }) {
   return <View style={{ flexDirection: "row", gap: 1 }}>{stars}</View>;
 }
 
-function HeroCard({ item }: { item: MappedBusiness }) {
+function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
 
@@ -114,7 +114,7 @@ function HeroCard({ item }: { item: MappedBusiness }) {
         />
         {/* Crown badge */}
         <View style={styles.heroCrownBadge}>
-          <Text style={styles.heroCrownText}>{"\u{1F451}"} #1 IN DALLAS</Text>
+          <Text style={styles.heroCrownText}>{"\u{1F451}"} #1 {categoryLabel.toUpperCase()}</Text>
         </View>
         {/* OPEN/CLOSED pill top-right */}
         {item.isOpenNow !== undefined && (
@@ -338,7 +338,7 @@ export default function LeaderboardScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
-          ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} /> : null}
+          ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
           ListEmptyComponent={
             !heroBiz ? (
               <View style={styles.loadingContainer}>
