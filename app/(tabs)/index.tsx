@@ -109,7 +109,8 @@ const StarRating = React.memo(function StarRating({ score }: { score: number }) 
 function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
-  const { scale, onPressIn, onPressOut } = usePressAnimation();
+  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
+  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -154,6 +155,12 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
           <View style={styles.heroStripRow2}>
             <StarRating score={item.weightedScore} />
             <Text style={styles.heroStripRatings}>{item.ratingCount.toLocaleString()} ratings</Text>
+            {item.ratingCount >= 50 && (
+              <View style={styles.hotBadge}>
+                <Ionicons name="flame" size={10} color="#fff" />
+                <Text style={styles.hotBadgeText}>HOT</Text>
+              </View>
+            )}
           </View>
         </View>
         <TouchableOpacity
@@ -228,7 +235,8 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
-  const { scale, onPressIn, onPressOut } = usePressAnimation();
+  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
+  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -265,9 +273,11 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
         <View style={styles.rankedRow3}>
           <Text style={styles.rankedRatingCount}>{item.ratingCount.toLocaleString()} ratings</Text>
           {item.rankDelta !== 0 && (
-            <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
-              {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
-            </Text>
+            <View style={[styles.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>
+              <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
+                {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
+              </Text>
+            </View>
           )}
           {item.isOpenNow !== undefined && (
             <View style={[styles.statusPillSmall, item.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
@@ -816,15 +826,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 99,
+    backgroundColor: "rgba(13,27,42,0.10)",
+    shadowColor: BRAND.colors.navy,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  challengerPillText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: BRAND.colors.navy,
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.3,
+  },
+  rankDeltaPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  hotBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 99,
-    backgroundColor: "rgba(13,27,42,0.08)",
+    backgroundColor: Colors.red,
   },
-  challengerPillText: {
+  hotBadgeText: {
     fontSize: 8,
     fontWeight: "700",
-    color: BRAND.colors.navy,
+    color: "#fff",
     fontFamily: "DMSans_700Bold",
     letterSpacing: 0.3,
   },

@@ -125,7 +125,8 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
-  const { scale, onPressIn, onPressOut } = usePressAnimation();
+  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
+  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>

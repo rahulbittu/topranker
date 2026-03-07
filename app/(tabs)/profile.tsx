@@ -381,27 +381,44 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       )}
 
       <View style={styles.tierInfoSection}>
-        <Text style={styles.sectionTitle}>Credibility Tiers</Text>
+        <Text style={styles.sectionTitle}>Credibility Journey</Text>
         <View style={styles.tierList}>
-          {(["community", "city", "trusted", "top"] as CredibilityTier[]).map(t => (
-            <View key={t} style={[styles.tierRow, tier === t && styles.tierRowActive]}>
-              <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[t] }]} />
-              <View style={styles.tierRowInfo}>
-                <Text style={[styles.tierName, tier === t && { color: Colors.text }]}>
-                  {TIER_DISPLAY_NAMES[t]}
-                </Text>
-                <Text style={styles.tierWeight}>{TIER_WEIGHTS[t].toFixed(2)}x</Text>
-              </View>
-              <Text style={styles.tierRange}>
-                {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
-              </Text>
-              {tier === t && (
-                <View style={styles.currentBadge}>
-                  <Text style={styles.currentBadgeText}>YOU</Text>
+          {(["community", "city", "trusted", "top"] as CredibilityTier[]).map((t, idx, arr) => {
+            const tierOrder = arr.indexOf(tier);
+            const isCompleted = idx < tierOrder;
+            const isCurrent = t === tier;
+            return (
+              <View key={t}>
+                <View style={[styles.tierRow, isCurrent && styles.tierRowActive]}>
+                  <View style={[
+                    styles.tierDot,
+                    { backgroundColor: isCompleted || isCurrent ? TIER_COLORS[t] : Colors.border },
+                  ]}>
+                    {isCompleted && <Ionicons name="checkmark" size={8} color="#fff" />}
+                  </View>
+                  <View style={styles.tierRowInfo}>
+                    <Text style={[styles.tierName, (isCurrent || isCompleted) && { color: Colors.text }]}>
+                      {TIER_DISPLAY_NAMES[t]}
+                    </Text>
+                    <Text style={styles.tierWeight}>{TIER_WEIGHTS[t].toFixed(2)}x weight</Text>
+                  </View>
+                  <Text style={styles.tierRange}>
+                    {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
+                  </Text>
+                  {isCurrent && (
+                    <View style={styles.currentBadge}>
+                      <Text style={styles.currentBadgeText}>YOU</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
-          ))}
+                {idx < arr.length - 1 && (
+                  <View style={[styles.tierConnector, {
+                    backgroundColor: isCompleted ? TIER_COLORS[t] : Colors.border,
+                  }]} />
+                )}
+              </View>
+            );
+          })}
         </View>
       </View>
     </ScrollView>
@@ -697,7 +714,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   tierRowActive: { backgroundColor: Colors.goldFaint },
-  tierDot: { width: 8, height: 8, borderRadius: 4 },
+  tierDot: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  tierConnector: { width: 2, height: 16, marginLeft: 19, borderRadius: 1 },
   tierRowInfo: { flex: 1, gap: 1 },
   tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
