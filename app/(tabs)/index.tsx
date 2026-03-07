@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Alert,
+  ScrollView, Platform, Alert, Animated,
   TextInput, RefreshControl, useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
@@ -19,6 +19,17 @@ import { LeaderboardSkeleton } from "@/components/Skeleton";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
+
+function usePressAnimation() {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = useCallback(() => {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  const onPressOut = useCallback(() => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  return { scale, onPressIn, onPressOut };
+}
 
 interface MappedBusiness {
   id: string;
@@ -98,10 +109,14 @@ const StarRating = React.memo(function StarRating({ score }: { score: number }) 
 function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
+  const { scale, onPressIn, onPressOut } = usePressAnimation();
 
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity
       activeOpacity={0.9}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       style={styles.heroCard}
       accessibilityRole="button"
@@ -148,6 +163,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -212,10 +228,14 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
+  const { scale, onPressIn, onPressOut } = usePressAnimation();
 
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity
       activeOpacity={0.75}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       style={styles.rankedCard}
       accessibilityRole="button"
@@ -260,9 +280,16 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
               <Text style={styles.challengerPillText}>IN CHALLENGE</Text>
             </View>
           )}
+          {item.ratingCount >= 20 && (
+            <View style={styles.activityPill}>
+              <Ionicons name="flame" size={9} color={AMBER} />
+              <Text style={styles.activityPillText}>ACTIVE</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -342,6 +369,7 @@ export default function LeaderboardScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          maxLength={100}
           accessibilityLabel="Search restaurants and dishes"
           returnKeyType="search"
         />
@@ -797,6 +825,22 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: "700",
     color: BRAND.colors.navy,
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.3,
+  },
+  activityPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 99,
+    backgroundColor: `${AMBER}15`,
+  },
+  activityPillText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: AMBER,
     fontFamily: "DMSans_700Bold",
     letterSpacing: 0.3,
   },

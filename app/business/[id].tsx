@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Linking, Share, useWindowDimensions,
+  Platform, Linking, Share, useWindowDimensions, Animated, Easing,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
   LayoutAnimation, UIManager,
 } from "react-native";
@@ -205,6 +205,27 @@ function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
       )}
     </View>
   );
+}
+
+function AnimatedScore({ value, style }: { value: number; style: any }) {
+  const animVal = useRef(new Animated.Value(0)).current;
+  const [displayVal, setDisplayVal] = useState("0.00");
+
+  useEffect(() => {
+    animVal.setValue(0);
+    const listener = animVal.addListener(({ value: v }) => {
+      setDisplayVal(v.toFixed(2));
+    });
+    Animated.timing(animVal, {
+      toValue: value,
+      duration: 800,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    return () => animVal.removeListener(listener);
+  }, [value]);
+
+  return <Text style={style}>{displayVal}</Text>;
 }
 
 function DishPill({ dish }: { dish: ApiDish }) {
@@ -413,7 +434,7 @@ export default function BusinessProfileScreen() {
 
           {/* Score */}
           <View style={styles.scoreCard}>
-            <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
+            <AnimatedScore value={business.weightedScore} style={styles.scoreNumber} />
             <Text style={styles.scoreLabel}>Weighted Score</Text>
             <View style={styles.scoreMetaRow}>
               <Text style={styles.scoreMetaItem}>{business.ratingCount.toLocaleString()} ratings</Text>

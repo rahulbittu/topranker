@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, Animated,
   TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
   useWindowDimensions,
 } from "react-native";
@@ -20,6 +20,17 @@ import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/j
 const AMBER = BRAND.colors.amber;
 const CARD_H_MARGIN = 16;
 
+function usePressAnimation() {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = useCallback(() => {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  const onPressOut = useCallback(() => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  return { scale, onPressIn, onPressOut };
+}
+
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Dallas: { lat: 32.7767, lng: -96.7970 },
   Austin: { lat: 30.2672, lng: -97.7431 },
@@ -28,8 +39,8 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "Fort Worth": { lat: 32.7555, lng: -97.3308 },
 };
 
-type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
-const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
+type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now";
+const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now"];
 const CITIES = ["Dallas", "Austin", "Houston", "San Antonio", "Fort Worth"];
 
 type ViewMode = "list" | "map";
@@ -114,10 +125,14 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
+  const { scale, onPressIn, onPressOut } = usePressAnimation();
 
   return (
+    <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity
       style={styles.card}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
       accessibilityRole="button"
@@ -163,9 +178,16 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
               </Text>
             </View>
           )}
+          {item.ratingCount && item.ratingCount >= 20 && (
+            <View style={styles.activityPill}>
+              <Ionicons name="flame" size={9} color={AMBER} />
+              <Text style={styles.activityPillText}>ACTIVE</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -420,6 +442,7 @@ export default function SearchScreen() {
     if (activeFilter === "Top 10") list = list.filter((b: MappedBusiness) => b.rank <= 10);
     else if (activeFilter === "Challenging") list = list.filter((b: MappedBusiness) => b.isChallenger);
     else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
+    else if (activeFilter === "Open Now") list = list.filter((b: MappedBusiness) => b.isOpenNow === true);
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
   }, [allBusinesses, activeFilter]);
 
@@ -459,6 +482,7 @@ export default function SearchScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={query}
           onChangeText={setQuery}
+          maxLength={100}
           accessibilityLabel="Search for restaurants, neighborhoods, or dishes"
           returnKeyType="search"
         />
@@ -770,4 +794,20 @@ const styles = StyleSheet.create({
   },
   mapBottomSheetInfo: { flex: 1, gap: 2 },
   mapBottomSheetAction: { color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
+  activityPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 99,
+    backgroundColor: `${AMBER}15`,
+  },
+  activityPillText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: AMBER,
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.3,
+  },
 });

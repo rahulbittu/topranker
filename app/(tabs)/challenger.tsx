@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Animated,
   Platform, TouchableOpacity, RefreshControl, LayoutAnimation, UIManager,
 } from "react-native";
 
@@ -18,6 +18,17 @@ import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { ChallengerSkeleton } from "@/components/Skeleton";
+
+function usePressAnimation() {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = useCallback(() => {
+    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  const onPressOut = useCallback(() => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scale]);
+  return { scale, onPressIn, onPressOut };
+}
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -199,6 +210,7 @@ const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { b
 });
 
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
+  const { scale, onPressIn, onPressOut } = usePressAnimation();
   const [, setTick] = useState(0);
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
@@ -219,7 +231,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const catDisplay = getCategoryDisplay(challenge.category);
 
   return (
-    <View style={styles.card}>
+    <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.catText}>{catDisplay.emoji} {catDisplay.label.toUpperCase()}</Text>
         <Text style={styles.cityText}>{challenge.city}</Text>
@@ -228,6 +240,8 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       <View style={styles.fightCard}>
         <TouchableOpacity
           style={styles.fighter}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.defenderBusiness.slug } })}
           activeOpacity={0.8}
           accessibilityRole="button"
@@ -246,6 +260,8 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
         <TouchableOpacity
           style={styles.fighter}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.challengerBusiness.slug } })}
           activeOpacity={0.8}
           accessibilityRole="button"
@@ -276,7 +292,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       </View>
 
       <CommunityReviews challenge={challenge} />
-    </View>
+    </Animated.View>
   );
 }
 

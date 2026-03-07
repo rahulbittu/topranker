@@ -7,6 +7,32 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
+const AMBER = BRAND.colors.amber;
+
+function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof Ionicons>["name"]; color: string; focused: boolean }) {
+  return (
+    <View style={tabStyles.iconWrap}>
+      <Ionicons name={name} size={22} color={color} />
+      {focused && <View style={tabStyles.activeDot} />}
+    </View>
+  );
+}
+
+const tabStyles = StyleSheet.create({
+  iconWrap: { alignItems: "center", gap: 2 },
+  activeDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: AMBER,
+    shadowColor: AMBER,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+});
+
 function NativeTabLayout() {
   return (
     <NativeTabs>
@@ -61,28 +87,28 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Rankings",
-          tabBarIcon: ({ color }) => <Ionicons name="bar-chart" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="bar-chart" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="challenger"
         options={{
           title: "Challenger",
-          tabBarIcon: ({ color }) => <Ionicons name="flash" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="flash" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="search"
         options={{
           title: "Discover",
-          tabBarIcon: ({ color }) => <Ionicons name="compass" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="compass" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={22} color={color} />,
+          tabBarIcon: ({ color, focused }) => <TabIcon name="person" color={color} focused={focused} />,
         }}
       />
     </Tabs>
