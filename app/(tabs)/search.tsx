@@ -78,7 +78,7 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
   );
 }
 
-function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
+const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
   const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
@@ -135,7 +135,7 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 function MapBusinessCard({ item }: { item: MappedBusiness }) {
   const catDisplay = getCategoryDisplay(item.category);

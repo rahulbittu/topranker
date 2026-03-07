@@ -152,7 +152,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
   );
 }
 
-function RankedCard({ item }: { item: MappedBusiness }) {
+const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
   const [imgError, setImgError] = useState(false);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
@@ -222,7 +222,7 @@ function RankedCard({ item }: { item: MappedBusiness }) {
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
