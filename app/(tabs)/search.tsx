@@ -490,7 +490,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 11,
     borderBottomWidth: 1, borderBottomColor: "#E5E5EA",
   },
-  cityOptionActive: { backgroundColor: "rgba(196, 154, 26, 0.08)" },
+  cityOptionActive: { backgroundColor: Colors.goldFaint },
   cityOptionText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular" },
   cityOptionTextActive: { color: AMBER, fontWeight: "600" },
 
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
   mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold" },
   mapPinBtn: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: "rgba(196, 154, 26, 0.1)",
+    backgroundColor: Colors.goldFaint,
     alignItems: "center", justifyContent: "center",
   },
 
