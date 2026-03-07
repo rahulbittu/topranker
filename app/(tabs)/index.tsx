@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, Alert, Animated,
@@ -16,20 +16,10 @@ import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
+import { usePressAnimation } from "@/hooks/usePressAnimation";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
-
-function usePressAnimation() {
-  const scale = useRef(new Animated.Value(1)).current;
-  const onPressIn = useCallback(() => {
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  const onPressOut = useCallback(() => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  return { scale, onPressIn, onPressOut };
-}
 
 interface MappedBusiness {
   id: string;
@@ -237,9 +227,17 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
   const rankLabel = getRankDisplay(item.rank);
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(10)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <Animated.View style={{ transform: [{ scale }, { translateY: slideAnim }], opacity: fadeAnim }}>
     <TouchableOpacity
       activeOpacity={0.75}
       onPressIn={onPressIn}
@@ -349,7 +347,10 @@ export default function LeaderboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <AppLogo size="md" />
+        <View>
+          <AppLogo size="md" />
+          <Text style={styles.headerSubtitle}>Top-rated in Dallas</Text>
+        </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.citySelector}
@@ -409,6 +410,7 @@ export default function LeaderboardScreen() {
               style={[styles.chip, isActive && styles.chipActive]}
               accessibilityRole="button"
               accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
+              accessibilityHint="Double tap to view this category"
               accessibilityState={{ selected: isActive }}
             >
               <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
@@ -500,6 +502,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 10,
     paddingTop: 2,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
+    marginTop: 2,
   },
   headerRight: {
     flexDirection: "row",

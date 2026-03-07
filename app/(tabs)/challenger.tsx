@@ -19,17 +19,7 @@ import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type C
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { ChallengerSkeleton } from "@/components/Skeleton";
-
-function usePressAnimation() {
-  const scale = useRef(new Animated.Value(1)).current;
-  const onPressIn = useCallback(() => {
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  const onPressOut = useCallback(() => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  return { scale, onPressIn, onPressOut };
-}
+import { usePressAnimation } from "@/hooks/usePressAnimation";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;

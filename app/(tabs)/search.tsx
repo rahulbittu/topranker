@@ -17,19 +17,10 @@ import { fetchBusinessSearch } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
+import { usePressAnimation } from "@/hooks/usePressAnimation";
+
 const AMBER = BRAND.colors.amber;
 const CARD_H_MARGIN = 16;
-
-function usePressAnimation() {
-  const scale = useRef(new Animated.Value(1)).current;
-  const onPressIn = useCallback(() => {
-    Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  const onPressOut = useCallback(() => {
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
-  }, [scale]);
-  return { scale, onPressIn, onPressOut };
-}
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Dallas: { lat: 32.7767, lng: -96.7970 },
@@ -545,6 +536,7 @@ export default function SearchScreen() {
             style={[styles.priceChip, priceFilter === p && styles.priceChipActive]}
             accessibilityRole="button"
             accessibilityLabel={`Price ${p}${priceFilter === p ? ", selected" : ""}`}
+            accessibilityHint="Double tap to filter by this price range"
             accessibilityState={{ selected: priceFilter === p }}
           >
             <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>

@@ -444,6 +444,15 @@ export default function BusinessProfileScreen() {
             </Text>
             <Text style={styles.statLabel}>Would Return</Text>
           </View>
+          {ratings.length > 0 && (
+            <>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>{ratings.length}</Text>
+                <Text style={styles.statLabel}>Reviews</Text>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.body}>
@@ -451,6 +460,8 @@ export default function BusinessProfileScreen() {
           {business.description && (
             <Text style={styles.descriptionText}>{business.description}</Text>
           )}
+
+          <View style={styles.sectionDivider} />
 
           {/* Score */}
           <View style={styles.scoreCard}>
@@ -487,6 +498,8 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
+          <View style={styles.sectionDivider} />
+
           {/* Action Bar */}
           <View style={styles.actionBar}>
             <ActionButton icon="call-outline" label="Call" onPress={handleCall} disabled={!business.phone} />
@@ -494,6 +507,8 @@ export default function BusinessProfileScreen() {
             <ActionButton icon="navigate-outline" label="Maps" onPress={handleMaps} disabled={!business.address} />
             <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
           </View>
+
+          <View style={styles.sectionDivider} />
 
           {/* Top Dishes */}
           {dishes.length > 0 && (
@@ -781,6 +796,7 @@ const styles = StyleSheet.create({
   actionBtnLabelDisabled: { color: Colors.textTertiary },
 
   sectionContainer: { gap: 10 },
+  sectionDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   sectionHeaderBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   sectionCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
