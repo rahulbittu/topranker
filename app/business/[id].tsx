@@ -307,10 +307,10 @@ export default function BusinessProfileScreen() {
           )}
 
           <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={handleShare}>
+            <TouchableOpacity style={styles.navBtn} onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share this business">
               <Ionicons name="share-outline" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -405,6 +405,8 @@ export default function BusinessProfileScreen() {
               onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.slug } })}
               activeOpacity={0.85}
               testID="rate-this-place"
+              accessibilityRole="button"
+              accessibilityLabel={`Rate ${business.name}`}
             >
               <Ionicons name="star" size={18} color="#FFFFFF" />
               <Text style={styles.rateButtonText}>Rate This Place</Text>

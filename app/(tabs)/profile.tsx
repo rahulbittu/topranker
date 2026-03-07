@@ -216,7 +216,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
     >
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn} accessibilityRole="button" accessibilityLabel="Log out">
           <Ionicons name="log-out-outline" size={18} color={Colors.textTertiary} />
         </TouchableOpacity>
       </View>

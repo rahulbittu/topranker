@@ -102,6 +102,8 @@ function HeroCard({ item }: { item: MappedBusiness }) {
       activeOpacity={0.9}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       style={styles.heroCard}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={{ position: "relative" }}>
         <PhotoMosaic photos={photos} height={220} category={item.category} />
@@ -159,6 +161,8 @@ function RankedCard({ item }: { item: MappedBusiness }) {
       activeOpacity={0.75}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       style={styles.rankedCard}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount} ratings`}
     >
       {photos.length > 0 && !imgError ? (
         <Image
@@ -268,6 +272,7 @@ export default function LeaderboardScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          accessibilityLabel="Search restaurants and dishes"
         />
         {!!searchQuery && (
           <TouchableOpacity onPress={() => setSearchQuery("")}>
@@ -290,6 +295,9 @@ export default function LeaderboardScreen() {
               key={chip.slug}
               onPress={() => setActiveCategory(chip.slug)}
               style={[styles.chip, isActive && styles.chipActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
+              accessibilityState={{ selected: isActive }}
             >
               <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
                 <Text style={styles.chipEmoji}>{chip.emoji}</Text>

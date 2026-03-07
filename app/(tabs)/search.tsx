@@ -386,6 +386,7 @@ export default function SearchScreen() {
           placeholderTextColor={Colors.textTertiary}
           value={query}
           onChangeText={setQuery}
+          accessibilityLabel="Search for restaurants, neighborhoods, or dishes"
         />
         {!!query && (
           <TouchableOpacity onPress={() => setQuery("")}>
