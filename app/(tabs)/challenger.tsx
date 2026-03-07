@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
-  Platform, ActivityIndicator, Image, TouchableOpacity,
+  Platform, ActivityIndicator, Image, TouchableOpacity, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -11,9 +11,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
-import { getCategoryDisplay } from "@/constants/brand";
-
-const AMBER = "#C49A1A";
+import { getCategoryDisplay, BRAND } from "@/constants/brand";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -49,7 +47,7 @@ function ReviewRow({ review }: { review: ReviewItem }) {
 
   let tierBadgeBg = "#8E8E93";
   if (review.userTier === "top") tierBadgeBg = "#C9973A";
-  else if (review.userTier === "trusted") tierBadgeBg = AMBER;
+  else if (review.userTier === "trusted") tierBadgeBg = BRAND.colors.amber;
 
   return (
     <View style={styles.reviewRow}>
@@ -120,7 +118,7 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   return (
     <View style={styles.reviewsSection}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-        <Ionicons name="chatbubbles-outline" size={14} color={AMBER} />
+        <Ionicons name="chatbubbles-outline" size={14} color={BRAND.colors.amber} />
         <Text style={styles.reviewsSectionTitle}>COMMUNITY REVIEWS</Text>
       </View>
       {displayReviews.map(review => (
@@ -143,7 +141,7 @@ function FighterPhoto({ biz }: { biz: any }) {
     );
   }
   return (
-    <LinearGradient colors={[AMBER, "#9A7510"]} style={styles.fighterPhoto}>
+    <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={styles.fighterPhoto}>
       <Text style={styles.fighterPhotoInitial}>{biz.name?.charAt(0) || "?"}</Text>
     </LinearGradient>
   );
@@ -224,11 +222,18 @@ export default function ChallengerScreen() {
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const { data: challenges = [], isLoading } = useQuery({
+  const { data: challenges = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["challengers", "Dallas"],
     queryFn: () => fetchActiveChallenges("Dallas"),
     staleTime: 30000,
   });
+
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -243,9 +248,21 @@ export default function ChallengerScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.gold} />
         </View>
+      ) : isError ? (
+        <View style={styles.errorState}>
+          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
+          <Text style={styles.errorText}>Couldn't load challenges</Text>
+          <Text style={styles.errorSubtext}>Check your connection and try again</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()} activeOpacity={0.8}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND.colors.amber} />
+          }
           contentContainerStyle={[
             styles.content,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
@@ -297,6 +314,17 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  errorState: { alignItems: "center", paddingTop: 60, gap: 8 },
+  errorText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  errorSubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  retryButton: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    backgroundColor: BRAND.colors.amber,
+    borderRadius: 20,
+  },
+  retryText: { fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -452,7 +480,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: AMBER,
+    backgroundColor: BRAND.colors.amber,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -491,7 +519,7 @@ const styles = StyleSheet.create({
   },
   reviewBusinessName: {
     fontSize: 11,
-    color: AMBER,
+    color: BRAND.colors.amber,
     fontFamily: "DMSans_500Medium",
   },
   reviewTime: {
