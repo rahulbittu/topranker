@@ -207,13 +207,14 @@ function MapBusinessCard({ item }: { item: MappedBusiness }) {
   );
 }
 
+let _mapsInitialized = false;
+
 function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const infoWindowRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [mapError, setMapError] = useState(false);
+  const [mapError, setMapError] = useState<string | false>(false);
 
   const bizWithCoords = businesses.filter(b => b.lat && b.lng);
 
@@ -221,18 +222,20 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     if (Platform.OS !== "web") return;
 
     const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-    console.log("[MapView] API key present:", !!apiKey, "Platform:", Platform.OS);
     if (!apiKey) {
-      console.warn("[MapView] No Google Maps API key found in EXPO_PUBLIC_GOOGLE_MAPS_API_KEY");
-      setMapError(true);
+      setMapError("No API key. Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your environment.");
       return;
     }
 
-    setGoogleMapsOptions({ key: apiKey, v: "weekly" });
+    if (!_mapsInitialized) {
+      setGoogleMapsOptions({ key: apiKey, v: "weekly" });
+      _mapsInitialized = true;
+    }
 
     importLibrary("maps").then((mapsLib: any) => {
-      if (!mapRef.current) return;
+      if (!mapRef.current || mapInstance.current) return;
       const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
+
       const map = new mapsLib.Map(mapRef.current, {
         center,
         zoom: 12,
@@ -241,32 +244,33 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
+        clickableIcons: false,
         styles: [
           { featureType: "poi", stylers: [{ visibility: "off" }] },
           { featureType: "transit", stylers: [{ visibility: "off" }] },
         ],
       });
+
+      map.addListener("click", () => onSelectBiz?.(null));
+
       mapInstance.current = map;
-
-      // Clicking on the map (not a marker) deselects
-      map.addListener("click", () => {
-        if (infoWindowRef.current) infoWindowRef.current.close();
-        onSelectBiz?.(null);
-      });
-
-      importLibrary("core").then(() => {
-        const google = (window as any).google;
-        infoWindowRef.current = new google.maps.InfoWindow();
-        setMapReady(true);
-        updateMarkers(google, map, bizWithCoords);
-      });
-    }).catch((err) => {
-      console.error("[MapView] Failed to load Google Maps:", err);
-      setMapError(true);
+      setMapReady(true);
+      const google = (window as any).google;
+      if (google) updateMarkers(google, map, bizWithCoords);
+    }).catch((err: any) => {
+      console.error("[MapView] Google Maps load error:", err);
+      const msg = String(err?.message || err || "");
+      if (msg.includes("ApiNotActivatedMapError") || msg.includes("REQUEST_DENIED")) {
+        setMapError("Maps JavaScript API is not enabled. Enable it at console.cloud.google.com/apis/library/maps-backend.googleapis.com");
+      } else if (msg.includes("InvalidKeyMapError")) {
+        setMapError("Invalid API key. Check EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.");
+      } else {
+        setMapError("Failed to load Google Maps. Check console for details.");
+      }
     });
 
     return () => {
-      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current.forEach(m => m.setMap?.(null));
       markersRef.current = [];
     };
   }, []);
@@ -284,27 +288,23 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
-    // Fit bounds to show all markers
-    if (items.length > 0) {
-      const bounds = new google.maps.LatLngBounds();
-      items.forEach(b => { if (b.lat && b.lng) bounds.extend({ lat: b.lat, lng: b.lng }); });
-      map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
-      // Don't zoom in too much for a single marker
-      const listener = google.maps.event.addListener(map, "idle", () => {
-        if (map.getZoom() > 16) map.setZoom(16);
-        google.maps.event.removeListener(listener);
-      });
-    }
+    if (items.length === 0) return;
+
+    const bounds = new google.maps.LatLngBounds();
 
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
+      bounds.extend({ lat: biz.lat, lng: biz.lng });
+
+      const pinSvg = encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><defs><filter id="s" x="-20%" y="-10%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/></filter></defs><path d="M20 46C20 46 36 28 36 18C36 9.16 28.84 2 20 2C11.16 2 4 9.16 4 18C4 28 20 46 20 46Z" fill="${AMBER}" stroke="white" stroke-width="2" filter="url(#s)"/><text x="20" y="23" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">${biz.rank}</text></svg>`
+      );
+
       const marker = new google.maps.Marker({
         position: { lat: biz.lat, lng: biz.lng },
         map,
         icon: {
-          url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><defs><filter id="s" x="-20%" y="-10%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/></filter></defs><path d="M20 46C20 46 36 28 36 18C36 9.16 28.84 2 20 2C11.16 2 4 9.16 4 18C4 28 20 46 20 46Z" fill="${AMBER}" stroke="white" stroke-width="2" filter="url(#s)"/><text x="20" y="23" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">${biz.rank}</text></svg>`
-          )}`,
+          url: `data:image/svg+xml,${pinSvg}`,
           scaledSize: new google.maps.Size(40, 48),
           anchor: new google.maps.Point(20, 48),
         },
@@ -314,25 +314,18 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 
       marker.addListener("click", () => {
         onSelectBiz?.(biz);
-        // Close any existing info window
-        if (infoWindowRef.current) infoWindowRef.current.close();
-        // Pan to marker
         map.panTo({ lat: biz.lat, lng: biz.lng });
       });
 
       markersRef.current.push(marker);
     });
-  }
 
-  // Register global nav handler for InfoWindow clicks
-  useEffect(() => {
-    if (Platform.OS === "web") {
-      (window as any).__mapNavTo__ = (slug: string) => {
-        router.push({ pathname: "/business/[id]", params: { id: slug } });
-      };
-      return () => { delete (window as any).__mapNavTo__; };
-    }
-  }, []);
+    map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+    const listener = google.maps.event.addListener(map, "idle", () => {
+      if (map.getZoom() > 15) map.setZoom(15);
+      google.maps.event.removeListener(listener);
+    });
+  }
 
   if (Platform.OS !== "web") {
     return (
@@ -345,9 +338,9 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 
   if (mapError) {
     return (
-      <View style={styles.mapFallbackBanner}>
-        <Ionicons name="alert-circle-outline" size={20} color={Colors.red} />
-        <Text style={styles.mapFallbackText}>Could not load map. Check your API key and restart the server.</Text>
+      <View style={styles.mapErrorBanner}>
+        <Ionicons name="alert-circle-outline" size={24} color={Colors.red} />
+        <Text style={styles.mapErrorText}>{mapError}</Text>
       </View>
     );
   }
@@ -355,7 +348,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
   return (
     <View style={styles.mapContainer}>
       <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
-      {!mapReady && !mapError && (
+      {!mapReady && (
         <View style={styles.mapLoadingOverlay}>
           <ActivityIndicator size="small" color={AMBER} />
         </View>
@@ -791,6 +784,14 @@ const styles = StyleSheet.create({
   },
   mapFallbackText: {
     fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  mapErrorBanner: {
+    flex: 1, alignItems: "center", justifyContent: "center", gap: 10,
+    paddingHorizontal: 24, paddingVertical: 40,
+  },
+  mapErrorText: {
+    fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium",
+    textAlign: "center", lineHeight: 18,
   },
 
   // Selected business card overlay on map

@@ -92,3 +92,4 @@ outputType = "console"
 [userenv.shared]
 GOOGLE_CLIENT_ID = "398463204542-83aqkprn9rvbkgkad9lnc770pl2mq4a0.apps.googleusercontent.com"
 EXPO_PUBLIC_GOOGLE_CLIENT_ID = "398463204542-83aqkprn9rvbkgkad9lnc770pl2mq4a0.apps.googleusercontent.com"
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY = "AIzaSyAhOPhJIHQCEL_5M4TqBjbTSX1nWkkZZs4"
