@@ -485,6 +485,35 @@ export default function BusinessProfileScreen() {
             </View>
           </View>
 
+          {/* Trust Explainer */}
+          <View style={styles.trustCard}>
+            <View style={styles.trustCardHeader}>
+              <Ionicons name="shield-checkmark" size={16} color={Colors.green} />
+              <Text style={styles.trustCardTitle}>About This Ranking</Text>
+            </View>
+            <Text style={styles.trustCardBody}>
+              This score is calculated from {business.ratingCount.toLocaleString()} community ratings, weighted by each rater's credibility tier. Higher-credibility members have more influence, making this ranking resistant to spam and manipulation.
+            </Text>
+            <View style={styles.trustCardStats}>
+              <View style={styles.trustStat}>
+                <Text style={styles.trustStatValue}>{business.ratingCount.toLocaleString()}</Text>
+                <Text style={styles.trustStatLabel}>Weighted Ratings</Text>
+              </View>
+              <View style={styles.trustStat}>
+                <Text style={styles.trustStatValue}>{business.weightedScore.toFixed(1)}</Text>
+                <Text style={styles.trustStatLabel}>Community Score</Text>
+              </View>
+              {ratings.length > 0 && (
+                <View style={styles.trustStat}>
+                  <Text style={styles.trustStatValue}>
+                    {Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}%
+                  </Text>
+                  <Text style={styles.trustStatLabel}>Would Return</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
           {/* Sub-scores */}
           {ratings.length > 0 && (
             <View style={styles.subScoresCard}>
@@ -777,6 +806,56 @@ const styles = StyleSheet.create({
   scoreMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   scoreMetaItem: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   googleRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+
+  trustCard: {
+    backgroundColor: `${Colors.green}08`,
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: `${Colors.green}20`,
+  },
+  trustCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  trustCardTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  trustCardBody: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
+    lineHeight: 18,
+  },
+  trustCardStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: `${Colors.green}15`,
+  },
+  trustStat: {
+    alignItems: "center",
+    gap: 2,
+  },
+  trustStatValue: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold",
+  },
+  trustStatLabel: {
+    fontSize: 9,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
+    textTransform: "uppercase" as const,
+    letterSpacing: 0.5,
+  },
 
   subScoresCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
