@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { businesses, challengers, members, dishes } from "@shared/schema";
+import { businesses, challengers, members, dishes, businessPhotos } from "@shared/schema";
 import { sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
@@ -125,6 +125,200 @@ export async function seedDatabase() {
   }
 
   console.log(`Seeded ${insertedBusinesses.length} businesses`);
+
+  // Seed businessPhotos table with multiple photos per business
+  const photoSets: Record<string, string[]> = {
+    "spice-garden-dallas": [
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&h=400&fit=crop",
+    ],
+    "the-yard-kitchen-dallas": [
+      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&h=400&fit=crop",
+    ],
+    "lucky-cat-ramen-dallas": [
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1557872943-16a5ac26437e?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1623341214825-9f4f963727da?w=600&h=400&fit=crop",
+    ],
+    "smoke-and-vine-dallas": [
+      "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558030006-450675393462?w=600&h=400&fit=crop",
+    ],
+    "abuelas-kitchen-dallas": [
+      "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop",
+    ],
+    "seoul-brothers-dallas": [
+      "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop",
+    ],
+    "pecan-lodge-dallas": [
+      "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558030006-450675393462?w=600&h=400&fit=crop",
+    ],
+    "lucia-dallas": [
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&h=400&fit=crop",
+    ],
+    "khao-noodle-dallas": [
+      "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1557872943-16a5ac26437e?w=600&h=400&fit=crop",
+    ],
+    "fearings-dallas": [
+      "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop",
+    ],
+    "cultivar-coffee-dallas": [
+      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop",
+    ],
+    "houndstooth-coffee-dallas": [
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop",
+    ],
+    "the-brew-room-dallas": [
+      "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop",
+    ],
+    "mudleaf-coffee-dallas": [
+      "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop",
+    ],
+    "merit-coffee-dallas": [
+      "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop",
+    ],
+    "taco-stop-dallas": [
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=600&h=400&fit=crop",
+    ],
+    "fuel-city-tacos-dallas": [
+      "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop",
+    ],
+    "elote-man-dallas": [
+      "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop",
+    ],
+    "kabob-king-dallas": [
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop",
+    ],
+    "chimmys-churros-dallas": [
+      "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop",
+    ],
+    "midnight-rambler-dallas": [
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop",
+    ],
+    "atwater-alley-dallas": [
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop",
+    ],
+    "the-grapevine-bar-dallas": [
+      "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1538488881038-e252a119ace7?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop",
+    ],
+    "javiers-cigar-bar-dallas": [
+      "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop",
+    ],
+    "lee-harveys-dallas": [
+      "https://images.unsplash.com/photo-1538488881038-e252a119ace7?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop",
+    ],
+    "village-baking-co-dallas": [
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop",
+    ],
+    "la-casita-bakeshop-dallas": [
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop",
+    ],
+    "bisous-bisous-patisserie-dallas": [
+      "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
+    ],
+    "empire-baking-co-dallas": [
+      "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop",
+    ],
+    "haute-sweets-patisserie-dallas": [
+      "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop",
+    ],
+    "raising-canes-dallas": [
+      "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop",
+    ],
+    "whataburger-dallas": [
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop",
+    ],
+    "in-n-out-burger-dallas": [
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop",
+    ],
+    "wingstop-dallas-hq": [
+      "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop",
+    ],
+    "taco-bell-cantina-dallas": [
+      "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop",
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop",
+    ],
+  };
+
+  let photoCount = 0;
+  for (const biz of insertedBusinesses) {
+    const photos = photoSets[biz.slug] || (biz.photoUrl ? [biz.photoUrl] : []);
+    for (let i = 0; i < photos.length; i++) {
+      await db.insert(businessPhotos).values({
+        businessId: biz.id,
+        photoUrl: photos[i],
+        isHero: i === 0,
+        sortOrder: i,
+      });
+      photoCount++;
+    }
+  }
+  console.log(`Seeded ${photoCount} business photos`);
 
   for (const dishGroup of SEED_DISHES) {
     const biz = insertedBusinesses.find((b) => b.slug === dishGroup.businessSlug);
