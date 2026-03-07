@@ -323,14 +323,20 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("All");
   const [city, setCity] = useState("Dallas");
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
   const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["search", city, query],
-    queryFn: () => fetchBusinessSearch(query, city),
+    queryKey: ["search", city, debouncedQuery],
+    queryFn: () => fetchBusinessSearch(debouncedQuery, city),
     staleTime: 15000,
   });
 
