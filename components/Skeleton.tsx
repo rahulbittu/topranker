@@ -65,6 +65,33 @@ export function BusinessDetailSkeleton() {
   );
 }
 
+export function ChallengerSkeleton() {
+  return (
+    <View style={styles.container}>
+      {[1, 2].map(i => (
+        <View key={i} style={styles.challengerCard}>
+          <SkeletonBlock style={{ width: "50%", height: 12, borderRadius: 6, alignSelf: "center" }} />
+          <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 12 }}>
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <SkeletonBlock style={{ width: 80, height: 80, borderRadius: 40 }} />
+              <SkeletonBlock style={{ width: 60, height: 12, borderRadius: 4 }} />
+            </View>
+            <View style={{ alignItems: "center", justifyContent: "center" }}>
+              <SkeletonBlock style={{ width: 30, height: 14, borderRadius: 4 }} />
+            </View>
+            <View style={{ alignItems: "center", gap: 8 }}>
+              <SkeletonBlock style={{ width: 80, height: 80, borderRadius: 40 }} />
+              <SkeletonBlock style={{ width: 60, height: 12, borderRadius: 4 }} />
+            </View>
+          </View>
+          <SkeletonBlock style={{ width: "100%", height: 6, borderRadius: 3, marginTop: 12 }} />
+          <SkeletonBlock style={{ width: "40%", height: 10, borderRadius: 4, marginTop: 8, alignSelf: "center" }} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function DiscoverSkeleton() {
   return (
     <View style={styles.container}>
@@ -100,6 +127,12 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 14,
+    ...Colors.cardShadow,
+  },
+  challengerCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 16,
     ...Colors.cardShadow,
   },
   discoverRow: {

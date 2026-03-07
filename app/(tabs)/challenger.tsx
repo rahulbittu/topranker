@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
-  Platform, ActivityIndicator, TouchableOpacity, RefreshControl,
+  Platform, TouchableOpacity, RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,6 +13,7 @@ import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
+import { ChallengerSkeleton } from "@/components/Skeleton";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -265,9 +266,7 @@ export default function ChallengerScreen() {
       </Text>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.gold} />
-        </View>
+        <ChallengerSkeleton />
       ) : isError ? (
         <View style={styles.errorState}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
