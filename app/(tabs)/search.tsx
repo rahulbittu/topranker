@@ -28,6 +28,7 @@ interface MappedBusiness {
   weightedScore: number;
   rank: number;
   rankDelta: number;
+  ratingCount?: number;
   isChallenger: boolean;
   priceRange?: string;
   photoUrl?: string;
@@ -84,14 +85,25 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
               <Text style={styles.cardNeighborhood}>{item.neighborhood}</Text>
             </>
           ) : null}
+          {item.priceRange ? (
+            <>
+              <Text style={styles.cardDot}> {"\u00B7"} </Text>
+              <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
+            </>
+          ) : null}
         </View>
         <View style={styles.cardRow3}>
-          <Text style={styles.cardScore}>{item.weightedScore.toFixed(1)}</Text>
+          <Text style={styles.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
+          {item.ratingCount ? (
+            <Text style={styles.cardRatingCount}>({item.ratingCount} ratings)</Text>
+          ) : null}
           {item.rankDelta !== 0 && (
             <Text style={{ fontSize: 11, color: item.rankDelta > 0 ? Colors.green : Colors.red, fontFamily: "DMSans_500Medium" }}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
+        </View>
+        <View style={styles.cardRow4}>
           {isOpen !== undefined && isOpen !== null && (
             <View style={[styles.statusPill, isOpen ? styles.statusPillOpen : styles.statusPillClosed]}>
               <Text style={styles.statusPillText}>
@@ -502,7 +514,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 14,
-    padding: 12, minHeight: 96, gap: 14,
+    padding: 12, minHeight: 100, gap: 14,
     borderWidth: 1, borderColor: "#E5E5EA",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -546,7 +558,13 @@ const styles = StyleSheet.create({
   statusPillClosed: { backgroundColor: "#FF3B30" },
   statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   cardScore: {
-    fontSize: 18, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
+    fontSize: 15, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
+  },
+  cardRatingCount: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  cardRow4: {
+    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 1,
   },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
