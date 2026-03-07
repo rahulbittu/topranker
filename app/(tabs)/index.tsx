@@ -357,7 +357,9 @@ export default function LeaderboardScreen() {
               <View style={styles.loadingContainer}>
                 <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
                 <Text style={styles.emptyText}>No businesses found</Text>
-                <Text style={styles.emptySubtext}>Try a different category</Text>
+                <Text style={styles.emptySubtext}>
+                  {searchQuery.trim() ? `No matches for "${searchQuery}"` : "Try a different category"}
+                </Text>
               </View>
             ) : null
           }

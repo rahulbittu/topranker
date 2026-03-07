@@ -42,6 +42,9 @@ function CircleScorePicker({ value, onChange }: { value: number; onChange: (v: n
             }}
             style={[styles.circle, isActive && styles.circleActive]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Score ${n}, ${SCORE_LABELS[n - 1]}`}
+            accessibilityState={{ selected: isActive }}
           >
             <Text style={[styles.circleNum, isActive && styles.circleNumActive]}>{n}</Text>
           </TouchableOpacity>
@@ -471,6 +474,9 @@ export default function RateScreen() {
                   setWouldReturn(true);
                 }}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Yes, would return"
+                accessibilityState={{ selected: wouldReturn === true }}
               >
                 <Ionicons
                   name="checkmark-circle"
@@ -488,6 +494,9 @@ export default function RateScreen() {
                   setWouldReturn(false);
                 }}
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="No, would not return"
+                accessibilityState={{ selected: wouldReturn === false }}
               >
                 <Ionicons
                   name="close-circle"
@@ -640,7 +649,7 @@ export default function RateScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={step > 1 ? "Previous step" : "Go back"}>
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <StepIndicator step={step - 1} total={6} />
