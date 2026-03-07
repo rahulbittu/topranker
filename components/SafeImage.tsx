@@ -20,13 +20,20 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
   const [failed, setFailed] = useState(false);
 
   if (failed || !uri) {
+    const initial = fallbackText?.charAt(0)?.toUpperCase() || "";
     const emoji = category ? getCategoryDisplay(category).emoji : "";
     return (
       <LinearGradient
-        colors={[BRAND.colors.amber, BRAND.colors.navy]}
+        colors={[BRAND.colors.amber, BRAND.colors.amberDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[style, fallbackStyles.container]}
       >
-        <Text style={fallbackStyles.emoji}>{fallbackText || emoji}</Text>
+        {initial ? (
+          <Text style={fallbackStyles.initial}>{initial}</Text>
+        ) : (
+          <Text style={fallbackStyles.emoji}>{emoji}</Text>
+        )}
       </LinearGradient>
     );
   }
@@ -44,5 +51,6 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
 
 const fallbackStyles = StyleSheet.create({
   container: { alignItems: "center", justifyContent: "center" },
+  initial: { fontSize: 32, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
   emoji: { fontSize: 28, color: "rgba(255,255,255,0.5)" },
 });

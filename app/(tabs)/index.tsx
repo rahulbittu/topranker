@@ -26,16 +26,23 @@ const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
 const RANKED_CARD_HEIGHT = 222;
 
-const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category, name }: { photos: string[]; height: number; category?: string; name?: string }) {
   if (photos.length === 0) {
+    const initial = name?.charAt(0)?.toUpperCase() || "";
     return (
       <LinearGradient
-        colors={[AMBER, BRAND.colors.navy]}
+        colors={[AMBER, BRAND.colors.amberDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[styles.mosaicFallback, { height }]}
       >
-        <Text style={styles.mosaicFallbackEmoji}>
-          {getCategoryDisplay(category || "").emoji}
-        </Text>
+        {initial ? (
+          <Text style={styles.mosaicFallbackInitial}>{initial}</Text>
+        ) : (
+          <Text style={styles.mosaicFallbackEmoji}>
+            {getCategoryDisplay(category || "").emoji}
+          </Text>
+        )}
       </LinearGradient>
     );
   }
@@ -101,7 +108,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
       accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={styles.heroPhotoWrap}>
-        <PhotoMosaic photos={photos} height={240} category={item.category} />
+        <PhotoMosaic photos={photos} height={240} category={item.category} name={item.name} />
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.7)"]}
           style={styles.heroGradient}
@@ -153,20 +160,27 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
   );
 }
 
-const PhotoStrip = React.memo(function PhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
+const PhotoStrip = React.memo(function PhotoStrip({ photos, height, category, containerWidth, name }: { photos: string[]; height: number; category?: string; containerWidth: number; name?: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripPhotos = photos.slice(0, 3);
   const stripWidth = containerWidth;
 
   if (stripPhotos.length === 0) {
+    const initial = name?.charAt(0)?.toUpperCase() || "";
     return (
       <LinearGradient
-        colors={[AMBER, BRAND.colors.navy]}
+        colors={[AMBER, BRAND.colors.amberDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[styles.photoStripFallback, { height }]}
       >
-        <Text style={styles.mosaicFallbackEmoji}>
-          {getCategoryDisplay(category || "").emoji}
-        </Text>
+        {initial ? (
+          <Text style={styles.mosaicFallbackInitial}>{initial}</Text>
+        ) : (
+          <Text style={styles.mosaicFallbackEmoji}>
+            {getCategoryDisplay(category || "").emoji}
+          </Text>
+        )}
       </LinearGradient>
     );
   }
@@ -238,7 +252,7 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${(item.ratingCount ?? 0).toLocaleString()} ratings`}
     >
       <View style={styles.rankedPhotoStripWrap}>
-        <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} />
+        <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} name={item.name} />
         {/* Rank badge overlaid top-left */}
         <View style={[
           styles.rankBadge,
@@ -509,6 +523,7 @@ const styles = StyleSheet.create({
   // Photo Mosaic
   mosaicFallback: { alignItems: "center", justifyContent: "center" },
   mosaicFallbackEmoji: { fontSize: 40, color: "rgba(255,255,255,0.5)" },
+  mosaicFallbackInitial: { fontSize: 48, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
   mosaicFull: { width: "100%" as any },
   mosaicRow: { flexDirection: "row", gap: 3 },
   mosaicMainPhoto: { width: "60%" },

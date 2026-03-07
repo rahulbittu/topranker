@@ -38,20 +38,27 @@ const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open
 
 type ViewMode = "list" | "map";
 
-const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
+const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, height, category, containerWidth, name }: { photos: string[]; height: number; category?: string; containerWidth: number; name?: string }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripWidth = containerWidth;
   const stripPhotos = photos.slice(0, 3);
 
   if (stripPhotos.length === 0) {
+    const initial = name?.charAt(0)?.toUpperCase() || "";
     return (
       <LinearGradient
-        colors={[AMBER, BRAND.colors.navy]}
+        colors={[AMBER, BRAND.colors.amberDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={[styles.discoverStripFallback, { height }]}
       >
-        <Text style={styles.discoverStripFallbackEmoji}>
-          {getCategoryDisplay(category || "").emoji}
-        </Text>
+        {initial ? (
+          <Text style={styles.discoverStripFallbackInitial}>{initial}</Text>
+        ) : (
+          <Text style={styles.discoverStripFallbackEmoji}>
+            {getCategoryDisplay(category || "").emoji}
+          </Text>
+        )}
       </LinearGradient>
     );
   }
@@ -116,7 +123,7 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={styles.cardPhotoStripWrap}>
-        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} />
+        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} name={item.name} />
         <View style={styles.discoverRankBadge}>
           <Text style={styles.discoverRankBadgeText}>{rankLabel}</Text>
         </View>
@@ -798,6 +805,7 @@ const styles = StyleSheet.create({
   },
   discoverStripFallback: { alignItems: "center", justifyContent: "center" },
   discoverStripFallbackEmoji: { fontSize: 32, color: "rgba(255,255,255,0.5)" },
+  discoverStripFallbackInitial: { fontSize: 40, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
   discoverDotRow: {
     flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5,
     position: "absolute", bottom: 0, left: 0, right: 0,
