@@ -1,8 +1,12 @@
 import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
-  Platform, TouchableOpacity, RefreshControl,
+  Platform, TouchableOpacity, RefreshControl, LayoutAnimation, UIManager,
 } from "react-native";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -78,6 +82,8 @@ function ReviewRow({ review }: { review: ReviewItem }) {
 }
 
 function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
+  const [expanded, setExpanded] = useState(false);
+
   const { data: defenderData } = useQuery({
     queryKey: ["business", challenge.defenderBusiness.slug],
     queryFn: () => fetchBusinessBySlug(challenge.defenderBusiness.slug),
@@ -123,37 +129,65 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
 
   if (displayReviews.length === 0) return null;
 
+  const toggleExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
   return (
     <View style={styles.reviewsSection}>
-      <View style={styles.reviewsTitleRow}>
+      <TouchableOpacity
+        style={styles.reviewsTitleRow}
+        onPress={toggleExpanded}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? "Collapse community reviews" : "Expand community reviews"}
+      >
         <Ionicons name="chatbubbles-outline" size={14} color={BRAND.colors.amber} />
         <Text style={styles.reviewsSectionTitle}>COMMUNITY REVIEWS</Text>
-      </View>
-      {displayReviews.map(review => (
+        <Text style={styles.reviewsCount}>{displayReviews.length}</Text>
+        <View style={{ flex: 1 }} />
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textTertiary} />
+      </TouchableOpacity>
+      {expanded && displayReviews.map(review => (
         <ReviewRow key={review.id} review={review} />
       ))}
     </View>
   );
 }
 
-function FighterPhoto({ biz }: { biz: any }) {
+function FighterPhoto({ biz, label }: { biz: any; label: string }) {
   const [err, setErr] = useState(false);
   const photoUrl = biz.photoUrl || (biz.photoUrls && biz.photoUrls[0]);
+
+  const overlay = (
+    <LinearGradient colors={["transparent", "rgba(0,0,0,0.7)"]} style={styles.fighterOverlay}>
+      <Text style={styles.fighterOverlayName} numberOfLines={2}>{biz.name}</Text>
+      <Text style={styles.fighterOverlayLabel}>{label}</Text>
+    </LinearGradient>
+  );
+
   if (photoUrl && !err) {
     return (
-      <Image
-        source={{ uri: photoUrl }}
-        style={styles.fighterPhoto}
-        contentFit="cover"
-        transition={200}
-        onError={() => setErr(true)}
-      />
+      <View style={styles.fighterPhotoWrap}>
+        <Image
+          source={{ uri: photoUrl }}
+          style={styles.fighterPhoto}
+          contentFit="cover"
+          transition={200}
+          onError={() => setErr(true)}
+        />
+        {overlay}
+      </View>
     );
   }
   return (
-    <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={styles.fighterPhoto}>
-      <Text style={styles.fighterPhotoInitial}>{biz.name?.charAt(0) || "?"}</Text>
-    </LinearGradient>
+    <View style={styles.fighterPhotoWrap}>
+      <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={styles.fighterPhoto}>
+        <Text style={styles.fighterPhotoInitial}>{biz.name?.charAt(0) || "?"}</Text>
+      </LinearGradient>
+      {overlay}
+    </View>
   );
 }
 
@@ -192,9 +226,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
-          <FighterPhoto biz={challenge.defenderBusiness} />
-          <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderBusiness.name}</Text>
-          <Text style={styles.fighterLabel}>DEFENDING #1</Text>
+          <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" />
           <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>
@@ -212,9 +244,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
-          <FighterPhoto biz={challenge.challengerBusiness} />
-          <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerBusiness.name}</Text>
-          <Text style={styles.fighterLabel}>CHALLENGER</Text>
+          <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" />
           <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>
@@ -377,32 +407,46 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fighter: { flex: 1, alignItems: "center" as const, gap: 4 },
-  fighterPhoto: {
-    width: 56,
-    height: 56,
+  fighterPhotoWrap: {
+    width: "100%" as any,
+    height: 120,
     borderRadius: 10,
+    overflow: "hidden" as const,
+    position: "relative" as const,
+  },
+  fighterPhoto: {
+    width: "100%" as any,
+    height: 120,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    overflow: "hidden" as const,
   },
-  fighterPhotoInitial: {
-    fontSize: 22,
+  fighterOverlay: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    paddingTop: 24,
+  },
+  fighterOverlayName: {
+    fontSize: 14,
     fontWeight: "700" as const,
     color: "#fff",
-  },
-  fighterName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold",
-    textAlign: "center",
     letterSpacing: -0.3,
   },
-  fighterLabel: {
+  fighterOverlayLabel: {
     fontSize: 9,
-    color: Colors.textTertiary,
+    color: "rgba(255,255,255,0.8)",
     fontFamily: "DMSans_500Medium",
     letterSpacing: 0.5,
+    marginTop: 1,
+  },
+  fighterPhotoInitial: {
+    fontSize: 28,
+    fontWeight: "700" as const,
+    color: "#fff",
   },
   voteCount: {
     fontSize: 26,
@@ -497,7 +541,18 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     gap: 10,
   },
-  reviewsTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  reviewsTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 },
+  reviewsCount: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold",
+    backgroundColor: `${BRAND.colors.amber}15`,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
   reviewsSectionTitle: {
     fontSize: 11,
     fontWeight: "700",
