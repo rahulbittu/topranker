@@ -33,11 +33,12 @@ export function setupAuth(app: Express) {
       secret: process.env.SESSION_SECRET || "top-ranker-secret-key",
       resave: false,
       saveUninitialized: false,
+      proxy: process.env.NODE_ENV === "production",
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: "lax",
-        secure: false,
+        secure: process.env.NODE_ENV === "production",
       },
     }),
   );
@@ -106,16 +107,33 @@ export async function registerMember(data: {
   password: string;
   city?: string;
 }) {
-  const existing = await getMemberByEmail(data.email);
+  const email = data.email.trim().toLowerCase();
+  const username = data.username.trim().toLowerCase();
+  const displayName = data.displayName.trim();
+
+  if (!/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
+    throw new Error("Username must be 2-30 characters: letters, numbers, or underscores");
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Invalid email address");
+  }
+  if (displayName.length < 1 || displayName.length > 50) {
+    throw new Error("Display name must be 1-50 characters");
+  }
+
+  const existing = await getMemberByEmail(email);
   if (existing) throw new Error("Email already in use");
 
-  const existingUsername = await getMemberByUsername(data.username);
+  const existingUsername = await getMemberByUsername(username);
   if (existingUsername) throw new Error("Username already taken");
 
   const hashedPassword = await bcrypt.hash(data.password, 10);
 
   return createMember({
-    ...data,
+    displayName,
+    username,
+    email,
     password: hashedPassword,
+    city: data.city,
   });
 }
