@@ -161,6 +161,8 @@ export default function SignupScreen() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               testID="signup-password"
+              returnKeyType="go"
+              onSubmitEditing={handleSignup}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
               <Ionicons

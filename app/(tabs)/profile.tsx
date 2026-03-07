@@ -114,6 +114,7 @@ function LoggedOutView() {
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            returnKeyType="next"
           />
         </View>
 
@@ -126,6 +127,8 @@ function LoggedOutView() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
+            returnKeyType="go"
+            onSubmitEditing={handleSignIn}
           />
           <TouchableOpacity
             style={styles.eyeButton}

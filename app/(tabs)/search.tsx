@@ -387,6 +387,7 @@ export default function SearchScreen() {
           value={query}
           onChangeText={setQuery}
           accessibilityLabel="Search for restaurants, neighborhoods, or dishes"
+          returnKeyType="search"
         />
         {!!query && (
           <TouchableOpacity onPress={() => setQuery("")}>

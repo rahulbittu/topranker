@@ -271,6 +271,7 @@ export default function LeaderboardScreen() {
           value={searchQuery}
           onChangeText={setSearchQuery}
           accessibilityLabel="Search restaurants and dishes"
+          returnKeyType="search"
         />
         {!!searchQuery && (
           <TouchableOpacity onPress={() => setSearchQuery("")}>

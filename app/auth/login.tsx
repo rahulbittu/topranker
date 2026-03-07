@@ -99,6 +99,7 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               testID="login-email"
+              returnKeyType="next"
             />
           </View>
         </View>
@@ -115,6 +116,8 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
               testID="login-password"
+              returnKeyType="go"
+              onSubmitEditing={handleLogin}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
               <Ionicons
