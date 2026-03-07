@@ -461,12 +461,12 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_400Regular",
   },
 
-  chipsRow: { flexGrow: 0, marginBottom: 8 },
+  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 12 },
   chipsContainer: {
     paddingHorizontal: 16,
     gap: 8,
     flexDirection: "row",
-    paddingVertical: 2,
+    paddingVertical: 6,
   },
   chip: {
     flexDirection: "row",
@@ -534,6 +534,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 16,
     overflow: "hidden",
+    marginTop: 0,
     marginBottom: 4,
     ...Colors.cardShadow,
   },
