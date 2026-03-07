@@ -740,7 +740,14 @@ const styles = StyleSheet.create({
     fontFamily: "PlayfairDisplay_900Black",
     letterSpacing: -0.5,
   },
-  openPillOpen: { backgroundColor: Colors.green },
+  openPillOpen: {
+    backgroundColor: Colors.green,
+    shadowColor: Colors.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 3,
+  },
   openPillClosed: { backgroundColor: Colors.red },
   openPillText: {
     fontSize: 9,
@@ -892,7 +899,14 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 99,
   },
-  statusPillOpen: { backgroundColor: Colors.green },
+  statusPillOpen: {
+    backgroundColor: Colors.green,
+    shadowColor: Colors.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   statusPillClosed: { backgroundColor: Colors.red },
   statusPillSmallText: {
     fontSize: 9,

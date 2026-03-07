@@ -424,9 +424,15 @@ export default function BusinessProfileScreen() {
           </Text>
           <View style={styles.nameCardRow}>
             {business.isOpenNow !== undefined && (
-              <Text style={[styles.openStatusText, { color: business.isOpenNow ? Colors.green : Colors.red }]}>
-                {business.isOpenNow ? "OPEN" : "CLOSED"}
-              </Text>
+              <View style={[
+                styles.openBadge,
+                business.isOpenNow ? styles.openBadgeOpen : styles.openBadgeClosed,
+              ]}>
+                <View style={[styles.openDot, { backgroundColor: business.isOpenNow ? Colors.green : Colors.red }]} />
+                <Text style={[styles.openBadgeText, { color: business.isOpenNow ? Colors.green : Colors.red }]}>
+                  {business.isOpenNow ? "OPEN NOW" : "CLOSED"}
+                </Text>
+              </View>
             )}
             {business.priceRange && <Text style={styles.priceText}>{business.priceRange}</Text>}
           </View>
@@ -790,8 +796,26 @@ const styles = StyleSheet.create({
     fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   nameCardRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
-  openStatusText: {
-    fontSize: 11, fontFamily: "DMSans_600SemiBold", letterSpacing: 0.5,
+  openBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99,
+  },
+  openBadgeOpen: {
+    backgroundColor: `${Colors.green}12`,
+    shadowColor: Colors.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  openBadgeClosed: {
+    backgroundColor: `${Colors.red}12`,
+  },
+  openDot: {
+    width: 6, height: 6, borderRadius: 3,
+  },
+  openBadgeText: {
+    fontSize: 10, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
   },
   priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   statsBar: {

@@ -763,7 +763,14 @@ const styles = StyleSheet.create({
   statusPill: {
     paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99,
   },
-  statusPillOpen: { backgroundColor: Colors.green },
+  statusPillOpen: {
+    backgroundColor: Colors.green,
+    shadowColor: Colors.green,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 2,
+  },
   statusPillClosed: { backgroundColor: Colors.red },
   statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   cardScore: {
