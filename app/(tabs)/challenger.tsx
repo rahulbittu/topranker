@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, Image, TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
@@ -128,6 +130,25 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   );
 }
 
+function FighterPhoto({ biz }: { biz: any }) {
+  const [err, setErr] = useState(false);
+  const photoUrl = biz.photoUrl || (biz.photoUrls && biz.photoUrls[0]);
+  if (photoUrl && !err) {
+    return (
+      <Image
+        source={{ uri: photoUrl }}
+        style={styles.fighterPhoto}
+        onError={() => setErr(true)}
+      />
+    );
+  }
+  return (
+    <LinearGradient colors={[AMBER, "#9A7510"]} style={styles.fighterPhoto}>
+      <Text style={styles.fighterPhotoInitial}>{biz.name?.charAt(0) || "?"}</Text>
+    </LinearGradient>
+  );
+}
+
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
@@ -149,13 +170,17 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       </View>
 
       <View style={styles.fightCard}>
-        <View style={styles.fighter}>
-          <Ionicons name="trophy-outline" size={20} color={Colors.gold} />
+        <TouchableOpacity
+          style={styles.fighter}
+          onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.defenderBusiness.slug } })}
+          activeOpacity={0.8}
+        >
+          <FighterPhoto biz={challenge.defenderBusiness} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderBusiness.name}</Text>
           <Text style={styles.fighterLabel}>DEFENDING #1</Text>
           <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.vsContainer}>
           <View style={styles.vsDivider} />
@@ -163,13 +188,17 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           <View style={styles.vsDivider} />
         </View>
 
-        <View style={styles.fighter}>
-          <Ionicons name="flash-outline" size={20} color={Colors.textSecondary} />
+        <TouchableOpacity
+          style={styles.fighter}
+          onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.challengerBusiness.slug } })}
+          activeOpacity={0.8}
+        >
+          <FighterPhoto biz={challenge.challengerBusiness} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerBusiness.name}</Text>
           <Text style={styles.fighterLabel}>CHALLENGER</Text>
           <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <VoteBar challenger={challengerVotes} defender={defenderVotes} />
@@ -297,7 +326,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  fighter: { flex: 1, alignItems: "center", gap: 4 },
+  fighter: { flex: 1, alignItems: "center", gap: 4 } as any,
+  fighterPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    overflow: "hidden" as const,
+  },
+  fighterPhotoInitial: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: "#fff",
+  },
   fighterName: {
     fontSize: 15,
     fontWeight: "700",
