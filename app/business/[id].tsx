@@ -545,7 +545,7 @@ export default function BusinessProfileScreen() {
   );
 }
 
-const HERO_HEIGHT = 240;
+const HERO_HEIGHT = 280;
 
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: Colors.background },
