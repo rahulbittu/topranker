@@ -29,12 +29,12 @@ export default function Root({ children }: PropsWithChildren) {
           body { overflow: hidden; height: 100vh; }
           #root { display: flex; height: 100vh; }
           * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-          html { scroll-behavior: smooth; color-scheme: dark; }
+          html { scroll-behavior: smooth; color-scheme: light; }
           input, textarea { font-size: 16px !important; outline: none; }
           ::-webkit-scrollbar { width: 6px; height: 6px; }
           ::-webkit-scrollbar-track { background: transparent; }
-          ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-          ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+          ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 3px; }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
         `}} />
       </head>
       <body>{children}</body>
