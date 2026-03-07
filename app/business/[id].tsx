@@ -306,10 +306,10 @@ export default function BusinessProfileScreen() {
           )}
 
           <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} accessibilityRole="button" accessibilityLabel="Go back">
+            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={handleShare} accessibilityRole="button" accessibilityLabel="Share this business">
+            <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share this business">
               <Ionicons name="share-outline" size={16} color="#fff" />
             </TouchableOpacity>
           </View>

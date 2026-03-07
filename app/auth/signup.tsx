@@ -64,7 +64,7 @@ export default function SignupScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>

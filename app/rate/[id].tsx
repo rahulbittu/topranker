@@ -649,7 +649,7 @@ export default function RateScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel={step > 1 ? "Previous step" : "Go back"}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={step > 1 ? "Previous step" : "Go back"}>
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <StepIndicator step={step - 1} total={6} />
