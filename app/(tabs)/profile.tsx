@@ -15,6 +15,7 @@ import {
 } from "@/lib/data";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
+import { ProfileSkeleton } from "@/components/Skeleton";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { BRAND } from "@/constants/brand";
@@ -388,8 +389,8 @@ export default function ProfileScreen() {
 
   if (authLoading) {
     return (
-      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
-        <ActivityIndicator size="large" color={Colors.gold} />
+      <View style={styles.container}>
+        <ProfileSkeleton />
       </View>
     );
   }
@@ -413,8 +414,8 @@ export default function ProfileScreen() {
 
   if (profileLoading || !profile) {
     return (
-      <View style={[styles.container, { alignItems: "center", justifyContent: "center" }]}>
-        <ActivityIndicator size="large" color={Colors.gold} />
+      <View style={styles.container}>
+        <ProfileSkeleton />
       </View>
     );
   }

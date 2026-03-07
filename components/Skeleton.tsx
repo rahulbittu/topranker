@@ -92,6 +92,31 @@ export function ChallengerSkeleton() {
   );
 }
 
+export function ProfileSkeleton() {
+  return (
+    <View style={styles.container}>
+      <View style={[styles.profileHeader, { alignItems: "center", gap: 12, padding: 20 }]}>
+        <SkeletonBlock style={{ width: 64, height: 64, borderRadius: 32 }} />
+        <SkeletonBlock style={{ width: "50%", height: 16, borderRadius: 6 }} />
+        <SkeletonBlock style={{ width: "30%", height: 10, borderRadius: 4 }} />
+      </View>
+      <View style={[styles.detailCard, { gap: 10 }]}>
+        <SkeletonBlock style={{ width: "40%", height: 12, borderRadius: 4 }} />
+        <SkeletonBlock style={{ width: "60%", height: 28, borderRadius: 6 }} />
+        <SkeletonBlock style={{ width: "100%", height: 4, borderRadius: 2 }} />
+      </View>
+      <View style={{ flexDirection: "row", gap: 8, paddingHorizontal: 16 }}>
+        {[1, 2, 3, 4].map(i => (
+          <View key={i} style={{ flex: 1, alignItems: "center", gap: 6, backgroundColor: Colors.surface, borderRadius: 10, padding: 12 }}>
+            <SkeletonBlock style={{ width: 30, height: 18, borderRadius: 4 }} />
+            <SkeletonBlock style={{ width: 40, height: 8, borderRadius: 3 }} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export function DiscoverSkeleton() {
   return (
     <View style={styles.container}>
@@ -127,6 +152,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
     gap: 14,
+    ...Colors.cardShadow,
+  },
+  profileHeader: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
     ...Colors.cardShadow,
   },
   challengerCard: {
