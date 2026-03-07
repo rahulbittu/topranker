@@ -64,7 +64,7 @@ export default function SignupScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close">
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
@@ -168,7 +168,7 @@ export default function SignupScreen() {
               returnKeyType="go"
               onSubmitEditing={handleSignup}
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={8} accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"}>
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={18}
