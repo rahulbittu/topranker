@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   loggedOutSubtitle: {
-    fontSize: 15, color: "#8E8E93", marginTop: 12, fontFamily: "DMSans_400Regular",
+    fontSize: 15, color: Colors.textTertiary, marginTop: 12, fontFamily: "DMSans_400Regular",
   },
   loggedOutForm: {
     width: "100%", gap: 14,

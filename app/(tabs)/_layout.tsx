@@ -38,7 +38,7 @@ function ClassicTabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: BRAND.colors.amber,
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarInactiveTintColor: Colors.textTertiary,
         tabBarStyle: {
           position: "absolute",
           backgroundColor: "#FFFFFF",

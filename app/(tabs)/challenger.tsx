@@ -41,11 +41,11 @@ interface ReviewItem {
 }
 
 function ReviewRow({ review }: { review: ReviewItem }) {
-  const tierColor = TIER_COLORS[review.userTier] || "#8E8E93";
+  const tierColor = TIER_COLORS[review.userTier] || Colors.textTertiary;
   const tierName = TIER_DISPLAY_NAMES[review.userTier] || "New Member";
   const initial = review.userName.charAt(0).toUpperCase();
 
-  let tierBadgeBg = "#8E8E93";
+  let tierBadgeBg: string = Colors.textTertiary;
   if (review.userTier === "top") tierBadgeBg = "#C9973A";
   else if (review.userTier === "trusted") tierBadgeBg = BRAND.colors.amber;
 
