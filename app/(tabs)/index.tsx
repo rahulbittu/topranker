@@ -301,7 +301,7 @@ export default function LeaderboardScreen() {
           returnKeyType="search"
         />
         {!!searchQuery && (
-          <TouchableOpacity onPress={() => setSearchQuery("")}>
+          <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
             <Ionicons name="close-circle" size={16} color={Colors.textTertiary} />
           </TouchableOpacity>
         )}
@@ -345,7 +345,7 @@ export default function LeaderboardScreen() {
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
           <Text style={styles.emptyText}>Could not load rankings</Text>
-          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
+          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry loading rankings">
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
