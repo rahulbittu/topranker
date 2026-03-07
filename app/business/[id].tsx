@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Linking, Share, Dimensions,
+  Platform, Linking, Share, useWindowDimensions,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
   LayoutAnimation, UIManager,
 } from "react-native";
@@ -25,7 +25,7 @@ import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
+const HERO_HEIGHT = 280;
 
 interface MappedRating {
   id: string;
@@ -218,6 +218,7 @@ function DishPill({ dish }: { dish: ApiDish }) {
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const { id: slug } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
 
@@ -242,7 +243,7 @@ export default function BusinessProfileScreen() {
   }, [refetch]);
 
   const onHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
     setHeroPhotoIdx(idx);
   }, []);
 
@@ -340,7 +341,7 @@ export default function BusinessProfileScreen() {
             >
               {photoUrls.map((url, i) => (
                 heroImgErrors.has(i) ? (
-                  <LinearGradient key={i} colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+                  <LinearGradient key={i} colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder, { width: screenWidth }]}>
                     <Text style={styles.heroPlaceholderInitial}>
                       {business.name.charAt(0).toUpperCase()}
                     </Text>
@@ -349,7 +350,7 @@ export default function BusinessProfileScreen() {
                   <Image
                     key={i}
                     source={{ uri: url }}
-                    style={styles.heroImage}
+                    style={[styles.heroImage, { width: screenWidth }]}
                     contentFit="cover"
                     transition={300}
                     onError={() => setHeroImgErrors(prev => new Set(prev).add(i))}
@@ -358,7 +359,7 @@ export default function BusinessProfileScreen() {
               ))}
             </ScrollView>
           ) : (
-            <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+            <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder, { width: screenWidth }]}>
               <Text style={styles.heroPlaceholderInitial}>
                 {business.name.charAt(0).toUpperCase()}
               </Text>
@@ -595,8 +596,6 @@ export default function BusinessProfileScreen() {
   );
 }
 
-const HERO_HEIGHT = 280;
-
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: Colors.background },
   notFound: {
@@ -624,7 +623,7 @@ const styles = StyleSheet.create({
   },
 
   heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
-  heroImage: { width: SCREEN_WIDTH, height: HERO_HEIGHT },
+  heroImage: { height: HERO_HEIGHT },
   heroDotContainer: {
     flexDirection: "row", justifyContent: "center", gap: 5,
     position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
@@ -802,7 +801,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", flexWrap: "wrap", gap: 4, borderRadius: 12, overflow: "hidden",
   },
   photoGridImage: {
-    width: (SCREEN_WIDTH - 28 - 8) / 3, height: (SCREEN_WIDTH - 28 - 8) / 3,
+    width: "31%", aspectRatio: 1,
     backgroundColor: Colors.surfaceRaised,
   },
 

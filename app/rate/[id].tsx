@@ -266,8 +266,17 @@ export default function RateScreen() {
 
   if (!business) {
     return (
-      <View style={[styles.container, { paddingTop: topPad }]}>
-        <Text style={styles.errorText}>Business not found</Text>
+      <View style={[styles.container, styles.centeredPadded, { paddingTop: topPad }]}>
+        <Ionicons name="alert-circle-outline" size={48} color={Colors.textTertiary} />
+        <Text style={styles.signInPromptText}>Business not found</Text>
+        <TouchableOpacity
+          style={styles.signInPromptButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Text style={styles.primaryButtonText}>Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
