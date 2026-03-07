@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform,
+  ScrollView, Platform, Alert,
   Dimensions, TextInput, RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
@@ -268,7 +268,18 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <AppLogo size="md" />
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.citySelector}>
+          <TouchableOpacity
+            style={styles.citySelector}
+            onPress={() => {
+              if (Platform.OS === "web") {
+                window.alert("More cities coming soon!");
+              } else {
+                Alert.alert("Coming Soon", "More cities will be available in a future update.");
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Select city, currently Dallas"
+          >
             <Ionicons name="location-sharp" size={14} color={AMBER} />
             <Text style={styles.citySelectorText}>Dallas</Text>
             <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
