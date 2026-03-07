@@ -638,8 +638,9 @@ const styles = StyleSheet.create({
   discoverStripFallback: { alignItems: "center", justifyContent: "center" },
   discoverStripFallbackEmoji: { fontSize: 32, color: "rgba(255,255,255,0.5)" },
   discoverDotRow: {
-    flexDirection: "row", justifyContent: "center", gap: 5,
-    position: "absolute", bottom: 6, left: 0, right: 0,
+    flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5,
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    paddingVertical: 6, backgroundColor: "rgba(0,0,0,0.15)",
   },
   discoverDot: {
     width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.45)",

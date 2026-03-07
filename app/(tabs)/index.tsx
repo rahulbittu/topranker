@@ -672,12 +672,14 @@ const styles = StyleSheet.create({
   dotRow: {
     flexDirection: "row",
     justifyContent: "center",
+    alignItems: "center",
     gap: 5,
     paddingVertical: 6,
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: "rgba(0,0,0,0.15)",
   },
   dot: {
     width: 6,
