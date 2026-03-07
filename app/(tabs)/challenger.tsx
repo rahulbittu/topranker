@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
-  Platform, ActivityIndicator, Image, TouchableOpacity, RefreshControl,
+  Platform, ActivityIndicator, TouchableOpacity, RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -142,6 +143,8 @@ function FighterPhoto({ biz }: { biz: any }) {
       <Image
         source={{ uri: photoUrl }}
         style={styles.fighterPhoto}
+        contentFit="cover"
+        transition={200}
         onError={() => setErr(true)}
       />
     );

@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Linking, Share, Dimensions, Image,
+  Platform, Linking, Share, Dimensions,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
@@ -281,7 +282,8 @@ export default function BusinessProfileScreen() {
                     key={i}
                     source={{ uri: url }}
                     style={styles.heroImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={300}
                     onError={() => setHeroImgErrors(prev => new Set(prev).add(i))}
                   />
                 )
@@ -482,7 +484,8 @@ export default function BusinessProfileScreen() {
                     key={i}
                     source={{ uri: url }}
                     style={styles.photoGridImage}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    transition={200}
                   />
                 ))}
               </View>

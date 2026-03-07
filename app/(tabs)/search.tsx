@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ScrollView, Platform, ActivityIndicator, Image, Linking, RefreshControl,
+  TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -59,6 +60,8 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
     <Image
       source={{ uri: photos[0] }}
       style={[styles.cardPhoto, { width: size, height: size }]}
+      contentFit="cover"
+      transition={200}
       onError={() => setImgError(true)}
     />
   );
@@ -299,7 +302,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
           <View style={styles.mapBottomSheetHandle} />
           <View style={styles.mapBottomSheetRow}>
             {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
-              <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} />
+              <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} contentFit="cover" transition={200} />
             ) : (
               <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapBottomSheetPhoto, { alignItems: "center", justifyContent: "center" }]}>
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>

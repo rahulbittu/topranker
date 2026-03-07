@@ -1,9 +1,10 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Image,
+  ScrollView, Platform,
   Dimensions, TextInput, RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -53,25 +54,25 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
 
   if (photos.length === 1) {
     return (
-      <Image source={{ uri: photos[0] }} style={{ width: "100%" as any, height }} resizeMode="cover" />
+      <Image source={{ uri: photos[0] }} style={{ width: "100%" as any, height }} contentFit="cover" transition={200} />
     );
   }
 
   if (photos.length === 2) {
     return (
       <View style={{ flexDirection: "row", height, gap: 2 }}>
-        <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} resizeMode="cover" />
-        <Image source={{ uri: photos[1] }} style={{ flex: 1, height }} resizeMode="cover" />
+        <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} contentFit="cover" transition={200} />
+        <Image source={{ uri: photos[1] }} style={{ flex: 1, height }} contentFit="cover" transition={200} />
       </View>
     );
   }
 
   return (
     <View style={{ flexDirection: "row", height, gap: 2 }}>
-      <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} resizeMode="cover" />
+      <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} contentFit="cover" transition={200} />
       <View style={{ flex: 1, gap: 2 }}>
-        <Image source={{ uri: photos[1] }} style={{ flex: 1 }} resizeMode="cover" />
-        <Image source={{ uri: photos[2] }} style={{ flex: 1 }} resizeMode="cover" />
+        <Image source={{ uri: photos[1] }} style={{ flex: 1 }} contentFit="cover" transition={200} />
+        <Image source={{ uri: photos[2] }} style={{ flex: 1 }} contentFit="cover" transition={200} />
       </View>
     </View>
   );
@@ -173,6 +174,8 @@ function RankedCard({ item }: { item: MappedBusiness }) {
         <Image
           source={{ uri: photos[0] }}
           style={styles.rankedPhoto}
+          contentFit="cover"
+          transition={200}
           onError={() => setImgError(true)}
         />
       ) : (
