@@ -18,6 +18,7 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
 const CARD_H_MARGIN = 16;
@@ -35,25 +36,6 @@ const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open
 const CITIES = ["Dallas", "Austin", "Houston", "San Antonio", "Fort Worth"];
 
 type ViewMode = "list" | "map";
-
-interface MappedBusiness {
-  id: string;
-  name: string;
-  slug: string;
-  neighborhood: string;
-  category: string;
-  weightedScore: number;
-  rank: number;
-  rankDelta: number;
-  ratingCount?: number;
-  isChallenger: boolean;
-  priceRange?: string;
-  photoUrl?: string;
-  photoUrls?: string[];
-  isOpenNow?: boolean;
-  lat?: number;
-  lng?: number;
-}
 
 const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
   const [activeIndex, setActiveIndex] = useState(0);

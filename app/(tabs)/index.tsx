@@ -17,27 +17,10 @@ import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
-
-interface MappedBusiness {
-  id: string;
-  name: string;
-  slug: string;
-  neighborhood: string;
-  city: string;
-  category: string;
-  weightedScore: number;
-  rank: number;
-  rankDelta: number;
-  ratingCount: number;
-  isChallenger: boolean;
-  isOpenNow?: boolean;
-  priceRange?: string;
-  photoUrl?: string;
-  photoUrls?: string[];
-}
 
 const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
   if (photos.length === 0) {
@@ -144,8 +127,8 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
           </Text>
           <View style={styles.heroStripRow2}>
             <StarRating score={item.weightedScore} />
-            <Text style={styles.heroStripRatings}>{item.ratingCount.toLocaleString()} ratings</Text>
-            {item.ratingCount >= 50 && (
+            <Text style={styles.heroStripRatings}>{(item.ratingCount ?? 0).toLocaleString()} ratings</Text>
+            {(item.ratingCount ?? 0) >= 50 && (
               <View style={styles.hotBadge}>
                 <Ionicons name="flame" size={10} color="#fff" />
                 <Text style={styles.hotBadgeText}>HOT</Text>
@@ -245,7 +228,7 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       style={styles.rankedCard}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount.toLocaleString()} ratings`}
+      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${(item.ratingCount ?? 0).toLocaleString()} ratings`}
     >
       <View style={styles.rankedPhotoStripWrap}>
         <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} />
@@ -269,7 +252,7 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
         <View style={styles.rankedRow3}>
-          <Text style={styles.rankedRatingCount}>{item.ratingCount.toLocaleString()} ratings</Text>
+          <Text style={styles.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} ratings</Text>
           {item.rankDelta !== 0 && (
             <View style={[styles.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>
               <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
@@ -288,7 +271,7 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
               <Text style={styles.challengerPillText}>IN CHALLENGE</Text>
             </View>
           )}
-          {item.ratingCount >= 20 && (
+          {(item.ratingCount ?? 0) >= 20 && (
             <View style={styles.activityPill}>
               <Ionicons name="flame" size={9} color={AMBER} />
               <Text style={styles.activityPillText}>ACTIVE</Text>

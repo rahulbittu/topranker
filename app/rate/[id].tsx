@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  Platform, ActivityIndicator, Dimensions,
+  Platform, ActivityIndicator, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -22,13 +22,11 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { apiRequest } from "@/lib/query-client";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
-const CIRCLE_SIZE = Math.min(56, (SCREEN_WIDTH - 80) / 5 - 8);
 
 type RatingStep = 1 | 2 | 3 | 4 | 5 | 6;
 
-function CircleScorePicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function CircleScorePicker({ value, onChange, circleSize }: { value: number; onChange: (v: number) => void; circleSize: number }) {
   return (
     <View style={styles.circleRow}>
       {[1, 2, 3, 4, 5].map(n => {
@@ -40,11 +38,12 @@ function CircleScorePicker({ value, onChange }: { value: number; onChange: (v: n
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               onChange(n);
             }}
-            style={[styles.circle, isActive && styles.circleActive]}
+            style={[styles.circle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }, isActive && styles.circleActive]}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={`Score ${n}, ${SCORE_LABELS[n - 1]}`}
             accessibilityState={{ selected: isActive }}
+            accessibilityHint="Double tap to select this score"
           >
             <Text style={[styles.circleNum, isActive && styles.circleNumActive]}>{n}</Text>
           </TouchableOpacity>
@@ -54,11 +53,11 @@ function CircleScorePicker({ value, onChange }: { value: number; onChange: (v: n
   );
 }
 
-function CircleScoreLabels() {
+function CircleScoreLabels({ circleSize }: { circleSize: number }) {
   return (
     <View style={styles.circleLabelRow}>
       {SCORE_LABELS.map((label, i) => (
-        <View key={i} style={styles.circleLabelItem}>
+        <View key={i} style={[styles.circleLabelItem, { width: circleSize }]}>
           <Text style={styles.circleLabelText}>{label}</Text>
         </View>
       ))}
@@ -68,7 +67,7 @@ function CircleScoreLabels() {
 
 function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
-    <View style={styles.progressContainer}>
+    <View style={styles.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`}>
       {Array.from({ length: total }, (_, i) => (
         <View
           key={i}
@@ -77,6 +76,7 @@ function ProgressBar({ step, total }: { step: number; total: number }) {
             i < step && styles.progressDotComplete,
             i === step && styles.progressDotCurrent,
           ]}
+          accessibilityLabel={`Step ${i + 1}${i < step ? ", completed" : i === step ? ", current" : ""}`}
         />
       ))}
     </View>
@@ -117,6 +117,8 @@ function DishPill({ dish, selected, onPress }: { dish: ApiDish; selected: boolea
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const circleSize = Math.min(56, (screenWidth - 80) / 5 - 8);
   const { id: slug } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const qc = useQueryClient();
@@ -438,61 +440,61 @@ export default function RateScreen() {
     switch (step) {
       case 1:
         return (
-          <View style={styles.stepContent} key="step1">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>01</Text>
               <Text style={styles.stepTitle}>{q1Label}</Text>
               <Text style={styles.stepSubtitle}>Tap a score from 1 to 5</Text>
             </View>
-            <CircleScorePicker value={q1Score} onChange={setQ1Score} />
-            <CircleScoreLabels />
+            <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
+            <CircleScoreLabels circleSize={circleSize} />
             {q1Score > 0 && (
               <View style={styles.selectedBadge}>
                 <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q1Score - 1]}</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         );
 
       case 2:
         return (
-          <View style={styles.stepContent} key="step2">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step2" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>02</Text>
               <Text style={styles.stepTitle}>Value for Money</Text>
               <Text style={styles.stepSubtitle}>Was the price fair for what you received?</Text>
             </View>
-            <CircleScorePicker value={q2Score} onChange={setQ2Score} />
-            <CircleScoreLabels />
+            <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
+            <CircleScoreLabels circleSize={circleSize} />
             {q2Score > 0 && (
               <View style={styles.selectedBadge}>
                 <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q2Score - 1]}</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         );
 
       case 3:
         return (
-          <View style={styles.stepContent} key="step3">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step3" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>03</Text>
               <Text style={styles.stepTitle}>{q3Label}</Text>
               <Text style={styles.stepSubtitle}>Rate the overall experience</Text>
             </View>
-            <CircleScorePicker value={q3Score} onChange={setQ3Score} />
-            <CircleScoreLabels />
+            <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
+            <CircleScoreLabels circleSize={circleSize} />
             {q3Score > 0 && (
               <View style={styles.selectedBadge}>
                 <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q3Score - 1]}</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         );
 
       case 4:
         return (
-          <View style={styles.stepContent} key="step4">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step4" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>04</Text>
               <Text style={styles.stepTitle}>{returnLabel}</Text>
@@ -508,6 +510,7 @@ export default function RateScreen() {
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="Yes, would return"
+                accessibilityHint="Double tap to select yes"
                 accessibilityState={{ selected: wouldReturn === true }}
               >
                 <Ionicons
@@ -528,6 +531,7 @@ export default function RateScreen() {
                 activeOpacity={0.7}
                 accessibilityRole="button"
                 accessibilityLabel="No, would not return"
+                accessibilityHint="Double tap to select no"
                 accessibilityState={{ selected: wouldReturn === false }}
               >
                 <Ionicons
@@ -540,12 +544,12 @@ export default function RateScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </Animated.View>
         );
 
       case 5:
         return (
-          <View style={styles.stepContent} key="step5">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step5" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>05</Text>
               <Text style={styles.stepTitle}>Top Dish</Text>
@@ -611,12 +615,12 @@ export default function RateScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         );
 
       case 6:
         return (
-          <View style={styles.stepContent} key="step6">
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step6" accessibilityRole="summary">
             <View style={styles.stepHeader}>
               <Text style={styles.stepNumber}>06</Text>
               <Text style={styles.stepTitle}>Quick Note</Text>
@@ -676,7 +680,7 @@ export default function RateScreen() {
                 </Text>
               </View>
             </View>
-          </View>
+          </Animated.View>
         );
     }
   };
@@ -836,7 +840,6 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 8,
   },
   circle: {
-    width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
     borderWidth: 2, borderColor: Colors.border,
   },
@@ -852,7 +855,7 @@ const styles = StyleSheet.create({
   circleLabelRow: {
     flexDirection: "row", justifyContent: "center", gap: 12, marginTop: -4,
   },
-  circleLabelItem: { width: CIRCLE_SIZE, alignItems: "center" },
+  circleLabelItem: { alignItems: "center" },
   circleLabelText: {
     fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center",
@@ -1017,11 +1020,11 @@ const styles = StyleSheet.create({
   },
   confirmIconWrap: { marginBottom: 4 },
   confirmIconCircle: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.text,
+    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.green,
     alignItems: "center", justifyContent: "center",
   },
   confirmTitle: {
-    fontSize: 26, fontWeight: "700" as const, color: Colors.text,
+    fontSize: 26, fontWeight: "700" as const, color: Colors.gold,
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, textAlign: "center",
   },
   confirmSub: {

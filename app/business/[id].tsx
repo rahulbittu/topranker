@@ -55,7 +55,7 @@ function SubScoreBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
+const DistributionChart = React.memo(function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
   const counts = [5, 4, 3, 2, 1].map(n => ({
     star: n,
     count: ratings.filter(r => Math.round(r.rawScore) === n).length
@@ -80,7 +80,7 @@ function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
       ))}
     </View>
   );
-}
+});
 
 const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRating }) {
   const tierColor = TIER_COLORS[rating.userTier];
