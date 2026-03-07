@@ -39,6 +39,7 @@ function ClassicTabLayout() {
         headerShown: false,
         tabBarActiveTintColor: BRAND.colors.amber,
         tabBarInactiveTintColor: Colors.textTertiary,
+        ...(isWeb ? { sceneStyle: { maxWidth: 600, alignSelf: "center" as const, width: "100%" } } : {}),
         tabBarStyle: {
           position: "absolute",
           backgroundColor: Colors.surface,
