@@ -17,15 +17,21 @@ function VoteBar({ challenger, defender }: { challenger: number; defender: numbe
   const total = challenger + defender;
   const challengerPct = total > 0 ? (challenger / total) * 100 : 50;
   const defenderPct = 100 - challengerPct;
+  const defenderLeading = defenderPct >= challengerPct;
 
   return (
     <View style={styles.voteBarContainer}>
+      <View style={styles.voteBarLabels}>
+        <Text style={[styles.voteBarPct, defenderLeading && styles.voteBarPctLeading]}>
+          {defenderPct.toFixed(0)}%
+        </Text>
+        <Text style={[styles.voteBarPct, !defenderLeading && styles.voteBarPctLeading]}>
+          {challengerPct.toFixed(0)}%
+        </Text>
+      </View>
       <View style={styles.voteBar}>
         <View style={[styles.voteBarDefender, { width: `${defenderPct}%` as any }]} />
-      </View>
-      <View style={styles.voteBarLabels}>
-        <Text style={styles.voteBarPct}>{defenderPct.toFixed(1)}%</Text>
-        <Text style={styles.voteBarPct}>{challengerPct.toFixed(1)}%</Text>
+        <View style={[styles.voteBarChallenger, { width: `${challengerPct}%` as any }]} />
       </View>
     </View>
   );
@@ -403,28 +409,33 @@ const styles = StyleSheet.create({
     fontFamily: "PlayfairDisplay_400Regular_Italic",
     marginVertical: 4,
   },
-  voteBarContainer: { marginBottom: 12 },
+  voteBarContainer: { marginBottom: 12, gap: 6 },
   voteBar: {
-    height: 3,
-    backgroundColor: Colors.border,
-    borderRadius: 2,
+    height: 6,
+    borderRadius: 3,
     overflow: "hidden",
     flexDirection: "row",
   },
   voteBarDefender: {
     height: "100%",
-    backgroundColor: Colors.gold,
-    borderRadius: 2,
+    backgroundColor: BRAND.colors.amber,
+  },
+  voteBarChallenger: {
+    height: "100%",
+    backgroundColor: BRAND.colors.navy,
   },
   voteBarLabels: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
   },
   voteBarPct: {
     fontSize: 11,
     color: Colors.textTertiary,
     fontFamily: "DMSans_400Regular",
+  },
+  voteBarPctLeading: {
+    color: Colors.text,
+    fontFamily: "DMSans_700Bold",
   },
   timerSection: {
     flexDirection: "row",
