@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import passport from "passport";
-import { setupAuth, registerMember } from "./auth";
+import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -75,6 +75,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ data: user });
       });
     })(req, res, next);
+  });
+
+  app.post("/api/auth/google", async (req: Request, res: Response) => {
+    try {
+      const { idToken } = req.body;
+      if (!idToken) {
+        return res.status(400).json({ error: "ID token is required" });
+      }
+
+      const member = await authenticateGoogleUser(idToken);
+
+      req.login(
+        {
+          id: member.id,
+          displayName: member.displayName,
+          username: member.username,
+          email: member.email,
+          city: member.city,
+          credibilityScore: member.credibilityScore,
+          credibilityTier: member.credibilityTier,
+        },
+        (err) => {
+          if (err) return res.status(500).json({ error: "Login failed" });
+          return res.json({ data: req.user });
+        },
+      );
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
   });
 
   app.post("/api/auth/logout", (req: Request, res: Response) => {

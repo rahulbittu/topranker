@@ -3,7 +3,7 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { pool } from "./db";
-import { getMemberByEmail, getMemberById, createMember, getMemberByUsername } from "./storage";
+import { getMemberByEmail, getMemberById, createMember, getMemberByUsername, getMemberByAuthId } from "./storage";
 import bcrypt from "bcrypt";
 import type { Express, Request } from "express";
 
@@ -54,6 +54,9 @@ export function setupAuth(app: Express) {
           const member = await getMemberByEmail(email);
           if (!member) {
             return done(null, false, { message: "Invalid email or password" });
+          }
+          if (!member.password) {
+            return done(null, false, { message: "This account uses Google sign-in" });
           }
           const isMatch = await bcrypt.compare(password, member.password);
           if (!isMatch) {
@@ -135,5 +138,70 @@ export async function registerMember(data: {
     email,
     password: hashedPassword,
     city: data.city,
+  });
+}
+
+export async function authenticateGoogleUser(idToken: string) {
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!googleClientId) {
+    throw new Error("Google Sign-In is not configured");
+  }
+
+  // Verify the ID token with Google
+  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+  if (!res.ok) {
+    throw new Error("Invalid Google token");
+  }
+  const payload = await res.json() as {
+    sub: string;
+    email: string;
+    email_verified: string;
+    name: string;
+    picture?: string;
+    aud: string;
+  };
+
+  if (payload.aud !== googleClientId) {
+    throw new Error("Token audience mismatch");
+  }
+
+  const googleId = payload.sub;
+  const email = payload.email.toLowerCase();
+  const displayName = payload.name || email.split("@")[0];
+  const avatarUrl = payload.picture || null;
+
+  // Check if user already exists by Google ID
+  let member = await getMemberByAuthId(googleId);
+  if (member) {
+    return member;
+  }
+
+  // Check if user exists by email (link accounts)
+  member = await getMemberByEmail(email);
+  if (member) {
+    // Link the Google ID to existing account
+    const { db } = await import("./db");
+    const { members } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    await db.update(members).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq(members.id, member.id));
+    return { ...member, authId: googleId };
+  }
+
+  // Create new account — generate a unique username from email
+  const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
+  let username = baseUsername;
+  let suffix = 1;
+  while (await getMemberByUsername(username)) {
+    username = `${baseUsername}${suffix}`;
+    suffix++;
+  }
+
+  return createMember({
+    displayName,
+    username,
+    email,
+    authId: googleId,
+    avatarUrl: avatarUrl || undefined,
+    city: "Dallas",
   });
 }

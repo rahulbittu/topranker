@@ -11,10 +11,12 @@ import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 import { AppLogo } from "@/components/Logo";
 import { BRAND } from "@/constants/brand";
+import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
+  const googleAvailable = isGoogleAuthAvailable();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -64,12 +66,34 @@ export default function LoginScreen() {
           <Text style={styles.tagline}>{BRAND.tagline}</Text>
         </View>
 
-        <TouchableOpacity style={styles.googleButton} activeOpacity={0.7} disabled>
-          <MaterialCommunityIcons name="google" size={20} color={Colors.textTertiary} />
-          <Text style={styles.googleButtonText}>Continue with Google</Text>
-          <View style={styles.comingSoonBadge}>
-            <Text style={styles.comingSoonText}>Soon</Text>
-          </View>
+        <TouchableOpacity
+          style={[styles.googleButton, googleAvailable && styles.googleButtonActive]}
+          activeOpacity={0.7}
+          disabled={!googleAvailable || loading}
+          onPress={async () => {
+            if (!googleAvailable) return;
+            setError("");
+            setLoading(true);
+            try {
+              const idToken = await signInWithGoogle();
+              await googleLogin(idToken);
+              router.back();
+            } catch (err: any) {
+              if (!err.message?.includes("cancelled")) {
+                setError(err.message || "Google sign-in failed");
+              }
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          <MaterialCommunityIcons name="google" size={20} color={googleAvailable ? Colors.text : Colors.textTertiary} />
+          <Text style={[styles.googleButtonText, googleAvailable && styles.googleButtonTextActive]}>Continue with Google</Text>
+          {!googleAvailable && (
+            <View style={styles.comingSoonBadge}>
+              <Text style={styles.comingSoonText}>Soon</Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         <View style={styles.dividerRow}>
@@ -191,9 +215,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised, borderRadius: 14, paddingVertical: 15,
     opacity: 0.55,
   },
+  googleButtonActive: {
+    opacity: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
   googleButtonText: {
     fontSize: 15, fontWeight: "600", color: Colors.textTertiary,
     fontFamily: "DMSans_600SemiBold",
+  },
+  googleButtonTextActive: {
+    color: Colors.text,
   },
   comingSoonBadge: {
     backgroundColor: Colors.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,

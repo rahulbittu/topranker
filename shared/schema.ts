@@ -23,7 +23,7 @@ export const members = pgTable("members", {
   displayName: text("display_name").notNull(),
   username: text("username").unique().notNull(),
   email: text("email").unique().notNull(),
-  password: text("password").notNull(),
+  password: text("password"),
   avatarUrl: text("avatar_url"),
   city: text("city").notNull().default("Dallas"),
   pushToken: text("push_token"),
@@ -355,6 +355,8 @@ export const insertMemberSchema = createInsertSchema(members).pick({
   email: true,
   password: true,
   city: true,
+}).extend({
+  password: z.string().optional(),
 });
 
 export const insertRatingSchema = createInsertSchema(ratings)

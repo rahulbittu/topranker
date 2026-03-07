@@ -19,6 +19,7 @@ import { ProfileSkeleton } from "@/components/Skeleton";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { BRAND } from "@/constants/brand";
+import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
 
 const AMBER = BRAND.colors.amber;
 
@@ -70,7 +71,8 @@ function BreakdownRow({ label, value, icon }: { label: string; value: string; ic
 
 function LoggedOutView() {
   const insets = useSafeAreaInsets();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
+  const googleAvailable = isGoogleAuthAvailable();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -104,20 +106,29 @@ function LoggedOutView() {
       <View style={styles.loggedOutForm}>
         {/* Google button */}
         <TouchableOpacity
-          style={styles.googleButton}
+          style={[styles.googleButton, googleAvailable && styles.googleButtonActive]}
           activeOpacity={0.8}
           accessibilityRole="button"
-          accessibilityLabel="Continue with Google (coming soon)"
-          onPress={() => {
-            if (Platform.OS === "web") {
-              window.alert("Google sign-in coming soon!");
-            } else {
-              Alert.alert("Coming Soon", "Google sign-in will be available in a future update.");
+          accessibilityLabel={googleAvailable ? "Continue with Google" : "Continue with Google (coming soon)"}
+          disabled={!googleAvailable || isSubmitting}
+          onPress={async () => {
+            if (!googleAvailable) return;
+            setError("");
+            setIsSubmitting(true);
+            try {
+              const idToken = await signInWithGoogle();
+              await googleLogin(idToken);
+            } catch (err: any) {
+              if (!err.message?.includes("cancelled")) {
+                setError(err.message || "Google sign-in failed");
+              }
+            } finally {
+              setIsSubmitting(false);
             }
           }}
         >
-          <Text style={styles.googleG}>G</Text>
-          <Text style={styles.googleButtonText}>Continue with Google</Text>
+          <Text style={[styles.googleG, googleAvailable && styles.googleGActive]}>G</Text>
+          <Text style={[styles.googleButtonText, googleAvailable && styles.googleButtonTextActive]}>Continue with Google</Text>
         </TouchableOpacity>
 
         {/* Or divider */}
@@ -494,6 +505,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
     borderRadius: 14, height: 52,
     width: "100%",
+    opacity: 0.55,
+  },
+  googleButtonActive: {
+    opacity: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -501,10 +516,16 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   googleG: {
-    fontSize: 20, fontWeight: "700", color: "#4285F4",
+    fontSize: 20, fontWeight: "700", color: Colors.textTertiary,
+  },
+  googleGActive: {
+    color: "#4285F4",
   },
   googleButtonText: {
-    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+    fontSize: 15, fontWeight: "600", color: Colors.textTertiary, fontFamily: "DMSans_600SemiBold",
+  },
+  googleButtonTextActive: {
+    color: Colors.text,
   },
   orDivider: {
     flexDirection: "row", alignItems: "center", gap: 12,

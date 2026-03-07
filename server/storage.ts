@@ -91,12 +91,19 @@ export async function getMemberByEmail(email: string): Promise<Member | undefine
   return member;
 }
 
+export async function getMemberByAuthId(authId: string): Promise<Member | undefined> {
+  const [member] = await db.select().from(members).where(eq(members.authId, authId));
+  return member;
+}
+
 export async function createMember(data: {
   displayName: string;
   username: string;
   email: string;
-  password: string;
+  password?: string;
   city?: string;
+  authId?: string;
+  avatarUrl?: string;
 }): Promise<Member> {
   const [member] = await db.insert(members).values(data).returning();
   return member;
