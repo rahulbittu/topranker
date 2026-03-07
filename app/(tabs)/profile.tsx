@@ -324,9 +324,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
       </View>
 
-      {profile.ratingHistory.map((r: any, i: number) => (
+      {profile.ratingHistory.map((r: any) => (
         <TouchableOpacity
-          key={i}
+          key={r.id}
           style={styles.historyRow}
           activeOpacity={0.7}
           onPress={() => r.businessSlug && router.push({ pathname: "/business/[id]", params: { id: r.businessSlug } })}
