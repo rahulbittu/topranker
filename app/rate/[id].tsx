@@ -142,7 +142,14 @@ export default function RateScreen() {
   const [submitError, setSubmitError] = useState("");
 
   const [dishSearchResults, setDishSearchResults] = useState<ApiDish[]>([]);
+  const [dishSearching, setDishSearching] = useState(false);
   const dishSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
+    };
+  }, []);
 
   const userTier = (user?.credibilityTier as CredibilityTier) || "community";
   const tierColor = TIER_COLORS[userTier];
@@ -193,16 +200,20 @@ export default function RateScreen() {
     setDishInput(text);
     if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
     if (text.length >= 2 && business) {
+      setDishSearching(true);
       dishSearchTimeout.current = setTimeout(async () => {
         try {
           const results = await fetchDishSearch(business.id, text);
           setDishSearchResults(results);
         } catch {
           setDishSearchResults([]);
+        } finally {
+          setDishSearching(false);
         }
       }, 300);
     } else {
       setDishSearchResults([]);
+      setDishSearching(false);
     }
   };
 
@@ -557,7 +568,10 @@ export default function RateScreen() {
                   onChangeText={handleDishSearch}
                   maxLength={80}
                 />
-                {dishSearchResults.length > 0 && (
+                {dishSearching && (
+                  <ActivityIndicator size="small" color={Colors.gold} style={{ marginTop: 8 }} />
+                )}
+                {dishSearchResults.length > 0 && !dishSearching && (
                   <View style={styles.dishSuggestions}>
                     {dishSearchResults.map(d => (
                       <TouchableOpacity
