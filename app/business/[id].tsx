@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, Linking, Share, Dimensions, Image,
-  NativeScrollEvent, NativeSyntheticEvent, RefreshControl,
+  NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -507,13 +507,32 @@ export default function BusinessProfileScreen() {
             <View style={styles.claimCard}>
               <Text style={styles.claimTitle}>Own this business?</Text>
               <Text style={styles.claimDesc}>Claim your listing to respond to reviews and update your info</Text>
-              <TouchableOpacity style={styles.claimBtn} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.claimBtn}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (Platform.OS === "web") {
+                    window.alert("Business claiming will be available soon. Contact us to get started.");
+                  } else {
+                    Alert.alert("Coming Soon", "Business claiming will be available in a future update. Contact us to get started.");
+                  }
+                }}
+              >
                 <Text style={styles.claimBtnText}>Claim Listing</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <TouchableOpacity style={styles.reportLink}>
+          <TouchableOpacity
+            style={styles.reportLink}
+            onPress={() => {
+              if (Platform.OS === "web") {
+                window.alert("Thank you. Our team will review this listing.");
+              } else {
+                Alert.alert("Report Submitted", "Thank you. Our team will review this listing.");
+              }
+            }}
+          >
             <Ionicons name="flag-outline" size={12} color={Colors.textTertiary} />
             <Text style={styles.reportLinkText}>Report Suspicious Activity</Text>
           </TouchableOpacity>
