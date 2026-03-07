@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, TextInput, RefreshControl,
+  Platform, ActivityIndicator, TextInput, RefreshControl, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -80,7 +80,17 @@ function LoggedOutView() {
 
       <View style={styles.loggedOutForm}>
         {/* Google button */}
-        <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.googleButton}
+          activeOpacity={0.8}
+          onPress={() => {
+            if (Platform.OS === "web") {
+              window.alert("Google sign-in coming soon!");
+            } else {
+              Alert.alert("Coming Soon", "Google sign-in will be available in a future update.");
+            }
+          }}
+        >
           <Text style={styles.googleG}>G</Text>
           <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
@@ -443,7 +453,7 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
     borderRadius: 14, height: 52,
     width: "100%",
     shadowColor: "#000",
@@ -474,7 +484,7 @@ const styles = StyleSheet.create({
     width: "100%", height: 48, borderRadius: 12,
     borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, fontSize: 14, color: Colors.text,
-    backgroundColor: "#fff", fontFamily: "DMSans_400Regular",
+    backgroundColor: Colors.surface, fontFamily: "DMSans_400Regular",
   },
   eyeButton: {
     position: "absolute" as const, right: 12, top: 0, bottom: 0,
@@ -497,7 +507,7 @@ const styles = StyleSheet.create({
     fontSize: 14, color: Colors.textSecondary, textAlign: "center", marginTop: 4,
   },
   signUpLinkBold: {
-    color: "#007AFF", fontWeight: "600", fontFamily: "DMSans_600SemiBold",
+    color: Colors.blue, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
   },
 
   // ===== Logged In =====

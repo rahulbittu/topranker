@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
   cityButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6,
     borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
   },
   cityButtonText: { fontSize: 13, fontWeight: "500", color: Colors.text, fontFamily: "DMSans_500Medium" },
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
   },
   mapBottomSheetHandle: {
     width: 36, height: 4, borderRadius: 2,
-    backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 12,
+    backgroundColor: Colors.border, alignSelf: "center", marginBottom: 12,
   },
   mapBottomSheetRow: {
     flexDirection: "row", alignItems: "center", gap: 12,

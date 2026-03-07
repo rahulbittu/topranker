@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   voteBarContainer: { marginBottom: 12 },
   voteBar: {
     height: 3,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: Colors.border,
     borderRadius: 2,
     overflow: "hidden",
     flexDirection: "row",
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   },
   progressBarOuter: {
     height: 3,
-    backgroundColor: "#E0E0E0",
+    backgroundColor: Colors.border,
     borderRadius: 2,
     overflow: "hidden",
   },
