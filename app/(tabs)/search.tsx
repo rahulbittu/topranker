@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import { formatCategoryLabel } from "@/lib/data";
+import { formatCategoryLabel, CATEGORY_ICONS } from "@/lib/data";
 import { fetchBusinessSearch } from "@/lib/api";
 
 const AMBER = BRAND.colors.amber;
@@ -86,7 +86,9 @@ function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: numbe
 }
 
 function BusinessCard({ item }: { item: MappedBusiness }) {
-  const categoryLabel = formatCategoryLabel(item.category);
+  const rawLabel = formatCategoryLabel(item.category);
+  const emoji = CATEGORY_ICONS[rawLabel] || "";
+  const categoryLabel = emoji ? `${emoji} ${rawLabel}` : rawLabel;
   const isOpen = item.isOpenNow;
 
   return (
@@ -133,7 +135,9 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
 }
 
 function MapBusinessCard({ item }: { item: MappedBusiness }) {
-  const categoryLabel = formatCategoryLabel(item.category);
+  const rawLabel = formatCategoryLabel(item.category);
+  const emoji = CATEGORY_ICONS[rawLabel] || "";
+  const categoryLabel = emoji ? `${emoji} ${rawLabel}` : rawLabel;
 
   const openInMaps = () => {
     if (item.lat && item.lng) {

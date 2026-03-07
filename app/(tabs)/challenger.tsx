@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, categoryToDisplay, type ApiChallenger } from "@/lib/api";
+import { CATEGORY_ICONS, formatCategoryLabel } from "@/lib/data";
 import { formatCountdown } from "@/lib/data";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
@@ -42,7 +43,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <Text style={styles.catText}>{categoryToDisplay(challenge.category).toUpperCase()}</Text>
+        <Text style={styles.catText}>{CATEGORY_ICONS[formatCategoryLabel(challenge.category)] || ""} {categoryToDisplay(challenge.category).toUpperCase()}</Text>
         <Text style={styles.cityText}>{challenge.city}</Text>
       </View>
 

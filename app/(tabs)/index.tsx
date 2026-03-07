@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { AppLogo } from "@/components/Logo";
-import { formatCategoryLabel } from "@/lib/data";
+import { formatCategoryLabel, CATEGORY_ICONS } from "@/lib/data";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 
 const AMBER = BRAND.colors.amber;
@@ -173,11 +173,12 @@ export default function LeaderboardScreen() {
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   const categoryTabs = availableCategories.length > 0
-    ? availableCategories.map((cat: string) => ({
-        slug: cat,
-        label: formatCategoryLabel(cat),
-      }))
-    : [{ slug: "restaurant", label: "Restaurants" }];
+    ? availableCategories.map((cat: string) => {
+        const label = formatCategoryLabel(cat);
+        const emoji = CATEGORY_ICONS[label] || "";
+        return { slug: cat, label: emoji ? `${emoji} ${label}` : label };
+      })
+    : [{ slug: "restaurant", label: "🍽 Restaurants" }];
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
