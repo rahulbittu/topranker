@@ -222,8 +222,9 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     if (Platform.OS !== "web") return;
 
     const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+    console.log("[MapView] Init — key length:", apiKey.length, "platform:", Platform.OS);
     if (!apiKey) {
-      setMapError("No API key. Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your environment.");
+      setMapError("No API key found. Rebuild after adding EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your environment. Expo inlines EXPO_PUBLIC_* vars at build time.");
       return;
     }
 
@@ -265,7 +266,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
       } else if (msg.includes("InvalidKeyMapError")) {
         setMapError("Invalid API key. Check EXPO_PUBLIC_GOOGLE_MAPS_API_KEY.");
       } else {
-        setMapError("Failed to load Google Maps. Check console for details.");
+        setMapError(`Failed to load Google Maps: ${msg || "Unknown error"}. Check browser console.`);
       }
     });
 
