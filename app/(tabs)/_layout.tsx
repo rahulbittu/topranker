@@ -43,7 +43,7 @@ function ClassicTabLayout() {
           position: "absolute",
           backgroundColor: "#FFFFFF",
           borderTopWidth: 1,
-          borderTopColor: "#E5E5EA",
+          borderTopColor: Colors.border,
           ...(isWeb ? { height: 56 + 28 } : { height: 56 + 34 }),
           paddingTop: 6,
         },

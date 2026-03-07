@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E5E5EA",
+    borderColor: Colors.border,
   },
   chipActive: {
     backgroundColor: AMBER,

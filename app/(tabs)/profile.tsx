@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
     borderRadius: 14, height: 52,
     width: "100%",
     shadowColor: "#000",
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%", height: 48, borderRadius: 12,
-    borderWidth: 1, borderColor: "#E5E5EA",
+    borderWidth: 1, borderColor: Colors.border,
     paddingHorizontal: 14, fontSize: 14, color: Colors.text,
     backgroundColor: "#fff", fontFamily: "DMSans_400Regular",
   },

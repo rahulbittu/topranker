@@ -477,18 +477,18 @@ const styles = StyleSheet.create({
   cityButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1, borderColor: "#E5E5EA",
+    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
   },
   cityButtonText: { fontSize: 13, fontWeight: "500", color: Colors.text, fontFamily: "DMSans_500Medium" },
 
   cityPickerDropdown: {
     marginHorizontal: 16, backgroundColor: Colors.background, borderRadius: 12,
-    borderWidth: 1, borderColor: "#E5E5EA", marginBottom: 8, overflow: "hidden",
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
   },
   cityOption: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: "#E5E5EA",
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   cityOptionActive: { backgroundColor: Colors.goldFaint },
   cityOptionText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular" },
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   viewToggle: {
     flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 8,
-    overflow: "hidden", borderWidth: 1, borderColor: "#E5E5EA",
+    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
   },
   viewToggleBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E5EA",
+    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: Colors.border,
   },
   filterChipActive: { backgroundColor: AMBER, borderColor: AMBER },
   filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
   // Map styles
   mapContainer: {
     margin: 16, borderRadius: 12, overflow: "hidden",
-    borderWidth: 1, borderColor: "#E5E5EA", position: "relative" as const,
+    borderWidth: 1, borderColor: Colors.border, position: "relative" as const,
   },
   mapLoadingOverlay: {
     position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
@@ -612,7 +612,7 @@ const styles = StyleSheet.create({
   mapCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
-    borderWidth: 1, borderColor: "#E5E5EA",
+    borderWidth: 1, borderColor: Colors.border,
   },
   mapCardRank: {
     width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
