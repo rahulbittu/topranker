@@ -371,8 +371,10 @@ export default function RateScreen() {
             style={[styles.primaryButton, { width: "100%", marginTop: 8 }]}
             onPress={() => router.back()}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Done, go back to business"
           >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            <Text style={styles.primaryButtonText}>Done</Text>
           </TouchableOpacity>
         </View>
       </View>
