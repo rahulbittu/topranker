@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, Linking, Share, Dimensions, Image,
+  Platform, Linking, Share, Dimensions, Image,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
