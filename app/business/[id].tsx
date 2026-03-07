@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, type ApiDish } from "@/lib/api";
 import {
@@ -238,11 +239,11 @@ export default function BusinessProfileScreen() {
             >
               {photoUrls.map((url, i) => (
                 heroImgErrors.has(i) ? (
-                  <View key={i} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+                  <LinearGradient key={i} colors={["#C49A1A", "#9A7510"]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
                     <Text style={styles.heroPlaceholderInitial}>
                       {business.name.charAt(0).toUpperCase()}
                     </Text>
-                  </View>
+                  </LinearGradient>
                 ) : (
                   <Image
                     key={i}
@@ -255,11 +256,11 @@ export default function BusinessProfileScreen() {
               ))}
             </ScrollView>
           ) : (
-            <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
+            <LinearGradient colors={["#C49A1A", "#9A7510"]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
               <Text style={styles.heroPlaceholderInitial}>
                 {business.name.charAt(0).toUpperCase()}
               </Text>
-            </View>
+            </LinearGradient>
           )}
 
           {photoUrls.length > 1 && (
