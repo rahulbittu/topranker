@@ -36,6 +36,28 @@ function TierBadge({ tier }: { tier: CredibilityTier }) {
   );
 }
 
+const HistoryRow = React.memo(function HistoryRow({ r }: { r: any }) {
+  return (
+    <TouchableOpacity
+      style={styles.historyRow}
+      activeOpacity={0.7}
+      onPress={() => r.businessSlug && router.push({ pathname: "/business/[id]", params: { id: r.businessSlug } })}
+      accessibilityRole="link"
+      accessibilityLabel={`${r.businessName || "Business"}, score ${parseFloat(r.rawScore).toFixed(1)}`}
+    >
+      <View style={styles.historyLeft}>
+        <Text style={styles.historyName}>{r.businessName || "Business"}</Text>
+        <Text style={styles.historyDate}>{formatTimeAgo(new Date(r.createdAt).getTime())}</Text>
+      </View>
+      <View style={styles.historyRight}>
+        <Text style={styles.historyScore}>{parseFloat(r.rawScore).toFixed(1)}</Text>
+        <Text style={styles.historyWeight}>{parseFloat(r.weight).toFixed(2)}x weight</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+    </TouchableOpacity>
+  );
+});
+
 function BreakdownRow({ label, value, icon }: { label: string; value: string; icon: React.ComponentProps<typeof Ionicons>["name"] }) {
   return (
     <View style={styles.breakdownRow}>
@@ -202,10 +224,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
     : 100;
 
   const breakdown = profile.credibilityBreakdown;
-  const totalScore = (breakdown.base || 0) + (breakdown.volume || 0) +
-    (breakdown.diversity || 0) + Math.round(breakdown.age || 0) +
-    Math.round(breakdown.variance || 0) + (breakdown.helpfulness || 0) -
-    (breakdown.penalties || 0);
+  const totalScore = profile.credibilityScore;
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -331,24 +350,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </View>
 
       {profile.ratingHistory.map((r: any) => (
-        <TouchableOpacity
-          key={r.id}
-          style={styles.historyRow}
-          activeOpacity={0.7}
-          onPress={() => r.businessSlug && router.push({ pathname: "/business/[id]", params: { id: r.businessSlug } })}
-          accessibilityRole="button"
-          accessibilityLabel={`${r.businessName || "Business"}, score ${parseFloat(r.rawScore).toFixed(1)}`}
-        >
-          <View style={styles.historyLeft}>
-            <Text style={styles.historyName}>{r.businessName || "Business"}</Text>
-            <Text style={styles.historyDate}>{formatTimeAgo(new Date(r.createdAt).getTime())}</Text>
-          </View>
-          <View style={styles.historyRight}>
-            <Text style={styles.historyScore}>{parseFloat(r.rawScore).toFixed(1)}</Text>
-            <Text style={styles.historyWeight}>{parseFloat(r.weight).toFixed(2)}x weight</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
+        <HistoryRow key={r.id} r={r} />
       ))}
 
       {profile.ratingHistory.length === 0 && (
