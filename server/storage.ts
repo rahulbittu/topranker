@@ -863,6 +863,7 @@ export async function searchBusinesses(
   category?: string,
   limit: number = 20,
 ): Promise<Business[]> {
+  const q = "%" + query.toLowerCase() + "%";
   return db
     .select()
     .from(businesses)
@@ -870,7 +871,9 @@ export async function searchBusinesses(
       and(
         eq(businesses.city, city),
         eq(businesses.isActive, true),
-        sql`lower(${businesses.name}) like ${"%" + query.toLowerCase() + "%"}`,
+        query
+          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`
+          : undefined,
         ...(category ? [eq(businesses.category, category)] : []),
       ),
     )
