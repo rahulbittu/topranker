@@ -135,6 +135,9 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: React.Componen
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
     >
       <Ionicons name={icon} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
       <Text style={[styles.actionBtnLabel, disabled && styles.actionBtnLabelDisabled]}>{label}</Text>
@@ -196,10 +199,10 @@ export default function BusinessProfileScreen() {
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
         <Text style={[styles.notFoundText, styles.notFoundTextSpaced]}>Couldn't load this business</Text>
-        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8}>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Retry loading business">
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backLinkButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backLinkButton} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.backLink}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -210,7 +213,7 @@ export default function BusinessProfileScreen() {
     return (
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <Text style={styles.notFoundText}>Business not found</Text>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.backLink}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -417,6 +420,8 @@ export default function BusinessProfileScreen() {
               style={styles.rateButton}
               onPress={() => router.push("/auth/login")}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to rate this place"
             >
               <Text style={styles.rateButtonText}>Sign In to Rate</Text>
             </TouchableOpacity>
@@ -453,7 +458,7 @@ export default function BusinessProfileScreen() {
                 </View>
               )}
               <Text style={styles.addressText}>{business.address}</Text>
-              <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps}>
+              <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps} accessibilityRole="button" accessibilityLabel="Get directions">
                 <Feather name="navigation" size={13} color={Colors.text} />
                 <Text style={styles.directionsBtnText}>Get Directions</Text>
               </TouchableOpacity>

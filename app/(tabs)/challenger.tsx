@@ -146,7 +146,7 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
         <Ionicons name="chatbubbles-outline" size={14} color={BRAND.colors.amber} />
         <Text style={styles.reviewsSectionTitle}>COMMUNITY REVIEWS</Text>
         <Text style={styles.reviewsCount}>{displayReviews.length}</Text>
-        <View style={{ flex: 1 }} />
+        <View style={styles.flexSpacer} />
         <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textTertiary} />
       </TouchableOpacity>
       {expanded && displayReviews.map(review => (
@@ -534,6 +534,7 @@ const styles = StyleSheet.create({
   },
 
   // Community Reviews section
+  flexSpacer: { flex: 1 },
   reviewsSection: {
     marginTop: 16,
     paddingTop: 14,
