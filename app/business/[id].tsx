@@ -229,9 +229,15 @@ export default function BusinessProfileScreen() {
     if (business.website) Linking.openURL(business.website);
   };
   const handleMaps = () => {
-    if (business.address) {
+    if (business.googleMapsUrl) {
+      Linking.openURL(business.googleMapsUrl);
+    } else if (business.address) {
       const q = encodeURIComponent(business.address);
-      Linking.openURL(Platform.OS === "ios" ? `maps:?q=${q}` : `geo:0,0?q=${q}`);
+      if (Platform.OS === "web") {
+        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
+      } else {
+        Linking.openURL(Platform.OS === "ios" ? `maps:?q=${q}` : `geo:0,0?q=${q}`);
+      }
     }
   };
   const handleShare = async () => {

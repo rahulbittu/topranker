@@ -153,6 +153,7 @@ export function mapApiBusiness(biz: ApiBusiness) {
     lng: biz.lng ? parseFloat(biz.lng) : undefined,
     isClaimed: biz.isClaimed,
     googleRating: biz.googleRating ? parseFloat(biz.googleRating) : undefined,
+    googleMapsUrl: biz.googleMapsUrl || undefined,
     openingHours: biz.openingHours || undefined,
   };
 }
