@@ -26,8 +26,13 @@ export default function Root({ children }: PropsWithChildren) {
         <style dangerouslySetInnerHTML={{ __html: `
           body { overflow: hidden; height: 100vh; }
           #root { display: flex; height: 100vh; }
-          * { -webkit-tap-highlight-color: transparent; }
+          * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+          html { scroll-behavior: smooth; color-scheme: dark; }
           input, textarea { font-size: 16px !important; }
+          ::-webkit-scrollbar { width: 6px; height: 6px; }
+          ::-webkit-scrollbar-track { background: transparent; }
+          ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+          ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
         `}} />
       </head>
       <body>{children}</body>
