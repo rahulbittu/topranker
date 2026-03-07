@@ -156,14 +156,21 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   );
 }
 
-function FighterPhoto({ biz, label }: { biz: any; label: string }) {
+function FighterPhoto({ biz, label, score }: { biz: any; label: string; score?: number }) {
   const [err, setErr] = useState(false);
   const photoUrl = biz.photoUrl || (biz.photoUrls && biz.photoUrls[0]);
 
   const overlay = (
     <LinearGradient colors={["transparent", "rgba(0,0,0,0.7)"]} style={styles.fighterOverlay}>
-      <Text style={styles.fighterOverlayName} numberOfLines={2}>{biz.name}</Text>
-      <Text style={styles.fighterOverlayLabel}>{label}</Text>
+      <View style={styles.fighterOverlayRow}>
+        <View style={styles.fighterOverlayLeft}>
+          <Text style={styles.fighterOverlayName} numberOfLines={2}>{biz.name}</Text>
+          <Text style={styles.fighterOverlayLabel}>{label}</Text>
+        </View>
+        {score !== undefined && (
+          <Text style={styles.fighterOverlayScore}>{score.toFixed(1)}</Text>
+        )}
+      </View>
     </LinearGradient>
   );
 
@@ -226,7 +233,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
-          <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" />
+          <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" score={parseFloat(challenge.defenderBusiness.weightedScore as any) || 0} />
           <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>
@@ -244,7 +251,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
-          <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" />
+          <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" score={parseFloat(challenge.challengerBusiness.weightedScore as any) || 0} />
           <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>
@@ -409,14 +416,14 @@ const styles = StyleSheet.create({
   fighter: { flex: 1, alignItems: "center" as const, gap: 4 },
   fighterPhotoWrap: {
     width: "100%" as any,
-    height: 120,
+    height: 130,
     borderRadius: 10,
     overflow: "hidden" as const,
     position: "relative" as const,
   },
   fighterPhoto: {
     width: "100%" as any,
-    height: 120,
+    height: 130,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
@@ -427,8 +434,14 @@ const styles = StyleSheet.create({
     right: 0,
     paddingHorizontal: 8,
     paddingBottom: 8,
-    paddingTop: 24,
+    paddingTop: 28,
   },
+  fighterOverlayRow: {
+    flexDirection: "row" as const,
+    alignItems: "flex-end" as const,
+    justifyContent: "space-between" as const,
+  },
+  fighterOverlayLeft: { flex: 1 },
   fighterOverlayName: {
     fontSize: 14,
     fontWeight: "700" as const,
@@ -442,6 +455,13 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_500Medium",
     letterSpacing: 0.5,
     marginTop: 1,
+  },
+  fighterOverlayScore: {
+    fontSize: 20,
+    fontWeight: "900" as const,
+    color: BRAND.colors.amber,
+    fontFamily: "PlayfairDisplay_900Black",
+    letterSpacing: -0.5,
   },
   fighterPhotoInitial: {
     fontSize: 28,
