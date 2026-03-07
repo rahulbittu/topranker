@@ -219,6 +219,10 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
         <View style={[styles.progressBarInner, { width: `${Math.min((daysElapsed / totalDays) * 100, 100)}%` as any }]} />
       </View>
 
+      <View style={styles.voteCta}>
+        <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
+      </View>
+
       <CommunityReviews challenge={challenge} />
     </View>
   );
@@ -464,6 +468,13 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: Colors.gold,
     borderRadius: 2,
+  },
+  voteCta: {
+    marginTop: 12, alignItems: "center", paddingVertical: 8,
+    backgroundColor: Colors.goldFaint, borderRadius: 8,
+  },
+  voteCtaText: {
+    fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium",
   },
 
   // Community Reviews section
