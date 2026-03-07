@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, Alert,
-  Dimensions, TextInput, RefreshControl,
+  TextInput, RefreshControl, useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,6 @@ import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 
 const AMBER = BRAND.colors.amber;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_PADDING = 16;
 
 interface MappedBusiness {
@@ -152,10 +151,10 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
   );
 }
 
-function PhotoStrip({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+function PhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripPhotos = photos.slice(0, 3);
-  const stripWidth = SCREEN_WIDTH - CARD_PADDING * 2;
+  const stripWidth = containerWidth;
 
   if (stripPhotos.length === 0) {
     return (
@@ -208,6 +207,8 @@ function PhotoStrip({ photos, height, category }: { photos: string[]; height: nu
 }
 
 const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.min(screenWidth, 600) - CARD_PADDING * 2;
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
@@ -221,7 +222,7 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount.toLocaleString()} ratings`}
     >
       <View style={styles.rankedPhotoStripWrap}>
-        <PhotoStrip photos={photos} height={140} category={item.category} />
+        <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} />
         {/* Rank badge overlaid top-left */}
         <View style={[
           styles.rankBadge,

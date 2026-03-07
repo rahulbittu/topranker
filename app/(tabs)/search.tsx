@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -18,7 +18,6 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const AMBER = BRAND.colors.amber;
-const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_H_MARGIN = 16;
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -54,9 +53,9 @@ interface MappedBusiness {
   lng?: number;
 }
 
-function DiscoverPhotoStrip({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const stripWidth = SCREEN_WIDTH - CARD_H_MARGIN * 2;
+  const stripWidth = containerWidth;
   const stripPhotos = photos.slice(0, 3);
 
   if (stripPhotos.length === 0) {
@@ -109,6 +108,8 @@ function DiscoverPhotoStrip({ photos, height, category }: { photos: string[]; he
 }
 
 const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.min(screenWidth, 600) - CARD_H_MARGIN * 2;
   const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
@@ -123,7 +124,7 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={styles.cardPhotoStripWrap}>
-        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} />
+        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} />
         <View style={styles.discoverRankBadge}>
           <Text style={styles.discoverRankBadgeText}>{rankLabel}</Text>
         </View>
