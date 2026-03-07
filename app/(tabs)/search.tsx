@@ -4,7 +4,6 @@ import {
   TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
   useWindowDimensions,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +17,7 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import { SafeImage } from "@/components/SafeImage";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -71,12 +71,12 @@ const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, heig
         style={{ height }}
       >
         {stripPhotos.map((uri, i) => (
-          <Image
+          <SafeImage
             key={i}
-            source={{ uri }}
+            uri={uri}
             style={{ width: stripWidth, height }}
             contentFit="cover"
-            transition={200}
+            category={category}
           />
         ))}
       </ScrollView>
@@ -527,7 +527,7 @@ export default function SearchScreen() {
                 accessibilityLabel={`View ${selectedMapBiz.name}`}
               >
                 {selectedMapBiz.photoUrls && selectedMapBiz.photoUrls.length > 0 ? (
-                  <Image source={{ uri: selectedMapBiz.photoUrls[0] }} style={styles.mapSelectedPhoto} contentFit="cover" transition={200} />
+                  <SafeImage uri={selectedMapBiz.photoUrls[0]} style={styles.mapSelectedPhoto} contentFit="cover" category={selectedMapBiz.category} />
                 ) : (
                   <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapSelectedPhoto, styles.mapSelectedPhotoFallback]}>
                     <Text style={styles.mapSelectedInitial}>{selectedMapBiz.name.charAt(0)}</Text>

@@ -13,6 +13,7 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
@@ -255,7 +256,6 @@ export default function BusinessProfileScreen() {
   const dishes = data?.dishes || [];
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
-  const [heroImgErrors, setHeroImgErrors] = useState<Set<number>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -361,22 +361,14 @@ export default function BusinessProfileScreen() {
               scrollEventThrottle={16}
             >
               {photoUrls.map((url, i) => (
-                heroImgErrors.has(i) ? (
-                  <LinearGradient key={i} colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder, { width: screenWidth }]}>
-                    <Text style={styles.heroPlaceholderInitial}>
-                      {business.name.charAt(0).toUpperCase()}
-                    </Text>
-                  </LinearGradient>
-                ) : (
-                  <Image
+                  <SafeImage
                     key={i}
-                    source={{ uri: url }}
+                    uri={url}
                     style={[styles.heroImage, { width: screenWidth }]}
                     contentFit="cover"
-                    transition={300}
-                    onError={() => setHeroImgErrors(prev => new Set(prev).add(i))}
+                    category={business.category}
+                    fallbackText={business.name.charAt(0).toUpperCase()}
                   />
-                )
               ))}
             </ScrollView>
           ) : (
@@ -596,12 +588,12 @@ export default function BusinessProfileScreen() {
               <Text style={styles.sectionTitle}>All Photos ({photoUrls.length})</Text>
               <View style={styles.photoGrid}>
                 {photoUrls.map((url, i) => (
-                  <Image
+                  <SafeImage
                     key={i}
-                    source={{ uri: url }}
+                    uri={url}
                     style={styles.photoGridImage}
                     contentFit="cover"
-                    transition={200}
+                    category={business.category}
                   />
                 ))}
               </View>

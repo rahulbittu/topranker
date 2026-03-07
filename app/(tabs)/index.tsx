@@ -17,6 +17,7 @@ import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import { SafeImage } from "@/components/SafeImage";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -38,25 +39,25 @@ const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category }
 
   if (photos.length === 1) {
     return (
-      <Image source={{ uri: photos[0] }} style={[styles.mosaicFull, { height }]} contentFit="cover" transition={200} />
+      <SafeImage uri={photos[0]} style={{ width: "100%" as any, height } as any} category={category} />
     );
   }
 
   if (photos.length === 2) {
     return (
       <View style={[styles.mosaicRow, { height }]}>
-        <Image source={{ uri: photos[0] }} style={[styles.mosaicMainPhoto, { height }]} contentFit="cover" transition={200} />
-        <Image source={{ uri: photos[1] }} style={[styles.mosaicFlex, { height }]} contentFit="cover" transition={200} />
+        <SafeImage uri={photos[0]} style={[styles.mosaicMainPhoto, { height }] as any} category={category} />
+        <SafeImage uri={photos[1]} style={[styles.mosaicFlex, { height }] as any} category={category} />
       </View>
     );
   }
 
   return (
     <View style={[styles.mosaicRow, { height }]}>
-      <Image source={{ uri: photos[0] }} style={[styles.mosaicMainPhoto, { height }]} contentFit="cover" transition={200} />
+      <SafeImage uri={photos[0]} style={[styles.mosaicMainPhoto, { height }] as any} category={category} />
       <View style={styles.mosaicSideColumn}>
-        <Image source={{ uri: photos[1] }} style={styles.mosaicFlex} contentFit="cover" transition={200} />
-        <Image source={{ uri: photos[2] }} style={styles.mosaicFlex} contentFit="cover" transition={200} />
+        <SafeImage uri={photos[1]} style={styles.mosaicFlex as any} category={category} />
+        <SafeImage uri={photos[2]} style={styles.mosaicFlex as any} category={category} />
       </View>
     </View>
   );
@@ -182,12 +183,11 @@ const PhotoStrip = React.memo(function PhotoStrip({ photos, height, category, co
         style={{ height }}
       >
         {stripPhotos.map((uri, i) => (
-          <Image
+          <SafeImage
             key={i}
-            source={{ uri }}
-            style={{ width: stripWidth, height }}
-            contentFit="cover"
-            transition={200}
+            uri={uri}
+            style={{ width: stripWidth, height } as any}
+            category={category}
           />
         ))}
       </ScrollView>
