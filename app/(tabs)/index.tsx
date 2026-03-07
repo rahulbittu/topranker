@@ -263,7 +263,7 @@ export default function LeaderboardScreen() {
     );
   }, [businesses, searchQuery]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
   const heroBiz = filteredBiz.length > 0 ? filteredBiz[0] : null;
   const restBiz = useMemo(() => filteredBiz.slice(1), [filteredBiz]);
 
