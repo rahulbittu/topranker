@@ -4,7 +4,6 @@ import {
   ScrollView, Platform, Animated,
   TextInput, RefreshControl, useWindowDimensions,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -23,6 +22,7 @@ import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
+const RANKED_CARD_HEIGHT = 222;
 
 const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
   if (photos.length === 0) {
@@ -140,6 +140,8 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
         </View>
         <TouchableOpacity
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
+          accessibilityRole="link"
+          accessibilityLabel={`View ${item.name} profile`}
         >
           <Text style={styles.heroStripLink}>{"View Profile \u2192"}</Text>
         </TouchableOpacity>
@@ -449,7 +451,7 @@ export default function LeaderboardScreen() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
-          getItemLayout={(_, index) => ({ length: 222, offset: 222 * index, index })}
+          getItemLayout={(_, index) => ({ length: RANKED_CARD_HEIGHT, offset: RANKED_CARD_HEIGHT * index, index })}
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
