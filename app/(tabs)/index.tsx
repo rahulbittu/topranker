@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, Alert,
@@ -237,12 +237,13 @@ export default function LeaderboardScreen() {
   });
 
   // Build chip list from dynamic categories, fallback to default while loading
-  const categoryChips = dbCategories.length > 0
+  const categoryChips = useMemo(() => dbCategories.length > 0
     ? dbCategories.map((slug: string) => {
         const d = getCategoryDisplay(slug);
         return { slug, label: d.label, emoji: d.emoji };
       })
-    : [{ slug: "restaurant", label: "Restaurants", emoji: getCategoryDisplay("restaurant").emoji }];
+    : [{ slug: "restaurant", label: "Restaurants", emoji: getCategoryDisplay("restaurant").emoji }],
+    [dbCategories]);
 
   const { data: businesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["leaderboard", "Dallas", activeCategory],
@@ -253,16 +254,18 @@ export default function LeaderboardScreen() {
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
   // Filter by search query
-  const filteredBiz = searchQuery.trim()
-    ? businesses.filter((b: MappedBusiness) =>
-        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (b.neighborhood && b.neighborhood.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    : businesses;
+  const filteredBiz = useMemo(() => {
+    if (!searchQuery.trim()) return businesses;
+    const q = searchQuery.toLowerCase();
+    return businesses.filter((b: MappedBusiness) =>
+      b.name.toLowerCase().includes(q) ||
+      (b.neighborhood && b.neighborhood.toLowerCase().includes(q))
+    );
+  }, [businesses, searchQuery]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const heroBiz = filteredBiz.length > 0 ? filteredBiz[0] : null;
-  const restBiz = filteredBiz.slice(1);
+  const restBiz = useMemo(() => filteredBiz.slice(1), [filteredBiz]);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
