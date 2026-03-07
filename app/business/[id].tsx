@@ -476,31 +476,22 @@ export default function BusinessProfileScreen() {
             </>
           )}
 
-          {/* Photo Gallery */}
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Photos</Text>
-            {photoUrls.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.photoGalleryScroll}
-              >
+          {/* Photo Grid - only show if multiple photos exist beyond hero */}
+          {photoUrls.length > 3 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>All Photos ({photoUrls.length})</Text>
+              <View style={styles.photoGrid}>
                 {photoUrls.map((url, i) => (
                   <Image
                     key={i}
                     source={{ uri: url }}
-                    style={styles.photoGalleryImage}
+                    style={styles.photoGridImage}
                     resizeMode="cover"
                   />
                 ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.photoGalleryEmpty}>
-                <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
-                <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
               </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Claim Listing */}
           {!business.isClaimed && (
@@ -733,16 +724,13 @@ const styles = StyleSheet.create({
   ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", fontFamily: "DMSans_400Regular", lineHeight: 17 },
 
-  photoGalleryScroll: { gap: 10 },
-  photoGalleryImage: {
-    width: SCREEN_WIDTH - 48, height: 200, borderRadius: 14,
+  photoGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 4, borderRadius: 12, overflow: "hidden",
+  },
+  photoGridImage: {
+    width: (SCREEN_WIDTH - 28 - 8) / 3, height: (SCREEN_WIDTH - 28 - 8) / 3,
     backgroundColor: Colors.surfaceRaised,
   },
-  photoGalleryEmpty: {
-    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 24,
-    alignItems: "center", justifyContent: "center", gap: 6,
-  },
-  photoGalleryEmptyText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 
   claimCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
