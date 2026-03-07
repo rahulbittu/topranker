@@ -28,17 +28,17 @@ export function LeaderboardSkeleton() {
     <View style={styles.container}>
       {/* Hero skeleton */}
       <View style={styles.heroSkeleton}>
-        <SkeletonBlock style={{ width: "100%", height: 220, borderRadius: 16 }} />
+        <SkeletonBlock style={{ width: "100%", height: 240, borderRadius: 16 }} />
         <View style={{ padding: 14, gap: 8 }}>
           <SkeletonBlock style={{ width: "60%", height: 14, borderRadius: 6 }} />
           <SkeletonBlock style={{ width: "40%", height: 10, borderRadius: 4 }} />
         </View>
       </View>
-      {/* Row skeletons */}
+      {/* Row skeletons — vertical card with photo strip on top */}
       {[1, 2, 3, 4].map(i => (
         <View key={i} style={styles.rowSkeleton}>
-          <SkeletonBlock style={{ width: 110, height: 110, borderRadius: 12 }} />
-          <View style={{ flex: 1, gap: 8 }}>
+          <SkeletonBlock style={{ width: "100%", height: 140, borderRadius: 0 }} />
+          <View style={{ padding: 12, gap: 6 }}>
             <SkeletonBlock style={{ width: "70%", height: 14, borderRadius: 6 }} />
             <SkeletonBlock style={{ width: "50%", height: 10, borderRadius: 4 }} />
             <SkeletonBlock style={{ width: "30%", height: 10, borderRadius: 4 }} />
@@ -147,11 +147,9 @@ const styles = StyleSheet.create({
     ...Colors.cardShadow,
   },
   rowSkeleton: {
-    flexDirection: "row",
     backgroundColor: Colors.surface,
     borderRadius: 14,
-    padding: 12,
-    gap: 14,
+    overflow: "hidden",
     ...Colors.cardShadow,
   },
   profileHeader: {

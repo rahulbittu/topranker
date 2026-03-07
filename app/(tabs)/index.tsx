@@ -109,7 +109,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
       accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={styles.heroPhotoWrap}>
-        <PhotoMosaic photos={photos} height={220} category={item.category} />
+        <PhotoMosaic photos={photos} height={240} category={item.category} />
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.7)"]}
           style={styles.heroGradient}
@@ -152,45 +152,89 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
   );
 }
 
+function PhotoStrip({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const stripPhotos = photos.slice(0, 3);
+  const stripWidth = SCREEN_WIDTH - CARD_PADDING * 2;
+
+  if (stripPhotos.length === 0) {
+    return (
+      <LinearGradient
+        colors={[AMBER, BRAND.colors.navy]}
+        style={[styles.photoStripFallback, { height }]}
+      >
+        <Text style={styles.mosaicFallbackEmoji}>
+          {getCategoryDisplay(category || "").emoji}
+        </Text>
+      </LinearGradient>
+    );
+  }
+
+  const handleScroll = useCallback((e: any) => {
+    const x = e.nativeEvent.contentOffset.x;
+    const idx = Math.round(x / stripWidth);
+    setActiveIndex(idx);
+  }, [stripWidth]);
+
+  return (
+    <View>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={{ height }}
+      >
+        {stripPhotos.map((uri, i) => (
+          <Image
+            key={i}
+            source={{ uri }}
+            style={{ width: stripWidth, height }}
+            contentFit="cover"
+            transition={200}
+          />
+        ))}
+      </ScrollView>
+      {stripPhotos.length > 1 && (
+        <View style={styles.dotRow}>
+          {stripPhotos.map((_, i) => (
+            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
 const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
-  const [imgError, setImgError] = useState(false);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
-  const initial = item.name.charAt(0).toUpperCase();
 
   return (
     <TouchableOpacity
       activeOpacity={0.75}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      style={[
-        styles.rankedCard,
-        item.rank === 2 && styles.rankedCardSilver,
-        item.rank === 3 && styles.rankedCardBronze,
-      ]}
+      style={styles.rankedCard}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount.toLocaleString()} ratings`}
     >
-      {photos.length > 0 && !imgError ? (
-        <Image
-          source={{ uri: photos[0] }}
-          style={styles.rankedPhoto}
-          contentFit="cover"
-          transition={200}
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <LinearGradient
-          colors={[AMBER, BRAND.colors.amberDark]}
-          style={[styles.rankedPhoto, styles.rankedPhotoFallback]}
-        >
-          <Text style={styles.rankedPhotoInitial}>{initial}</Text>
-        </LinearGradient>
-      )}
+      <View style={styles.rankedPhotoStripWrap}>
+        <PhotoStrip photos={photos} height={140} category={item.category} />
+        {/* Rank badge overlaid top-left */}
+        <View style={[
+          styles.rankBadge,
+          item.rank === 2 && styles.rankBadgeSilver,
+          item.rank === 3 && styles.rankBadgeBronze,
+        ]}>
+          <Text style={styles.rankBadgeText}>{rankLabel}</Text>
+        </View>
+      </View>
       <View style={styles.rankedInfo}>
         <View style={styles.rankedRow1}>
           <Text style={styles.rankedName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.rankedRank}>{rankLabel}</Text>
+          <Text style={styles.rankedScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
         </View>
         <Text style={styles.rankedMeta} numberOfLines={1}>
           {catDisplay.emoji} {catDisplay.label}
@@ -198,15 +242,12 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
         <View style={styles.rankedRow3}>
-          <Text style={styles.rankedScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
-          <Text style={styles.rankedRatingCount}>({item.ratingCount.toLocaleString()} ratings)</Text>
+          <Text style={styles.rankedRatingCount}>{item.ratingCount.toLocaleString()} ratings</Text>
           {item.rankDelta !== 0 && (
             <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
-        </View>
-        <View style={styles.rankedRow4}>
           {item.isOpenNow !== undefined && (
             <View style={[styles.statusPillSmall, item.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
               <Text style={styles.statusPillSmallText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
@@ -366,7 +407,7 @@ export default function LeaderboardScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
-          getItemLayout={(_, index) => ({ length: 140, offset: 140 * index, index })}
+          removeClippedSubviews={Platform.OS !== "web"}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
@@ -625,49 +666,66 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_600SemiBold",
   },
 
+  // Photo Strip (swipeable)
+  photoStripFallback: { alignItems: "center", justifyContent: "center" },
+  dotRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 6,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.45)",
+  },
+  dotActive: {
+    backgroundColor: AMBER,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
   // Ranked Cards (#2+)
   rankedCard: {
-    flexDirection: "row",
     backgroundColor: Colors.surface,
     borderRadius: 14,
-    padding: 10,
-    minHeight: 130,
-    gap: 12,
+    overflow: "hidden",
+    marginBottom: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 12,
     elevation: 2,
   },
-  rankedCardSilver: {
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.silver,
+  rankedPhotoStripWrap: {
+    position: "relative" as const,
   },
-  rankedCardBronze: {
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.bronze,
-  },
-  rankedPhoto: {
-    width: 110,
-    height: 110,
-    borderRadius: 12,
-    backgroundColor: Colors.surfaceRaised,
-  },
-  rankedPhotoFallback: {
+  rankBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
     backgroundColor: AMBER,
-    alignItems: "center",
-    justifyContent: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
-  rankedPhotoInitial: {
-    fontSize: 24,
-    fontWeight: "700",
+  rankBadgeSilver: { backgroundColor: Colors.silver },
+  rankBadgeBronze: { backgroundColor: Colors.bronze },
+  rankBadgeText: {
+    fontSize: 12,
+    fontWeight: "800",
     color: "#fff",
-    fontFamily: "PlayfairDisplay_700Bold",
+    fontFamily: "PlayfairDisplay_900Black",
   },
   rankedInfo: {
-    flex: 1,
-    justifyContent: "center",
-    gap: 3,
+    padding: 12,
+    gap: 4,
   },
   rankedRow1: {
     flexDirection: "row",
@@ -681,12 +739,6 @@ const styles = StyleSheet.create({
     fontFamily: "PlayfairDisplay_700Bold",
     flex: 1,
     marginRight: 8,
-  },
-  rankedRank: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: AMBER,
-    fontFamily: "PlayfairDisplay_900Black",
   },
   rankedMeta: {
     fontSize: 12,
