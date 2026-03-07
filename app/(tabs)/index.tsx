@@ -278,7 +278,7 @@ export default function LeaderboardScreen() {
         <Ionicons name="search" size={16} color={Colors.textTertiary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search restaurants, dishes..."
+          placeholder="Filter this list..."
           placeholderTextColor={Colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
