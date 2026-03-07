@@ -144,7 +144,7 @@ export default function RateScreen() {
   const [dishSearchResults, setDishSearchResults] = useState<ApiDish[]>([]);
   const dishSearchTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const userTier = (user as any)?.credibilityTier as CredibilityTier || "community";
+  const userTier = (user?.credibilityTier as CredibilityTier) || "community";
   const tierColor = TIER_COLORS[userTier];
   const tierDisplayName = TIER_DISPLAY_NAMES[userTier];
   const voteWeight = TIER_WEIGHTS[userTier];
@@ -177,7 +177,7 @@ export default function RateScreen() {
       confirmScale.value = withSpring(1, { damping: 12, stiffness: 120 });
       rankSlide.value = withDelay(300, withSpring(0, { damping: 14 }));
 
-      const userScore = (user as any)?.credibilityScore || 10;
+      const userScore = user?.credibilityScore || 10;
       const currentTier = getCredibilityTier(userScore);
       const range = TIER_SCORE_RANGES[currentTier];
       const progress = Math.min(100, ((userScore - range.min) / (range.max - range.min)) * 100);
@@ -283,7 +283,7 @@ export default function RateScreen() {
   const prevRank = business.rank ?? 1;
   const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
 
-  const userScore = (user as any)?.credibilityScore || 10;
+  const userScore = user?.credibilityScore || 10;
   const currentTier = getCredibilityTier(userScore);
   const nextTierMap: Record<CredibilityTier, CredibilityTier | null> = {
     community: "city", city: "trusted", trusted: "top", top: null,
