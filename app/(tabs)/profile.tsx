@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -16,11 +16,17 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 
+const AMBER = "#B8860B";
+
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
   const displayName = TIER_DISPLAY_NAMES[tier];
   return (
-    <View style={[styles.tierBadge, { borderColor: color }]}>
+    <View style={[styles.tierBadge, { borderColor: color, backgroundColor: `${color}18` }]}>
+      {tier === "top" && <Ionicons name="trophy" size={12} color={color} />}
+      {tier === "trusted" && <Ionicons name="shield-checkmark" size={12} color={color} />}
+      {tier === "city" && <Ionicons name="star" size={12} color={color} />}
+      {tier === "community" && <Ionicons name="person" size={12} color={color} />}
       <Text style={[styles.tierBadgeText, { color }]}>{displayName.toUpperCase()}</Text>
     </View>
   );
@@ -38,52 +44,111 @@ function BreakdownRow({ label, value, icon }: { label: string; value: string; ic
 
 function LoggedOutView() {
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+    setIsSubmitting(true);
+    setError("");
+    try {
+      await login(email, password);
+    } catch (e: any) {
+      setError(e.message || "Invalid credentials");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+    <View style={[styles.loggedOutContainer, { paddingTop: topPad }]}>
+      <View style={styles.loggedOutTop}>
+        <Text style={styles.loggedOutBrand}>Top Ranker</Text>
+        <Text style={styles.loggedOutSubtitle}>Dallas's Most Trusted Rankings</Text>
       </View>
-      <View style={styles.loggedOutContainer}>
-        <View style={styles.loggedOutIcon}>
-          <Ionicons name="person-outline" size={48} color={Colors.textTertiary} />
-        </View>
-        <Text style={styles.loggedOutTitle}>Sign in to Top Ranker</Text>
-        <Text style={styles.loggedOutSub}>
-          Rate businesses, build your credibility score, and see your impact on Dallas rankings.
-        </Text>
-        <TouchableOpacity
-          style={styles.signInButton}
-          onPress={() => router.push("/auth/login")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.signInButtonText}>Sign In</Text>
+
+      <View style={styles.loggedOutForm}>
+        {/* Google button */}
+        <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
+          <Text style={styles.googleG}>G</Text>
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
+
+        {/* Or divider */}
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>or</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {/* Email field */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email address"
+            placeholderTextColor="#AEAEB2"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        {/* Password field */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, { paddingRight: 44 }]}
+            placeholder="Password"
+            placeholderTextColor="#AEAEB2"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#636366"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign In button */}
+        <TouchableOpacity
+          style={[styles.signInButton, isSubmitting && { opacity: 0.7 }]}
+          onPress={handleSignIn}
+          activeOpacity={0.85}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Sign up link */}
         <TouchableOpacity
           onPress={() => router.push("/auth/signup")}
           activeOpacity={0.7}
         >
-          <Text style={styles.signUpLink}>Don't have an account? Sign Up</Text>
+          <Text style={styles.signUpLink}>
+            Don't have an account? <Text style={styles.signUpLinkBold}>Sign up</Text>
+          </Text>
         </TouchableOpacity>
-
-        <View style={styles.tierInfoSectionCompact}>
-          <Text style={styles.sectionTitle}>Credibility Tiers</Text>
-          <View style={styles.tierList}>
-            {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(tier => (
-              <View key={tier} style={styles.tierRow}>
-                <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[tier] }]} />
-                <View style={styles.tierRowInfo}>
-                  <Text style={styles.tierName}>{TIER_DISPLAY_NAMES[tier]}</Text>
-                  <Text style={styles.tierWeight}>{TIER_WEIGHTS[tier].toFixed(2)}x weight</Text>
-                </View>
-                <Text style={styles.tierRange}>
-                  {TIER_SCORE_RANGES[tier].min}–{TIER_SCORE_RANGES[tier].max}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -100,8 +165,8 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
   const scoreRange = TIER_SCORE_RANGES[tier];
 
   const nextTierMap: Record<string, CredibilityTier | null> = {
-    new: "regular",
-    regular: "trusted",
+    community: "city",
+    city: "trusted",
     trusted: "top",
     top: null,
   };
@@ -112,10 +177,10 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
     : 100;
 
   const breakdown = profile.credibilityBreakdown;
-  const totalScore = (breakdown.base || 0) + (breakdown.ratingPoints || 0) +
-    (breakdown.diversityBonus || 0) + Math.round(breakdown.ageBonus || 0) +
-    Math.round(breakdown.varianceBonus || 0) + (breakdown.helpfulnessBonus || 0) -
-    (breakdown.flagPenalty || 0);
+  const totalScore = (breakdown.base || 0) + (breakdown.volume || 0) +
+    (breakdown.diversity || 0) + Math.round(breakdown.age || 0) +
+    Math.round(breakdown.variance || 0) + (breakdown.helpfulness || 0) -
+    (breakdown.penalties || 0);
 
   return (
     <ScrollView
@@ -189,13 +254,13 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
       <View style={styles.breakdownCard}>
         <Text style={styles.breakdownTitle}>Score Breakdown</Text>
         <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
-        <BreakdownRow label="Rating volume" value={`+${breakdown.ratingPoints || 0}`} icon="star-outline" />
-        <BreakdownRow label="Category diversity" value={`+${breakdown.diversityBonus || 0}`} icon="grid-outline" />
-        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.ageBonus || 0)}`} icon="time-outline" />
-        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.varianceBonus || 0)}`} icon="analytics-outline" />
-        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulnessBonus || 0}`} icon="hand-left-outline" />
-        {(breakdown.flagPenalty || 0) > 0 && (
-          <BreakdownRow label="Flag penalties" value={`-${breakdown.flagPenalty}`} icon="flag-outline" />
+        <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
+        <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
+        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
+        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
+        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
+        {(breakdown.penalties || 0) > 0 && (
+          <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
         )}
         <View style={styles.breakdownTotal}>
           <Text style={styles.breakdownTotalLabel}>Total</Text>
@@ -234,7 +299,7 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
       <View style={styles.tierInfoSection}>
         <Text style={styles.sectionTitle}>Credibility Tiers</Text>
         <View style={styles.tierList}>
-          {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(t => (
+          {(["community", "city", "trusted", "top"] as CredibilityTier[]).map(t => (
             <View key={t} style={[styles.tierRow, tier === t && styles.tierRowActive]}>
               <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[t] }]} />
               <View style={styles.tierRowInfo}>
@@ -308,31 +373,77 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
 
+  // ===== Logged Out (Fix 6) =====
   loggedOutContainer: {
-    flex: 1, paddingHorizontal: 16, paddingTop: 40, alignItems: "center", gap: 16,
+    flex: 1, backgroundColor: "#FFFFFF",
+    alignItems: "center", justifyContent: "flex-start",
+    paddingHorizontal: 32,
   },
-  loggedOutIcon: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
+  loggedOutTop: {
+    alignItems: "center",
+    marginTop: "18%",
+    marginBottom: 40,
   },
-  loggedOutTitle: {
-    fontSize: 22, fontWeight: "700", color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", textAlign: "center",
+  loggedOutBrand: {
+    fontSize: 36, fontWeight: "700", color: AMBER,
   },
-  loggedOutSub: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-    textAlign: "center", lineHeight: 20, paddingHorizontal: 20,
+  loggedOutSubtitle: {
+    fontSize: 15, color: "#636366", marginTop: 8,
+  },
+  loggedOutForm: {
+    width: "100%", gap: 14,
+  },
+  googleButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    borderRadius: 12, height: 52,
+    width: "100%",
+  },
+  googleG: {
+    fontSize: 20, fontWeight: "700", color: "#4285F4",
+  },
+  googleButtonText: {
+    fontSize: 16, fontWeight: "600", color: "#1C1C1E",
+  },
+  orDivider: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginVertical: 4,
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: "#E5E5EA" },
+  orText: { fontSize: 13, color: "#636366" },
+  errorText: {
+    fontSize: 13, color: "#FF3B30", textAlign: "center",
+  },
+  inputContainer: {
+    position: "relative" as const,
+  },
+  input: {
+    width: "100%", height: 48, borderRadius: 10,
+    borderWidth: 1, borderColor: "#E5E5EA",
+    paddingHorizontal: 16, fontSize: 15, color: "#1C1C1E",
+    backgroundColor: "#fff",
+  },
+  eyeButton: {
+    position: "absolute" as const, right: 12, top: 0, bottom: 0,
+    justifyContent: "center",
   },
   signInButton: {
-    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 15,
-    paddingHorizontal: 60, marginTop: 8,
+    backgroundColor: AMBER, borderRadius: 12, height: 52,
+    alignItems: "center", justifyContent: "center",
+    width: "100%", marginTop: 4,
   },
-  signInButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
+  signInButtonText: {
+    fontSize: 16, fontWeight: "700", color: "#fff",
+  },
   signUpLink: {
-    fontSize: 13, color: Colors.gold, fontFamily: "DMSans_500Medium",
+    fontSize: 14, color: "#636366", textAlign: "center", marginTop: 4,
   },
-  tierInfoSectionCompact: { gap: 10, marginTop: 24, width: "100%" },
+  signUpLinkBold: {
+    color: "#007AFF", fontWeight: "600",
+  },
 
+  // ===== Logged In =====
   profileCard: {
     backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,

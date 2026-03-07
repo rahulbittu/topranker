@@ -212,6 +212,10 @@ export async function fetchBusinessSearch(query: string, city: string, category?
   return businesses.map(mapApiBusiness);
 }
 
+export async function fetchCategories(city: string = "Dallas"): Promise<string[]> {
+  return apiFetch<string[]>(`/api/leaderboard/categories?city=${encodeURIComponent(city)}`);
+}
+
 export async function fetchDishSearch(businessId: string, query: string) {
   return apiFetch<ApiDish[]>(
     `/api/dishes/search?business_id=${encodeURIComponent(businessId)}&q=${encodeURIComponent(query)}`,

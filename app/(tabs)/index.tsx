@@ -8,8 +8,10 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { CATEGORIES, type Category } from "@/lib/data";
-import { fetchLeaderboard } from "@/lib/api";
+import { formatCategoryLabel } from "@/lib/data";
+import { fetchLeaderboard, fetchCategories } from "@/lib/api";
+
+const AMBER = "#B8860B";
 
 interface MappedBusiness {
   id: string;
@@ -114,15 +116,34 @@ function BusinessRow({ item }: { item: MappedBusiness }) {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState<Category>("Restaurants");
+  const [activeCategory, setActiveCategory] = useState<string>("restaurant");
+
+  // Fetch available categories from database (Fix 3)
+  const { data: availableCategories = [] } = useQuery({
+    queryKey: ["categories", "Dallas"],
+    queryFn: () => fetchCategories("Dallas"),
+    staleTime: 60000,
+  });
 
   const { data: businesses = [], isLoading } = useQuery({
     queryKey: ["leaderboard", "Dallas", activeCategory],
-    queryFn: () => fetchLeaderboard("Dallas", activeCategory, 20),
+    queryFn: () => {
+      // Pass the raw category slug directly since we're now using API slugs
+      const apiUrl = `/api/leaderboard?city=Dallas&category=${encodeURIComponent(activeCategory)}&limit=20`;
+      return fetchLeaderboard("Dallas", activeCategory, 20);
+    },
     staleTime: 30000,
   });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+
+  // Build tabs from available categories
+  const categoryTabs = availableCategories.length > 0
+    ? availableCategories.map((cat: string) => ({
+        slug: cat,
+        label: formatCategoryLabel(cat),
+      }))
+    : [{ slug: "restaurant", label: "Restaurants" }];
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -142,17 +163,17 @@ export default function LeaderboardScreen() {
         contentContainerStyle={styles.tabsContainer}
         style={styles.tabs}
       >
-        {CATEGORIES.map(cat => {
-          const isActive = activeCategory === cat;
+        {categoryTabs.map((cat: { slug: string; label: string }) => {
+          const isActive = activeCategory === cat.slug;
           return (
             <TouchableOpacity
-              key={cat}
-              onPress={() => setActiveCategory(cat)}
-              style={styles.tab}
-              testID={`category-tab-${cat}`}
+              key={cat.slug}
+              onPress={() => setActiveCategory(cat.slug)}
+              style={[styles.tab, isActive && styles.tabActive]}
+              testID={`category-tab-${cat.slug}`}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {cat}
+                {cat.label}
               </Text>
               {isActive && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
