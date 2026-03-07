@@ -12,7 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
-import { fetchBusinessSearch } from "@/lib/api";
+import { fetchBusinessSearch, fetchTrending } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
@@ -403,6 +403,12 @@ export default function SearchScreen() {
     staleTime: 30000,
   });
 
+  const { data: trending = [] } = useQuery({
+    queryKey: ["trending", city],
+    queryFn: () => fetchTrending(city, 3),
+    staleTime: 60000,
+  });
+
   const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
   const filtered = useMemo(() => {
@@ -633,7 +639,40 @@ export default function SearchScreen() {
             </View>
           }
           ListHeaderComponent={
-            <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
+            <>
+              {/* Trending This Week — PRD requirement */}
+              {!debouncedQuery && trending.length > 0 && (
+                <View style={styles.trendingSection}>
+                  <View style={styles.trendingHeader}>
+                    <Ionicons name="trending-up" size={16} color={AMBER} />
+                    <Text style={styles.trendingTitle}>Trending This Week</Text>
+                  </View>
+                  {trending.map((biz: MappedBusiness) => (
+                    <TouchableOpacity
+                      key={biz.id}
+                      style={styles.trendingRow}
+                      onPress={() => router.push({ pathname: "/business/[id]", params: { id: biz.slug } })}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${biz.name}, moved up ${biz.rankDelta} spots`}
+                    >
+                      <View style={styles.trendingRank}>
+                        <Text style={styles.trendingRankText}>{getRankDisplay(biz.rank)}</Text>
+                      </View>
+                      <View style={styles.trendingInfo}>
+                        <Text style={styles.trendingName} numberOfLines={1}>{biz.name}</Text>
+                        <Text style={styles.trendingMeta}>{getCategoryDisplay(biz.category).emoji} {getCategoryDisplay(biz.category).label}</Text>
+                      </View>
+                      <View style={styles.trendingDelta}>
+                        <Ionicons name="arrow-up" size={12} color={Colors.green} />
+                        <Text style={styles.trendingDeltaText}>{biz.rankDelta}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
+            </>
           }
         />
       )}
@@ -705,6 +744,42 @@ const styles = StyleSheet.create({
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
+
+  trendingSection: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
+    marginBottom: 12, ...Colors.cardShadow,
+  },
+  trendingHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4,
+  },
+  trendingTitle: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  trendingRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 8, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  trendingRank: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
+    alignItems: "center", justifyContent: "center",
+  },
+  trendingRankText: {
+    fontSize: 11, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
+  },
+  trendingInfo: { flex: 1, gap: 2 },
+  trendingName: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  trendingMeta: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+  trendingDelta: {
+    flexDirection: "row", alignItems: "center", gap: 2,
+    backgroundColor: `${Colors.green}15`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  trendingDeltaText: {
+    fontSize: 12, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
+  },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { fontSize: 11, color: Colors.textTertiary, paddingBottom: 4, fontFamily: "DMSans_400Regular" },

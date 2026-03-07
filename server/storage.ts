@@ -128,6 +128,24 @@ export async function getLeaderboard(
     .limit(limit);
 }
 
+export async function getTrendingBusinesses(
+  city: string,
+  limit: number = 3,
+): Promise<Business[]> {
+  return db
+    .select()
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.city, city),
+        eq(businesses.isActive, true),
+        sql`${businesses.rankDelta} > 0`,
+      ),
+    )
+    .orderBy(desc(businesses.rankDelta))
+    .limit(limit);
+}
+
 export async function getBusinessBySlug(slug: string): Promise<Business | undefined> {
   const [business] = await db
     .select()

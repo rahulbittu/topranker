@@ -328,6 +328,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/trending", async (req: Request, res: Response) => {
+    try {
+      const { getTrendingBusinesses } = await import("./storage");
+      const city = (req.query.city as string) || "Dallas";
+      const limit = Math.min(10, Math.max(1, parseInt(req.query.limit as string) || 3));
+      const bizList = await getTrendingBusinesses(city, limit);
+      const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+      const data = bizList.map(b => ({
+        ...b,
+        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+      }));
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/businesses/:id/rank-history", async (req: Request, res: Response) => {
     try {
       const { getRankHistory } = await import("./storage");

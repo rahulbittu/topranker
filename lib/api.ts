@@ -243,6 +243,13 @@ export async function fetchDishSearch(businessId: string, query: string) {
   );
 }
 
+export async function fetchTrending(city: string, limit: number = 3) {
+  const businesses = await apiFetch<ApiBusiness[]>(
+    `/api/trending?city=${encodeURIComponent(city)}&limit=${limit}`,
+  );
+  return businesses.map(mapApiBusiness);
+}
+
 export async function fetchRankHistory(businessId: string, days: number = 30) {
   return apiFetch<{ date: string; rank: number; score: number }[]>(
     `/api/businesses/${encodeURIComponent(businessId)}/rank-history?days=${days}`,
