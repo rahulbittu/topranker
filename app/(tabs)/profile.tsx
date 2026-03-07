@@ -134,6 +134,8 @@ function LoggedOutView() {
           <TouchableOpacity
             style={styles.eyeButton}
             onPress={() => setShowPassword(!showPassword)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? "Hide password" : "Show password"}
           >
             <Ionicons
               name={showPassword ? "eye-off-outline" : "eye-outline"}
