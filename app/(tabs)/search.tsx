@@ -407,6 +407,9 @@ export default function SearchScreen() {
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "list" && styles.viewToggleBtnActive]}
             onPress={() => { Haptics.selectionAsync(); setViewMode("list"); }}
+            accessibilityRole="button"
+            accessibilityLabel="List view"
+            accessibilityState={{ selected: viewMode === "list" }}
           >
             <Ionicons name="list" size={16} color={viewMode === "list" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "list" && styles.viewToggleTextActive]}>List</Text>
@@ -414,6 +417,9 @@ export default function SearchScreen() {
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "map" && styles.viewToggleBtnActive]}
             onPress={() => { Haptics.selectionAsync(); setViewMode("map"); }}
+            accessibilityRole="button"
+            accessibilityLabel="Map view"
+            accessibilityState={{ selected: viewMode === "map" }}
           >
             <Ionicons name="location" size={16} color={viewMode === "map" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "map" && styles.viewToggleTextActive]}>Map</Text>
@@ -421,7 +427,14 @@ export default function SearchScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {FILTERS.map(f => (
-            <TouchableOpacity key={f} onPress={() => { Haptics.selectionAsync(); setActiveFilter(f); }} style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}>
+            <TouchableOpacity
+              key={f}
+              onPress={() => { Haptics.selectionAsync(); setActiveFilter(f); }}
+              style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`${f} filter`}
+              accessibilityState={{ selected: activeFilter === f }}
+            >
               <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
             </TouchableOpacity>
           ))}
