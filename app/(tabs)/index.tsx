@@ -129,7 +129,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
           </Text>
           <View style={styles.heroStripRow2}>
             <StarRating score={item.weightedScore} />
-            <Text style={styles.heroStripRatings}>{(item.ratingCount ?? 0).toLocaleString()} ratings</Text>
+            <Text style={styles.heroStripRatings}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
             {(item.ratingCount ?? 0) >= 50 && (
               <View style={styles.hotBadge}>
                 <Ionicons name="flame" size={10} color="#fff" />
@@ -253,7 +253,13 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
         <View style={styles.rankedRow3}>
-          <Text style={styles.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} ratings</Text>
+          {(item.ratingCount ?? 0) >= 10 && (
+            <View style={styles.verifiedPill}>
+              <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
+              <Text style={styles.verifiedPillText}>VERIFIED</Text>
+            </View>
+          )}
+          <Text style={styles.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
           {item.rankDelta !== 0 && (
             <View style={[styles.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>
               <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
@@ -900,6 +906,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontFamily: "DMSans_700Bold",
     letterSpacing: 0.3,
+  },
+  verifiedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 99,
+    backgroundColor: `${Colors.green}15`,
+  },
+  verifiedPillText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: Colors.green,
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.5,
   },
   activityPill: {
     flexDirection: "row",

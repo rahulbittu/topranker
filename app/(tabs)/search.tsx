@@ -138,8 +138,13 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
         <View style={styles.cardRow3}>
           <Text style={styles.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
           {item.ratingCount ? (
-            <Text style={styles.cardRatingCount}>({item.ratingCount.toLocaleString()} ratings)</Text>
+            <Text style={styles.cardRatingCount}>({item.ratingCount.toLocaleString()} weighted)</Text>
           ) : null}
+          {(item.ratingCount ?? 0) >= 10 && (
+            <View style={styles.verifiedPill}>
+              <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
+            </View>
+          )}
           {item.rankDelta !== 0 && (
             <Text style={[styles.cardDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
@@ -922,6 +927,12 @@ const styles = StyleSheet.create({
   },
   priceChipTextActive: {
     color: "#fff",
+  },
+  verifiedPill: {
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+    borderRadius: 99,
+    backgroundColor: `${Colors.green}15`,
   },
   activityPill: {
     flexDirection: "row",
