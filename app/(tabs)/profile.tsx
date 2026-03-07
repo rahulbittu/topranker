@@ -400,20 +400,12 @@ export default function ProfileScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.container, { alignItems: "center", justifyContent: "center", gap: 8 }]}>
+      <View style={styles.errorContainer}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
-        <Text style={{ fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" }}>
-          Couldn't load your profile
-        </Text>
-        <Text style={{ fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" }}>
-          Check your connection and try again
-        </Text>
-        <TouchableOpacity
-          onPress={() => refetch()}
-          style={{ marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: AMBER, borderRadius: 20 }}
-          activeOpacity={0.8}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" }}>Retry</Text>
+        <Text style={styles.errorTitle}>Couldn't load your profile</Text>
+        <Text style={styles.errorSubtitle}>Check your connection and try again</Text>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8}>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -432,6 +424,23 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  errorContainer: {
+    flex: 1, backgroundColor: Colors.background,
+    alignItems: "center", justifyContent: "center", gap: 8,
+  },
+  errorTitle: {
+    fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
+  },
+  errorSubtitle: {
+    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  retryButton: {
+    marginTop: 8, paddingHorizontal: 24, paddingVertical: 10,
+    backgroundColor: AMBER, borderRadius: 20,
+  },
+  retryButtonText: {
+    fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
+  },
   content: { paddingHorizontal: 16, gap: 12 },
   header: {
     paddingTop: 4, paddingBottom: 4,

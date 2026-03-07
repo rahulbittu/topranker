@@ -431,8 +431,8 @@ export default function SearchScreen() {
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
           <Text style={styles.emptyText}>Could not load results</Text>
-          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: AMBER, borderRadius: 10 }}>
-            <Text style={{ color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 }}>Try Again</Text>
+          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       ) : viewMode === "map" ? (
@@ -598,6 +598,14 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+
+  retryButton: {
+    marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: AMBER, borderRadius: 10,
+  },
+  retryButtonText: {
+    color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13,
+  },
 
   // Map styles
   mapContainer: {

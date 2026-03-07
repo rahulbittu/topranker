@@ -323,8 +323,8 @@ export default function LeaderboardScreen() {
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
           <Text style={styles.emptyText}>Could not load rankings</Text>
-          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: AMBER, borderRadius: 10 }}>
-            <Text style={{ color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 }}>Try Again</Text>
+          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
+            <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -469,6 +469,14 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
+
+  retryButton: {
+    marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
+    backgroundColor: AMBER, borderRadius: 10,
+  },
+  retryButtonText: {
+    color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13,
+  },
 
   // Hero Card (#1)
   heroCard: {
