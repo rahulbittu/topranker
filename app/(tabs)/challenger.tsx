@@ -18,11 +18,11 @@ function VoteBar({ challenger, defender }: { challenger: number; defender: numbe
   return (
     <View style={styles.voteBarContainer}>
       <View style={styles.voteBar}>
-        <View style={[styles.voteBarChallenger, { width: `${challengerPct}%` as any }]} />
+        <View style={[styles.voteBarDefender, { width: `${defenderPct}%` as any }]} />
       </View>
       <View style={styles.voteBarLabels}>
-        <Text style={styles.voteBarPct}>{challengerPct.toFixed(1)}%</Text>
         <Text style={styles.voteBarPct}>{defenderPct.toFixed(1)}%</Text>
+        <Text style={styles.voteBarPct}>{challengerPct.toFixed(1)}%</Text>
       </View>
     </View>
   );
@@ -42,20 +42,13 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.catBadge}>
-          <Text style={styles.catBadgeText}>{categoryToDisplay(challenge.category).toUpperCase()}</Text>
-        </View>
-        <View style={styles.cityBadge}>
-          <Ionicons name="location-sharp" size={10} color={Colors.textTertiary} />
-          <Text style={styles.cityText}>{challenge.city}</Text>
-        </View>
+        <Text style={styles.catText}>{categoryToDisplay(challenge.category).toUpperCase()}</Text>
+        <Text style={styles.cityText}>{challenge.city}</Text>
       </View>
 
       <View style={styles.fightCard}>
         <View style={styles.fighter}>
-          <View style={styles.crownBadge}>
-            <Ionicons name="trophy" size={16} color={Colors.gold} />
-          </View>
+          <Ionicons name="trophy-outline" size={20} color={Colors.gold} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderBusiness.name}</Text>
           <Text style={styles.fighterLabel}>DEFENDING #1</Text>
           <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
@@ -64,16 +57,12 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
         <View style={styles.vsContainer}>
           <View style={styles.vsDivider} />
-          <View style={styles.vsCircle}>
-            <Text style={styles.vsText}>VS</Text>
-          </View>
+          <Text style={styles.vsText}>VS</Text>
           <View style={styles.vsDivider} />
         </View>
 
         <View style={styles.fighter}>
-          <View style={styles.challengerIconBadge}>
-            <Ionicons name="flash" size={16} color={Colors.redBright} />
-          </View>
+          <Ionicons name="flash-outline" size={20} color={Colors.textSecondary} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerBusiness.name}</Text>
           <Text style={styles.fighterLabel}>CHALLENGER</Text>
           <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
@@ -112,10 +101,6 @@ export default function ChallengerScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Live Challenges</Text>
-        <View style={styles.liveBadge}>
-          <View style={styles.liveDot} />
-          <Text style={styles.liveText}>LIVE</Text>
-        </View>
       </View>
       <Text style={styles.headerSub}>
         30-day head-to-head competitions. Weighted votes decide the winner.
@@ -151,7 +136,7 @@ export default function ChallengerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -163,37 +148,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "700",
     color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: -0.5,
-  },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: Colors.redFaint,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(176,48,48,0.3)",
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.redBright,
-  },
-  liveText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: Colors.redBright,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 1,
   },
   headerSub: {
     fontSize: 13,
-    color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
     paddingHorizontal: 20,
     paddingBottom: 16,
     marginTop: 2,
@@ -201,14 +162,13 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 16 },
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   card: {
-    backgroundColor: Colors.surface,
-    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   cardHeader: {
     flexDirection: "row",
@@ -216,30 +176,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  catBadge: {
-    backgroundColor: Colors.goldFaint,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "rgba(201,151,58,0.2)",
-  },
-  catBadgeText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "Inter_700Bold",
+  catText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_600SemiBold",
     letterSpacing: 1,
-  },
-  cityBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
   },
   cityText: {
     fontSize: 12,
     color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   fightCard: {
     flexDirection: "row",
@@ -247,83 +194,53 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fighter: { flex: 1, alignItems: "center", gap: 4 },
-  crownBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.goldFaint,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(201,151,58,0.3)",
-  },
-  challengerIconBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.redFaint,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(176,48,48,0.3)",
-  },
   fighterName: {
     fontSize: 15,
     fontWeight: "700",
     color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "DMSans_700Bold",
     textAlign: "center",
     letterSpacing: -0.3,
   },
   fighterLabel: {
     fontSize: 9,
     color: Colors.textTertiary,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_500Medium",
     letterSpacing: 0.5,
   },
   voteCount: {
     fontSize: 26,
-    fontWeight: "800",
+    fontWeight: "700",
     color: Colors.text,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: -1,
     marginTop: 4,
   },
   voteLabel: {
     fontSize: 10,
     color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   vsContainer: { alignItems: "center", width: 40 },
   vsDivider: { width: 1, height: 24, backgroundColor: Colors.border },
-  vsCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
   vsText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: Colors.textSecondary,
-    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    color: Colors.textTertiary,
+    fontFamily: "PlayfairDisplay_400Regular_Italic",
+    marginVertical: 4,
   },
   voteBarContainer: { marginBottom: 12 },
   voteBar: {
-    height: 6,
-    backgroundColor: Colors.surfaceRaised,
-    borderRadius: 3,
+    height: 3,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 2,
     overflow: "hidden",
     flexDirection: "row",
   },
-  voteBarChallenger: {
+  voteBarDefender: {
     height: "100%",
-    backgroundColor: Colors.redBright,
-    borderRadius: 3,
+    backgroundColor: Colors.gold,
+    borderRadius: 2,
   },
   voteBarLabels: {
     flexDirection: "row",
@@ -331,9 +248,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   voteBarPct: {
-    fontSize: 10,
+    fontSize: 11,
     color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   timerSection: {
     flexDirection: "row",
@@ -344,17 +261,17 @@ const styles = StyleSheet.create({
   timerText: {
     fontSize: 12,
     color: Colors.textSecondary,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "DMSans_500Medium",
     flex: 1,
   },
   progressText: {
     fontSize: 10,
     color: Colors.textTertiary,
-    fontFamily: "Inter_400Regular",
+    fontFamily: "DMSans_400Regular",
   },
   progressBarOuter: {
     height: 3,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: "#E0E0E0",
     borderRadius: 2,
     overflow: "hidden",
   },

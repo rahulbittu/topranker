@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator,
+  Platform, ActivityIndicator, TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -16,6 +16,8 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 
+const AMBER = "#B8860B";
+
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
   const displayName = TIER_DISPLAY_NAMES[tier];
@@ -23,8 +25,8 @@ function TierBadge({ tier }: { tier: CredibilityTier }) {
     <View style={[styles.tierBadge, { borderColor: color, backgroundColor: `${color}18` }]}>
       {tier === "top" && <Ionicons name="trophy" size={12} color={color} />}
       {tier === "trusted" && <Ionicons name="shield-checkmark" size={12} color={color} />}
-      {tier === "regular" && <Ionicons name="star" size={12} color={color} />}
-      {tier === "new" && <Ionicons name="person" size={12} color={color} />}
+      {tier === "city" && <Ionicons name="star" size={12} color={color} />}
+      {tier === "community" && <Ionicons name="person" size={12} color={color} />}
       <Text style={[styles.tierBadgeText, { color }]}>{displayName.toUpperCase()}</Text>
     </View>
   );
@@ -42,52 +44,111 @@ function BreakdownRow({ label, value, icon }: { label: string; value: string; ic
 
 function LoggedOutView() {
   const insets = useSafeAreaInsets();
+  const { login } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return;
+    }
+    setIsSubmitting(true);
+    setError("");
+    try {
+      await login(email, password);
+    } catch (e: any) {
+      setError(e.message || "Invalid credentials");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+    <View style={[styles.loggedOutContainer, { paddingTop: topPad }]}>
+      <View style={styles.loggedOutTop}>
+        <Text style={styles.loggedOutBrand}>Top Ranker</Text>
+        <Text style={styles.loggedOutSubtitle}>Dallas's Most Trusted Rankings</Text>
       </View>
-      <View style={styles.loggedOutContainer}>
-        <View style={styles.loggedOutIcon}>
-          <Ionicons name="person-outline" size={48} color={Colors.textTertiary} />
-        </View>
-        <Text style={styles.loggedOutTitle}>Sign in to Top Ranker</Text>
-        <Text style={styles.loggedOutSub}>
-          Rate businesses, build your credibility score, and see your impact on Dallas rankings.
-        </Text>
-        <TouchableOpacity
-          style={styles.signInButton}
-          onPress={() => router.push("/auth/login")}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.signInButtonText}>Sign In</Text>
+
+      <View style={styles.loggedOutForm}>
+        {/* Google button */}
+        <TouchableOpacity style={styles.googleButton} activeOpacity={0.8}>
+          <Text style={styles.googleG}>G</Text>
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
+
+        {/* Or divider */}
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>or</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {/* Email field */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email address"
+            placeholderTextColor="#AEAEB2"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        {/* Password field */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input, { paddingRight: 44 }]}
+            placeholder="Password"
+            placeholderTextColor="#AEAEB2"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity
+            style={styles.eyeButton}
+            onPress={() => setShowPassword(!showPassword)}
+          >
+            <Ionicons
+              name={showPassword ? "eye-off-outline" : "eye-outline"}
+              size={20}
+              color="#636366"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign In button */}
+        <TouchableOpacity
+          style={[styles.signInButton, isSubmitting && { opacity: 0.7 }]}
+          onPress={handleSignIn}
+          activeOpacity={0.85}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          )}
+        </TouchableOpacity>
+
+        {/* Sign up link */}
         <TouchableOpacity
           onPress={() => router.push("/auth/signup")}
           activeOpacity={0.7}
         >
-          <Text style={styles.signUpLink}>Don't have an account? Sign Up</Text>
+          <Text style={styles.signUpLink}>
+            Don't have an account? <Text style={styles.signUpLinkBold}>Sign up</Text>
+          </Text>
         </TouchableOpacity>
-
-        <View style={styles.tierInfoSectionCompact}>
-          <Text style={styles.sectionTitle}>Credibility Tiers</Text>
-          <View style={styles.tierList}>
-            {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(tier => (
-              <View key={tier} style={styles.tierRow}>
-                <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[tier] }]} />
-                <View style={styles.tierRowInfo}>
-                  <Text style={styles.tierName}>{TIER_DISPLAY_NAMES[tier]}</Text>
-                  <Text style={styles.tierWeight}>{TIER_WEIGHTS[tier].toFixed(2)}x weight</Text>
-                </View>
-                <Text style={styles.tierRange}>
-                  {TIER_SCORE_RANGES[tier].min}–{TIER_SCORE_RANGES[tier].max}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
       </View>
     </View>
   );
@@ -104,8 +165,8 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
   const scoreRange = TIER_SCORE_RANGES[tier];
 
   const nextTierMap: Record<string, CredibilityTier | null> = {
-    new: "regular",
-    regular: "trusted",
+    community: "city",
+    city: "trusted",
     trusted: "top",
     top: null,
   };
@@ -116,10 +177,10 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
     : 100;
 
   const breakdown = profile.credibilityBreakdown;
-  const totalScore = (breakdown.base || 0) + (breakdown.ratingPoints || 0) +
-    (breakdown.diversityBonus || 0) + Math.round(breakdown.ageBonus || 0) +
-    Math.round(breakdown.varianceBonus || 0) + (breakdown.helpfulnessBonus || 0) -
-    (breakdown.flagPenalty || 0);
+  const totalScore = (breakdown.base || 0) + (breakdown.volume || 0) +
+    (breakdown.diversity || 0) + Math.round(breakdown.age || 0) +
+    Math.round(breakdown.variance || 0) + (breakdown.helpfulness || 0) -
+    (breakdown.penalties || 0);
 
   return (
     <ScrollView
@@ -145,12 +206,6 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
           <Text style={styles.profileName}>{profile.displayName}</Text>
           <Text style={styles.username}>@{profile.username}</Text>
           <TierBadge tier={tier} />
-          {profile.isFoundingMember && (
-            <View style={styles.foundingBadge}>
-              <Ionicons name="diamond" size={10} color={Colors.gold} />
-              <Text style={styles.foundingText}>FOUNDING MEMBER</Text>
-            </View>
-          )}
         </View>
       </View>
 
@@ -199,13 +254,13 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
       <View style={styles.breakdownCard}>
         <Text style={styles.breakdownTitle}>Score Breakdown</Text>
         <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
-        <BreakdownRow label="Rating volume" value={`+${breakdown.ratingPoints || 0}`} icon="star-outline" />
-        <BreakdownRow label="Category diversity" value={`+${breakdown.diversityBonus || 0}`} icon="grid-outline" />
-        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.ageBonus || 0)}`} icon="time-outline" />
-        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.varianceBonus || 0)}`} icon="analytics-outline" />
-        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulnessBonus || 0}`} icon="hand-left-outline" />
-        {(breakdown.flagPenalty || 0) > 0 && (
-          <BreakdownRow label="Flag penalties" value={`-${breakdown.flagPenalty}`} icon="flag-outline" />
+        <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
+        <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
+        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
+        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
+        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
+        {(breakdown.penalties || 0) > 0 && (
+          <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
         )}
         <View style={styles.breakdownTotal}>
           <Text style={styles.breakdownTotalLabel}>Total</Text>
@@ -244,7 +299,7 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
       <View style={styles.tierInfoSection}>
         <Text style={styles.sectionTitle}>Credibility Tiers</Text>
         <View style={styles.tierList}>
-          {(["new", "regular", "trusted", "top"] as CredibilityTier[]).map(t => (
+          {(["community", "city", "trusted", "top"] as CredibilityTier[]).map(t => (
             <View key={t} style={[styles.tierRow, tier === t && styles.tierRowActive]}>
               <View style={[styles.tierDot, { backgroundColor: TIER_COLORS[t] }]} />
               <View style={styles.tierRowInfo}>
@@ -303,7 +358,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
+  container: { flex: 1, backgroundColor: "#FFFFFF" },
   content: { paddingHorizontal: 16, gap: 12 },
   header: {
     paddingTop: 4, paddingBottom: 4,
@@ -311,142 +366,179 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.5,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
   logoutBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
 
+  // ===== Logged Out (Fix 6) =====
   loggedOutContainer: {
-    flex: 1, paddingHorizontal: 16, paddingTop: 40, alignItems: "center", gap: 16,
+    flex: 1, backgroundColor: "#FFFFFF",
+    alignItems: "center", justifyContent: "flex-start",
+    paddingHorizontal: 32,
   },
-  loggedOutIcon: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.surface, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
+  loggedOutTop: {
+    alignItems: "center",
+    marginTop: "18%",
+    marginBottom: 40,
   },
-  loggedOutTitle: {
-    fontSize: 22, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", textAlign: "center",
+  loggedOutBrand: {
+    fontSize: 36, fontWeight: "700", color: AMBER,
   },
-  loggedOutSub: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "Inter_400Regular",
-    textAlign: "center", lineHeight: 20, paddingHorizontal: 20,
+  loggedOutSubtitle: {
+    fontSize: 15, color: "#636366", marginTop: 8,
+  },
+  loggedOutForm: {
+    width: "100%", gap: 14,
+  },
+  googleButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 10,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    borderRadius: 12, height: 52,
+    width: "100%",
+  },
+  googleG: {
+    fontSize: 20, fontWeight: "700", color: "#4285F4",
+  },
+  googleButtonText: {
+    fontSize: 16, fontWeight: "600", color: "#1C1C1E",
+  },
+  orDivider: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    marginVertical: 4,
+  },
+  orLine: { flex: 1, height: 1, backgroundColor: "#E5E5EA" },
+  orText: { fontSize: 13, color: "#636366" },
+  errorText: {
+    fontSize: 13, color: "#FF3B30", textAlign: "center",
+  },
+  inputContainer: {
+    position: "relative" as const,
+  },
+  input: {
+    width: "100%", height: 48, borderRadius: 10,
+    borderWidth: 1, borderColor: "#E5E5EA",
+    paddingHorizontal: 16, fontSize: 15, color: "#1C1C1E",
+    backgroundColor: "#fff",
+  },
+  eyeButton: {
+    position: "absolute" as const, right: 12, top: 0, bottom: 0,
+    justifyContent: "center",
   },
   signInButton: {
-    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
-    paddingHorizontal: 60, marginTop: 8,
+    backgroundColor: AMBER, borderRadius: 12, height: 52,
+    alignItems: "center", justifyContent: "center",
+    width: "100%", marginTop: 4,
   },
-  signInButtonText: { fontSize: 16, fontWeight: "700", color: "#000", fontFamily: "Inter_700Bold" },
+  signInButtonText: {
+    fontSize: 16, fontWeight: "700", color: "#fff",
+  },
   signUpLink: {
-    fontSize: 13, color: Colors.gold, fontFamily: "Inter_500Medium",
+    fontSize: 14, color: "#636366", textAlign: "center", marginTop: 4,
   },
-  tierInfoSectionCompact: { gap: 10, marginTop: 24, width: "100%" },
+  signUpLinkBold: {
+    color: "#007AFF", fontWeight: "600",
+  },
 
+  // ===== Logged In =====
   profileCard: {
-    backgroundColor: Colors.surface, borderRadius: 18, padding: 16,
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,
-    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   avatarCircle: {
     width: 60, height: 60, borderRadius: 30,
-    backgroundColor: Colors.goldFaint,
-    borderWidth: 2, borderColor: Colors.goldDim,
+    backgroundColor: Colors.surfaceRaised,
     alignItems: "center", justifyContent: "center",
   },
-  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
+  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
   profileInfo: { gap: 4 },
   profileName: {
     fontSize: 20, fontWeight: "700", color: Colors.text,
-    fontFamily: "Inter_700Bold", letterSpacing: -0.3,
+    fontFamily: "DMSans_700Bold", letterSpacing: -0.3,
   },
-  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   tierBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
     borderWidth: 1, alignSelf: "flex-start",
   },
-  tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "Inter_700Bold", letterSpacing: 0.8 },
-  foundingBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-    backgroundColor: Colors.goldFaint, alignSelf: "flex-start",
-  },
-  foundingText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.8 },
 
   credibilityCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, gap: 14,
+    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
+    gap: 14, ...Colors.cardShadow,
   },
   credScoreRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
-  credScore: { fontSize: 48, fontWeight: "800", fontFamily: "Inter_700Bold", letterSpacing: -2 },
+  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
+  credScore: { fontSize: 48, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -2 },
   credWeightBox: { alignItems: "center", gap: 2 },
-  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "Inter_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
-  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
+  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   credProgress: { gap: 6 },
   credProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
-  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold" },
-  progressBarBg: { height: 6, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
-  progressBarFill: { height: "100%", borderRadius: 3 },
+  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold" },
+  progressBarBg: { height: 4, backgroundColor: Colors.surfaceRaised, borderRadius: 2, overflow: "hidden" },
+  progressBarFill: { height: "100%", borderRadius: 2 },
 
   statsRow: {
-    flexDirection: "row", backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
+    flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
   },
   statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
   statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
-  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   breakdownCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: Colors.border, gap: 10,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 16,
+    gap: 10, ...Colors.cardShadow,
   },
-  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", marginBottom: 2 },
   breakdownRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  breakdownLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_400Regular" },
-  breakdownValue: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
+  breakdownLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  breakdownValue: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   breakdownTotal: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingTop: 6, marginTop: 2,
   },
-  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
-  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   historyRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: Colors.surface, borderRadius: 12,
+    backgroundColor: "#FFFFFF", borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
   },
   historyLeft: { gap: 2 },
-  historyName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "Inter_600SemiBold" },
-  historyDate: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  historyName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  historyDate: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   historyRight: { alignItems: "flex-end", gap: 2 },
-  historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "Inter_700Bold" },
-  historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  historyScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
+  historyWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "Inter_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   tierInfoSection: { gap: 10, marginTop: 8 },
   tierList: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
   },
   tierRow: {
     flexDirection: "row", alignItems: "center", gap: 10,
@@ -456,12 +548,12 @@ const styles = StyleSheet.create({
   tierRowActive: { backgroundColor: Colors.goldFaint },
   tierDot: { width: 8, height: 8, borderRadius: 4 },
   tierRowInfo: { flex: 1, gap: 1 },
-  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "Inter_500Medium" },
-  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
-  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "Inter_400Regular" },
+  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   currentBadge: {
     backgroundColor: Colors.goldFaint,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "Inter_700Bold", letterSpacing: 0.5 },
+  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
 });

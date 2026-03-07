@@ -1,3 +1,32 @@
+// Maps raw API/DB slugs to human-readable labels
+export const CATEGORY_LABELS: Record<string, string> = {
+  restaurants: "Restaurants",
+  restaurant: "Restaurants",
+  fast_food: "Fast Food",
+  fine_dining: "Fine Dining",
+  casual_dining: "Casual Dining",
+  cafes: "Cafes",
+  cafe: "Cafe",
+  bakeries: "Bakeries",
+  bakery: "Bakeries",
+  street_food: "Street Food",
+  bar: "Bar",
+  bars: "Bars",
+  brewery: "Breweries",
+  breweries: "Breweries",
+  bubble_tea: "Bubble Tea",
+  ice_cream: "Ice Cream",
+  buffet: "Buffets",
+  buffets: "Buffets",
+  brunch: "Brunch",
+  dessert_bar: "Dessert Bars",
+  food_hall: "Food Halls",
+};
+
+export function formatCategoryLabel(slug: string): string {
+  return CATEGORY_LABELS[slug] || slug.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export const CATEGORY_MAP: Record<string, string> = {
   "Restaurants": "restaurant",
   "Fast Food": "fast_food",

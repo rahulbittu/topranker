@@ -1,49 +1,56 @@
-const GOLD = "#C9973A";
-const GOLD_DIM = "#A67D2E";
-const GOLD_FAINT = "rgba(201, 151, 58, 0.12)";
-const GOLD_LIGHT = "#FEF3DC";
+const AMBER = "#B8860B";
+const AMBER_FAINT = "rgba(184, 134, 11, 0.08)";
 
 const Colors = {
-  background: "#0D1B2A",
-  surface: "#1B2A4A",
-  surfaceRaised: "#243452",
-  border: "#2E3F5C",
-  borderLight: "#3A4F6E",
+  background: "#FFFFFF",
+  surface: "#FFFFFF",
+  surfaceRaised: "#F8F8F8",
+  border: "#F0F0F0",
+  borderLight: "#F0F0F0",
 
-  gold: GOLD,
-  goldDim: GOLD_DIM,
-  goldFaint: GOLD_FAINT,
-  goldLight: GOLD_LIGHT,
+  gold: AMBER,
+  goldDim: AMBER,
+  goldFaint: AMBER_FAINT,
+  goldLight: "#FDF6E8",
 
-  silver: "#9AAABB",
-  bronze: "#CD7F32",
+  silver: "#AAAAAA",
+  bronze: "#CCCCCC",
 
-  text: "#FFFFFF",
-  textSecondary: "#9AAABB",
-  textTertiary: "#556677",
+  text: "#1A1A1A",
+  textSecondary: "#6B6B6B",
+  textTertiary: "#AAAAAA",
 
-  green: "#1A6B3C",
-  greenBright: "#22C55E",
-  greenFaint: "rgba(26, 107, 60, 0.15)",
-  red: "#B03030",
-  redBright: "#EF4444",
-  redFaint: "rgba(176, 48, 48, 0.15)",
+  green: "#2D7D46",
+  greenBright: "#2D7D46",
+  greenFaint: "rgba(45, 125, 70, 0.08)",
+  red: "#C0392B",
+  redBright: "#C0392B",
+  redFaint: "rgba(192, 57, 43, 0.08)",
 
-  blue: "#4A7FBB",
-  blueFaint: "rgba(74, 127, 187, 0.12)",
+  blue: "#6B6B6B",
+  blueFaint: "rgba(107, 107, 107, 0.08)",
 
-  rankUp: "#1A6B3C",
-  rankDown: "#B03030",
-  rankStable: "#556677",
+  rankUp: "#2D7D46",
+  rankDown: "#C0392B",
+  rankStable: "#AAAAAA",
 
-  tierNew: "#556677",
-  tierRegular: "#4A7FBB",
-  tierTrusted: "#7B4EA8",
-  tierTop: GOLD,
+  tierNew: "#AAAAAA",
+  tierRegular: "#6B6B6B",
+  tierTrusted: "#4A4A4A",
+  tierTop: AMBER,
 
-  tint: GOLD,
-  tabIconDefault: "#556677",
-  tabIconSelected: GOLD,
+  tint: AMBER,
+  tabIconDefault: "#CCCCCC",
+  tabIconSelected: "#1A1A1A",
+
+  shadow: "rgba(0,0,0,0.06)",
+  cardShadow: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
 };
 
 export default Colors;

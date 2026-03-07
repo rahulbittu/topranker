@@ -30,22 +30,15 @@ interface MappedRating {
   createdAt: number;
 }
 
-function SubScoreBar({ label, value, icon }: { label: string; value: number; icon: string }) {
+function SubScoreBar({ label, value }: { label: string; value: number }) {
   const pct = Math.min((value / 5) * 100, 100);
   return (
     <View style={styles.subScoreRow}>
-      <View style={styles.subScoreIcon}>
-        <Ionicons name={icon as any} size={14} color={Colors.gold} />
+      <Text style={styles.subScoreLabel}>{label}</Text>
+      <View style={styles.subScoreTrack}>
+        <View style={[styles.subScoreFill, { width: `${pct}%` as any }]} />
       </View>
-      <View style={styles.subScoreContent}>
-        <View style={styles.subScoreLabelRow}>
-          <Text style={styles.subScoreLabel}>{label}</Text>
-          <Text style={styles.subScoreValue}>{value.toFixed(1)}</Text>
-        </View>
-        <View style={styles.subScoreTrack}>
-          <View style={[styles.subScoreFill, { width: `${pct}%` as any }]} />
-        </View>
-      </View>
+      <Text style={styles.subScoreValue}>{value.toFixed(1)}</Text>
     </View>
   );
 }
@@ -66,7 +59,7 @@ function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
             <View
               style={[styles.distBarFill, {
                 width: `${(count / maxCount) * 100}%` as any,
-                backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.borderLight,
+                backgroundColor: count === maxCount && count > 0 ? Colors.gold : "#E0E0E0",
               }]}
             />
           </View>
@@ -84,16 +77,14 @@ function RatingRow({ rating }: { rating: MappedRating }) {
     <View style={styles.ratingRow}>
       <View style={styles.ratingTop}>
         <View style={styles.ratingUser}>
-          <View style={[styles.ratingAvatar, { borderColor: tierColor }]}>
+          <View style={styles.ratingAvatar}>
             <Text style={styles.ratingAvatarText}>
               {rating.userName.charAt(0).toUpperCase()}
             </Text>
           </View>
           <View>
             <Text style={styles.ratingName}>{rating.userName}</Text>
-            <View style={[styles.tierBadge, { borderColor: tierColor, backgroundColor: `${tierColor}18` }]}>
-              <Text style={[styles.tierBadgeText, { color: tierColor }]}>{tierName}</Text>
-            </View>
+            <Text style={[styles.ratingTierText, { color: tierColor }]}>{tierName}</Text>
           </View>
         </View>
         <View style={styles.ratingScoreBox}>
@@ -120,7 +111,7 @@ function RatingRow({ rating }: { rating: MappedRating }) {
           <Ionicons
             name={rating.wouldReturn ? "checkmark-circle" : "close-circle"}
             size={14}
-            color={rating.wouldReturn ? Colors.greenBright : Colors.redBright}
+            color={rating.wouldReturn ? Colors.green : Colors.red}
           />
         </View>
       </View>
@@ -139,9 +130,7 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: string; label:
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <View style={styles.actionBtnCircle}>
-        <Ionicons name={icon as any} size={18} color={disabled ? Colors.textTertiary : Colors.gold} />
-      </View>
+      <Ionicons name={icon as any} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
       <Text style={[styles.actionBtnLabel, disabled && styles.actionBtnLabelDisabled]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -150,11 +139,8 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: string; label:
 function DishPill({ dish }: { dish: ApiDish }) {
   return (
     <View style={styles.dishPill}>
-      <Ionicons name="flame" size={12} color={Colors.gold} />
       <Text style={styles.dishPillText}>{dish.name}</Text>
-      <View style={styles.dishVoteCount}>
-        <Text style={styles.dishVoteCountText}>{dish.voteCount}</Text>
-      </View>
+      <Text style={styles.dishVoteCountText}>{dish.voteCount}</Text>
     </View>
   );
 }
@@ -223,7 +209,7 @@ export default function BusinessProfileScreen() {
   const openingHoursText = business.openingHours?.weekday_text;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -231,7 +217,7 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
-        {/* SECTION 1: Hero Image with Gradient Overlay */}
+        {/* Hero Image */}
         <View style={styles.heroImageContainer}>
           {business.photoUrl ? (
             <Image source={{ uri: business.photoUrl }} style={styles.heroImage} resizeMode="cover" />
@@ -240,8 +226,6 @@ export default function BusinessProfileScreen() {
               <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
             </View>
           )}
-          <View style={styles.heroGradientTop} />
-          <View style={styles.heroGradientBottom} />
 
           <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
             <TouchableOpacity onPress={() => router.back()} style={styles.navBtn}>
@@ -251,30 +235,51 @@ export default function BusinessProfileScreen() {
               <Ionicons name="flag-outline" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
+        </View>
 
-          <View style={styles.heroRankOverlay}>
-            <View style={styles.heroRankRow}>
-              <View style={[styles.heroRankBadge, business.rank === 1 && styles.heroRankBadgeGold]}>
-                <Text style={[styles.heroRankText, business.rank === 1 && styles.heroRankTextGold]}>
-                  #{business.rank}
-                </Text>
-              </View>
-              {business.isOpenNow !== undefined && (
-                <View style={[styles.statusDot, { backgroundColor: business.isOpenNow ? Colors.greenBright : Colors.redBright }]} />
-              )}
-              {business.isOpenNow !== undefined && (
-                <Text style={styles.statusText}>{business.isOpenNow ? "Open" : "Closed"}</Text>
-              )}
-            </View>
-            <Text style={styles.heroNameOverlay}>{business.name}</Text>
-            <Text style={styles.heroCatOverlay}>
-              {business.category} {business.neighborhood ? `· ${business.neighborhood}` : ""} · {business.city}
-            </Text>
+        {/* Business Name Card */}
+        <View style={styles.nameCard}>
+          <Text style={styles.businessName}>{business.name}</Text>
+          <Text style={styles.businessMeta}>
+            {business.category} {business.neighborhood ? `· ${business.neighborhood}` : ""} · {business.city}
+          </Text>
+          <View style={styles.nameCardRow}>
+            {business.isOpenNow !== undefined && (
+              <Text style={[styles.openStatusText, { color: business.isOpenNow ? Colors.green : Colors.red }]}>
+                {business.isOpenNow ? "OPEN" : "CLOSED"}
+              </Text>
+            )}
+            {business.priceRange && <Text style={styles.priceText}>{business.priceRange}</Text>}
           </View>
         </View>
 
         <View style={styles.body}>
-          {/* SECTION 2: Action Bar */}
+          {/* Score */}
+          <View style={styles.scoreCard}>
+            <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
+            <Text style={styles.scoreLabel}>Weighted Score</Text>
+            <View style={styles.scoreMetaRow}>
+              <Text style={styles.scoreMetaItem}>{business.ratingCount} ratings</Text>
+              <Text style={styles.scoreMetaItem}>#{business.rank}</Text>
+              {business.googleRating && (
+                <View style={styles.googleRow}>
+                  <MaterialCommunityIcons name="google" size={10} color={Colors.textTertiary} />
+                  <Text style={styles.scoreMetaItem}>{business.googleRating.toFixed(1)}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Sub-scores */}
+          {ratings.length > 0 && (
+            <View style={styles.subScoresCard}>
+              <SubScoreBar label="Quality" value={avgQ1} />
+              <SubScoreBar label="Value" value={avgQ2} />
+              <SubScoreBar label="Service" value={avgQ3} />
+            </View>
+          )}
+
+          {/* Action Bar */}
           <View style={styles.actionBar}>
             <ActionButton icon="call-outline" label="Call" onPress={handleCall} disabled={!business.phone} />
             <ActionButton icon="globe-outline" label="Website" onPress={handleWebsite} disabled={!business.website} />
@@ -282,57 +287,10 @@ export default function BusinessProfileScreen() {
             <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
           </View>
 
-          {/* SECTION 3: Score Card with Sub-scores */}
-          <View style={styles.scoreCard}>
-            <View style={styles.scoreMainSection}>
-              <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
-              <Text style={styles.scoreLabel}>Weighted Score</Text>
-              {business.googleRating && (
-                <View style={styles.googleRow}>
-                  <MaterialCommunityIcons name="google" size={10} color={Colors.textTertiary} />
-                  <Text style={styles.googleRatingText}>{business.googleRating.toFixed(1)}</Text>
-                </View>
-              )}
-            </View>
-            <View style={styles.scoreDivider} />
-            <View style={styles.scoreMetrics}>
-              <View style={styles.scoreMetricRow}>
-                <Text style={styles.scoreMetricValue}>{business.ratingCount}</Text>
-                <Text style={styles.scoreMetricLabel}>Ratings</Text>
-              </View>
-              <View style={styles.scoreMetricRow}>
-                <Text style={styles.scoreMetricValue}>{business.priceRange ?? "—"}</Text>
-                <Text style={styles.scoreMetricLabel}>Price</Text>
-              </View>
-              <View style={styles.scoreMetricRow}>
-                <Text style={[styles.scoreMetricValue, { fontSize: 11 }]}>{business.neighborhood || "—"}</Text>
-                <Text style={styles.scoreMetricLabel}>Area</Text>
-              </View>
-            </View>
-          </View>
-
-          {ratings.length > 0 && (
-            <View style={styles.subScoresCard}>
-              <SubScoreBar label="Quality" value={avgQ1} icon="star" />
-              <SubScoreBar label="Value" value={avgQ2} icon="cash-outline" />
-              <SubScoreBar label="Service" value={avgQ3} icon="people-outline" />
-              <View style={styles.returnRateRow}>
-                <Ionicons name="repeat" size={14} color={Colors.gold} />
-                <Text style={styles.returnRateLabel}>Would Return</Text>
-                <Text style={styles.returnRateValue}>
-                  {Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}%
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {/* SECTION 4: Top Dishes */}
+          {/* Top Dishes */}
           {dishes.length > 0 && (
             <View style={styles.sectionContainer}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="flame" size={16} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>Top Dishes</Text>
-              </View>
+              <Text style={styles.sectionTitle}>Top Dishes</Text>
               <View style={styles.dishesGrid}>
                 {dishes.slice(0, 8).map((dish: ApiDish) => (
                   <DishPill key={dish.id} dish={dish} />
@@ -341,7 +299,7 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
-          {/* SECTION 5: Rate Button */}
+          {/* Rate Button */}
           {user ? (
             <TouchableOpacity
               style={styles.rateButton}
@@ -349,7 +307,6 @@ export default function BusinessProfileScreen() {
               activeOpacity={0.85}
               testID="rate-this-place"
             >
-              <Ionicons name="star" size={17} color="#000" />
               <Text style={styles.rateButtonText}>Rate This Place</Text>
             </TouchableOpacity>
           ) : (
@@ -358,26 +315,14 @@ export default function BusinessProfileScreen() {
               onPress={() => router.push("/auth/login")}
               activeOpacity={0.85}
             >
-              <Ionicons name="log-in-outline" size={17} color="#000" />
               <Text style={styles.rateButtonText}>Sign In to Rate</Text>
             </TouchableOpacity>
           )}
 
-          {/* SECTION 6: Opening Hours */}
+          {/* Opening Hours */}
           {openingHoursText && openingHoursText.length > 0 && (
             <View style={styles.hoursCard}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="time-outline" size={16} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>Opening Hours</Text>
-                {business.isOpenNow !== undefined && (
-                  <View style={[styles.openBadge, { backgroundColor: business.isOpenNow ? Colors.greenFaint : Colors.redFaint }]}>
-                    <View style={[styles.openDot, { backgroundColor: business.isOpenNow ? Colors.greenBright : Colors.redBright }]} />
-                    <Text style={[styles.openBadgeText, { color: business.isOpenNow ? Colors.greenBright : Colors.redBright }]}>
-                      {business.isOpenNow ? "Open Now" : "Closed"}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              <Text style={styles.sectionTitle}>Opening Hours</Text>
               {openingHoursText.map((line: string, i: number) => {
                 const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
                 const isToday = line.toLowerCase().startsWith(today.toLowerCase());
@@ -392,31 +337,21 @@ export default function BusinessProfileScreen() {
 
           {business.address && (
             <View style={styles.addressCard}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="location-outline" size={16} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>Location</Text>
-              </View>
+              <Text style={styles.sectionTitle}>Location</Text>
               <Text style={styles.addressText}>{business.address}</Text>
-              {business.address && (
-                <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps}>
-                  <Feather name="navigation" size={13} color={Colors.gold} />
-                  <Text style={styles.directionsBtnText}>Get Directions</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps}>
+                <Feather name="navigation" size={13} color={Colors.text} />
+                <Text style={styles.directionsBtnText}>Get Directions</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* SECTION 7: Community Ratings */}
+          {/* Community Ratings */}
           {ratings.length > 0 && (
             <>
-              <View style={styles.sectionContainer}>
-                <View style={styles.sectionHeaderBetween}>
-                  <View style={styles.sectionHeader}>
-                    <Ionicons name="chatbubbles-outline" size={16} color={Colors.gold} />
-                    <Text style={styles.sectionTitle}>Community Ratings</Text>
-                  </View>
-                  <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
-                </View>
+              <View style={styles.sectionHeaderBetween}>
+                <Text style={styles.sectionTitle}>Community Ratings</Text>
+                <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
               </View>
 
               <View style={styles.card}>
@@ -429,29 +364,20 @@ export default function BusinessProfileScreen() {
             </>
           )}
 
-          {/* SECTION 8: Photo Gallery */}
+          {/* Photo Gallery */}
           <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="images-outline" size={16} color={Colors.gold} />
-              <Text style={styles.sectionTitle}>Photos</Text>
-            </View>
+            <Text style={styles.sectionTitle}>Photos</Text>
             <View style={styles.photoGalleryEmpty}>
               <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
               <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
-              <Text style={styles.photoGalleryEmptyHint}>Photos from the community will appear here</Text>
             </View>
           </View>
 
-          {/* SECTION 9: Claim Listing */}
+          {/* Claim Listing */}
           {!business.isClaimed && (
             <View style={styles.claimCard}>
-              <View style={styles.claimContent}>
-                <Ionicons name="storefront-outline" size={22} color={Colors.blue} />
-                <View style={styles.claimTextWrap}>
-                  <Text style={styles.claimTitle}>Own this business?</Text>
-                  <Text style={styles.claimDesc}>Claim your listing to respond to reviews and update your info</Text>
-                </View>
-              </View>
+              <Text style={styles.claimTitle}>Own this business?</Text>
+              <Text style={styles.claimDesc}>Claim your listing to respond to reviews and update your info</Text>
               <TouchableOpacity style={styles.claimBtn} activeOpacity={0.8}>
                 <Text style={styles.claimBtnText}>Claim Listing</Text>
               </TouchableOpacity>
@@ -468,11 +394,11 @@ export default function BusinessProfileScreen() {
   );
 }
 
-const HERO_HEIGHT = 280;
+const HERO_HEIGHT = 240;
 
 const styles = StyleSheet.create({
   notFound: {
-    flex: 1, backgroundColor: Colors.background,
+    flex: 1, backgroundColor: "#FFFFFF",
     alignItems: "center", justifyContent: "center", gap: 12,
   },
   notFoundText: { fontSize: 18, color: Colors.text, fontWeight: "600" },
@@ -484,19 +410,9 @@ const styles = StyleSheet.create({
   heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
   heroImage: { width: "100%", height: HERO_HEIGHT },
   heroImagePlaceholder: {
-    backgroundColor: Colors.surface,
+    backgroundColor: Colors.surfaceRaised,
     alignItems: "center",
     justifyContent: "center",
-  },
-  heroGradientTop: {
-    position: "absolute",
-    top: 0, left: 0, right: 0, height: 100,
-    backgroundColor: "rgba(13,27,42,0.6)",
-  },
-  heroGradientBottom: {
-    position: "absolute",
-    bottom: 0, left: 0, right: 0, height: HERO_HEIGHT * 0.65,
-    backgroundColor: "rgba(13,27,42,0.7)",
   },
 
   navBar: {
@@ -506,164 +422,118 @@ const styles = StyleSheet.create({
   },
   navBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(13,27,42,0.55)",
+    backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center", justifyContent: "center",
   },
 
-  heroRankOverlay: {
-    position: "absolute", bottom: 18, left: 18, right: 18, gap: 4,
+  nameCard: {
+    backgroundColor: "#FFFFFF", marginHorizontal: 14, marginTop: -24,
+    borderRadius: 16, padding: 16, gap: 4,
+    ...Colors.cardShadow,
   },
-  heroRankRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroRankBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 12, paddingVertical: 4,
-    borderRadius: 8, borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+  businessName: {
+    fontSize: 24, fontWeight: "700", color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
-  heroRankBadgeGold: { backgroundColor: Colors.gold, borderColor: Colors.gold },
-  heroRankText: {
-    fontSize: 14, fontWeight: "800", color: "#fff",
-    letterSpacing: 0.5,
+  businessMeta: {
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
-  heroRankTextGold: { color: "#000" },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { fontSize: 11, color: "rgba(255,255,255,0.8)", fontWeight: "500" },
-  heroNameOverlay: {
-    fontSize: 26, fontWeight: "700", color: "#fff",
-    letterSpacing: -0.7,
-    textShadowColor: "rgba(0,0,0,0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+  nameCardRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
+  openStatusText: {
+    fontSize: 11, fontFamily: "DMSans_600SemiBold", letterSpacing: 0.5,
   },
-  heroCatOverlay: {
-    fontSize: 13, color: "rgba(255,255,255,0.75)",
+  priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+
+  scoreCard: {
+    backgroundColor: "#FFFFFF", borderRadius: 16,
+    padding: 20, alignItems: "center", gap: 4,
+    ...Colors.cardShadow,
   },
+  scoreNumber: {
+    fontSize: 48, fontWeight: "700", color: Colors.gold,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -1.5,
+  },
+  scoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  scoreMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
+  scoreMetaItem: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  googleRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+
+  subScoresCard: {
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
+    ...Colors.cardShadow,
+  },
+  subScoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  subScoreLabel: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", width: 60 },
+  subScoreTrack: { flex: 1, height: 3, backgroundColor: "#E0E0E0", borderRadius: 2, overflow: "hidden" },
+  subScoreFill: { height: "100%", backgroundColor: Colors.gold, borderRadius: 2 },
+  subScoreValue: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold", width: 28, textAlign: "right" },
 
   actionBar: {
     flexDirection: "row", justifyContent: "space-around",
-    backgroundColor: Colors.surface,
-    borderRadius: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    paddingVertical: 12,
   },
   actionBtn: { alignItems: "center", gap: 5 },
-  actionBtnDisabled: { opacity: 0.4 },
-  actionBtnCircle: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  actionBtnLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: "500" },
+  actionBtnDisabled: { opacity: 0.3 },
+  actionBtnLabel: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   actionBtnLabelDisabled: { color: Colors.textTertiary },
 
-  scoreCard: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, flexDirection: "row", alignItems: "center",
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  scoreMainSection: { alignItems: "center", paddingRight: 16 },
-  scoreNumber: {
-    fontSize: 38, fontWeight: "800", color: Colors.gold,
-    letterSpacing: -1.5,
-  },
-  scoreLabel: { fontSize: 10, color: Colors.textTertiary, marginTop: 2 },
-  googleRow: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 4 },
-  googleRatingText: { fontSize: 10, color: Colors.textTertiary },
-  scoreDivider: { width: 1, height: 40, backgroundColor: Colors.border },
-  scoreMetrics: { flex: 1, paddingLeft: 16, gap: 8 },
-  scoreMetricRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  scoreMetricValue: { fontSize: 13, fontWeight: "700", color: Colors.text, textAlign: "right" },
-  scoreMetricLabel: { fontSize: 10, color: Colors.textTertiary },
-
-  subScoresCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  subScoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  subScoreIcon: { width: 24, alignItems: "center" },
-  subScoreContent: { flex: 1, gap: 4 },
-  subScoreLabelRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  subScoreLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500" },
-  subScoreValue: { fontSize: 13, fontWeight: "700", color: Colors.text },
-  subScoreTrack: { height: 5, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
-  subScoreFill: { height: "100%", backgroundColor: Colors.gold, borderRadius: 3 },
-  returnRateRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  returnRateLabel: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", flex: 1 },
-  returnRateValue: { fontSize: 14, fontWeight: "700", color: Colors.greenBright },
-
   sectionContainer: { gap: 10 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 7 },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   sectionHeaderBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text },
-  sectionCount: { fontSize: 11, color: Colors.textTertiary },
+  sectionCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   dishPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: Colors.surface, borderRadius: 20,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 20,
     paddingHorizontal: 12, paddingVertical: 7,
-    borderWidth: 1, borderColor: Colors.border,
   },
-  dishPillText: { fontSize: 12, color: Colors.text, fontWeight: "500" },
-  dishVoteCount: {
-    backgroundColor: Colors.goldFaint, borderRadius: 8,
-    paddingHorizontal: 5, paddingVertical: 1,
-  },
-  dishVoteCountText: { fontSize: 10, fontWeight: "700", color: Colors.gold },
+  dishPillText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_500Medium" },
+  dishVoteCountText: { fontSize: 10, fontWeight: "700", color: Colors.textTertiary, fontFamily: "DMSans_700Bold" },
 
   rateButton: {
-    backgroundColor: Colors.gold, borderRadius: 14, paddingVertical: 15,
+    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
   },
-  rateButtonText: { fontSize: 16, fontWeight: "700", color: "#000" },
+  rateButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
 
   hoursCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 8,
+    ...Colors.cardShadow,
   },
-  openBadge: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    marginLeft: "auto",
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-  },
-  openDot: { width: 5, height: 5, borderRadius: 3 },
-  openBadgeText: { fontSize: 10, fontWeight: "600" },
   hoursRow: { paddingVertical: 3, paddingHorizontal: 4, borderRadius: 4 },
   hoursRowToday: { backgroundColor: Colors.goldFaint },
-  hoursText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
-  hoursTextToday: { color: Colors.gold, fontWeight: "600" },
+  hoursText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
+  hoursTextToday: { color: Colors.gold, fontFamily: "DMSans_600SemiBold" },
 
   addressCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
+    ...Colors.cardShadow,
   },
-  addressText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
+  addressText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
   directionsBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     alignSelf: "flex-start",
     paddingVertical: 6, paddingHorizontal: 12,
-    borderRadius: 8, borderWidth: 1, borderColor: Colors.gold,
+    borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
   },
-  directionsBtnText: { fontSize: 12, color: Colors.gold, fontWeight: "600" },
+  directionsBtnText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
   card: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
-    borderWidth: 1, borderColor: Colors.border, gap: 10,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14,
+    gap: 10, ...Colors.cardShadow,
   },
 
   distChart: { gap: 7 },
   distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontWeight: "500" },
-  distBarTrack: { flex: 1, height: 6, backgroundColor: Colors.surfaceRaised, borderRadius: 3, overflow: "hidden" },
-  distBarFill: { height: "100%", borderRadius: 3 },
-  distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, textAlign: "right" },
+  distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  distBarTrack: { flex: 1, height: 4, backgroundColor: "#E0E0E0", borderRadius: 2, overflow: "hidden" },
+  distBarFill: { height: "100%", borderRadius: 2 },
+  distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
 
   ratingRow: {
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 13,
-    gap: 8, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: "#FFFFFF", borderRadius: 12, padding: 13,
+    gap: 8, ...Colors.cardShadow,
   },
   ratingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
   ratingUser: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
@@ -671,48 +541,41 @@ const styles = StyleSheet.create({
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: Colors.surfaceRaised,
     alignItems: "center", justifyContent: "center",
-    borderWidth: 2,
   },
-  ratingAvatarText: { fontSize: 13, fontWeight: "700", color: Colors.text },
-  ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text },
-  tierBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, borderWidth: 1, marginTop: 2 },
-  tierBadgeText: { fontSize: 9, fontWeight: "600", letterSpacing: 0.3 },
+  ratingAvatarText: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  ratingTierText: { fontSize: 10, fontFamily: "DMSans_500Medium" },
   ratingScoreBox: { alignItems: "flex-end", gap: 1 },
-  ratingScore: { fontSize: 17, fontWeight: "700", color: Colors.text, letterSpacing: -0.5 },
-  ratingWeight: { fontSize: 10, color: Colors.textTertiary },
-  ratingTime: { fontSize: 9, color: Colors.textTertiary },
+  ratingScore: { fontSize: 17, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
+  ratingWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  ratingTime: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   ratingSubScores: { flexDirection: "row", gap: 14 },
   ratingSubItem: { alignItems: "center", gap: 2 },
-  ratingSubLabel: { fontSize: 9, color: Colors.textTertiary },
-  ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text },
-  ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", lineHeight: 17 },
+  ratingSubLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", fontFamily: "DMSans_400Regular", lineHeight: 17 },
 
   photoGalleryEmpty: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 24,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 24,
     alignItems: "center", justifyContent: "center", gap: 6,
-    borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
   },
-  photoGalleryEmptyText: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },
-  photoGalleryEmptyHint: { fontSize: 11, color: Colors.textTertiary },
+  photoGalleryEmptyText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 
   claimCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 12,
-    borderWidth: 1, borderColor: Colors.blue,
+    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 8,
+    ...Colors.cardShadow,
   },
-  claimContent: { flexDirection: "row", alignItems: "center", gap: 12 },
-  claimTextWrap: { flex: 1 },
-  claimTitle: { fontSize: 14, fontWeight: "600", color: Colors.text },
-  claimDesc: { fontSize: 11, color: Colors.textSecondary, lineHeight: 16, marginTop: 2 },
+  claimTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  claimDesc: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 16 },
   claimBtn: {
-    backgroundColor: Colors.blueFaint, borderRadius: 10,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 10,
     paddingVertical: 10, alignItems: "center",
-    borderWidth: 1, borderColor: Colors.blue,
   },
-  claimBtnText: { fontSize: 13, fontWeight: "600", color: Colors.blue },
+  claimBtnText: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
   reportLink: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 5, paddingVertical: 16, marginTop: 4,
   },
-  reportLinkText: { fontSize: 11, color: Colors.textTertiary },
+  reportLinkText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 });
