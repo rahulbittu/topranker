@@ -30,6 +30,10 @@ export default function SignupScreen() {
       setError("Please fill in all fields");
       return;
     }
+    if (!/^[a-zA-Z0-9_]{2,30}$/.test(username.trim())) {
+      setError("Username must be 2-30 characters: letters, numbers, or underscores");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
