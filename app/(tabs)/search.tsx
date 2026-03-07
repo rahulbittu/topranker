@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
+  Dimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,6 +18,8 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const AMBER = BRAND.colors.amber;
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CARD_H_MARGIN = 16;
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Dallas: { lat: 32.7767, lng: -96.7970 },
@@ -51,30 +54,57 @@ interface MappedBusiness {
   lng?: number;
 }
 
-function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: number }) {
-  const [imgError, setImgError] = useState(false);
-  const initial = item.name.charAt(0).toUpperCase();
-  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
+function DiscoverPhotoStrip({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const stripWidth = SCREEN_WIDTH - CARD_H_MARGIN * 2;
+  const stripPhotos = photos.slice(0, 3);
 
-  if (photos.length === 0 || imgError) {
+  if (stripPhotos.length === 0) {
     return (
       <LinearGradient
-        colors={[AMBER, BRAND.colors.amberDark]}
-        style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 12 }]}
+        colors={[AMBER, BRAND.colors.navy]}
+        style={[styles.discoverStripFallback, { height }]}
       >
-        <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.35 }]}>{initial}</Text>
+        <Text style={styles.discoverStripFallbackEmoji}>
+          {getCategoryDisplay(category || "").emoji}
+        </Text>
       </LinearGradient>
     );
   }
 
+  const handleScroll = useCallback((e: any) => {
+    const x = e.nativeEvent.contentOffset.x;
+    setActiveIndex(Math.round(x / stripWidth));
+  }, [stripWidth]);
+
   return (
-    <Image
-      source={{ uri: photos[0] }}
-      style={[styles.cardPhoto, { width: size, height: size }]}
-      contentFit="cover"
-      transition={200}
-      onError={() => setImgError(true)}
-    />
+    <View>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        style={{ height }}
+      >
+        {stripPhotos.map((uri, i) => (
+          <Image
+            key={i}
+            source={{ uri }}
+            style={{ width: stripWidth, height }}
+            contentFit="cover"
+            transition={200}
+          />
+        ))}
+      </ScrollView>
+      {stripPhotos.length > 1 && (
+        <View style={styles.discoverDotRow}>
+          {stripPhotos.map((_, i) => (
+            <View key={i} style={[styles.discoverDot, i === activeIndex && styles.discoverDotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -82,6 +112,7 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
   const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
+  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
 
   return (
     <TouchableOpacity
@@ -91,12 +122,14 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
-      <BusinessPhoto item={item} size={100} />
-      <View style={styles.cardInfo}>
-        <View style={styles.cardRow1}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardRankBadge}>{rankLabel}</Text>
+      <View style={styles.cardPhotoStripWrap}>
+        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} />
+        <View style={styles.discoverRankBadge}>
+          <Text style={styles.discoverRankBadgeText}>{rankLabel}</Text>
         </View>
+      </View>
+      <View style={styles.cardInfo}>
+        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={styles.cardRow2}>
           <Text style={styles.cardCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
           {item.neighborhood ? (
@@ -122,8 +155,6 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
-        </View>
-        <View style={styles.cardRow4}>
           {isOpen !== undefined && isOpen !== null && (
             <View style={[styles.statusPill, isOpen ? styles.statusPillOpen : styles.statusPillClosed]}>
               <Text style={styles.statusPillText}>
@@ -503,7 +534,7 @@ export default function SearchScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
-          getItemLayout={(_, index) => ({ length: 124, offset: 124 * index, index })}
+          removeClippedSubviews={Platform.OS !== "web"}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
@@ -592,34 +623,39 @@ const styles = StyleSheet.create({
   resultsCount: { fontSize: 11, color: Colors.textTertiary, paddingBottom: 4, fontFamily: "DMSans_400Regular" },
 
   card: {
-    flexDirection: "row", alignItems: "center",
     backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 12, minHeight: 100, gap: 14,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 12,
     elevation: 2,
   },
-  cardPhoto: {
-    borderRadius: 12, backgroundColor: Colors.surfaceRaised,
+  cardPhotoStripWrap: {
+    position: "relative" as const,
   },
-  cardPhotoFallback: {
-    backgroundColor: AMBER,
-    alignItems: "center", justifyContent: "center",
+  discoverStripFallback: { alignItems: "center", justifyContent: "center" },
+  discoverStripFallbackEmoji: { fontSize: 32, color: "rgba(255,255,255,0.5)" },
+  discoverDotRow: {
+    flexDirection: "row", justifyContent: "center", gap: 5,
+    position: "absolute", bottom: 6, left: 0, right: 0,
   },
-  cardPhotoInitial: {
-    color: "#fff", fontWeight: "700",
+  discoverDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.45)",
   },
-  cardInfo: { flex: 1, gap: 4 },
-  cardRow1: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  discoverDotActive: {
+    backgroundColor: AMBER, width: 8, height: 8, borderRadius: 4,
   },
+  discoverRankBadge: {
+    position: "absolute", top: 8, left: 8,
+    backgroundColor: AMBER, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+  },
+  discoverRankBadgeText: {
+    fontSize: 12, fontWeight: "800", color: "#fff", fontFamily: "PlayfairDisplay_900Black",
+  },
+  cardInfo: { padding: 10, gap: 4 },
   cardName: {
-    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
-  },
-  cardRankBadge: {
-    fontSize: 16, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
   },
   cardRow2: {
     flexDirection: "row", alignItems: "center", flexWrap: "wrap",
@@ -644,9 +680,6 @@ const styles = StyleSheet.create({
   },
   cardDelta: {
     fontSize: 11, fontFamily: "DMSans_500Medium",
-  },
-  cardRow4: {
-    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 1,
   },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },

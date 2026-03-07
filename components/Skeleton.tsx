@@ -122,8 +122,8 @@ export function DiscoverSkeleton() {
     <View style={styles.container}>
       {[1, 2, 3, 4, 5].map(i => (
         <View key={i} style={styles.discoverRow}>
-          <SkeletonBlock style={{ width: 100, height: 100, borderRadius: 12 }} />
-          <View style={{ flex: 1, gap: 8 }}>
+          <SkeletonBlock style={{ width: "100%", height: 120, borderRadius: 0 }} />
+          <View style={{ padding: 10, gap: 6 }}>
             <SkeletonBlock style={{ width: "75%", height: 14, borderRadius: 6 }} />
             <SkeletonBlock style={{ width: "55%", height: 10, borderRadius: 4 }} />
             <View style={{ flexDirection: "row", gap: 6 }}>
@@ -164,11 +164,9 @@ const styles = StyleSheet.create({
     ...Colors.cardShadow,
   },
   discoverRow: {
-    flexDirection: "row",
     backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 10,
-    gap: 12,
+    borderRadius: 14,
+    overflow: "hidden",
     ...Colors.cardShadow,
   },
   detailCard: {
