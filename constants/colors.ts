@@ -13,8 +13,8 @@ const Colors = {
   goldFaint: AMBER_FAINT,
   goldLight: "#FDF6E8",
 
-  silver: "#AAAAAA",
-  bronze: "#CCCCCC",
+  silver: "#C0C0C0",
+  bronze: "#AD8A56",
 
   text: "#0D1B2A",
   textSecondary: "#636366",
