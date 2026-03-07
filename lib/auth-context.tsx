@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
-import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { apiRequest, getApiUrl, queryClient } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 
 interface AuthUser {
@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await apiRequest("POST", "/api/auth/logout");
     setUser(null);
+    queryClient.clear();
   };
 
   return (

@@ -134,8 +134,8 @@ export function mapApiBusiness(biz: ApiBusiness) {
     neighborhood: biz.neighborhood || "",
     city: biz.city,
     category: biz.category,
-    weightedScore: parseFloat(biz.weightedScore),
-    rawAvgScore: parseFloat(biz.rawAvgScore),
+    weightedScore: parseFloat(biz.weightedScore) || 0,
+    rawAvgScore: parseFloat(biz.rawAvgScore) || 0,
     rank: biz.rankPosition || 0,
     prevRank: biz.prevRankPosition,
     rankDelta: biz.rankDelta,
@@ -164,8 +164,8 @@ export function mapApiRating(rating: ApiRating) {
     userName: rating.memberName || "Anonymous",
     userTier: (rating.memberTier || "community") as CredibilityTier,
     userAvatarUrl: rating.memberAvatarUrl || undefined,
-    rawScore: parseFloat(rating.rawScore),
-    weight: parseFloat(rating.weight),
+    rawScore: parseFloat(rating.rawScore) || 0,
+    weight: parseFloat(rating.weight) || 0,
     q1: rating.q1Score,
     q2: rating.q2Score,
     q3: rating.q3Score,
@@ -180,8 +180,16 @@ async function apiFetch<T>(path: string): Promise<T> {
   const url = new URL(path, baseUrl);
   const res = await fetch(url.toString(), { credentials: "include" });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`${res.status}: ${text}`);
+    let message = res.statusText;
+    try {
+      const text = await res.text();
+      // Try to parse as JSON for structured error
+      const json = JSON.parse(text);
+      message = json.message || json.error || text;
+    } catch {
+      // If response is HTML or unparseable, use status text
+    }
+    throw new Error(`${res.status}: ${message}`);
   }
   const json = await res.json();
   return json.data;
