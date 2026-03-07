@@ -238,6 +238,7 @@ export default function RateScreen() {
       qc.invalidateQueries({ queryKey: ["leaderboard"] });
       qc.invalidateQueries({ queryKey: ["search"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: ["challengers"] });
       setShowConfirm(true);
     },
     onError: (err: Error) => {
