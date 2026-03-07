@@ -351,6 +351,7 @@ export default function BusinessProfileScreen() {
               activeOpacity={0.85}
               testID="rate-this-place"
             >
+              <Ionicons name="star" size={18} color="#FFFFFF" />
               <Text style={styles.rateButtonText}>Rate This Place</Text>
             </TouchableOpacity>
           ) : (
@@ -577,6 +578,11 @@ const styles = StyleSheet.create({
   rateButton: {
     backgroundColor: "#C49A1A", borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    shadowColor: "rgba(196,154,26,0.4)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   rateButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
 
