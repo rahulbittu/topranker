@@ -24,6 +24,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/lib/auth-context";
 import { CityProvider } from "@/lib/city-context";
+import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
 
 SplashScreen.preventAutoHideAsync();
@@ -73,11 +74,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <CityProvider>
-            <GestureHandlerRootView style={styles.root}>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
+            <BookmarksProvider>
+              <GestureHandlerRootView style={styles.root}>
+                <KeyboardProvider>
+                  <RootLayoutNav />
+                </KeyboardProvider>
+              </GestureHandlerRootView>
+            </BookmarksProvider>
           </CityProvider>
         </AuthProvider>
       </QueryClientProvider>

@@ -22,6 +22,7 @@ import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
+import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
@@ -252,6 +253,8 @@ export default function BusinessProfileScreen() {
   });
 
   const business = data?.business;
+  const { isBookmarked, toggleBookmark } = useBookmarks();
+  const saved = business ? isBookmarked(business.id) : false;
   const ratings = (data?.ratings || []) as MappedRating[];
   const dishes = data?.dishes || [];
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
@@ -391,9 +394,20 @@ export default function BusinessProfileScreen() {
             <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="chevron-back" size={20} color="#fff" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share this business">
-              <Ionicons name="share-outline" size={16} color="#fff" />
-            </TouchableOpacity>
+            <View style={styles.navBtnGroup}>
+              <TouchableOpacity
+                style={styles.navBtn}
+                onPress={() => { if (business) { toggleBookmark(business.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={saved ? "Remove from saved" : "Save this business"}
+              >
+                <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? BRAND.colors.amber : "#fff"} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share this business">
+                <Ionicons name="share-outline" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -700,6 +714,9 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center", justifyContent: "center",
+  },
+  navBtnGroup: {
+    flexDirection: "row", gap: 8,
   },
 
   nameCard: {
