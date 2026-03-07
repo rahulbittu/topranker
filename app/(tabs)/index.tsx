@@ -43,7 +43,7 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
   if (photos.length === 0) {
     return (
       <LinearGradient
-        colors={[AMBER, BRAND.colors.amberDark]}
+        colors={[AMBER, BRAND.colors.navy]}
         style={[styles.mosaicFallback, { height }]}
       >
         <Text style={styles.mosaicFallbackEmoji}>
@@ -404,10 +404,10 @@ const styles = StyleSheet.create({
   mosaicFallback: { alignItems: "center", justifyContent: "center" },
   mosaicFallbackEmoji: { fontSize: 40, color: "rgba(255,255,255,0.5)" },
   mosaicFull: { width: "100%" as any },
-  mosaicRow: { flexDirection: "row", gap: 2 },
+  mosaicRow: { flexDirection: "row", gap: 3 },
   mosaicMainPhoto: { width: "60%" },
   mosaicFlex: { flex: 1 },
-  mosaicSideColumn: { flex: 1, gap: 2 },
+  mosaicSideColumn: { flex: 1, gap: 3 },
   starRow: { flexDirection: "row", gap: 1 },
   heroPhotoWrap: { position: "relative" as const },
 
@@ -629,9 +629,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: Colors.surface,
     borderRadius: 14,
-    padding: 12,
-    minHeight: 100,
-    gap: 14,
+    padding: 10,
+    minHeight: 130,
+    gap: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
@@ -647,9 +647,9 @@ const styles = StyleSheet.create({
     borderLeftColor: Colors.bronze,
   },
   rankedPhoto: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
+    width: 110,
+    height: 110,
+    borderRadius: 12,
     backgroundColor: Colors.surfaceRaised,
   },
   rankedPhotoFallback: {
@@ -658,9 +658,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rankedPhotoInitial: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
     color: "#fff",
+    fontFamily: "PlayfairDisplay_700Bold",
   },
   rankedInfo: {
     flex: 1,
@@ -673,7 +674,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   rankedName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
     color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold",
