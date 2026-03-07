@@ -310,14 +310,14 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>
               </LinearGradient>
             )}
-            <View style={{ flex: 1, gap: 2 }}>
+            <View style={styles.mapBottomSheetInfo}>
               <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
               <Text style={styles.mapBottomSheetMeta}>
                 {getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(1)}
                 {selectedBiz.isOpenNow !== undefined ? ` \u00B7 ${selectedBiz.isOpenNow ? "OPEN" : "CLOSED"}` : ""}
               </Text>
             </View>
-            <Text style={{ color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 }}>{"View \u2192"}</Text>
+            <Text style={styles.mapBottomSheetAction}>{"View \u2192"}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -671,4 +671,6 @@ const styles = StyleSheet.create({
   mapBottomSheetMeta: {
     fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
+  mapBottomSheetInfo: { flex: 1, gap: 2 },
+  mapBottomSheetAction: { color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
 });
