@@ -318,7 +318,12 @@ export default function BusinessProfileScreen() {
 
         {/* Business Name Card */}
         <View style={styles.nameCard}>
-          <Text style={styles.businessName}>{business.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Text style={styles.businessName}>{business.name}</Text>
+            {business.isClaimed && (
+              <Ionicons name="checkmark-circle" size={18} color={Colors.blue} />
+            )}
+          </View>
           <Text style={styles.businessMeta}>
             {getCategoryDisplay(business.category).emoji} {getCategoryDisplay(business.category).label} {business.neighborhood ? `\u00B7 ${business.neighborhood}` : ""} \u00B7 {business.city}
           </Text>
