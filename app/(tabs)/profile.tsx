@@ -275,14 +275,24 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Text style={styles.statLabel}>Ratings</Text>
         </View>
         <View style={[styles.statBox, styles.statBoxMiddle]}>
+          <Text style={styles.statNum}>{profile.distinctBusinesses}</Text>
+          <Text style={styles.statLabel}>Places</Text>
+        </View>
+        <View style={[styles.statBox, styles.statBoxMiddle]}>
           <Text style={styles.statNum}>{profile.totalCategories}</Text>
           <Text style={styles.statLabel}>Categories</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statNum}>{profile.daysActive}</Text>
-          <Text style={styles.statLabel}>Days Active</Text>
+          <Text style={styles.statLabel}>Days</Text>
         </View>
       </View>
+
+      {profile.joinedAt && (
+        <Text style={styles.joinedText}>
+          Member since {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+        </Text>
+      )}
 
       <View style={styles.breakdownCard}>
         <Text style={styles.breakdownTitle}>Score Breakdown</Text>
@@ -569,7 +579,12 @@ const styles = StyleSheet.create({
   statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
   statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
   statNum: { fontSize: 24, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
+  statLabel: { fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
+
+  joinedText: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center",
+  },
 
   breakdownCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
