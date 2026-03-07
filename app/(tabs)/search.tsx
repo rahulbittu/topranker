@@ -600,6 +600,19 @@ export default function SearchScreen() {
               <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
               <Text style={styles.emptyText}>No results</Text>
               <Text style={styles.emptySubtext}>Try a different search or filter</Text>
+              <View style={styles.suggestionsRow}>
+                {["Tacos", "Italian", "Brunch", "Sushi"].map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    style={styles.suggestionChip}
+                    onPress={() => { setQuery(s); setActiveFilter("All"); }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Search for ${s}`}
+                  >
+                    <Text style={styles.suggestionChipText}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
           }
           ListHeaderComponent={
@@ -743,6 +756,18 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  suggestionsRow: {
+    flexDirection: "row", flexWrap: "wrap", justifyContent: "center",
+    gap: 8, marginTop: 16, paddingHorizontal: 32,
+  },
+  suggestionChip: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    backgroundColor: Colors.surface, borderRadius: 16,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  suggestionChipText: {
+    fontSize: 13, color: AMBER, fontFamily: "DMSans_600SemiBold",
+  },
 
   retryButton: {
     marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
