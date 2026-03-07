@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, ActivityIndicator, Image,
-  Dimensions, TextInput,
+  Dimensions, TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -226,11 +226,13 @@ export default function LeaderboardScreen() {
     }),
   ];
 
-  const { data: businesses = [], isLoading } = useQuery({
+  const { data: businesses = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["leaderboard", "Dallas", activeCategory === "all" ? "restaurant" : activeCategory],
     queryFn: () => fetchLeaderboard("Dallas", activeCategory === "all" ? "restaurant" : activeCategory, 20),
     staleTime: 30000,
   });
+
+  const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
   // Filter by search query
   const filteredBiz = searchQuery.trim()
@@ -314,6 +316,9 @@ export default function LeaderboardScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
+          }
           ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} /> : null}
           ListEmptyComponent={
             !heroBiz ? (
