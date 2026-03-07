@@ -242,3 +242,18 @@ export async function fetchDishSearch(businessId: string, query: string) {
     `/api/dishes/search?business_id=${encodeURIComponent(businessId)}&q=${encodeURIComponent(query)}`,
   );
 }
+
+export async function fetchRankHistory(businessId: string, days: number = 30) {
+  return apiFetch<{ date: string; rank: number; score: number }[]>(
+    `/api/businesses/${encodeURIComponent(businessId)}/rank-history?days=${days}`,
+  );
+}
+
+export interface ApiMemberImpact {
+  businessesMovedUp: number;
+  topContributions: { name: string; slug: string; rankChange: number }[];
+}
+
+export async function fetchMemberImpact() {
+  return apiFetch<ApiMemberImpact>("/api/members/me/impact");
+}

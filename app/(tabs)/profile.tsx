@@ -17,7 +17,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
-import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
+import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiMemberImpact } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
@@ -242,6 +242,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
+  const { data: impact } = useQuery({
+    queryKey: ["impact", profile.id],
+    queryFn: fetchMemberImpact,
+    staleTime: 60000,
+  });
+
   const tier = profile.credibilityTier as CredibilityTier;
   const tierColor = TIER_COLORS[tier];
   const weight = TIER_WEIGHTS[tier];
@@ -366,6 +372,39 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.joinedText}>
           Member since {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </Text>
+      )}
+
+      {/* Pride Mechanism — PRD: "Your ratings contributed to X businesses moving up" */}
+      {impact && impact.businessesMovedUp > 0 && (
+        <View style={styles.prideCard}>
+          <View style={styles.prideHeader}>
+            <Ionicons name="trending-up" size={18} color={Colors.green} />
+            <Text style={styles.prideTitle}>Your Impact</Text>
+          </View>
+          <Text style={styles.prideText}>
+            Your ratings contributed to {impact.businessesMovedUp} business{impact.businessesMovedUp !== 1 ? "es" : ""} moving up in the {profile.city} rankings.
+          </Text>
+          {impact.topContributions.length > 0 && (
+            <View style={styles.prideList}>
+              {impact.topContributions.map(c => (
+                <TouchableOpacity
+                  key={c.slug}
+                  style={styles.prideItem}
+                  onPress={() => router.push({ pathname: "/business/[id]", params: { id: c.slug } })}
+                  activeOpacity={0.7}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${c.name}, moved up ${c.rankChange}`}
+                >
+                  <Text style={styles.prideItemName} numberOfLines={1}>{c.name}</Text>
+                  <View style={styles.prideItemDelta}>
+                    <Ionicons name="arrow-up" size={10} color={Colors.green} />
+                    <Text style={styles.prideItemDeltaText}>{c.rankChange}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
       )}
 
       <View style={styles.breakdownCard}>
@@ -704,6 +743,36 @@ const styles = StyleSheet.create({
   joinedText: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center",
+  },
+
+  prideCard: {
+    backgroundColor: `${Colors.green}08`, borderRadius: 14, padding: 16,
+    gap: 10, borderWidth: 1, borderColor: `${Colors.green}20`,
+  },
+  prideHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  prideTitle: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  prideText: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18,
+  },
+  prideList: { gap: 6, marginTop: 4 },
+  prideItem: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 6, paddingHorizontal: 10,
+    backgroundColor: Colors.surface, borderRadius: 8,
+  },
+  prideItemName: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1, marginRight: 8,
+  },
+  prideItemDelta: {
+    flexDirection: "row", alignItems: "center", gap: 2,
+    backgroundColor: `${Colors.green}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+  },
+  prideItemDeltaText: {
+    fontSize: 11, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
   },
 
   breakdownCard: {

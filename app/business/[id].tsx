@@ -17,7 +17,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { fetchBusinessBySlug, type ApiDish } from "@/lib/api";
+import { fetchBusinessBySlug, fetchRankHistory, type ApiDish } from "@/lib/api";
 import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
@@ -257,6 +257,13 @@ export default function BusinessProfileScreen() {
   const saved = business ? isBookmarked(business.id) : false;
   const ratings = (data?.ratings || []) as MappedRating[];
   const dishes = data?.dishes || [];
+
+  const { data: rankHistoryData } = useQuery({
+    queryKey: ["rankHistory", business?.id],
+    queryFn: () => fetchRankHistory(business!.id, 30),
+    enabled: !!business?.id,
+    staleTime: 60000,
+  });
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -564,6 +571,45 @@ export default function BusinessProfileScreen() {
                     </View>
                   );
                 })}
+              </View>
+            );
+          })()}
+
+          {/* Rank History Chart — 30-day trend */}
+          {rankHistoryData && rankHistoryData.length >= 2 && (() => {
+            const points = rankHistoryData;
+            const maxRank = Math.max(...points.map(p => p.rank));
+            const minRank = Math.min(...points.map(p => p.rank));
+            const range = Math.max(maxRank - minRank, 1);
+            const chartW = 280;
+            const chartH = 60;
+            return (
+              <View style={styles.rankHistoryCard}>
+                <View style={styles.rankHistoryHeader}>
+                  <Ionicons name="trending-up" size={14} color={BRAND.colors.amber} />
+                  <Text style={styles.rankHistoryTitle}>30-Day Rank Trend</Text>
+                </View>
+                <View style={styles.rankHistoryChart}>
+                  {points.map((p, i) => {
+                    const x = (i / (points.length - 1)) * chartW;
+                    const y = chartH - ((maxRank - p.rank) / range) * chartH;
+                    return (
+                      <View
+                        key={i}
+                        style={[styles.rankHistoryDot, {
+                          left: x - 3,
+                          top: y - 3,
+                        }]}
+                      />
+                    );
+                  })}
+                  {/* Connecting line approximation */}
+                  <View style={[styles.rankHistoryLine, { width: chartW }]} />
+                </View>
+                <View style={styles.rankHistoryLabels}>
+                  <Text style={styles.rankHistoryLabel}>#{maxRank}</Text>
+                  <Text style={styles.rankHistoryLabel}>#{minRank}</Text>
+                </View>
               </View>
             );
           })()}
@@ -988,6 +1034,34 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
     gap: 10, ...Colors.cardShadow,
+  },
+
+  rankHistoryCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
+    ...Colors.cardShadow,
+  },
+  rankHistoryHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  rankHistoryTitle: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  rankHistoryChart: {
+    height: 66, position: "relative",
+  },
+  rankHistoryDot: {
+    position: "absolute", width: 6, height: 6, borderRadius: 3,
+    backgroundColor: BRAND.colors.amber,
+  },
+  rankHistoryLine: {
+    position: "absolute", top: "50%", left: 0, height: 1,
+    backgroundColor: Colors.border,
+  },
+  rankHistoryLabels: {
+    flexDirection: "row", justifyContent: "space-between",
+  },
+  rankHistoryLabel: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 
   distCard: {

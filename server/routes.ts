@@ -328,6 +328,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/businesses/:id/rank-history", async (req: Request, res: Response) => {
+    try {
+      const { getRankHistory } = await import("./storage");
+      const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30));
+      const data = await getRankHistory(req.params.id as string, days);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/members/me/impact", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { getMemberImpact } = await import("./storage");
+      const data = await getMemberImpact(req.user!.id);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // Photo proxy for Google Places photos
   app.get("/api/photos/proxy", handlePhotoProxy);
 

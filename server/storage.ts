@@ -932,3 +932,61 @@ export async function getBusinessPhotosMap(businessIds: string[]): Promise<Recor
   }
   return map;
 }
+
+export async function getRankHistory(
+  businessId: string,
+  days: number = 30,
+): Promise<{ date: string; rank: number; score: number }[]> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const rows = await db
+    .select({
+      date: rankHistory.snapshotDate,
+      rank: rankHistory.rankPosition,
+      score: rankHistory.weightedScore,
+    })
+    .from(rankHistory)
+    .where(
+      and(
+        eq(rankHistory.businessId, businessId),
+        gte(rankHistory.snapshotDate, cutoff.toISOString().split("T")[0]),
+      ),
+    )
+    .orderBy(asc(rankHistory.snapshotDate));
+  return rows.map(r => ({
+    date: r.date,
+    rank: r.rank,
+    score: parseFloat(r.score),
+  }));
+}
+
+export async function getMemberImpact(
+  memberId: string,
+): Promise<{ businessesMovedUp: number; topContributions: { name: string; slug: string; rankChange: number }[] }> {
+  // Find businesses this member has rated
+  const memberRatings = await db
+    .select({
+      businessId: ratings.businessId,
+      businessName: businesses.name,
+      businessSlug: businesses.slug,
+      rankDelta: businesses.rankDelta,
+    })
+    .from(ratings)
+    .innerJoin(businesses, eq(ratings.businessId, businesses.id))
+    .where(
+      and(
+        eq(ratings.memberId, memberId),
+        eq(ratings.isFlagged, false),
+      ),
+    )
+    .groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
+
+  const movedUp = memberRatings.filter(r => r.rankDelta > 0);
+  return {
+    businessesMovedUp: movedUp.length,
+    topContributions: movedUp
+      .sort((a, b) => b.rankDelta - a.rankDelta)
+      .slice(0, 5)
+      .map(r => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta })),
+  };
+}
