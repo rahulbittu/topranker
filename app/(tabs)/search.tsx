@@ -45,7 +45,7 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
 
   if (photos.length === 0 || imgError) {
     return (
-      <View style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 8 }]}>
+      <View style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 10 }]}>
         <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
       </View>
     );
@@ -515,15 +515,14 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 14,
     padding: 12, minHeight: 100, gap: 14,
-    borderWidth: 1, borderColor: "#E5E5EA",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
     elevation: 2,
   },
   cardPhoto: {
-    borderRadius: 8, backgroundColor: Colors.surfaceRaised,
+    borderRadius: 10, backgroundColor: Colors.surfaceRaised,
   },
   cardPhotoFallback: {
     backgroundColor: AMBER,
