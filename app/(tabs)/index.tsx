@@ -10,6 +10,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
@@ -318,7 +319,10 @@ export default function LeaderboardScreen() {
           return (
             <TouchableOpacity
               key={chip.slug}
-              onPress={() => setActiveCategory(chip.slug)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveCategory(chip.slug);
+              }}
               style={[styles.chip, isActive && styles.chipActive]}
               accessibilityRole="button"
               accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
