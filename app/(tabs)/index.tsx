@@ -204,6 +204,12 @@ function RankedCard({ item }: { item: MappedBusiness }) {
               <Text style={styles.statusPillSmallText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
             </View>
           )}
+          {item.isChallenger && (
+            <View style={styles.challengerPill}>
+              <Ionicons name="flash" size={9} color={BRAND.colors.navy} />
+              <Text style={styles.challengerPillText}>IN CHALLENGE</Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -656,6 +662,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#fff",
     fontFamily: "DMSans_600SemiBold",
+    letterSpacing: 0.3,
+  },
+  challengerPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 99,
+    backgroundColor: "rgba(13,27,42,0.08)",
+  },
+  challengerPillText: {
+    fontSize: 8,
+    fontWeight: "700",
+    color: BRAND.colors.navy,
+    fontFamily: "DMSans_700Bold",
     letterSpacing: 0.3,
   },
 });
