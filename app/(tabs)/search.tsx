@@ -207,14 +207,13 @@ function MapBusinessCard({ item }: { item: MappedBusiness }) {
   );
 }
 
-function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: string }) {
+function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
-  const [selectedBiz, setSelectedBiz] = useState<MappedBusiness | null>(null);
 
   const bizWithCoords = businesses.filter(b => b.lat && b.lng);
 
@@ -237,11 +236,22 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
         zoom: 12,
         disableDefaultUI: true,
         zoomControl: true,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
         styles: [
           { featureType: "poi", stylers: [{ visibility: "off" }] },
+          { featureType: "transit", stylers: [{ visibility: "off" }] },
         ],
       });
       mapInstance.current = map;
+
+      // Clicking on the map (not a marker) deselects
+      map.addListener("click", () => {
+        if (infoWindowRef.current) infoWindowRef.current.close();
+        onSelectBiz?.(null);
+      });
+
       importLibrary("core").then(() => {
         const google = (window as any).google;
         infoWindowRef.current = new google.maps.InfoWindow();
@@ -271,6 +281,18 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
+    // Fit bounds to show all markers
+    if (items.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      items.forEach(b => { if (b.lat && b.lng) bounds.extend({ lat: b.lat, lng: b.lng }); });
+      map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+      // Don't zoom in too much for a single marker
+      const listener = google.maps.event.addListener(map, "idle", () => {
+        if (map.getZoom() > 16) map.setZoom(16);
+        google.maps.event.removeListener(listener);
+      });
+    }
+
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
       const marker = new google.maps.Marker({
@@ -278,35 +300,21 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
         map,
         icon: {
           url: `data:image/svg+xml,${encodeURIComponent(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="${AMBER}" stroke="white" stroke-width="2"/><text x="18" y="23" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">${biz.rank}</text></svg>`
+            `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="48"><defs><filter id="s" x="-20%" y="-10%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.3"/></filter></defs><path d="M20 46C20 46 36 28 36 18C36 9.16 28.84 2 20 2C11.16 2 4 9.16 4 18C4 28 20 46 20 46Z" fill="${AMBER}" stroke="white" stroke-width="2" filter="url(#s)"/><text x="20" y="23" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">${biz.rank}</text></svg>`
           )}`,
-          scaledSize: new google.maps.Size(36, 36),
+          scaledSize: new google.maps.Size(40, 48),
+          anchor: new google.maps.Point(20, 48),
         },
         title: biz.name,
+        zIndex: 1000 - biz.rank,
       });
 
-      const catDisplay = getCategoryDisplay(biz.category);
-      const photoHtml = biz.photoUrls && biz.photoUrls[0]
-        ? `<img src="${biz.photoUrls[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px 6px 0 0;display:block;" />`
-        : `<div style="width:100%;height:60px;background:linear-gradient(135deg,${AMBER},${BRAND.colors.amberDark});border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:24px;font-weight:700;">${biz.name.charAt(0)}</span></div>`;
-
-      const infoContent = `
-        <div style="width:200px;font-family:sans-serif;cursor:pointer;" onclick="window.__mapNavTo__('${biz.slug}')">
-          ${photoHtml}
-          <div style="padding:8px 10px;">
-            <div style="font-weight:700;font-size:14px;color:#1a1a1a;">${biz.name}</div>
-            <div style="font-size:11px;color:#888;margin-top:2px;">${catDisplay.emoji} ${catDisplay.label}${biz.neighborhood ? ` · ${biz.neighborhood}` : ""}</div>
-            <div style="font-size:13px;font-weight:700;color:${AMBER};margin-top:4px;">★ ${biz.weightedScore.toFixed(1)}</div>
-          </div>
-        </div>
-      `;
-
       marker.addListener("click", () => {
-        setSelectedBiz(biz);
-        if (infoWindowRef.current) {
-          infoWindowRef.current.setContent(infoContent);
-          infoWindowRef.current.open(map, marker);
-        }
+        onSelectBiz?.(biz);
+        // Close any existing info window
+        if (infoWindowRef.current) infoWindowRef.current.close();
+        // Pan to marker
+        map.panTo({ lat: biz.lat, lng: biz.lng });
       });
 
       markersRef.current.push(marker);
@@ -325,65 +333,20 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
 
   if (Platform.OS !== "web" || mapError) {
     return (
-      <FlatList
-        data={businesses}
-        keyExtractor={(item: MappedBusiness) => item.id}
-        renderItem={({ item }: { item: MappedBusiness }) => <MapBusinessCard item={item} />}
-        contentContainerStyle={styles.mapListContainer}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.mapListHeader}>
-            <Ionicons name="map" size={16} color={AMBER} />
-            <Text style={styles.mapListHeaderText}>
-              {bizWithCoords.length} of {businesses.length} places with locations
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Ionicons name="location-outline" size={32} color={Colors.textTertiary} />
-            <Text style={styles.emptyText}>No places found</Text>
-          </View>
-        }
-      />
+      <View style={styles.mapFallbackBanner}>
+        <Ionicons name="map-outline" size={20} color={Colors.textTertiary} />
+        <Text style={styles.mapFallbackText}>Map view is available on web</Text>
+      </View>
     );
   }
 
   return (
-    <View style={styles.mapWrapper}>
-      <View style={styles.mapContainer}>
-        <div ref={mapRef as any} style={{ width: "100%", height: 420 }} />
-        {!mapReady && !mapError && (
-          <View style={styles.mapLoadingOverlay}>
-            <ActivityIndicator size="small" color={AMBER} />
-          </View>
-        )}
-      </View>
-      {selectedBiz && (
-        <TouchableOpacity
-          style={styles.mapBottomSheet}
-          onPress={() => router.push({ pathname: "/business/[id]", params: { id: selectedBiz.slug } })}
-          activeOpacity={0.85}
-        >
-          <View style={styles.mapBottomSheetHandle} />
-          <View style={styles.mapBottomSheetRow}>
-            {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
-              <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} contentFit="cover" transition={200} />
-            ) : (
-              <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapBottomSheetPhoto, styles.mapBottomSheetPhotoFallback]}>
-                <Text style={styles.mapBottomSheetInitial}>{selectedBiz.name.charAt(0)}</Text>
-              </LinearGradient>
-            )}
-            <View style={styles.mapBottomSheetInfo}>
-              <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
-              <Text style={styles.mapBottomSheetMeta}>
-                {getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(1)}
-                {selectedBiz.isOpenNow !== undefined ? ` \u00B7 ${selectedBiz.isOpenNow ? "OPEN" : "CLOSED"}` : ""}
-              </Text>
-            </View>
-            <Text style={styles.mapBottomSheetAction}>{"View \u2192"}</Text>
-          </View>
-        </TouchableOpacity>
+    <View style={styles.mapContainer}>
+      <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
+      {!mapReady && !mapError && (
+        <View style={styles.mapLoadingOverlay}>
+          <ActivityIndicator size="small" color={AMBER} />
+        </View>
       )}
     </View>
   );
@@ -398,6 +361,7 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
+  const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
@@ -537,7 +501,68 @@ export default function SearchScreen() {
           </TouchableOpacity>
         </View>
       ) : viewMode === "map" ? (
-        <MapView businesses={filtered} city={city} />
+        <View style={styles.splitContainer}>
+          {/* Map takes top half */}
+          <View style={styles.splitMapSection}>
+            <MapView businesses={filtered} city={city} onSelectBiz={setSelectedMapBiz} />
+            {/* Selected business card overlay */}
+            {selectedMapBiz && (
+              <TouchableOpacity
+                style={styles.mapSelectedCard}
+                onPress={() => router.push({ pathname: "/business/[id]", params: { id: selectedMapBiz.slug } })}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${selectedMapBiz.name}`}
+              >
+                {selectedMapBiz.photoUrls && selectedMapBiz.photoUrls.length > 0 ? (
+                  <Image source={{ uri: selectedMapBiz.photoUrls[0] }} style={styles.mapSelectedPhoto} contentFit="cover" transition={200} />
+                ) : (
+                  <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapSelectedPhoto, styles.mapSelectedPhotoFallback]}>
+                    <Text style={styles.mapSelectedInitial}>{selectedMapBiz.name.charAt(0)}</Text>
+                  </LinearGradient>
+                )}
+                <View style={styles.mapSelectedInfo}>
+                  <Text style={styles.mapSelectedName} numberOfLines={1}>{selectedMapBiz.name}</Text>
+                  <View style={styles.mapSelectedMetaRow}>
+                    <Text style={styles.mapSelectedScore}>{"\u2B50"} {selectedMapBiz.weightedScore.toFixed(1)}</Text>
+                    <Text style={styles.mapSelectedMeta}>{getRankDisplay(selectedMapBiz.rank)}</Text>
+                    {selectedMapBiz.isOpenNow !== undefined && (
+                      <View style={[styles.mapSelectedStatusPill, selectedMapBiz.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
+                        <Text style={styles.mapSelectedStatusText}>{selectedMapBiz.isOpenNow ? "OPEN" : "CLOSED"}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.mapSelectedCategory} numberOfLines={1}>
+                    {getCategoryDisplay(selectedMapBiz.category).emoji} {getCategoryDisplay(selectedMapBiz.category).label}
+                    {selectedMapBiz.neighborhood ? ` \u00B7 ${selectedMapBiz.neighborhood}` : ""}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {/* List takes bottom half */}
+          <View style={styles.splitListSection}>
+            <View style={styles.splitListHeader}>
+              <Ionicons name="list" size={14} color={AMBER} />
+              <Text style={styles.splitListHeaderText}>{filtered.length} result{filtered.length !== 1 ? "s" : ""} nearby</Text>
+            </View>
+            <FlatList
+              data={filtered}
+              keyExtractor={(item: MappedBusiness) => item.id}
+              renderItem={({ item }: { item: MappedBusiness }) => <MapBusinessCard item={item} />}
+              contentContainerStyle={[styles.splitListContent, { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }]}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={10}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Ionicons name="location-outline" size={32} color={Colors.textTertiary} />
+                  <Text style={styles.emptyText}>No places found</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -717,16 +742,89 @@ const styles = StyleSheet.create({
 
   errorIcon: { marginBottom: 12 },
 
-  // Map styles
-  mapWrapper: { flex: 1 },
+  // Map styles — split view (Yelp-like)
+  splitContainer: { flex: 1 },
+  splitMapSection: {
+    height: "45%", position: "relative" as const,
+  },
+  splitListSection: {
+    flex: 1, backgroundColor: Colors.background,
+    borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    marginTop: -12,
+    ...Colors.cardShadow,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  splitListHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
+  },
+  splitListHeaderText: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  splitListContent: { paddingHorizontal: 12, gap: 6 },
+
   mapContainer: {
-    margin: 16, borderRadius: 12, overflow: "hidden",
-    borderWidth: 1, borderColor: Colors.border, position: "relative" as const,
+    flex: 1, position: "relative" as const,
   },
   mapLoadingOverlay: {
     position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.8)",
   },
+  mapFallbackBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    padding: 20,
+  },
+  mapFallbackText: {
+    fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+
+  // Selected business card overlay on map
+  mapSelectedCard: {
+    position: "absolute" as const, bottom: 20, left: 12, right: 12,
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 10, gap: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  mapSelectedPhoto: {
+    width: 52, height: 52, borderRadius: 10,
+  },
+  mapSelectedPhotoFallback: {
+    alignItems: "center", justifyContent: "center",
+  },
+  mapSelectedInitial: {
+    color: "#fff", fontWeight: "700", fontSize: 18, fontFamily: "PlayfairDisplay_700Bold",
+  },
+  mapSelectedInfo: { flex: 1, gap: 2 },
+  mapSelectedName: {
+    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
+  },
+  mapSelectedMetaRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  mapSelectedScore: {
+    fontSize: 13, fontWeight: "800", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
+  },
+  mapSelectedMeta: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+  mapSelectedStatusPill: {
+    paddingHorizontal: 5, paddingVertical: 1, borderRadius: 99,
+  },
+  mapSelectedStatusText: {
+    fontSize: 8, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
+  },
+  mapSelectedCategory: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+
+  // Compact list cards for map view
   mapListContainer: { paddingHorizontal: 16, gap: 6, paddingTop: 4, paddingBottom: 90 },
   mapListHeader: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -735,11 +833,11 @@ const styles = StyleSheet.create({
   mapListHeaderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", fontFamily: "DMSans_500Medium" },
   mapCard: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 12, gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 10, gap: 10,
     borderWidth: 1, borderColor: Colors.border,
   },
   mapCardRank: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
+    width: 30, height: 30, borderRadius: 15, backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
   },
   mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
@@ -753,40 +851,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.goldFaint,
     alignItems: "center", justifyContent: "center",
   },
-
-  mapBottomSheet: {
-    position: "absolute" as const,
-    bottom: 0, left: 0, right: 0,
-    backgroundColor: Colors.surface,
-    borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    padding: 16, paddingTop: 12,
-    ...Colors.cardShadow,
-    shadowOffset: { width: 0, height: -4 },
-  },
-  mapBottomSheetHandle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: Colors.border, alignSelf: "center", marginBottom: 12,
-  },
-  mapBottomSheetRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-  },
-  mapBottomSheetPhoto: {
-    width: 56, height: 56, borderRadius: 8,
-  },
-  mapBottomSheetPhotoFallback: {
-    alignItems: "center", justifyContent: "center",
-  },
-  mapBottomSheetInitial: {
-    color: "#fff", fontWeight: "700", fontSize: 18,
-  },
-  mapBottomSheetName: {
-    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  mapBottomSheetMeta: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  mapBottomSheetInfo: { flex: 1, gap: 2 },
-  mapBottomSheetAction: { color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
   priceRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
