@@ -1,6 +1,6 @@
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
-import { CATEGORY_MAP } from "@/lib/data";
+import { CATEGORY_MAP, type CredibilityTier } from "@/lib/data";
 
 export interface ApiBusiness {
   id: string;
@@ -162,7 +162,7 @@ export function mapApiRating(rating: ApiRating) {
   return {
     id: rating.id,
     userName: rating.memberName || "Anonymous",
-    userTier: (rating.memberTier || "community") as any,
+    userTier: (rating.memberTier || "community") as CredibilityTier,
     userAvatarUrl: rating.memberAvatarUrl || undefined,
     rawScore: parseFloat(rating.rawScore),
     weight: parseFloat(rating.weight),
