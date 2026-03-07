@@ -7,9 +7,12 @@ echo "========================================="
 
 echo ""
 echo "[1/4] Pulling latest from GitHub..."
-git stash --include-untracked 2>/dev/null || true
+# Preserve .replit (contains Replit Secrets) — never let git overwrite it
+cp .replit .replit.bak 2>/dev/null || true
+git checkout -- .replit 2>/dev/null || true
 git pull origin main --ff-only
-git stash pop 2>/dev/null || true
+cp .replit.bak .replit 2>/dev/null || true
+rm -f .replit.bak
 echo "Done."
 
 echo ""
