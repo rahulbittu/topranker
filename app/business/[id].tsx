@@ -185,7 +185,7 @@ export default function BusinessProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, backgroundColor: Colors.background, paddingTop: topPad }}>
+      <View style={[styles.screenContainer, { paddingTop: topPad }]}>
         <BusinessDetailSkeleton />
       </View>
     );
@@ -195,7 +195,7 @@ export default function BusinessProfileScreen() {
     return (
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
-        <Text style={[styles.notFoundText, { marginTop: 12 }]}>Couldn't load this business</Text>
+        <Text style={[styles.notFoundText, styles.notFoundTextSpaced]}>Couldn't load this business</Text>
         <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8}>
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
@@ -251,7 +251,7 @@ export default function BusinessProfileScreen() {
   const openingHoursText = business.openingHours?.weekday_text;
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.background }}>
+    <View style={styles.screenContainer}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -319,7 +319,7 @@ export default function BusinessProfileScreen() {
 
         {/* Business Name Card */}
         <View style={styles.nameCard}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <View style={styles.nameRow}>
             <Text style={styles.businessName}>{business.name}</Text>
             {business.isClaimed && (
               <Ionicons name="checkmark-circle" size={18} color={Colors.blue} />
@@ -537,11 +537,14 @@ export default function BusinessProfileScreen() {
 const HERO_HEIGHT = 240;
 
 const styles = StyleSheet.create({
+  screenContainer: { flex: 1, backgroundColor: Colors.background },
   notFound: {
     flex: 1, backgroundColor: Colors.background,
     alignItems: "center", justifyContent: "center", gap: 12,
   },
   notFoundText: { fontSize: 18, color: Colors.text, fontWeight: "600" },
+  notFoundTextSpaced: { marginTop: 12 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   backLink: { fontSize: 14, color: Colors.gold, fontWeight: "500" },
   backLinkButton: { marginTop: 8 },
   retryButton: {
