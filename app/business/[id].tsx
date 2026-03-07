@@ -3,7 +3,12 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, Linking, Share, Dimensions,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
+  LayoutAnimation, UIManager,
 } from "react-native";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -142,6 +147,43 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: React.Componen
       <Ionicons name={icon} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
       <Text style={[styles.actionBtnLabel, disabled && styles.actionBtnLabelDisabled]}>{label}</Text>
     </TouchableOpacity>
+  );
+}
+
+function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const toggleExpanded = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
+  return (
+    <View style={styles.collapsibleSection}>
+      <TouchableOpacity
+        style={styles.collapsibleHeader}
+        onPress={toggleExpanded}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? "Collapse community reviews" : "Expand community reviews"}
+      >
+        <Ionicons name="chatbubbles-outline" size={16} color={BRAND.colors.amber} />
+        <Text style={styles.collapsibleTitle}>Community Reviews</Text>
+        <View style={styles.collapsibleBadge}>
+          <Text style={styles.collapsibleBadgeText}>{ratings.length}</Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={18} color={Colors.textTertiary} />
+      </TouchableOpacity>
+      {expanded && (
+        <View style={styles.collapsibleBody}>
+          <DistributionChart ratings={ratings} />
+          {ratings.map((rating: MappedRating) => (
+            <RatingRow key={rating.id} rating={rating} />
+          ))}
+        </View>
+      )}
+    </View>
   );
 }
 
@@ -465,22 +507,9 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
-          {/* Community Ratings */}
+          {/* Community Ratings — collapsible */}
           {ratings.length > 0 && (
-            <>
-              <View style={styles.sectionHeaderBetween}>
-                <Text style={styles.sectionTitle}>Community Ratings</Text>
-                <Text style={styles.sectionCount}>{ratings.length} reviews</Text>
-              </View>
-
-              <View style={styles.card}>
-                <DistributionChart ratings={ratings} />
-              </View>
-
-              {ratings.map((rating: MappedRating) => (
-                <RatingRow key={rating.id} rating={rating} />
-              ))}
-            </>
+            <CollapsibleReviews ratings={ratings} />
           )}
 
           {/* Photo Grid - only show if multiple photos exist beyond hero */}
@@ -766,6 +795,30 @@ const styles = StyleSheet.create({
     paddingVertical: 10, alignItems: "center",
   },
   claimBtnText: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+
+  collapsibleSection: {
+    backgroundColor: Colors.surface, borderRadius: 14, overflow: "hidden",
+    ...Colors.cardShadow,
+  },
+  collapsibleHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    padding: 14,
+  },
+  collapsibleTitle: {
+    fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.3,
+  },
+  collapsibleBadge: {
+    backgroundColor: `${BRAND.colors.amber}15`, paddingHorizontal: 7, paddingVertical: 2,
+    borderRadius: 8,
+  },
+  collapsibleBadgeText: {
+    fontSize: 11, fontWeight: "700", color: BRAND.colors.amber, fontFamily: "DMSans_700Bold",
+  },
+  collapsibleBody: {
+    paddingHorizontal: 14, paddingBottom: 14, gap: 10,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
 
   reportLink: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
