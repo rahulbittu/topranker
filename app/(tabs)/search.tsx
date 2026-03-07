@@ -503,6 +503,7 @@ export default function SearchScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
+          getItemLayout={(_, index) => ({ length: 124, offset: 124 * index, index })}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }

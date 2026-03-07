@@ -366,6 +366,7 @@ export default function LeaderboardScreen() {
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
+          getItemLayout={(_, index) => ({ length: 140, offset: 140 * index, index })}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
