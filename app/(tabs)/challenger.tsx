@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, ScrollView,
   Platform, ActivityIndicator, TouchableOpacity, RefreshControl,
@@ -157,9 +157,16 @@ function FighterPhoto({ biz }: { biz: any }) {
 }
 
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
+  const [, setTick] = useState(0);
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
   const countdown = formatCountdown(endTs);
+
+  useEffect(() => {
+    if (countdown.ended) return;
+    const id = setInterval(() => setTick(t => t + 1), 60000);
+    return () => clearInterval(id);
+  }, [countdown.ended]);
 
   const challengerVotes = parseFloat(challenge.challengerWeightedVotes);
   const defenderVotes = parseFloat(challenge.defenderWeightedVotes);
