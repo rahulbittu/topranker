@@ -109,7 +109,7 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
             <Text style={styles.cardRatingCount}>({item.ratingCount.toLocaleString()} ratings)</Text>
           ) : null}
           {item.rankDelta !== 0 && (
-            <Text style={{ fontSize: 11, color: item.rankDelta > 0 ? Colors.green : Colors.red, fontFamily: "DMSans_500Medium" }}>
+            <Text style={[styles.cardDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
@@ -288,7 +288,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   }
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.mapWrapper}>
       <View style={styles.mapContainer}>
         <div ref={mapRef as any} style={{ width: "100%", height: 420 }} />
         {!mapReady && !mapError && (
@@ -308,8 +308,8 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
             {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
               <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} contentFit="cover" transition={200} />
             ) : (
-              <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapBottomSheetPhoto, { alignItems: "center", justifyContent: "center" }]}>
-                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>
+              <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapBottomSheetPhoto, styles.mapBottomSheetPhotoFallback]}>
+                <Text style={styles.mapBottomSheetInitial}>{selectedBiz.name.charAt(0)}</Text>
               </LinearGradient>
             )}
             <View style={styles.mapBottomSheetInfo}>
@@ -447,7 +447,7 @@ export default function SearchScreen() {
         <DiscoverSkeleton />
       ) : isError ? (
         <View style={styles.loadingContainer}>
-          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
+          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
           <Text style={styles.emptyText}>Could not load results</Text>
           <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
             <Text style={styles.retryButtonText}>Try Again</Text>
@@ -609,6 +609,9 @@ const styles = StyleSheet.create({
   cardRatingCount: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
+  cardDelta: {
+    fontSize: 11, fontFamily: "DMSans_500Medium",
+  },
   cardRow4: {
     flexDirection: "row", alignItems: "center", gap: 6, marginTop: 1,
   },
@@ -625,7 +628,10 @@ const styles = StyleSheet.create({
     color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13,
   },
 
+  errorIcon: { marginBottom: 12 },
+
   // Map styles
+  mapWrapper: { flex: 1 },
   mapContainer: {
     margin: 16, borderRadius: 12, overflow: "hidden",
     borderWidth: 1, borderColor: Colors.border, position: "relative" as const,
@@ -679,6 +685,12 @@ const styles = StyleSheet.create({
   },
   mapBottomSheetPhoto: {
     width: 56, height: 56, borderRadius: 8,
+  },
+  mapBottomSheetPhotoFallback: {
+    alignItems: "center", justifyContent: "center",
+  },
+  mapBottomSheetInitial: {
+    color: "#fff", fontWeight: "700", fontSize: 18,
   },
   mapBottomSheetName: {
     fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
