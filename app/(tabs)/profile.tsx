@@ -220,7 +220,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
     >
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn} accessibilityRole="button" accessibilityLabel="Log out">
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Log out">
           <Ionicons name="log-out-outline" size={18} color={Colors.textTertiary} />
         </TouchableOpacity>
       </View>
@@ -275,19 +275,19 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{profile.totalRatings}</Text>
+          <Text style={styles.statNum}>{profile.totalRatings.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Ratings</Text>
         </View>
         <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{profile.distinctBusinesses}</Text>
+          <Text style={styles.statNum}>{profile.distinctBusinesses.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Places</Text>
         </View>
         <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{profile.totalCategories}</Text>
+          <Text style={styles.statNum}>{profile.totalCategories.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Categories</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNum}>{profile.daysActive}</Text>
+          <Text style={styles.statNum}>{profile.daysActive.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Days</Text>
         </View>
       </View>
@@ -328,6 +328,8 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           style={styles.historyRow}
           activeOpacity={0.7}
           onPress={() => r.businessSlug && router.push({ pathname: "/business/[id]", params: { id: r.businessSlug } })}
+          accessibilityRole="button"
+          accessibilityLabel={`${r.businessName || "Business"}, score ${parseFloat(r.rawScore).toFixed(1)}`}
         >
           <View style={styles.historyLeft}>
             <Text style={styles.historyName}>{r.businessName || "Business"}</Text>
