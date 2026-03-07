@@ -347,7 +347,7 @@ export default function BusinessProfileScreen() {
             <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
             <Text style={styles.scoreLabel}>Weighted Score</Text>
             <View style={styles.scoreMetaRow}>
-              <Text style={styles.scoreMetaItem}>{business.ratingCount} ratings</Text>
+              <Text style={styles.scoreMetaItem}>{business.ratingCount.toLocaleString()} ratings</Text>
               <Text style={styles.scoreMetaItem}>{getRankDisplay(business.rank)}</Text>
               {business.googleRating && (
                 <View style={styles.googleRow}>

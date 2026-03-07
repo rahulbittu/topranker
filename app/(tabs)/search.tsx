@@ -106,7 +106,7 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
         <View style={styles.cardRow3}>
           <Text style={styles.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
           {item.ratingCount ? (
-            <Text style={styles.cardRatingCount}>({item.ratingCount} ratings)</Text>
+            <Text style={styles.cardRatingCount}>({item.ratingCount.toLocaleString()} ratings)</Text>
           ) : null}
           {item.rankDelta !== 0 && (
             <Text style={{ fontSize: 11, color: item.rankDelta > 0 ? Colors.green : Colors.red, fontFamily: "DMSans_500Medium" }}>

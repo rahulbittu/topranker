@@ -139,7 +139,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
           </Text>
           <View style={styles.heroStripRow2}>
             <StarRating score={item.weightedScore} />
-            <Text style={styles.heroStripRatings}>{item.ratingCount} ratings</Text>
+            <Text style={styles.heroStripRatings}>{item.ratingCount.toLocaleString()} ratings</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -169,7 +169,7 @@ function RankedCard({ item }: { item: MappedBusiness }) {
         item.rank === 3 && styles.rankedCardBronze,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount} ratings`}
+      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount.toLocaleString()} ratings`}
     >
       {photos.length > 0 && !imgError ? (
         <Image
@@ -199,7 +199,7 @@ function RankedCard({ item }: { item: MappedBusiness }) {
         </Text>
         <View style={styles.rankedRow3}>
           <Text style={styles.rankedScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
-          <Text style={styles.rankedRatingCount}>({item.ratingCount} ratings)</Text>
+          <Text style={styles.rankedRatingCount}>({item.ratingCount.toLocaleString()} ratings)</Text>
           {item.rankDelta !== 0 && (
             <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
