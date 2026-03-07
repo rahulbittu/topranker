@@ -104,7 +104,7 @@ function HeroCard({ item }: { item: MappedBusiness }) {
       style={styles.heroCard}
     >
       <View style={{ position: "relative" }}>
-        <PhotoMosaic photos={photos} height={200} category={item.category} />
+        <PhotoMosaic photos={photos} height={220} category={item.category} />
         <LinearGradient
           colors={["transparent", "rgba(0,0,0,0.7)"]}
           style={styles.heroGradient}
@@ -167,9 +167,12 @@ function RankedCard({ item }: { item: MappedBusiness }) {
           onError={() => setImgError(true)}
         />
       ) : (
-        <View style={[styles.rankedPhoto, styles.rankedPhotoFallback]}>
+        <LinearGradient
+          colors={[AMBER, "#9A7510"]}
+          style={[styles.rankedPhoto, styles.rankedPhotoFallback]}
+        >
           <Text style={styles.rankedPhotoInitial}>{initial}</Text>
-        </View>
+        </LinearGradient>
       )}
       <View style={styles.rankedInfo}>
         <View style={styles.rankedRow1}>
@@ -450,7 +453,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    height: 140,
   },
   heroCrownBadge: {
     position: "absolute",
