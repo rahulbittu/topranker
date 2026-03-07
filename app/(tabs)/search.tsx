@@ -328,7 +328,7 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
-  const { data: allBusinesses = [], isLoading, refetch, isRefetching } = useQuery({
+  const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["search", city, query],
     queryFn: () => fetchBusinessSearch(query, city),
     staleTime: 15000,
@@ -418,6 +418,14 @@ export default function SearchScreen() {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={AMBER} />
+        </View>
+      ) : isError ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
+          <Text style={styles.emptyText}>Could not load results</Text>
+          <TouchableOpacity onPress={() => refetch()} style={{ marginTop: 12, paddingHorizontal: 20, paddingVertical: 10, backgroundColor: AMBER, borderRadius: 10 }}>
+            <Text style={{ color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       ) : viewMode === "map" ? (
         <MapView businesses={filtered} city={city} />
