@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay } from "@/constants/brand";
 import { fetchBusinessSearch } from "@/lib/api";
@@ -45,9 +46,12 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
 
   if (photos.length === 0 || imgError) {
     return (
-      <View style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 10 }]}>
-        <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
-      </View>
+      <LinearGradient
+        colors={[AMBER, "#9A7510"]}
+        style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 10 }]}
+      >
+        <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.35 }]}>{initial}</Text>
+      </LinearGradient>
     );
   }
 
