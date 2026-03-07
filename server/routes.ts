@@ -16,6 +16,8 @@ import {
   recalculateCredibilityScore,
   searchBusinesses,
   getAllCategories,
+  getBusinessPhotos,
+  getBusinessPhotosMap,
 } from "./storage";
 import { insertRatingSchema } from "@shared/schema";
 
@@ -95,7 +97,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const category = (req.query.category as string) || "restaurant";
       const limit = parseInt(req.query.limit as string) || 50;
 
-      const data = await getLeaderboard(city, category, limit);
+      const bizList = await getLeaderboard(city, category, limit);
+      const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+      const data = bizList.map(b => ({
+        ...b,
+        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+      }));
       return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -117,7 +124,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = (req.query.q as string) || "";
       const city = (req.query.city as string) || "Dallas";
       const category = req.query.category as string | undefined;
-      const data = await searchBusinesses(query, city, category);
+      const bizList = await searchBusinesses(query, city, category);
+      const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+      const data = bizList.map(b => ({
+        ...b,
+        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+      }));
       return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -126,15 +138,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/businesses/:slug", async (req: Request, res: Response) => {
     try {
-      const business = await getBusinessBySlug(req.params.slug);
+      const business = await getBusinessBySlug(req.params.slug as string);
       if (!business) {
         return res.status(404).json({ error: "Business not found" });
       }
 
-      const { ratings } = await getBusinessRatings(business.id, 1, 20);
-      const dishList = await getBusinessDishes(business.id, 5);
+      const [{ ratings }, dishList, photos] = await Promise.all([
+        getBusinessRatings(business.id, 1, 20),
+        getBusinessDishes(business.id, 5),
+        getBusinessPhotos(business.id),
+      ]);
 
-      return res.json({ data: { ...business, recentRatings: ratings, dishes: dishList } });
+      const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
+
+      return res.json({ data: { ...business, photoUrls, recentRatings: ratings, dishes: dishList } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
@@ -144,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const perPage = parseInt(req.query.per_page as string) || 20;
-      const data = await getBusinessRatings(req.params.id, page, perPage);
+      const data = await getBusinessRatings(req.params.id as string, page, perPage);
       return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -228,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/members/:username", async (req: Request, res: Response) => {
     try {
       const { getMemberByUsername } = await import("./storage");
-      const member = await getMemberByUsername(req.params.username);
+      const member = await getMemberByUsername(req.params.username as string);
       if (!member) return res.status(404).json({ error: "Member not found" });
 
       return res.json({

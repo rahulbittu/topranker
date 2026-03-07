@@ -15,6 +15,7 @@ export interface ApiBusiness {
   phone: string | null;
   website: string | null;
   photoUrl: string | null;
+  photoUrls?: string[];
   weightedScore: string;
   rawAvgScore: string;
   rankPosition: number | null;
@@ -120,6 +121,12 @@ export function categoryToDisplay(apiCategory: string): string {
 }
 
 export function mapApiBusiness(biz: ApiBusiness) {
+  const photoUrls = biz.photoUrls && biz.photoUrls.length > 0
+    ? biz.photoUrls
+    : biz.photoUrl
+    ? [biz.photoUrl]
+    : [];
+
   return {
     id: biz.id,
     name: biz.name,
@@ -139,7 +146,8 @@ export function mapApiBusiness(biz: ApiBusiness) {
     phone: biz.phone || undefined,
     website: biz.website || undefined,
     address: biz.address || undefined,
-    photoUrl: biz.photoUrl || undefined,
+    photoUrl: photoUrls[0] || undefined,
+    photoUrls,
     isOpenNow: biz.isOpenNow,
     lat: biz.lat ? parseFloat(biz.lat) : undefined,
     lng: biz.lng ? parseFloat(biz.lng) : undefined,
@@ -213,7 +221,11 @@ export async function fetchBusinessSearch(query: string, city: string, category?
 }
 
 export async function fetchCategories(city: string = "Dallas"): Promise<string[]> {
-  return apiFetch<string[]>(`/api/leaderboard/categories?city=${encodeURIComponent(city)}`);
+  const data = await apiFetch<string[] | { category: string }[]>(`/api/leaderboard/categories?city=${encodeURIComponent(city)}`);
+  if (!data || data.length === 0) return [];
+  // Handle both string[] and {category}[] formats
+  if (typeof data[0] === "string") return data as string[];
+  return (data as { category: string }[]).map(d => d.category);
 }
 
 export async function fetchDishSearch(businessId: string, query: string) {

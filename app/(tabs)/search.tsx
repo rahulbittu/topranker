@@ -31,6 +31,7 @@ interface MappedBusiness {
   isChallenger: boolean;
   priceRange?: string;
   photoUrl?: string;
+  photoUrls?: string[];
   isOpenNow?: boolean;
   lat?: number;
   lng?: number;
@@ -38,12 +39,22 @@ interface MappedBusiness {
 
 function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: number }) {
   const [imgError, setImgError] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
   const initial = item.name.charAt(0).toUpperCase();
+  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
 
-  if (item.photoUrl && !imgError) {
+  if (photos.length === 0 || imgError) {
+    return (
+      <View style={[styles.cardPhotoFallback, { width: size, height: size }]}>
+        <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
+      </View>
+    );
+  }
+
+  if (photos.length === 1) {
     return (
       <Image
-        source={{ uri: item.photoUrl }}
+        source={{ uri: photos[0] }}
         style={[styles.cardPhoto, { width: size, height: size }]}
         onError={() => setImgError(true)}
       />
@@ -51,8 +62,24 @@ function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: numbe
   }
 
   return (
-    <View style={[styles.cardPhotoFallback, { width: size, height: size }]}>
-      <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
+    <View style={{ width: size, height: size, position: "relative" }}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={(e) => setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / size))}
+        scrollEventThrottle={16}
+        style={{ width: size, height: size, borderRadius: 10, overflow: "hidden" }}
+      >
+        {photos.map((url, i) => (
+          <Image key={i} source={{ uri: url }} style={{ width: size, height: size }} resizeMode="cover" />
+        ))}
+      </ScrollView>
+      <View style={styles.miniDotContainer}>
+        {photos.map((_, i) => (
+          <View key={i} style={[styles.miniDot, i === activeIdx ? styles.miniDotActive : styles.miniDotInactive]} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -484,6 +511,13 @@ const styles = StyleSheet.create({
   cardPhoto: {
     borderRadius: 10, backgroundColor: "#F2F2F7",
   },
+  miniDotContainer: {
+    flexDirection: "row", justifyContent: "center", gap: 3,
+    position: "absolute", bottom: 3, left: 0, right: 0,
+  },
+  miniDot: { width: 4, height: 4, borderRadius: 2 },
+  miniDotActive: { backgroundColor: AMBER },
+  miniDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   cardPhotoFallback: {
     borderRadius: 10, backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
