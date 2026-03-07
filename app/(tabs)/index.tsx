@@ -9,10 +9,11 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { formatCategoryLabel } from "@/lib/data";
+import { getRankDisplay } from "@/lib/data";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
+import { AppLogo } from "@/components/Logo";
 
-const AMBER = "#B8860B";
+const AMBER = "#C49A1A";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_PADDING = 14;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
@@ -35,14 +36,19 @@ interface MappedBusiness {
   photoUrls?: string[];
 }
 
-function PhotoCarousel({ photos, height }: { photos: string[]; height: number }) {
-  const [activeIdx, setActiveIdx] = useState(0);
+const CATEGORY_CHIPS = [
+  { slug: "all", label: "All", emoji: "\u2728" },
+  { slug: "restaurant", label: "Restaurants", emoji: "\u{1F37D}" },
+  { slug: "fast_food", label: "Fast Food", emoji: "\u{1F354}" },
+  { slug: "fine_dining", label: "Fine Dining", emoji: "\u{1F942}" },
+  { slug: "casual_dining", label: "Casual Dining", emoji: "\u{1F373}" },
+  { slug: "cafe", label: "Cafes", emoji: "\u2615" },
+  { slug: "bakery", label: "Bakeries", emoji: "\u{1F950}" },
+  { slug: "street_food", label: "Street Food", emoji: "\u{1F32E}" },
+  { slug: "bar", label: "Bars", emoji: "\u{1F37A}" },
+];
 
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / (CARD_WIDTH));
-    setActiveIdx(idx);
-  }, []);
-
+function PhotoMosaic({ photos, height }: { photos: string[]; height: number }) {
   if (photos.length === 0) {
     return (
       <View style={[styles.photoCarouselPlaceholder, { height }]}>
@@ -57,24 +63,22 @@ function PhotoCarousel({ photos, height }: { photos: string[]; height: number })
     );
   }
 
+  if (photos.length === 2) {
+    return (
+      <View style={{ flexDirection: "row", height, gap: 2 }}>
+        <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} resizeMode="cover" />
+        <Image source={{ uri: photos[1] }} style={{ flex: 1, height }} resizeMode="cover" />
+      </View>
+    );
+  }
+
+  // 3+ photos: left 60% one large, right two stacked with 2px gap
   return (
-    <View>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        style={{ height }}
-      >
-        {photos.map((url, i) => (
-          <Image key={i} source={{ uri: url }} style={[styles.heroPhoto, { width: CARD_WIDTH, height }]} resizeMode="cover" />
-        ))}
-      </ScrollView>
-      <View style={styles.dotContainer}>
-        {photos.map((_, i) => (
-          <View key={i} style={[styles.dot, i === activeIdx ? styles.dotActive : styles.dotInactive]} />
-        ))}
+    <View style={{ flexDirection: "row", height, gap: 2 }}>
+      <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} resizeMode="cover" />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Image source={{ uri: photos[1] }} style={{ flex: 1 }} resizeMode="cover" />
+        <Image source={{ uri: photos[2] }} style={{ flex: 1 }} resizeMode="cover" />
       </View>
     </View>
   );
@@ -94,10 +98,10 @@ function OpenStatusText({ isOpen }: { isOpen?: boolean }) {
 
 function MovementIndicator({ delta }: { delta: number }) {
   if (delta > 0) {
-    return <Text style={styles.moveUp}>↑{delta}</Text>;
+    return <Text style={styles.moveUp}>{"\u2191"}{delta}</Text>;
   }
   if (delta < 0) {
-    return <Text style={styles.moveDown}>↓{Math.abs(delta)}</Text>;
+    return <Text style={styles.moveDown}>{"\u2193"}{Math.abs(delta)}</Text>;
   }
   return null;
 }
@@ -106,6 +110,7 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const isFirst = item.rank === 1;
+  const rankLabel = getRankDisplay(item.rank);
 
   const onPressIn = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
   const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
@@ -120,18 +125,17 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
         style={styles.card}
         testID={`leaderboard-row-${item.rank}`}
       >
-        <PhotoCarousel photos={photos} height={180} />
+        <PhotoMosaic photos={photos} height={180} />
 
         <View style={styles.cardBody}>
-          <View style={styles.cardRankBadge}>
-            <Text style={[styles.cardRankText, isFirst && { color: AMBER }]}>{item.rank}</Text>
-          </View>
-
           <View style={styles.cardInfoRow}>
             <View style={styles.cardInfoLeft}>
-              <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={[styles.cardRankText, isFirst && { color: AMBER }]}>{rankLabel}</Text>
+                <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+              </View>
               <Text style={styles.cardMeta} numberOfLines={1}>
-                {item.neighborhood}{item.priceRange ? ` · ${item.priceRange}` : ""}
+                {item.neighborhood}{item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
               </Text>
               <View style={styles.cardStatusRow}>
                 <OpenStatusText isOpen={item.isOpenNow} />
@@ -154,33 +158,20 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
-  const [activeCategory, setActiveCategory] = useState<string>("restaurant");
-
-  const { data: availableCategories = [] } = useQuery({
-    queryKey: ["categories", "Dallas"],
-    queryFn: () => fetchCategories("Dallas"),
-    staleTime: 60000,
-  });
+  const [activeCategory, setActiveCategory] = useState<string>("all");
 
   const { data: businesses = [], isLoading } = useQuery({
-    queryKey: ["leaderboard", "Dallas", activeCategory],
-    queryFn: () => fetchLeaderboard("Dallas", activeCategory, 20),
+    queryKey: ["leaderboard", "Dallas", activeCategory === "all" ? "restaurant" : activeCategory],
+    queryFn: () => fetchLeaderboard("Dallas", activeCategory === "all" ? "restaurant" : activeCategory, 20),
     staleTime: 30000,
   });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  const categoryTabs = availableCategories.length > 0
-    ? availableCategories.map((cat: string) => ({
-        slug: cat,
-        label: formatCategoryLabel(cat),
-      }))
-    : [{ slug: "restaurant", label: "Restaurants" }];
-
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <Text style={styles.brandTitle}>TOP RANKER</Text>
+        <AppLogo size="md" />
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.citySelector}>
             <Ionicons name="location-sharp" size={14} color={AMBER} />
@@ -190,30 +181,31 @@ export default function LeaderboardScreen() {
         </View>
       </View>
 
+      {/* Category Chips */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsContainer}
-        style={styles.tabs}
+        contentContainerStyle={styles.chipsContainer}
+        style={styles.chipsRow}
       >
-        {categoryTabs.map((cat: { slug: string; label: string }) => {
-          const isActive = activeCategory === cat.slug;
+        {CATEGORY_CHIPS.map((chip) => {
+          const isActive = activeCategory === chip.slug;
           return (
             <TouchableOpacity
-              key={cat.slug}
-              onPress={() => setActiveCategory(cat.slug)}
-              style={styles.tab}
-              testID={`category-tab-${cat.slug}`}
+              key={chip.slug}
+              onPress={() => setActiveCategory(chip.slug)}
+              style={[styles.chip, isActive && styles.chipActive]}
             >
-              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-                {cat.label}
+              <View style={styles.chipEmojiBubble}>
+                <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+              </View>
+              <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
+                {chip.label}
               </Text>
-              {isActive && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
           );
         })}
       </ScrollView>
-      <View style={styles.tabDivider} />
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
@@ -243,7 +235,7 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
     flexDirection: "row",
@@ -252,13 +244,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 14,
     paddingTop: 4,
-  },
-  brandTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold",
-    letterSpacing: 2,
   },
   headerRight: {
     flexDirection: "row",
@@ -277,38 +262,46 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_600SemiBold",
   },
 
-  tabs: { flexGrow: 0 },
-  tabsContainer: {
-    paddingHorizontal: 20,
-    gap: 24,
+  chipsRow: { flexGrow: 0, marginBottom: 10 },
+  chipsContainer: {
+    paddingHorizontal: 16,
+    gap: 8,
     flexDirection: "row",
   },
-  tab: {
-    paddingBottom: 10,
-    position: "relative" as const,
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  tabText: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
+  chipActive: {
+    backgroundColor: AMBER,
+    borderColor: AMBER,
   },
-  tabTextActive: {
+  chipEmojiBubble: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipEmoji: {
+    fontSize: 12,
+  },
+  chipLabel: {
+    fontSize: 13,
+    fontFamily: "DMSans_500Medium",
     color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
   },
-  tabUnderline: {
-    position: "absolute" as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: Colors.gold,
-    borderRadius: 1,
-  },
-  tabDivider: {
-    height: 1,
-    backgroundColor: Colors.border,
-    marginBottom: 6,
+  chipLabelActive: {
+    color: "#FFFFFF",
+    fontFamily: "DMSans_700Bold",
   },
 
   list: { paddingHorizontal: CARD_PADDING, gap: 14, paddingTop: 6 },
@@ -317,7 +310,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
 
-  // Card layout with photo carousel
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -333,45 +325,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dotContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 5,
-    position: "absolute",
-    bottom: 8,
-    left: 0,
-    right: 0,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotActive: {
-    backgroundColor: AMBER,
-  },
-  dotInactive: {
-    backgroundColor: "rgba(255,255,255,0.6)",
-  },
 
   cardBody: {
     padding: 14,
     gap: 6,
   },
-  cardRankBadge: {
-    position: "absolute",
-    top: -18,
-    left: 14,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    ...Colors.cardShadow,
-  },
   cardRankText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
     fontFamily: "PlayfairDisplay_700Bold",
     color: Colors.text,
@@ -379,7 +339,6 @@ const styles = StyleSheet.create({
   cardInfoRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingTop: 14,
   },
   cardInfoLeft: {
     flex: 1,
@@ -389,8 +348,9 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     color: Colors.text,
-    fontFamily: "DMSans_700Bold",
+    fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: -0.2,
+    flex: 1,
   },
   cardMeta: {
     fontSize: 13,

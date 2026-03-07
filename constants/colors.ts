@@ -1,8 +1,8 @@
-const AMBER = "#B8860B";
-const AMBER_FAINT = "rgba(184, 134, 11, 0.08)";
+const AMBER = "#C49A1A";
+const AMBER_FAINT = "rgba(196, 154, 26, 0.08)";
 
 const Colors = {
-  background: "#FFFFFF",
+  background: "#F7F6F3",
   surface: "#FFFFFF",
   surfaceRaised: "#F8F8F8",
   border: "#F0F0F0",
@@ -16,22 +16,22 @@ const Colors = {
   silver: "#AAAAAA",
   bronze: "#CCCCCC",
 
-  text: "#1A1A1A",
+  text: "#0D1B2A",
   textSecondary: "#6B6B6B",
   textTertiary: "#AAAAAA",
 
-  green: "#2D7D46",
-  greenBright: "#2D7D46",
-  greenFaint: "rgba(45, 125, 70, 0.08)",
-  red: "#C0392B",
-  redBright: "#C0392B",
-  redFaint: "rgba(192, 57, 43, 0.08)",
+  green: "#34C759",
+  greenBright: "#34C759",
+  greenFaint: "rgba(52, 199, 89, 0.08)",
+  red: "#FF3B30",
+  redBright: "#FF3B30",
+  redFaint: "rgba(255, 59, 48, 0.08)",
 
   blue: "#6B6B6B",
   blueFaint: "rgba(107, 107, 107, 0.08)",
 
-  rankUp: "#2D7D46",
-  rankDown: "#C0392B",
+  rankUp: "#34C759",
+  rankDown: "#FF3B30",
   rankStable: "#AAAAAA",
 
   tierNew: "#AAAAAA",
@@ -41,7 +41,7 @@ const Colors = {
 
   tint: AMBER,
   tabIconDefault: "#CCCCCC",
-  tabIconSelected: "#1A1A1A",
+  tabIconSelected: "#0D1B2A",
 
   shadow: "rgba(0,0,0,0.06)",
   cardShadow: {

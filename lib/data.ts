@@ -23,8 +23,38 @@ export const CATEGORY_LABELS: Record<string, string> = {
   food_hall: "Food Halls",
 };
 
+export const CATEGORY_EMOJIS: Record<string, string> = {
+  restaurants: "\u{1F37D}",
+  restaurant: "\u{1F37D}",
+  fast_food: "\u{1F354}",
+  fine_dining: "\u{1F942}",
+  casual_dining: "\u{1F373}",
+  cafes: "\u2615",
+  cafe: "\u2615",
+  bakeries: "\u{1F950}",
+  bakery: "\u{1F950}",
+  street_food: "\u{1F32E}",
+  bar: "\u{1F37A}",
+  bars: "\u{1F37A}",
+  brewery: "\u{1F37B}",
+  breweries: "\u{1F37B}",
+  bubble_tea: "\u{1F9CB}",
+  ice_cream: "\u{1F366}",
+  buffet: "\u{1F371}",
+  buffets: "\u{1F371}",
+  brunch: "\u{1F95E}",
+  dessert_bar: "\u{1F370}",
+  food_hall: "\u{1F3EA}",
+};
+
 export function formatCategoryLabel(slug: string): string {
   return CATEGORY_LABELS[slug] || slug.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+}
+
+export function getCategoryDisplay(slug: string): { emoji: string; label: string } {
+  const label = CATEGORY_LABELS[slug] || slug.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+  const emoji = CATEGORY_EMOJIS[slug] || "\u{1F37D}";
+  return { emoji, label };
 }
 
 export const CATEGORY_MAP: Record<string, string> = {
@@ -46,21 +76,21 @@ export const CATEGORY_MAP: Record<string, string> = {
 };
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  "Restaurants": "🍽",
-  "Fast Food": "🥡",
-  "Cafes": "☕",
-  "Street Food": "🥙",
-  "Bars": "🍺",
-  "Bakeries": "🥐",
-  "Fine Dining": "🍷",
-  "Bubble Tea": "🧋",
-  "Ice Cream": "🍦",
-  "Breweries": "🍻",
-  "Casual Dining": "🍔",
-  "Buffets": "🍱",
-  "Brunch": "🥞",
-  "Dessert Bars": "🍰",
-  "Food Halls": "🏪",
+  "Restaurants": "\u{1F37D}",
+  "Fast Food": "\u{1F354}",
+  "Cafes": "\u2615",
+  "Street Food": "\u{1F32E}",
+  "Bars": "\u{1F37A}",
+  "Bakeries": "\u{1F950}",
+  "Fine Dining": "\u{1F942}",
+  "Bubble Tea": "\u{1F9CB}",
+  "Ice Cream": "\u{1F366}",
+  "Breweries": "\u{1F37B}",
+  "Casual Dining": "\u{1F373}",
+  "Buffets": "\u{1F371}",
+  "Brunch": "\u{1F95E}",
+  "Dessert Bars": "\u{1F370}",
+  "Food Halls": "\u{1F3EA}",
 };
 
 export type Category = keyof typeof CATEGORY_MAP;
@@ -86,9 +116,9 @@ export const CATEGORIES: Category[] = [
 export type CredibilityTier = "community" | "city" | "trusted" | "top";
 
 export const TIER_DISPLAY_NAMES: Record<CredibilityTier, string> = {
-  community: "Community Member",
-  city: "City Judge",
-  trusted: "Trusted Judge",
+  community: "New Member",
+  city: "Regular",
+  trusted: "Trusted",
   top: "Top Judge",
 };
 
@@ -107,9 +137,9 @@ export const TIER_SCORE_RANGES: Record<CredibilityTier, { min: number; max: numb
 };
 
 export const TIER_COLORS: Record<CredibilityTier, string> = {
-  community: "#556677",
-  city: "#4A7FBB",
-  trusted: "#7B4EA8",
+  community: "#8E8E93",
+  city: "#6B6B6B",
+  trusted: "#C49A1A",
   top: "#C9973A",
 };
 
@@ -117,8 +147,15 @@ export const RANK_COLORS = {
   gold: "#C9973A",
   silver: "#A8B5C8",
   bronze: "#8B6914",
-  navy: "#1B2A4A",
+  navy: "#0D1B2A",
 };
+
+export function getRankDisplay(rank: number): string {
+  if (rank === 1) return "\u{1F947}";
+  if (rank === 2) return "\u{1F948}";
+  if (rank === 3) return "\u{1F949}";
+  return `#${rank}`;
+}
 
 export function getVoteWeight(credibilityScore: number): number {
   if (credibilityScore >= 600) return 1.000;

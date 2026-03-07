@@ -15,8 +15,10 @@ import {
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
+import { AppLogo } from "@/components/Logo";
+import { BRAND } from "@/constants/brand";
 
-const AMBER = "#B8860B";
+const AMBER = "#C49A1A";
 
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
@@ -71,8 +73,8 @@ function LoggedOutView() {
   return (
     <View style={[styles.loggedOutContainer, { paddingTop: topPad }]}>
       <View style={styles.loggedOutTop}>
-        <Text style={styles.loggedOutBrand}>Top Ranker</Text>
-        <Text style={styles.loggedOutSubtitle}>Dallas's Most Trusted Rankings</Text>
+        <AppLogo size="lg" />
+        <Text style={styles.loggedOutSubtitle}>{BRAND.tagline}</Text>
       </View>
 
       <View style={styles.loggedOutForm}>
@@ -358,7 +360,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.background },
   content: { paddingHorizontal: 16, gap: 12 },
   header: {
     paddingTop: 4, paddingBottom: 4,
@@ -375,7 +377,7 @@ const styles = StyleSheet.create({
 
   // ===== Logged Out (Fix 6) =====
   loggedOutContainer: {
-    flex: 1, backgroundColor: "#FFFFFF",
+    flex: 1, backgroundColor: Colors.background,
     alignItems: "center", justifyContent: "flex-start",
     paddingHorizontal: 32,
   },
@@ -384,11 +386,8 @@ const styles = StyleSheet.create({
     marginTop: "18%",
     marginBottom: 40,
   },
-  loggedOutBrand: {
-    fontSize: 36, fontWeight: "700", color: AMBER,
-  },
   loggedOutSubtitle: {
-    fontSize: 15, color: "#636366", marginTop: 8,
+    fontSize: 15, color: "#8E8E93", marginTop: 12, fontFamily: "DMSans_400Regular",
   },
   loggedOutForm: {
     width: "100%", gap: 14,

@@ -167,7 +167,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.background },
   navBar: { paddingHorizontal: 16, paddingBottom: 8 },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18,

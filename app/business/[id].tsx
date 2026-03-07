@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, type ApiDish } from "@/lib/api";
 import {
-  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, type CredibilityTier,
+  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 
@@ -217,7 +217,7 @@ export default function BusinessProfileScreen() {
   const openingHoursText = business.openingHours?.weekday_text;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+    <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
@@ -267,7 +267,7 @@ export default function BusinessProfileScreen() {
         <View style={styles.nameCard}>
           <Text style={styles.businessName}>{business.name}</Text>
           <Text style={styles.businessMeta}>
-            {business.category} {business.neighborhood ? `· ${business.neighborhood}` : ""} · {business.city}
+            {getCategoryDisplay(business.category).emoji} {getCategoryDisplay(business.category).label} {business.neighborhood ? `\u00B7 ${business.neighborhood}` : ""} \u00B7 {business.city}
           </Text>
           <View style={styles.nameCardRow}>
             {business.isOpenNow !== undefined && (
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
   },
   heroDot: { width: 7, height: 7, borderRadius: 4 },
-  heroDotActive: { backgroundColor: "#B8860B" },
+  heroDotActive: { backgroundColor: "#C49A1A" },
   heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   heroImagePlaceholder: {
     backgroundColor: Colors.surfaceRaised,

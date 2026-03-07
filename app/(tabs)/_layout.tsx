@@ -40,7 +40,7 @@ function ClassicTabLayout() {
         tabBarInactiveTintColor: Colors.tabIconDefault,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: Colors.background,
           borderTopWidth: 1,
           borderTopColor: Colors.border,
           elevation: 0,
@@ -48,7 +48,7 @@ function ClassicTabLayout() {
           ...(isWeb ? { height: 84 } : {}),
         },
         tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />
         ),
         tabBarLabelStyle: {
           fontFamily: "DMSans_500Medium",

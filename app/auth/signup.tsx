@@ -173,7 +173,7 @@ export default function SignupScreen() {
         <View style={styles.tierPreview}>
           <Ionicons name="people-outline" size={16} color={Colors.textTertiary} />
           <View style={styles.tierPreviewInfo}>
-            <Text style={styles.tierPreviewTitle}>You'll start as a Community Member</Text>
+            <Text style={styles.tierPreviewTitle}>You'll start as a New Member</Text>
             <Text style={styles.tierPreviewSub}>0.10x vote weight · Rate businesses to level up</Text>
           </View>
         </View>
@@ -216,7 +216,7 @@ export default function SignupScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.background },
   navBar: { paddingHorizontal: 16, paddingBottom: 8 },
   closeBtn: {
     width: 36, height: 36, borderRadius: 18,

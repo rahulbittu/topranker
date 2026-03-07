@@ -8,10 +8,10 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { formatCategoryLabel } from "@/lib/data";
+import { getCategoryDisplay, getRankDisplay } from "@/lib/data";
 import { fetchBusinessSearch } from "@/lib/api";
 
-const AMBER = "#B8860B";
+const AMBER = "#C49A1A";
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
@@ -37,56 +37,32 @@ interface MappedBusiness {
   lng?: number;
 }
 
-function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: number }) {
+function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: number }) {
   const [imgError, setImgError] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(0);
   const initial = item.name.charAt(0).toUpperCase();
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
 
   if (photos.length === 0 || imgError) {
     return (
-      <View style={[styles.cardPhotoFallback, { width: size, height: size }]}>
+      <View style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 8 }]}>
         <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
       </View>
     );
   }
 
-  if (photos.length === 1) {
-    return (
-      <Image
-        source={{ uri: photos[0] }}
-        style={[styles.cardPhoto, { width: size, height: size }]}
-        onError={() => setImgError(true)}
-      />
-    );
-  }
-
   return (
-    <View style={{ width: size, height: size, position: "relative" }}>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={(e) => setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / size))}
-        scrollEventThrottle={16}
-        style={{ width: size, height: size, borderRadius: 10, overflow: "hidden" }}
-      >
-        {photos.map((url, i) => (
-          <Image key={i} source={{ uri: url }} style={{ width: size, height: size }} resizeMode="cover" />
-        ))}
-      </ScrollView>
-      <View style={styles.miniDotContainer}>
-        {photos.map((_, i) => (
-          <View key={i} style={[styles.miniDot, i === activeIdx ? styles.miniDotActive : styles.miniDotInactive]} />
-        ))}
-      </View>
-    </View>
+    <Image
+      source={{ uri: photos[0] }}
+      style={[styles.cardPhoto, { width: size, height: size }]}
+      onError={() => setImgError(true)}
+    />
   );
 }
 
 function BusinessCard({ item }: { item: MappedBusiness }) {
-  const categoryLabel = formatCategoryLabel(item.category);
+  const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
+  const rankLabel = getRankDisplay(item.rank);
 
   return (
     <TouchableOpacity
@@ -94,23 +70,23 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
     >
-      <BusinessPhoto item={item} size={72} />
+      <BusinessPhoto item={item} size={80} />
       <View style={styles.cardInfo}>
         <View style={styles.cardRow1}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardRankBadge}>#{item.rank}</Text>
+          <Text style={styles.cardRankBadge}>{rankLabel}</Text>
         </View>
         <View style={styles.cardRow2}>
-          <Text style={styles.cardCategory}>{categoryLabel}</Text>
+          <Text style={styles.cardCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
           {item.neighborhood ? (
             <>
-              <Text style={styles.cardDot}> · </Text>
+              <Text style={styles.cardDot}> {"\u00B7"} </Text>
               <Text style={styles.cardNeighborhood}>{item.neighborhood}</Text>
             </>
           ) : null}
           {item.priceRange ? (
             <>
-              <Text style={styles.cardDot}> · </Text>
+              <Text style={styles.cardDot}> {"\u00B7"} </Text>
               <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
             </>
           ) : null}
@@ -132,7 +108,8 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
 }
 
 function MapBusinessCard({ item }: { item: MappedBusiness }) {
-  const categoryLabel = formatCategoryLabel(item.category);
+  const catDisplay = getCategoryDisplay(item.category);
+  const rankLabel = getRankDisplay(item.rank);
 
   const openInMaps = () => {
     if (item.lat && item.lng) {
@@ -152,11 +129,11 @@ function MapBusinessCard({ item }: { item: MappedBusiness }) {
       activeOpacity={0.75}
     >
       <View style={styles.mapCardRank}>
-        <Text style={styles.mapCardRankText}>{item.rank}</Text>
+        <Text style={styles.mapCardRankText}>{rankLabel}</Text>
       </View>
       <View style={styles.mapCardInfo}>
         <Text style={styles.mapCardName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.mapCardMeta}>{categoryLabel}{item.neighborhood ? ` · ${item.neighborhood}` : ""}</Text>
+        <Text style={styles.mapCardMeta}>{catDisplay.emoji} {catDisplay.label}{item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}</Text>
       </View>
       <View style={styles.mapCardRight}>
         <Text style={styles.mapCardScore}>{item.weightedScore.toFixed(2)}</Text>
@@ -176,6 +153,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   const markersRef = useRef<any[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
+  const [selectedBiz, setSelectedBiz] = useState<MappedBusiness | null>(null);
 
   const bizWithCoords = businesses.filter(b => b.lat && b.lng);
 
@@ -207,7 +185,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
     if ((window as any).google && (window as any).google.maps) {
       initMap();
     } else {
-      const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || "";
+      const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
       if (!apiKey) {
         clearTimeout(timeout);
         setMapError(true);
@@ -238,10 +216,10 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   function updateMarkers(map: any, items: MappedBusiness[]) {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
-    const infoWindow = new (window as any).google.maps.InfoWindow();
 
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
+      const rankLabel = getRankDisplay(biz.rank);
       const marker = new (window as any).google.maps.Marker({
         position: { lat: biz.lat, lng: biz.lng },
         map,
@@ -255,14 +233,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
       });
 
       marker.addListener("click", () => {
-        const label = formatCategoryLabel(biz.category);
-        infoWindow.setContent(`
-          <div style="font-family:sans-serif;max-width:220px;padding:4px">
-            <div style="font-weight:700;font-size:14px;color:#1C1C1E">${biz.name}</div>
-            <div style="font-size:12px;color:#636366;margin-top:2px">#${biz.rank} · ${biz.weightedScore.toFixed(2)} · ${label}</div>
-          </div>
-        `);
-        infoWindow.open(map, marker);
+        setSelectedBiz(biz);
       });
 
       markersRef.current.push(marker);
@@ -306,6 +277,28 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
           </View>
         )}
       </View>
+      {selectedBiz && (
+        <TouchableOpacity
+          style={styles.mapBottomSheet}
+          onPress={() => router.push({ pathname: "/business/[id]", params: { id: selectedBiz.slug } })}
+          activeOpacity={0.85}
+        >
+          <View style={styles.mapBottomSheetHandle} />
+          <View style={styles.mapBottomSheetRow}>
+            {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
+              <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} />
+            ) : (
+              <View style={[styles.mapBottomSheetPhoto, { backgroundColor: AMBER, alignItems: "center", justifyContent: "center" }]}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>
+              </View>
+            )}
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
+              <Text style={styles.mapBottomSheetMeta}>{getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(2)}</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -436,21 +429,21 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FFFFFF" },
+  container: { flex: 1, backgroundColor: Colors.background },
   headerRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 20, paddingBottom: 10,
   },
-  title: { fontSize: 28, fontWeight: "700", color: "#1C1C1E", letterSpacing: -0.5 },
+  title: { fontSize: 28, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
   cityButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6,
     borderRadius: 20, borderWidth: 1, borderColor: "#E5E5EA",
   },
-  cityButtonText: { fontSize: 13, fontWeight: "500", color: "#1C1C1E" },
+  cityButtonText: { fontSize: 13, fontWeight: "500", color: Colors.text, fontFamily: "DMSans_500Medium" },
 
   cityPickerDropdown: {
-    marginHorizontal: 16, backgroundColor: "#F7F7F5", borderRadius: 12,
+    marginHorizontal: 16, backgroundColor: Colors.background, borderRadius: 12,
     borderWidth: 1, borderColor: "#E5E5EA", marginBottom: 8, overflow: "hidden",
   },
   cityOption: {
@@ -458,23 +451,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, paddingVertical: 11,
     borderBottomWidth: 1, borderBottomColor: "#E5E5EA",
   },
-  cityOptionActive: { backgroundColor: "rgba(184, 134, 11, 0.08)" },
-  cityOptionText: { fontSize: 13, color: "#1C1C1E" },
+  cityOptionActive: { backgroundColor: "rgba(196, 154, 26, 0.08)" },
+  cityOptionText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular" },
   cityOptionTextActive: { color: AMBER, fontWeight: "600" },
 
   searchBox: {
     flexDirection: "row", alignItems: "center", marginHorizontal: 16,
-    backgroundColor: "#F2F2F7", borderRadius: 12, paddingHorizontal: 12,
+    backgroundColor: "#FFFFFF", borderRadius: 12, paddingHorizontal: 12,
     paddingVertical: 10, gap: 8, marginBottom: 9,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#1C1C1E" },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
 
   controlsRow: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
     paddingBottom: 10, gap: 10,
   },
   viewToggle: {
-    flexDirection: "row", backgroundColor: "#F2F2F7", borderRadius: 8,
+    flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 8,
     overflow: "hidden",
   },
   viewToggleBtn: {
@@ -482,24 +475,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 7,
   },
   viewToggleBtnActive: { backgroundColor: AMBER, borderRadius: 8 },
-  viewToggleText: { fontSize: 13, fontWeight: "500", color: "#636366" },
+  viewToggleText: { fontSize: 13, fontWeight: "500", color: "#636366", fontFamily: "DMSans_500Medium" },
   viewToggleTextActive: { color: "#fff" },
 
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: "#F2F2F7",
+    backgroundColor: "#FFFFFF",
   },
   filterChipActive: { backgroundColor: AMBER },
-  filterText: { fontSize: 12, fontWeight: "500", color: "#636366" },
+  filterText: { fontSize: 12, fontWeight: "500", color: "#636366", fontFamily: "DMSans_500Medium" },
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
-  resultsCount: { fontSize: 11, color: "#AEAEB2", paddingBottom: 4 },
+  resultsCount: { fontSize: 11, color: "#AEAEB2", paddingBottom: 4, fontFamily: "DMSans_400Regular" },
 
-  // Card styles (Fix 5)
   card: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12,
@@ -509,17 +501,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   cardPhoto: {
-    borderRadius: 10, backgroundColor: "#F2F2F7",
+    borderRadius: 8, backgroundColor: "#F2F2F7",
   },
-  miniDotContainer: {
-    flexDirection: "row", justifyContent: "center", gap: 3,
-    position: "absolute", bottom: 3, left: 0, right: 0,
-  },
-  miniDot: { width: 4, height: 4, borderRadius: 2 },
-  miniDotActive: { backgroundColor: AMBER },
-  miniDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   cardPhotoFallback: {
-    borderRadius: 10, backgroundColor: AMBER,
+    backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
   },
   cardPhotoInitial: {
@@ -530,17 +515,17 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   cardName: {
-    fontSize: 16, fontWeight: "700", color: "#1C1C1E", flex: 1, marginRight: 8,
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
   },
   cardRankBadge: {
-    fontSize: 13, fontWeight: "700", color: AMBER,
+    fontSize: 14, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold",
   },
   cardRow2: {
     flexDirection: "row", alignItems: "center", flexWrap: "wrap",
   },
-  cardCategory: { fontSize: 12, color: AMBER, fontWeight: "500" },
+  cardCategory: { fontSize: 12, color: AMBER, fontWeight: "500", fontFamily: "DMSans_500Medium" },
   cardDot: { fontSize: 12, color: "#AEAEB2" },
-  cardNeighborhood: { fontSize: 12, color: "#636366" },
+  cardNeighborhood: { fontSize: 12, color: "#636366", fontFamily: "DMSans_400Regular" },
   cardRow3: {
     flexDirection: "row", alignItems: "center", marginTop: 2,
   },
@@ -549,16 +534,16 @@ const styles = StyleSheet.create({
   },
   statusPillOpen: { backgroundColor: "#34C759" },
   statusPillClosed: { backgroundColor: "#FF3B30" },
-  statusPillText: { fontSize: 11, fontWeight: "600", color: "#fff" },
+  statusPillText: { fontSize: 11, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   statusPillTextOpen: {},
   statusPillTextClosed: {},
   cardScore: {
-    fontSize: 14, fontWeight: "700", color: AMBER,
+    fontSize: 14, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold",
   },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: "600", color: "#636366" },
-  emptySubtext: { fontSize: 12, color: "#AEAEB2" },
+  emptyText: { fontSize: 15, fontWeight: "600", color: "#636366", fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: "#AEAEB2", fontFamily: "DMSans_400Regular" },
 
   // Map styles
   mapContainer: {
@@ -574,7 +559,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingVertical: 8, paddingHorizontal: 4,
   },
-  mapListHeaderText: { fontSize: 12, color: "#636366", fontWeight: "500" },
+  mapListHeaderText: { fontSize: 12, color: "#636366", fontWeight: "500", fontFamily: "DMSans_500Medium" },
   mapCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
@@ -584,15 +569,59 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
   },
-  mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
   mapCardInfo: { flex: 1, gap: 2 },
-  mapCardName: { fontSize: 14, fontWeight: "600", color: "#1C1C1E" },
-  mapCardMeta: { fontSize: 11, color: "#636366" },
+  mapCardName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  mapCardMeta: { fontSize: 11, color: "#636366", fontFamily: "DMSans_400Regular" },
   mapCardRight: { alignItems: "flex-end", gap: 4 },
-  mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER },
+  mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold" },
   mapPinBtn: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: "rgba(184, 134, 11, 0.1)",
+    backgroundColor: "rgba(196, 154, 26, 0.1)",
     alignItems: "center", justifyContent: "center",
+  },
+
+  // Bottom sheet for map pin tap
+  mapBottomSheet: {
+    position: "absolute" as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+    paddingTop: 12,
+    ...Colors.cardShadow,
+    shadowOffset: { width: 0, height: -4 },
+  },
+  mapBottomSheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#E0E0E0",
+    alignSelf: "center",
+    marginBottom: 12,
+  },
+  mapBottomSheetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  mapBottomSheetPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+  },
+  mapBottomSheetName: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold",
+  },
+  mapBottomSheetMeta: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
   },
 });
