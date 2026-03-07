@@ -423,12 +423,13 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Opening Hours */}
-          {openingHoursText && openingHoursText.length > 0 && (
+          {openingHoursText && openingHoursText.length > 0 && (() => {
+            const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+            return (
             <View style={styles.hoursCard}>
               <Text style={styles.sectionTitle}>Opening Hours</Text>
               {openingHoursText.map((line: string, i: number) => {
-                const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
-                const isToday = line.toLowerCase().startsWith(today.toLowerCase());
+                const isToday = line.toLowerCase().startsWith(todayName);
                 return (
                   <View key={i} style={[styles.hoursRow, isToday && styles.hoursRowToday]}>
                     <Text style={[styles.hoursText, isToday && styles.hoursTextToday]}>{line}</Text>
@@ -436,7 +437,8 @@ export default function BusinessProfileScreen() {
                 );
               })}
             </View>
-          )}
+            );
+          })()}
 
           {business.address && (
             <View style={styles.addressCard}>
