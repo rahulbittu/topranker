@@ -717,13 +717,14 @@ export default function RateScreen() {
         )}
         {step === 6 && (
           <TouchableOpacity
-            style={styles.skipBtn}
+            style={[styles.skipBtn, submitMutation.isPending && { opacity: 0.5 }]}
             onPress={() => {
               setNote("");
               setSubmitError("");
               submitMutation.mutate();
             }}
             activeOpacity={0.7}
+            disabled={submitMutation.isPending}
             accessibilityRole="button"
             accessibilityLabel="Skip note and submit rating"
           >
