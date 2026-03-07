@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Animated,
+  View, Text, StyleSheet, ScrollView, Animated, Share,
   Platform, TouchableOpacity, RefreshControl, LayoutAnimation, UIManager,
 } from "react-native";
 
@@ -222,6 +222,19 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
   const catDisplay = getCategoryDisplay(challenge.category);
 
+  const shareChallenge = async () => {
+    const defender = challenge.defenderBusiness.name;
+    const challenger = challenge.challengerBusiness.name;
+    const total = defenderVotes + challengerVotes;
+    const defPct = total > 0 ? ((defenderVotes / total) * 100).toFixed(0) : "50";
+    const chPct = total > 0 ? ((challengerVotes / total) * 100).toFixed(0) : "50";
+    try {
+      await Share.share({
+        message: `${catDisplay.emoji} ${catDisplay.label} Challenge in ${challenge.city}\n\n${defender} (${defPct}%) vs ${challenger} (${chPct}%)\n\n${defenderVotes.toFixed(1)} vs ${challengerVotes.toFixed(1)} weighted votes\n${countdown.ended ? "Challenge ended!" : `${countdown.days}d ${countdown.hours}h remaining`}\n\nVote now on TopRanker!`,
+      });
+    } catch {}
+  };
+
   return (
     <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.cardHeader}>
@@ -282,6 +295,17 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       <View style={styles.voteCta}>
         <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.shareBtn}
+        onPress={shareChallenge}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Share this challenge"
+      >
+        <Ionicons name="share-outline" size={16} color={BRAND.colors.amber} />
+        <Text style={styles.shareBtnText}>Share Challenge</Text>
+      </TouchableOpacity>
 
       <CommunityReviews challenge={challenge} />
     </Animated.View>
@@ -561,6 +585,15 @@ const styles = StyleSheet.create({
   },
   voteCtaText: {
     fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium",
+  },
+  shareBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, marginTop: 8, paddingVertical: 10, borderRadius: 8,
+    borderWidth: 1, borderColor: BRAND.colors.amber,
+  },
+  shareBtnText: {
+    fontSize: 12, fontWeight: "600", color: BRAND.colors.amber,
+    fontFamily: "DMSans_600SemiBold",
   },
 
   // Community Reviews section
