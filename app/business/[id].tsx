@@ -16,6 +16,7 @@ import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
+import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 
@@ -221,10 +222,10 @@ export default function BusinessProfileScreen() {
   const avgQ3 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q3, 0) / ratings.length : 0;
 
   const handleCall = () => {
-    if (business.phone) Linking.openURL(`tel:${business.phone}`);
+    if (business.phone) { Haptics.selectionAsync(); Linking.openURL(`tel:${business.phone}`); }
   };
   const handleWebsite = () => {
-    if (business.website) Linking.openURL(business.website);
+    if (business.website) { Haptics.selectionAsync(); Linking.openURL(business.website); }
   };
   const handleMaps = () => {
     if (business.googleMapsUrl) {
@@ -239,6 +240,7 @@ export default function BusinessProfileScreen() {
     }
   };
   const handleShare = async () => {
+    Haptics.selectionAsync();
     try {
       await Share.share({
         message: `Check out ${business.name} on Top Ranker! Ranked ${getRankDisplay(business.rank)} with a ${business.weightedScore.toFixed(2)} score.`,
@@ -401,7 +403,7 @@ export default function BusinessProfileScreen() {
           {user ? (
             <TouchableOpacity
               style={styles.rateButton}
-              onPress={() => router.push({ pathname: "/rate/[id]", params: { id: business.slug } })}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: "/rate/[id]", params: { id: business.slug } }); }}
               activeOpacity={0.85}
               testID="rate-this-place"
               accessibilityRole="button"
