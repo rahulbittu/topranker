@@ -51,7 +51,7 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
     return (
       <LinearGradient
         colors={[AMBER, BRAND.colors.amberDark]}
-        style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 10 }]}
+        style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 12 }]}
       >
         <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.35 }]}>{initial}</Text>
       </LinearGradient>
@@ -82,7 +82,7 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
-      <BusinessPhoto item={item} size={80} />
+      <BusinessPhoto item={item} size={100} />
       <View style={styles.cardInfo}>
         <View style={styles.cardRow1}>
           <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardPhoto: {
-    borderRadius: 10, backgroundColor: Colors.surfaceRaised,
+    borderRadius: 12, backgroundColor: Colors.surfaceRaised,
   },
   cardPhotoFallback: {
     backgroundColor: AMBER,
