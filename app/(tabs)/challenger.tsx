@@ -189,6 +189,8 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           style={styles.fighter}
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.defenderBusiness.slug } })}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
           <FighterPhoto biz={challenge.defenderBusiness} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.defenderBusiness.name}</Text>
@@ -207,6 +209,8 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           style={styles.fighter}
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: challenge.challengerBusiness.slug } })}
           activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
           <FighterPhoto biz={challenge.challengerBusiness} />
           <Text style={styles.fighterName} numberOfLines={2}>{challenge.challengerBusiness.name}</Text>
