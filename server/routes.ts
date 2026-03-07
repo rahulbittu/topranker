@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
 import passport from "passport";
 import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
+import { handleWebhook, handleDeployStatus } from "./deploy";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -325,6 +326,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: err.message });
     }
   });
+
+  // Deploy webhook (GitHub push → auto-rebuild)
+  app.post("/api/webhook/deploy", handleWebhook);
+  app.get("/api/deploy/status", handleDeployStatus);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -228,6 +228,12 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
       return;
     }
 
+    // Listen for Google Maps auth failures (fires when key is invalid/restricted)
+    (window as any).gm_authFailure = () => {
+      console.error("[MapView] Google Maps auth failure — key rejected");
+      setMapError("Google Maps API key was rejected. Go to console.cloud.google.com → APIs & Services → Enable 'Maps JavaScript API', and ensure billing is active.");
+    };
+
     if (!_mapsInitialized) {
       setGoogleMapsOptions({ key: apiKey, v: "weekly" });
       _mapsInitialized = true;
