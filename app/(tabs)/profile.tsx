@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, TextInput,
+  Platform, ActivityIndicator, TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -157,7 +157,7 @@ function LoggedOutView() {
   );
 }
 
-function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
+function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refetch: () => Promise<any> }) {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -185,6 +185,13 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
     Math.round(breakdown.variance || 0) + (breakdown.helpfulness || 0) -
     (breakdown.penalties || 0);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
   return (
     <ScrollView
       style={[styles.container, { paddingTop: topPad }]}
@@ -193,6 +200,9 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
         { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
       ]}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AMBER} />
+      }
     >
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
@@ -381,7 +391,7 @@ export default function ProfileScreen() {
     );
   }
 
-  return <ProfileContent profile={profile} />;
+  return <ProfileContent profile={profile} refetch={refetch} />;
 }
 
 const styles = StyleSheet.create({
