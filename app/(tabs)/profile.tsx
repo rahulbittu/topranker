@@ -98,7 +98,7 @@ function LoggedOutView() {
           <TextInput
             style={styles.input}
             placeholder="Email address"
-            placeholderTextColor="#AEAEB2"
+            placeholderTextColor={Colors.textTertiary}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -111,7 +111,7 @@ function LoggedOutView() {
           <TextInput
             style={[styles.input, { paddingRight: 44 }]}
             placeholder="Password"
-            placeholderTextColor="#AEAEB2"
+            placeholderTextColor={Colors.textTertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -123,7 +123,7 @@ function LoggedOutView() {
             <Ionicons
               name={showPassword ? "eye-off-outline" : "eye-outline"}
               size={20}
-              color="#636366"
+              color={Colors.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
     borderRadius: 12, height: 52,
     width: "100%",
   },
@@ -403,24 +403,24 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: "700", color: "#4285F4",
   },
   googleButtonText: {
-    fontSize: 16, fontWeight: "600", color: "#1C1C1E",
+    fontSize: 16, fontWeight: "600", color: Colors.text,
   },
   orDivider: {
     flexDirection: "row", alignItems: "center", gap: 12,
     marginVertical: 4,
   },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E5E5EA" },
-  orText: { fontSize: 13, color: "#636366" },
+  orLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  orText: { fontSize: 13, color: Colors.textSecondary },
   errorText: {
-    fontSize: 13, color: "#FF3B30", textAlign: "center",
+    fontSize: 13, color: Colors.red, textAlign: "center",
   },
   inputContainer: {
     position: "relative" as const,
   },
   input: {
     width: "100%", height: 48, borderRadius: 10,
-    borderWidth: 1, borderColor: "#E5E5EA",
-    paddingHorizontal: 16, fontSize: 15, color: "#1C1C1E",
+    borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: 16, fontSize: 15, color: Colors.text,
     backgroundColor: "#fff",
   },
   eyeButton: {
@@ -436,10 +436,10 @@ const styles = StyleSheet.create({
     fontSize: 16, fontWeight: "700", color: "#fff",
   },
   signUpLink: {
-    fontSize: 14, color: "#636366", textAlign: "center", marginTop: 4,
+    fontSize: 14, color: Colors.textSecondary, textAlign: "center", marginTop: 4,
   },
   signUpLinkBold: {
-    color: "#007AFF", fontWeight: "600",
+    color: Colors.gold, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
   },
 
   // ===== Logged In =====

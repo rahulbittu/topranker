@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { getRankDisplay } from "@/lib/data";
-import { fetchLeaderboard, fetchCategories } from "@/lib/api";
+import { fetchLeaderboard } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 
 const AMBER = "#C49A1A";

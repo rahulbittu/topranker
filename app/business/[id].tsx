@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, type ApiDish } from "@/lib/api";
 import {
-  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, type CredibilityTier,
+  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 
@@ -209,7 +209,7 @@ export default function BusinessProfileScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Check out ${business.name} on Top Ranker! Ranked #${business.rank} with a ${business.weightedScore.toFixed(2)} score.`,
+        message: `Check out ${business.name} on Top Ranker! Ranked ${getRankDisplay(business.rank)} with a ${business.weightedScore.toFixed(2)} score.`,
       });
     } catch {}
   };
@@ -286,7 +286,7 @@ export default function BusinessProfileScreen() {
             <Text style={styles.scoreLabel}>Weighted Score</Text>
             <View style={styles.scoreMetaRow}>
               <Text style={styles.scoreMetaItem}>{business.ratingCount} ratings</Text>
-              <Text style={styles.scoreMetaItem}>#{business.rank}</Text>
+              <Text style={styles.scoreMetaItem}>{getRankDisplay(business.rank)}</Text>
               {business.googleRating && (
                 <View style={styles.googleRow}>
                   <MaterialCommunityIcons name="google" size={10} color={Colors.textTertiary} />
@@ -441,7 +441,7 @@ const HERO_HEIGHT = 240;
 
 const styles = StyleSheet.create({
   notFound: {
-    flex: 1, backgroundColor: "#FFFFFF",
+    flex: 1, backgroundColor: Colors.background,
     alignItems: "center", justifyContent: "center", gap: 12,
   },
   notFoundText: { fontSize: 18, color: Colors.text, fontWeight: "600" },

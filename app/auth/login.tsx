@@ -9,6 +9,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { AppLogo } from "@/components/Logo";
+import { BRAND } from "@/constants/brand";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -58,8 +60,8 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.logoContainer}>
-          <Text style={styles.appName}>TOP RANKER</Text>
-          <Text style={styles.tagline}>Rate. Rank. Discover Dallas.</Text>
+          <AppLogo size="lg" />
+          <Text style={styles.tagline}>{BRAND.tagline}</Text>
         </View>
 
         <TouchableOpacity style={styles.googleButton} activeOpacity={0.7} disabled>
@@ -176,10 +178,6 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: 24, paddingTop: 12, gap: 16 },
 
   logoContainer: { alignItems: "center", gap: 8, marginBottom: 8, marginTop: 8 },
-  appName: {
-    fontSize: 28, fontWeight: "700", color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: 3,
-  },
   tagline: {
     fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
     textAlign: "center",

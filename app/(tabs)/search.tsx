@@ -259,7 +259,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Ionicons name="location-outline" size={32} color="#AEAEB2" />
+            <Ionicons name="location-outline" size={32} color={Colors.textTertiary} />
             <Text style={styles.emptyText}>No places found</Text>
           </View>
         }
@@ -334,7 +334,7 @@ export default function SearchScreen() {
         <TouchableOpacity style={styles.cityButton} onPress={() => setShowCityPicker(!showCityPicker)} activeOpacity={0.7}>
           <Ionicons name="location-sharp" size={12} color={AMBER} />
           <Text style={styles.cityButtonText}>{city}</Text>
-          <Ionicons name="chevron-down" size={12} color="#636366" />
+          <Ionicons name="chevron-down" size={12} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -354,17 +354,17 @@ export default function SearchScreen() {
       )}
 
       <View style={styles.searchBox}>
-        <Ionicons name="search" size={15} color="#AEAEB2" />
+        <Ionicons name="search" size={15} color={Colors.textTertiary} />
         <TextInput
           style={styles.searchInput}
           placeholder="Restaurants, neighborhoods, dishes..."
-          placeholderTextColor="#AEAEB2"
+          placeholderTextColor={Colors.textTertiary}
           value={query}
           onChangeText={setQuery}
         />
         {!!query && (
           <TouchableOpacity onPress={() => setQuery("")}>
-            <Ionicons name="close-circle" size={15} color="#AEAEB2" />
+            <Ionicons name="close-circle" size={15} color={Colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
@@ -376,14 +376,14 @@ export default function SearchScreen() {
             style={[styles.viewToggleBtn, viewMode === "list" && styles.viewToggleBtnActive]}
             onPress={() => setViewMode("list")}
           >
-            <Ionicons name="list" size={16} color={viewMode === "list" ? "#fff" : "#636366"} />
+            <Ionicons name="list" size={16} color={viewMode === "list" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "list" && styles.viewToggleTextActive]}>List</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "map" && styles.viewToggleBtnActive]}
             onPress={() => setViewMode("map")}
           >
-            <Ionicons name="location" size={16} color={viewMode === "map" ? "#fff" : "#636366"} />
+            <Ionicons name="location" size={16} color={viewMode === "map" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "map" && styles.viewToggleTextActive]}>Map</Text>
           </TouchableOpacity>
         </View>
@@ -414,7 +414,7 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={32} color="#AEAEB2" />
+              <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
               <Text style={styles.emptyText}>No results</Text>
               <Text style={styles.emptySubtext}>Try a different search or filter</Text>
             </View>
@@ -438,18 +438,18 @@ const styles = StyleSheet.create({
   cityButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1, borderColor: "#E5E5EA",
+    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
   },
   cityButtonText: { fontSize: 13, fontWeight: "500", color: Colors.text, fontFamily: "DMSans_500Medium" },
 
   cityPickerDropdown: {
     marginHorizontal: 16, backgroundColor: Colors.background, borderRadius: 12,
-    borderWidth: 1, borderColor: "#E5E5EA", marginBottom: 8, overflow: "hidden",
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
   },
   cityOption: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: "#E5E5EA",
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   cityOptionActive: { backgroundColor: "rgba(196, 154, 26, 0.08)" },
   cityOptionText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular" },
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 7,
   },
   viewToggleBtnActive: { backgroundColor: AMBER, borderRadius: 8 },
-  viewToggleText: { fontSize: 13, fontWeight: "500", color: "#636366", fontFamily: "DMSans_500Medium" },
+  viewToggleText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   viewToggleTextActive: { color: "#fff" },
 
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
@@ -484,24 +484,24 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   filterChipActive: { backgroundColor: AMBER },
-  filterText: { fontSize: 12, fontWeight: "500", color: "#636366", fontFamily: "DMSans_500Medium" },
+  filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
-  resultsCount: { fontSize: 11, color: "#AEAEB2", paddingBottom: 4, fontFamily: "DMSans_400Regular" },
+  resultsCount: { fontSize: 11, color: Colors.textTertiary, paddingBottom: 4, fontFamily: "DMSans_400Regular" },
 
   card: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12,
-    borderWidth: 1, borderColor: "#E5E5EA",
+    borderWidth: 1, borderColor: Colors.border,
     padding: 16, minHeight: 96, gap: 14,
     shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   cardPhoto: {
-    borderRadius: 8, backgroundColor: "#F2F2F7",
+    borderRadius: 8, backgroundColor: Colors.surfaceRaised,
   },
   cardPhotoFallback: {
     backgroundColor: AMBER,
@@ -524,8 +524,8 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", flexWrap: "wrap",
   },
   cardCategory: { fontSize: 12, color: AMBER, fontWeight: "500", fontFamily: "DMSans_500Medium" },
-  cardDot: { fontSize: 12, color: "#AEAEB2" },
-  cardNeighborhood: { fontSize: 12, color: "#636366", fontFamily: "DMSans_400Regular" },
+  cardDot: { fontSize: 12, color: Colors.textTertiary },
+  cardNeighborhood: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   cardRow3: {
     flexDirection: "row", alignItems: "center", marginTop: 2,
   },
@@ -542,13 +542,13 @@ const styles = StyleSheet.create({
   },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
-  emptyText: { fontSize: 15, fontWeight: "600", color: "#636366", fontFamily: "DMSans_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: "#AEAEB2", fontFamily: "DMSans_400Regular" },
+  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   // Map styles
   mapContainer: {
     flex: 1, margin: 16, borderRadius: 12, overflow: "hidden",
-    borderWidth: 1, borderColor: "#E5E5EA", position: "relative" as const,
+    borderWidth: 1, borderColor: Colors.border, position: "relative" as const,
   },
   mapLoadingOverlay: {
     position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
@@ -559,11 +559,11 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingVertical: 8, paddingHorizontal: 4,
   },
-  mapListHeaderText: { fontSize: 12, color: "#636366", fontWeight: "500", fontFamily: "DMSans_500Medium" },
+  mapListHeaderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", fontFamily: "DMSans_500Medium" },
   mapCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
-    borderWidth: 1, borderColor: "#E5E5EA",
+    borderWidth: 1, borderColor: Colors.border,
   },
   mapCardRank: {
     width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
   mapCardInfo: { flex: 1, gap: 2 },
   mapCardName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_700Bold" },
-  mapCardMeta: { fontSize: 11, color: "#636366", fontFamily: "DMSans_400Regular" },
+  mapCardMeta: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   mapCardRight: { alignItems: "flex-end", gap: 4 },
   mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold" },
   mapPinBtn: {
