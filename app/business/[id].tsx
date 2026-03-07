@@ -194,14 +194,10 @@ export default function BusinessProfileScreen() {
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
         <Text style={[styles.notFoundText, { marginTop: 12 }]}>Couldn't load this business</Text>
-        <TouchableOpacity
-          onPress={() => refetch()}
-          style={{ marginTop: 12, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: BRAND.colors.amber, borderRadius: 20 }}
-          activeOpacity={0.8}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" }}>Retry</Text>
+        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8}>
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 8 }}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backLinkButton}>
           <Text style={styles.backLink}>Go back</Text>
         </TouchableOpacity>
       </View>
@@ -542,6 +538,14 @@ const styles = StyleSheet.create({
   },
   notFoundText: { fontSize: 18, color: Colors.text, fontWeight: "600" },
   backLink: { fontSize: 14, color: Colors.gold, fontWeight: "500" },
+  backLinkButton: { marginTop: 8 },
+  retryButton: {
+    marginTop: 12, paddingHorizontal: 24, paddingVertical: 10,
+    backgroundColor: BRAND.colors.amber, borderRadius: 20,
+  },
+  retryButtonText: {
+    fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
+  },
 
   content: { gap: 0 },
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
