@@ -367,10 +367,24 @@ export default function BusinessProfileScreen() {
           {/* Photo Gallery */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Photos</Text>
-            <View style={styles.photoGalleryEmpty}>
-              <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
-              <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
-            </View>
+            {business.photoUrl ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photoGalleryScroll}
+              >
+                <Image
+                  source={{ uri: business.photoUrl }}
+                  style={styles.photoGalleryImage}
+                  resizeMode="cover"
+                />
+              </ScrollView>
+            ) : (
+              <View style={styles.photoGalleryEmpty}>
+                <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
+                <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
+              </View>
+            )}
           </View>
 
           {/* Claim Listing */}
@@ -555,6 +569,11 @@ const styles = StyleSheet.create({
   ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", fontFamily: "DMSans_400Regular", lineHeight: 17 },
 
+  photoGalleryScroll: { gap: 10 },
+  photoGalleryImage: {
+    width: SCREEN_WIDTH - 48, height: 200, borderRadius: 14,
+    backgroundColor: Colors.surfaceRaised,
+  },
   photoGalleryEmpty: {
     backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 24,
     alignItems: "center", justifyContent: "center", gap: 6,

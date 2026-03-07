@@ -169,7 +169,7 @@ export default function LeaderboardScreen() {
             <TouchableOpacity
               key={cat.slug}
               onPress={() => setActiveCategory(cat.slug)}
-              style={[styles.tab, isActive && styles.tabActive]}
+              style={styles.tab}
               testID={`category-tab-${cat.slug}`}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
