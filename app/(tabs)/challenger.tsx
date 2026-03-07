@@ -125,7 +125,7 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
 
   return (
     <View style={styles.reviewsSection}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <View style={styles.reviewsTitleRow}>
         <Ionicons name="chatbubbles-outline" size={14} color={BRAND.colors.amber} />
         <Text style={styles.reviewsSectionTitle}>COMMUNITY REVIEWS</Text>
       </View>
@@ -497,6 +497,7 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.border,
     gap: 10,
   },
+  reviewsTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   reviewsSectionTitle: {
     fontSize: 11,
     fontWeight: "700",
