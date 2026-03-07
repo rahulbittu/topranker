@@ -16,6 +16,7 @@ import {
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { BRAND } from "@/constants/brand";
+import { BusinessDetailSkeleton } from "@/components/Skeleton";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -182,8 +183,8 @@ export default function BusinessProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.notFound, { paddingTop: topPad }]}>
-        <ActivityIndicator size="large" color={Colors.gold} />
+      <View style={{ flex: 1, backgroundColor: Colors.background, paddingTop: topPad }}>
+        <BusinessDetailSkeleton />
       </View>
     );
   }

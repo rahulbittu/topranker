@@ -13,6 +13,7 @@ import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
+import { LeaderboardSkeleton } from "@/components/Skeleton";
 
 const AMBER = BRAND.colors.amber;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -311,9 +312,7 @@ export default function LeaderboardScreen() {
       </ScrollView>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AMBER} />
-        </View>
+        <LeaderboardSkeleton />
       ) : isError ? (
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
