@@ -28,10 +28,34 @@ function requireAuth(req: Request, res: Response, next: Function) {
   next();
 }
 
+// Simple in-memory rate limiter for auth endpoints
+const authAttempts = new Map<string, { count: number; resetAt: number }>();
+function authRateLimit(req: Request, res: Response, next: Function) {
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const now = Date.now();
+  const entry = authAttempts.get(ip);
+  if (entry && entry.resetAt > now) {
+    if (entry.count >= 10) {
+      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+    }
+    entry.count++;
+  } else {
+    authAttempts.set(ip, { count: 1, resetAt: now + 60000 }); // 10 per minute
+  }
+  next();
+}
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of authAttempts) {
+    if (entry.resetAt <= now) authAttempts.delete(ip);
+  }
+}, 300000);
+
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
-  app.post("/api/auth/signup", async (req: Request, res: Response) => {
+  app.post("/api/auth/signup", authRateLimit, async (req: Request, res: Response) => {
     try {
       const { displayName, username, email, password, city } = req.body;
 
@@ -65,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", (req: Request, res: Response, next) => {
+  app.post("/api/auth/login", authRateLimit, (req: Request, res: Response, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return res.status(500).json({ error: "Internal server error" });
       if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
@@ -77,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
-  app.post("/api/auth/google", async (req: Request, res: Response) => {
+  app.post("/api/auth/google", authRateLimit, async (req: Request, res: Response) => {
     try {
       const { idToken } = req.body;
       if (!idToken) {
