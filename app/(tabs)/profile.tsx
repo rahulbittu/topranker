@@ -202,7 +202,7 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
       </View>
 
       <LinearGradient
-        colors={["#0D1B2A", "#1A3050"]}
+        colors={[BRAND.colors.navy, "#1A3050"]}
         style={styles.profileCard}
       >
         <View style={styles.avatarCircle}>
@@ -333,7 +333,7 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
 export default function ProfileScreen() {
   const { user, isLoading: authLoading } = useAuth();
 
-  const { data: profile, isLoading: profileLoading } = useQuery({
+  const { data: profile, isLoading: profileLoading, isError, refetch } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchMemberProfile(),
     enabled: !!user,
@@ -350,6 +350,27 @@ export default function ProfileScreen() {
 
   if (!user) {
     return <LoggedOutView />;
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.container, { alignItems: "center", justifyContent: "center", gap: 8 }]}>
+        <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
+        <Text style={{ fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" }}>
+          Couldn't load your profile
+        </Text>
+        <Text style={{ fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" }}>
+          Check your connection and try again
+        </Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          style={{ marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: AMBER, borderRadius: 20 }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" }}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   if (profileLoading || !profile) {
