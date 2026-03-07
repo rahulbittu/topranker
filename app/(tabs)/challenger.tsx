@@ -276,7 +276,7 @@ export default function ChallengerScreen() {
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
           <Text style={styles.errorText}>Couldn't load challenges</Text>
           <Text style={styles.errorSubtext}>Check your connection and try again</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Retry loading challenges">
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
         </View>

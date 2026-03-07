@@ -363,7 +363,7 @@ export default function SearchScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Discover</Text>
-        <TouchableOpacity style={styles.cityButton} onPress={() => setShowCityPicker(!showCityPicker)} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.cityButton} onPress={() => setShowCityPicker(!showCityPicker)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`City: ${city}. Tap to change`}>
           <Ionicons name="location-sharp" size={12} color={AMBER} />
           <Text style={styles.cityButtonText}>{city}</Text>
           <Ionicons name="chevron-down" size={12} color={Colors.textSecondary} />
@@ -397,7 +397,7 @@ export default function SearchScreen() {
           returnKeyType="search"
         />
         {!!query && (
-          <TouchableOpacity onPress={() => setQuery("")}>
+          <TouchableOpacity onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
             <Ionicons name="close-circle" size={15} color={Colors.textTertiary} />
           </TouchableOpacity>
         )}
@@ -449,7 +449,7 @@ export default function SearchScreen() {
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
           <Text style={styles.emptyText}>Could not load results</Text>
-          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton}>
+          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry loading results">
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
