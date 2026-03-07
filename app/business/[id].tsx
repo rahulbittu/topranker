@@ -414,7 +414,7 @@ export default function BusinessProfileScreen() {
             )}
           </View>
           <Text style={styles.businessMeta}>
-            {getCategoryDisplay(business.category).emoji} {getCategoryDisplay(business.category).label} {business.neighborhood ? `\u00B7 ${business.neighborhood}` : ""} \u00B7 {business.city}
+            {getCategoryDisplay(business.category).emoji} {getCategoryDisplay(business.category).label}{business.neighborhood ? ` \u00B7 ${business.neighborhood}` : ""} {"\u00B7"} {business.city}
           </Text>
           <View style={styles.nameCardRow}>
             {business.isOpenNow !== undefined && (
