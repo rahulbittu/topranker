@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
   },
 
   nameCard: {
-    backgroundColor: "#FFFFFF", marginHorizontal: 14, marginTop: -24,
+    backgroundColor: Colors.surface, marginHorizontal: 14, marginTop: -24,
     borderRadius: 16, padding: 16, gap: 4,
     ...Colors.cardShadow,
   },
@@ -568,7 +568,7 @@ const styles = StyleSheet.create({
   priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   scoreCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 16,
+    backgroundColor: Colors.surface, borderRadius: 16,
     padding: 20, alignItems: "center", gap: 4,
     ...Colors.cardShadow,
   },
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   googleRow: { flexDirection: "row", alignItems: "center", gap: 3 },
 
   subScoresCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
     ...Colors.cardShadow,
   },
   returnRateRow: {
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   rateButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
 
   hoursCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
     ...Colors.cardShadow,
   },
   hoursRow: { paddingVertical: 3, paddingHorizontal: 4, borderRadius: 4 },
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
   hoursTextToday: { color: Colors.gold, fontFamily: "DMSans_600SemiBold" },
 
   addressCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
     ...Colors.cardShadow,
   },
   mapEmbed: { borderRadius: 10, overflow: "hidden", marginBottom: 8 },
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   directionsBtnText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
   card: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
     gap: 10, ...Colors.cardShadow,
   },
 
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
 
   ratingRow: {
-    backgroundColor: "#FFFFFF", borderRadius: 12, padding: 13,
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 13,
     gap: 8, ...Colors.cardShadow,
   },
   ratingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
   photoGalleryEmptyText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 
   claimCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
     ...Colors.cardShadow,
   },
   claimTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },

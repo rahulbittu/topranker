@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
 
   // ===== Logged In =====
   profileCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,
     ...Colors.cardShadow,
   },
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   tierBadgeText: { fontSize: 9, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.8 },
 
   credibilityCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16,
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
     gap: 14, ...Colors.cardShadow,
   },
   credScoreRow: {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
 
   breakdownCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 14, padding: 16,
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
     gap: 10, ...Colors.cardShadow,
   },
   breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", marginBottom: 2 },
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
 
   historyRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    backgroundColor: "#FFFFFF", borderRadius: 12,
+    backgroundColor: Colors.surface, borderRadius: 12,
     paddingHorizontal: 14, paddingVertical: 12,
     ...Colors.cardShadow,
   },
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
 
   tierInfoSection: { gap: 10, marginTop: 8 },
   tierList: {
-    backgroundColor: "#FFFFFF", borderRadius: 14,
+    backgroundColor: Colors.surface, borderRadius: 14,
     overflow: "hidden", ...Colors.cardShadow,
   },
   tierRow: {

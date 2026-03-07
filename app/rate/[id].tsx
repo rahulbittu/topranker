@@ -850,7 +850,7 @@ const styles = StyleSheet.create({
     fontSize: 15, color: Colors.text, fontFamily: "DMSans_400Regular",
   },
   dishSuggestions: {
-    backgroundColor: "#FFFFFF", borderRadius: 10,
+    backgroundColor: Colors.surface, borderRadius: 10,
     overflow: "hidden", ...Colors.cardShadow,
   },
   dishSuggestionItem: {
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   noteCounterMax: { color: Colors.red },
 
   summaryCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, gap: 12,
+    backgroundColor: Colors.surface, borderRadius: 16, padding: 16, gap: 12,
     ...Colors.cardShadow,
   },
   summaryTitle: {
@@ -920,7 +920,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: 20, paddingTop: 12,
     borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.surface,
   },
   skipBtn: {
     paddingHorizontal: 16, paddingVertical: 14,
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
     textAlign: "center", marginBottom: 8,
   },
   rankChangeCard: {
-    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16,
+    width: "100%", backgroundColor: Colors.surface, borderRadius: 16,
     padding: 16, alignItems: "center", gap: 12,
     ...Colors.cardShadow,
   },
@@ -998,7 +998,7 @@ const styles = StyleSheet.create({
   },
 
   tierProgressCard: {
-    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14,
+    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
     padding: 16, gap: 8, ...Colors.cardShadow,
   },
   tierProgressHeader: {
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   },
 
   scoreBreakdownCard: {
-    width: "100%", backgroundColor: "#FFFFFF", borderRadius: 14,
+    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
     padding: 16, gap: 8, ...Colors.cardShadow,
   },
   scoreBreakdownRow: {

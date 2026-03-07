@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
 
   searchBox: {
     flexDirection: "row", alignItems: "center", marginHorizontal: 16,
-    backgroundColor: "#FFFFFF", borderRadius: 12, paddingHorizontal: 12,
+    backgroundColor: Colors.surface, borderRadius: 12, paddingHorizontal: 12,
     paddingVertical: 10, gap: 8, marginBottom: 9,
     ...Colors.cardShadow,
     shadowOpacity: 0.04,
@@ -510,7 +510,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10, gap: 10,
   },
   viewToggle: {
-    flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 8,
+    flexDirection: "row", backgroundColor: Colors.surface, borderRadius: 8,
     overflow: "hidden", borderWidth: 1, borderColor: Colors.border,
   },
   viewToggleBtn: {
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
   filterChipActive: { backgroundColor: AMBER, borderColor: AMBER },
   filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
@@ -537,7 +537,7 @@ const styles = StyleSheet.create({
 
   card: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "#FFFFFF", borderRadius: 14,
+    backgroundColor: Colors.surface, borderRadius: 14,
     padding: 12, minHeight: 100, gap: 14,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -611,7 +611,7 @@ const styles = StyleSheet.create({
   mapListHeaderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", fontFamily: "DMSans_500Medium" },
   mapCard: {
     flexDirection: "row", alignItems: "center",
-    backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 12, gap: 10,
     borderWidth: 1, borderColor: Colors.border,
   },
   mapCardRank: {
@@ -633,7 +633,7 @@ const styles = StyleSheet.create({
   mapBottomSheet: {
     position: "absolute" as const,
     bottom: 0, left: 0, right: 0,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: Colors.surface,
     borderTopLeftRadius: 16, borderTopRightRadius: 16,
     padding: 16, paddingTop: 12,
     ...Colors.cardShadow,

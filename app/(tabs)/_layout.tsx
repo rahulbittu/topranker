@@ -41,14 +41,14 @@ function ClassicTabLayout() {
         tabBarInactiveTintColor: Colors.textTertiary,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: "#FFFFFF",
+          backgroundColor: Colors.surface,
           borderTopWidth: 1,
           borderTopColor: Colors.border,
           ...(isWeb ? { height: 56 + 28 } : { height: 56 + 34 }),
           paddingTop: 6,
         },
         tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.surface }]} />
         ),
         tabBarLabelStyle: {
           fontFamily: "DMSans_600SemiBold",
