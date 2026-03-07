@@ -101,5 +101,6 @@ outputType = "console"
 [userenv]
 
 [userenv.shared]
-# Set these in Replit Secrets (lock icon in sidebar), NOT here
-# GOOGLE_CLIENT_ID, EXPO_PUBLIC_GOOGLE_CLIENT_ID, EXPO_PUBLIC_GOOGLE_MAPS_API_KEY
+GOOGLE_CLIENT_ID = "398463204542-83aqkprn9rvbkgkad9lnc770pl2mq4a0.apps.googleusercontent.com"
+EXPO_PUBLIC_GOOGLE_CLIENT_ID = "398463204542-83aqkprn9rvbkgkad9lnc770pl2mq4a0.apps.googleusercontent.com"
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY = "AIzaSyCJ_pqj90uhHEd9cYwqoLUb54Zbu36R-jM"
