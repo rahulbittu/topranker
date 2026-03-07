@@ -209,6 +209,7 @@ export async function getMemberRatings(
       source: ratings.source,
       createdAt: ratings.createdAt,
       businessName: businesses.name,
+      businessSlug: businesses.slug,
     })
     .from(ratings)
     .innerJoin(businesses, eq(ratings.businessId, businesses.id))

@@ -292,7 +292,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </View>
 
       {profile.ratingHistory.map((r: any, i: number) => (
-        <View key={i} style={styles.historyRow}>
+        <TouchableOpacity
+          key={i}
+          style={styles.historyRow}
+          activeOpacity={0.7}
+          onPress={() => r.businessSlug && router.push({ pathname: "/business/[id]", params: { id: r.businessSlug } })}
+        >
           <View style={styles.historyLeft}>
             <Text style={styles.historyName}>{r.businessName || "Business"}</Text>
             <Text style={styles.historyDate}>{formatTimeAgo(new Date(r.createdAt).getTime())}</Text>
@@ -301,7 +306,8 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             <Text style={styles.historyScore}>{parseFloat(r.rawScore).toFixed(1)}</Text>
             <Text style={styles.historyWeight}>{parseFloat(r.weight).toFixed(2)}x weight</Text>
           </View>
-        </View>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
       ))}
 
       {profile.ratingHistory.length === 0 && (
