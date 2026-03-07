@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_600SemiBold",
   },
   comingSoonBadge: {
-    backgroundColor: "#E0E0E0", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+    backgroundColor: Colors.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
   },
   comingSoonText: {
     fontSize: 9, fontWeight: "700", color: Colors.textTertiary,

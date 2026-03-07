@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", gap: 4, paddingHorizontal: 20, marginTop: 8,
   },
   progressDot: {
-    flex: 1, height: 3, borderRadius: 2, backgroundColor: "#E0E0E0",
+    flex: 1, height: 3, borderRadius: 2, backgroundColor: Colors.border,
   },
   progressDotComplete: { backgroundColor: Colors.gold },
   progressDotCurrent: { backgroundColor: Colors.textTertiary },
@@ -778,7 +778,7 @@ const styles = StyleSheet.create({
   circle: {
     width: CIRCLE_SIZE, height: CIRCLE_SIZE, borderRadius: CIRCLE_SIZE / 2,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
-    borderWidth: 2, borderColor: "#E0E0E0",
+    borderWidth: 2, borderColor: Colors.border,
   },
   circleActive: {
     backgroundColor: Colors.text, borderColor: Colors.text,
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   yesNoBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
     gap: 8, paddingVertical: 28, borderRadius: 20,
-    backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: "#E0E0E0",
+    backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: Colors.border,
   },
   yesNoBtnYes: { backgroundColor: Colors.green, borderColor: Colors.green },
   yesNoBtnNo: { backgroundColor: Colors.red, borderColor: Colors.red },
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
   },
   dishPillTextSelected: { color: "#FFFFFF" },
   dishVoteBadge: {
-    backgroundColor: "#E0E0E0", paddingHorizontal: 6,
+    backgroundColor: Colors.border, paddingHorizontal: 6,
     paddingVertical: 2, borderRadius: 8,
   },
   dishVoteBadgeSelected: { backgroundColor: "rgba(255,255,255,0.2)" },
@@ -1013,7 +1013,7 @@ const styles = StyleSheet.create({
     fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   tierBarOuter: {
-    height: 4, borderRadius: 2, backgroundColor: "#E0E0E0", overflow: "hidden",
+    height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: "hidden",
   },
   tierBarInner: { height: "100%", borderRadius: 2 },
   tierNextText: {

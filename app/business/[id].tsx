@@ -62,7 +62,7 @@ function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
             <View
               style={[styles.distBarFill, {
                 width: `${(count / maxCount) * 100}%` as any,
-                backgroundColor: count === maxCount && count > 0 ? Colors.gold : "#E0E0E0",
+                backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.border,
               }]}
             />
           </View>
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   },
   subScoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   subScoreLabel: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", width: 60 },
-  subScoreTrack: { flex: 1, height: 3, backgroundColor: "#E0E0E0", borderRadius: 2, overflow: "hidden" },
+  subScoreTrack: { flex: 1, height: 3, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
   subScoreFill: { height: "100%", backgroundColor: Colors.gold, borderRadius: 2 },
   subScoreValue: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold", width: 28, textAlign: "right" },
 
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   distChart: { gap: 7 },
   distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  distBarTrack: { flex: 1, height: 4, backgroundColor: "#E0E0E0", borderRadius: 2, overflow: "hidden" },
+  distBarTrack: { flex: 1, height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
   distBarFill: { height: "100%", borderRadius: 2 },
   distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
 
