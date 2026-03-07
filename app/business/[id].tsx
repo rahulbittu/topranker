@@ -502,6 +502,8 @@ export default function BusinessProfileScreen() {
               <TouchableOpacity
                 style={styles.claimBtn}
                 activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Claim this business listing"
                 onPress={() => {
                   if (Platform.OS === "web") {
                     window.alert("Business claiming will be available soon. Contact us to get started.");
@@ -517,6 +519,8 @@ export default function BusinessProfileScreen() {
 
           <TouchableOpacity
             style={styles.reportLink}
+            accessibilityRole="button"
+            accessibilityLabel="Report suspicious activity"
             onPress={() => {
               if (Platform.OS === "web") {
                 window.alert("Thank you. Our team will review this listing.");
