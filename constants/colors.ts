@@ -1,47 +1,46 @@
-const AMBER = "#B8860B";
-const AMBER_FAINT = "rgba(184, 134, 11, 0.08)";
+import { BRAND } from "./brand";
 
 const Colors = {
-  background: "#FFFFFF",
+  background: BRAND.colors.bg,
   surface: "#FFFFFF",
   surfaceRaised: "#F8F8F8",
-  border: "#F0F0F0",
-  borderLight: "#F0F0F0",
+  border: BRAND.colors.border,
+  borderLight: BRAND.colors.border,
 
-  gold: AMBER,
-  goldDim: AMBER,
-  goldFaint: AMBER_FAINT,
+  gold: BRAND.colors.amber,
+  goldDim: BRAND.colors.amberDark,
+  goldFaint: "rgba(196, 154, 26, 0.08)",
   goldLight: "#FDF6E8",
 
   silver: "#AAAAAA",
   bronze: "#CCCCCC",
 
-  text: "#1A1A1A",
-  textSecondary: "#6B6B6B",
-  textTertiary: "#AAAAAA",
+  text: BRAND.colors.ink,
+  textSecondary: BRAND.colors.gray,
+  textTertiary: BRAND.colors.lightGray,
 
-  green: "#2D7D46",
-  greenBright: "#2D7D46",
-  greenFaint: "rgba(45, 125, 70, 0.08)",
-  red: "#C0392B",
-  redBright: "#C0392B",
-  redFaint: "rgba(192, 57, 43, 0.08)",
+  green: BRAND.colors.green,
+  greenBright: BRAND.colors.green,
+  greenFaint: "rgba(52, 199, 89, 0.08)",
+  red: BRAND.colors.red,
+  redBright: BRAND.colors.red,
+  redFaint: "rgba(255, 59, 48, 0.08)",
 
-  blue: "#6B6B6B",
-  blueFaint: "rgba(107, 107, 107, 0.08)",
+  blue: BRAND.colors.gray,
+  blueFaint: "rgba(99, 99, 102, 0.08)",
 
-  rankUp: "#2D7D46",
-  rankDown: "#C0392B",
-  rankStable: "#AAAAAA",
+  rankUp: BRAND.colors.green,
+  rankDown: BRAND.colors.red,
+  rankStable: BRAND.colors.lightGray,
 
-  tierNew: "#AAAAAA",
-  tierRegular: "#6B6B6B",
-  tierTrusted: "#4A4A4A",
-  tierTop: AMBER,
+  tierNew: BRAND.colors.lightGray,
+  tierRegular: BRAND.colors.gray,
+  tierTrusted: BRAND.colors.dark,
+  tierTop: BRAND.colors.amber,
 
-  tint: AMBER,
+  tint: BRAND.colors.amber,
   tabIconDefault: "#CCCCCC",
-  tabIconSelected: "#1A1A1A",
+  tabIconSelected: BRAND.colors.ink,
 
   shadow: "rgba(0,0,0,0.06)",
   cardShadow: {

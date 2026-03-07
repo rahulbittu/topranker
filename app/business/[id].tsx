@@ -9,6 +9,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 import { fetchBusinessBySlug, type ApiDish } from "@/lib/api";
 import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, type CredibilityTier,
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
     position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
   },
   heroDot: { width: 7, height: 7, borderRadius: 4 },
-  heroDotActive: { backgroundColor: "#B8860B" },
+  heroDotActive: { backgroundColor: BRAND.colors.amber },
   heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   heroImagePlaceholder: {
     backgroundColor: Colors.surfaceRaised,

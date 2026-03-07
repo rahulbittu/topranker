@@ -8,6 +8,8 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
+import { AppLogo } from "@/components/Logo";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
   TIER_SCORE_RANGES, formatTimeAgo,
@@ -16,7 +18,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 
-const AMBER = "#B8860B";
+const AMBER = BRAND.colors.amber;
 
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];
@@ -71,8 +73,7 @@ function LoggedOutView() {
   return (
     <View style={[styles.loggedOutContainer, { paddingTop: topPad }]}>
       <View style={styles.loggedOutTop}>
-        <Text style={styles.loggedOutBrand}>Top Ranker</Text>
-        <Text style={styles.loggedOutSubtitle}>Dallas's Most Trusted Rankings</Text>
+        <AppLogo size="lg" dark />
       </View>
 
       <View style={styles.loggedOutForm}>
@@ -375,7 +376,7 @@ const styles = StyleSheet.create({
 
   // ===== Logged Out (Fix 6) =====
   loggedOutContainer: {
-    flex: 1, backgroundColor: "#FFFFFF",
+    flex: 1, backgroundColor: BRAND.colors.navy,
     alignItems: "center", justifyContent: "flex-start",
     paddingHorizontal: 32,
   },
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    backgroundColor: "rgba(255,255,255,0.1)", borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
     borderRadius: 12, height: 52,
     width: "100%",
   },
@@ -404,14 +405,14 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: "700", color: "#4285F4",
   },
   googleButtonText: {
-    fontSize: 16, fontWeight: "600", color: "#1C1C1E",
+    fontSize: 16, fontWeight: "600", color: "#fff",
   },
   orDivider: {
     flexDirection: "row", alignItems: "center", gap: 12,
     marginVertical: 4,
   },
-  orLine: { flex: 1, height: 1, backgroundColor: "#E5E5EA" },
-  orText: { fontSize: 13, color: "#636366" },
+  orLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.2)" },
+  orText: { fontSize: 13, color: "rgba(255,255,255,0.5)" },
   errorText: {
     fontSize: 13, color: "#FF3B30", textAlign: "center",
   },
@@ -420,9 +421,9 @@ const styles = StyleSheet.create({
   },
   input: {
     width: "100%", height: 48, borderRadius: 10,
-    borderWidth: 1, borderColor: "#E5E5EA",
-    paddingHorizontal: 16, fontSize: 15, color: "#1C1C1E",
-    backgroundColor: "#fff",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 16, fontSize: 15, color: "#fff",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   eyeButton: {
     position: "absolute" as const, right: 12, top: 0, bottom: 0,
@@ -437,10 +438,10 @@ const styles = StyleSheet.create({
     fontSize: 16, fontWeight: "700", color: "#fff",
   },
   signUpLink: {
-    fontSize: 14, color: "#636366", textAlign: "center", marginTop: 4,
+    fontSize: 14, color: "rgba(255,255,255,0.5)", textAlign: "center", marginTop: 4,
   },
   signUpLinkBold: {
-    color: "#007AFF", fontWeight: "600",
+    color: BRAND.colors.amberLight, fontWeight: "600",
   },
 
   // ===== Logged In =====

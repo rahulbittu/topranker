@@ -25,6 +25,18 @@ export const BRAND = {
     sans:    "'DM Sans', sans-serif",       // UI, body, buttons
   },
 
+  // React Native font family names (loaded via expo-font)
+  rnFonts: {
+    displayBold:       "PlayfairDisplay_700Bold",
+    displayExtraBold:  "PlayfairDisplay_800ExtraBold",
+    displayRegular:    "PlayfairDisplay_400Regular",
+    displayItalic:     "PlayfairDisplay_400Regular_Italic",
+    sansRegular:       "DMSans_400Regular",
+    sansMedium:        "DMSans_500Medium",
+    sansSemiBold:      "DMSans_600SemiBold",
+    sansBold:          "DMSans_700Bold",
+  },
+
   tagline: "Where your rankings matter.",
 };
 

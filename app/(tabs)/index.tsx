@@ -9,10 +9,12 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
+import { AppLogo } from "@/components/Logo";
 import { formatCategoryLabel } from "@/lib/data";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 
-const AMBER = "#B8860B";
+const AMBER = BRAND.colors.amber;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_PADDING = 14;
 const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
@@ -180,7 +182,7 @@ export default function LeaderboardScreen() {
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
-        <Text style={styles.brandTitle}>TOP RANKER</Text>
+        <AppLogo size="md" />
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.citySelector}>
             <Ionicons name="location-sharp" size={14} color={AMBER} />

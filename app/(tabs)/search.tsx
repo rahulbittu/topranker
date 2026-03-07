@@ -8,10 +8,11 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 import { formatCategoryLabel } from "@/lib/data";
 import { fetchBusinessSearch } from "@/lib/api";
 
-const AMBER = "#B8860B";
+const AMBER = BRAND.colors.amber;
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
