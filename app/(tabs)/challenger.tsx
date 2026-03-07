@@ -245,7 +245,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
 export default function ChallengerScreen() {
   const insets = useSafeAreaInsets();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const { data: challenges = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["challengers", "Dallas"],

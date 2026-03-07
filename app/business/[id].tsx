@@ -181,7 +181,7 @@ export default function BusinessProfileScreen() {
     setHeroPhotoIdx(idx);
   }, []);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   if (isLoading) {
     return (

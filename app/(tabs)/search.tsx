@@ -357,7 +357,7 @@ export default function SearchScreen() {
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
   }, [allBusinesses, activeFilter]);
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>

@@ -49,7 +49,7 @@ function BreakdownRow({ label, value, icon }: { label: string; value: string; ic
 function LoggedOutView() {
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -176,7 +176,7 @@ function LoggedOutView() {
 function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refetch: () => Promise<any> }) {
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const tier = profile.credibilityTier as CredibilityTier;
   const tierColor = TIER_COLORS[tier];

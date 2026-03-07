@@ -241,7 +241,7 @@ export default function RateScreen() {
     },
   });
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const topPad = Platform.OS === "web" ? 20 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
   if (isLoading) {
