@@ -7,7 +7,9 @@ echo "========================================="
 
 echo ""
 echo "[1/4] Pulling latest from GitHub..."
+git stash --include-untracked 2>/dev/null || true
 git pull origin main --ff-only
+git stash pop 2>/dev/null || true
 echo "Done."
 
 echo ""
