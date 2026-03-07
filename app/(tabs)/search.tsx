@@ -79,6 +79,8 @@ function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank
       style={styles.card}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
       <BusinessPhoto item={item} size={80} />
       <View style={styles.cardInfo}>
