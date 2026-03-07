@@ -184,7 +184,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
     if ((window as any).google && (window as any).google.maps) {
       initMap();
     } else {
-      const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+      const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
       if (!apiKey) {
         clearTimeout(timeout);
         setMapError(true);
