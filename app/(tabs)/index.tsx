@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Animated, ActivityIndicator, Image,
-  Dimensions,
+  ScrollView, Platform, ActivityIndicator, Image,
+  Dimensions, TextInput,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -76,6 +76,23 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
   );
 }
 
+function StarRating({ score }: { score: number }) {
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    const filled = score >= i;
+    const halfFilled = !filled && score >= i - 0.5;
+    stars.push(
+      <Ionicons
+        key={i}
+        name={filled ? "star" : halfFilled ? "star-half" : "star-outline"}
+        size={14}
+        color={AMBER}
+      />
+    );
+  }
+  return <View style={{ flexDirection: "row", gap: 1 }}>{stars}</View>;
+}
+
 function HeroCard({ item }: { item: MappedBusiness }) {
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const catDisplay = getCategoryDisplay(item.category);
@@ -96,21 +113,30 @@ function HeroCard({ item }: { item: MappedBusiness }) {
         <View style={styles.heroCrownBadge}>
           <Text style={styles.heroCrownText}>{"\u{1F451}"} #1 IN DALLAS</Text>
         </View>
+        {/* OPEN/CLOSED pill top-right */}
+        {item.isOpenNow !== undefined && (
+          <View style={[styles.heroOpenPill, item.isOpenNow ? styles.openPillOpen : styles.openPillClosed]}>
+            <Text style={styles.openPillText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
+          </View>
+        )}
         {/* Business name bottom-left */}
         <Text style={styles.heroName} numberOfLines={1}>{item.name}</Text>
         {/* Score bottom-right */}
-        <View style={styles.heroScoreArea}>
-          {item.isOpenNow !== undefined && (
-            <View style={[styles.openPill, item.isOpenNow ? styles.openPillOpen : styles.openPillClosed]}>
-              <Text style={styles.openPillText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
-            </View>
-          )}
-          <Text style={styles.heroScore}>{item.weightedScore.toFixed(1)}</Text>
-        </View>
+        <Text style={styles.heroScore}>{item.weightedScore.toFixed(1)}</Text>
       </View>
       {/* White strip below */}
       <View style={styles.heroStrip}>
-        <Text style={styles.heroStripCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
+        <View style={styles.heroStripLeft}>
+          <Text style={styles.heroStripCategory}>
+            {catDisplay.emoji} {catDisplay.label}
+            {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
+            {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
+          </Text>
+          <View style={styles.heroStripRow2}>
+            <StarRating score={item.weightedScore} />
+            <Text style={styles.heroStripRatings}>{item.ratingCount} ratings</Text>
+          </View>
+        </View>
         <TouchableOpacity
           onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
         >
@@ -153,14 +179,18 @@ function RankedCard({ item }: { item: MappedBusiness }) {
         <Text style={styles.rankedMeta} numberOfLines={1}>
           {catDisplay.emoji} {catDisplay.label}
           {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
+          {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
         <View style={styles.rankedRow3}>
-          <Text style={styles.rankedScore}>{item.weightedScore.toFixed(1)}</Text>
+          <Text style={styles.rankedScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
+          <Text style={styles.rankedRatingCount}>({item.ratingCount} ratings)</Text>
           {item.rankDelta !== 0 && (
             <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
+        </View>
+        <View style={styles.rankedRow4}>
           {item.isOpenNow !== undefined && (
             <View style={[styles.statusPillSmall, item.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
               <Text style={styles.statusPillSmallText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
@@ -175,6 +205,7 @@ function RankedCard({ item }: { item: MappedBusiness }) {
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Fetch dynamic categories from API
   const { data: dbCategories = [] } = useQuery({
@@ -198,9 +229,17 @@ export default function LeaderboardScreen() {
     staleTime: 30000,
   });
 
+  // Filter by search query
+  const filteredBiz = searchQuery.trim()
+    ? businesses.filter((b: MappedBusiness) =>
+        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (b.neighborhood && b.neighborhood.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : businesses;
+
   const topPad = Platform.OS === "web" ? 67 : insets.top;
-  const heroBiz = businesses.length > 0 ? businesses[0] : null;
-  const restBiz = businesses.slice(1);
+  const heroBiz = filteredBiz.length > 0 ? filteredBiz[0] : null;
+  const restBiz = filteredBiz.slice(1);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -213,6 +252,23 @@ export default function LeaderboardScreen() {
             <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Search Bar */}
+      <View style={styles.searchBar}>
+        <Ionicons name="search" size={16} color={Colors.textTertiary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search restaurants, dishes..."
+          placeholderTextColor={Colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {!!searchQuery && (
+          <TouchableOpacity onPress={() => setSearchQuery("")}>
+            <Ionicons name="close-circle" size={16} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Category Chips */}
@@ -306,6 +362,24 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_600SemiBold",
   },
 
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F0EFE9",
+    paddingHorizontal: 14,
+    gap: 8,
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+    fontFamily: "DMSans_400Regular",
+  },
+
   chipsRow: { flexGrow: 0, marginBottom: 8 },
   chipsContainer: {
     paddingHorizontal: 16,
@@ -318,7 +392,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
-    height: 40,
+    height: 38,
     borderRadius: 100,
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -334,9 +408,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   chipEmojiCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: "rgba(0,0,0,0.04)",
     alignItems: "center",
     justifyContent: "center",
@@ -345,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   chipEmoji: {
-    fontSize: 14,
+    fontSize: 13,
   },
   chipLabel: {
     fontSize: 13,
@@ -394,6 +468,14 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
     letterSpacing: 0.5,
   },
+  heroOpenPill: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
+  },
   heroName: {
     position: "absolute",
     bottom: 12,
@@ -405,24 +487,15 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     maxWidth: "60%",
   },
-  heroScoreArea: {
+  heroScore: {
     position: "absolute",
     bottom: 12,
     right: 14,
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  heroScore: {
     fontSize: 26,
     fontWeight: "900",
     color: "#FFD700",
     fontFamily: "PlayfairDisplay_900Black",
     letterSpacing: -0.5,
-  },
-  openPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 99,
   },
   openPillOpen: { backgroundColor: "#34C759" },
   openPillClosed: { backgroundColor: "#FF3B30" },
@@ -440,10 +513,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  heroStripLeft: { gap: 4, flex: 1 },
+  heroStripRow2: { flexDirection: "row", alignItems: "center", gap: 8 },
   heroStripCategory: {
     fontSize: 12,
     color: Colors.textSecondary,
     fontFamily: "DMSans_500Medium",
+  },
+  heroStripRatings: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
   },
   heroStripLink: {
     fontSize: 12,
@@ -457,19 +537,18 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     padding: 12,
+    minHeight: 100,
     gap: 14,
-    borderWidth: 1,
-    borderColor: "#E5E5EA",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
     elevation: 2,
   },
   rankedPhoto: {
     width: 80,
     height: 80,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: Colors.surfaceRaised,
   },
   rankedPhotoFallback: {
@@ -478,7 +557,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rankedPhotoInitial: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "700",
     color: "#fff",
   },
@@ -501,32 +580,42 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   rankedRank: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: "700",
     color: AMBER,
     fontFamily: "PlayfairDisplay_900Black",
   },
   rankedMeta: {
     fontSize: 12,
-    color: AMBER,
+    color: Colors.textSecondary,
     fontFamily: "DMSans_500Medium",
   },
   rankedRow3: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     marginTop: 2,
   },
   rankedScore: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "900",
     color: AMBER,
     fontFamily: "PlayfairDisplay_900Black",
-    letterSpacing: -0.3,
+  },
+  rankedRatingCount: {
+    fontSize: 11,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
   },
   rankedDelta: {
     fontSize: 11,
     fontFamily: "DMSans_500Medium",
+  },
+  rankedRow4: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 1,
   },
   statusPillSmall: {
     paddingHorizontal: 6,
