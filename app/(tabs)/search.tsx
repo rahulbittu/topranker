@@ -12,6 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchBusinessSearch } from "@/lib/api";
+import { DiscoverSkeleton } from "@/components/Skeleton";
 
 const AMBER = BRAND.colors.amber;
 
@@ -427,9 +428,7 @@ export default function SearchScreen() {
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={AMBER} />
-        </View>
+        <DiscoverSkeleton />
       ) : isError ? (
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
