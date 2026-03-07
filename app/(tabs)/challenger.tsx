@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  fighter: { flex: 1, alignItems: "center", gap: 4 } as any,
+  fighter: { flex: 1, alignItems: "center" as const, gap: 4 },
   fighterPhoto: {
     width: 56,
     height: 56,
