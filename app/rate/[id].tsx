@@ -230,7 +230,14 @@ export default function RateScreen() {
       setShowConfirm(true);
     },
     onError: (err: Error) => {
-      setSubmitError(err.message || "Failed to submit rating");
+      const msg = err.message || "";
+      if (msg.includes("Failed to fetch") || msg.includes("Network")) {
+        setSubmitError("No internet connection. Please check your network and try again.");
+      } else if (msg.includes("401")) {
+        setSubmitError("Your session has expired. Please sign in again.");
+      } else {
+        setSubmitError(msg || "Failed to submit rating");
+      }
     },
   });
 
