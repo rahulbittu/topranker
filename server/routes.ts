@@ -95,7 +95,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const city = (req.query.city as string) || "Dallas";
       const category = (req.query.category as string) || "restaurant";
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
 
       const bizList = await getLeaderboard(city, category, limit);
       const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
@@ -159,8 +159,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/businesses/:id/ratings", async (req: Request, res: Response) => {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const perPage = parseInt(req.query.per_page as string) || 20;
+      const page = Math.max(1, parseInt(req.query.page as string) || 1);
+      const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page as string) || 20));
       const data = await getBusinessRatings(req.params.id as string, page, perPage);
       return res.json({ data });
     } catch (err: any) {
