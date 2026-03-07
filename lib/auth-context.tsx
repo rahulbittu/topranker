@@ -48,7 +48,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     } catch {
-      setUser(null);
+      // Backend unreachable — provide demo user for offline/visual testing
+      console.log("[MockAuth] Backend unreachable, using demo user");
+      setUser({
+        id: "demo-member",
+        displayName: "Alex Demo",
+        username: "alexdemo",
+        email: "alex@demo.com",
+        city: "Dallas",
+        credibilityScore: 72,
+        credibilityTier: "trusted",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -1,6 +1,16 @@
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 import { CATEGORY_MAP, type CredibilityTier } from "@/lib/data";
+import {
+  MOCK_BUSINESSES,
+  MOCK_RATINGS,
+  MOCK_DISHES,
+  MOCK_CHALLENGERS,
+  MOCK_MEMBER_PROFILE,
+  MOCK_MEMBER_IMPACT,
+  MOCK_RANK_HISTORY,
+  MOCK_CATEGORIES,
+} from "@/lib/mock-data";
 
 export interface ApiBusiness {
   id: string;
@@ -175,24 +185,51 @@ export function mapApiRating(rating: ApiRating) {
   };
 }
 
+/** Returns mock data for a given API path when backend is unreachable */
+function getMockData(path: string): unknown | null {
+  if (path.startsWith("/api/leaderboard/categories")) return MOCK_CATEGORIES;
+  if (path.startsWith("/api/leaderboard")) return MOCK_BUSINESSES;
+  if (path.startsWith("/api/trending")) return MOCK_BUSINESSES.filter(b => b.rankDelta > 0).slice(0, 3);
+  if (path.startsWith("/api/challengers")) return MOCK_CHALLENGERS;
+  if (path.startsWith("/api/members/me/impact")) return MOCK_MEMBER_IMPACT;
+  if (path.startsWith("/api/members/me")) return MOCK_MEMBER_PROFILE;
+  if (path.includes("/rank-history")) return MOCK_RANK_HISTORY;
+  if (path.startsWith("/api/businesses/search")) return MOCK_BUSINESSES.slice(0, 5);
+  if (path.startsWith("/api/businesses/")) {
+    const slug = path.split("/api/businesses/")[1]?.split("?")[0];
+    const biz = MOCK_BUSINESSES.find(b => b.slug === slug) || MOCK_BUSINESSES[0];
+    return { ...biz, recentRatings: MOCK_RATINGS, dishes: MOCK_DISHES };
+  }
+  return null;
+}
+
 async function apiFetch<T>(path: string): Promise<T> {
   const baseUrl = getApiUrl();
   const url = new URL(path, baseUrl);
-  const res = await fetch(url.toString(), { credentials: "include" });
-  if (!res.ok) {
-    let message = res.statusText;
-    try {
-      const text = await res.text();
-      // Try to parse as JSON for structured error
-      const json = JSON.parse(text);
-      message = json.message || json.error || text;
-    } catch {
-      // If response is HTML or unparseable, use status text
+  try {
+    const res = await fetch(url.toString(), { credentials: "include" });
+    if (!res.ok) {
+      let message = res.statusText;
+      try {
+        const text = await res.text();
+        const json = JSON.parse(text);
+        message = json.message || json.error || text;
+      } catch {
+        // If response is HTML or unparseable, use status text
+      }
+      throw new Error(`${res.status}: ${message}`);
     }
-    throw new Error(`${res.status}: ${message}`);
+    const json = await res.json();
+    return json.data;
+  } catch (err) {
+    // Fallback to mock data when backend is unreachable
+    const mock = getMockData(path);
+    if (mock !== null) {
+      console.log(`[MockData] Serving mock for: ${path}`);
+      return mock as T;
+    }
+    throw err;
   }
-  const json = await res.json();
-  return json.data;
 }
 
 export async function fetchLeaderboard(city: string, category: string, limit: number = 50) {
