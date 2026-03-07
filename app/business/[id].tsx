@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, Linking, Share, Dimensions, Image,
+  NativeScrollEvent, NativeSyntheticEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -160,6 +161,13 @@ export default function BusinessProfileScreen() {
   const business = data?.business;
   const ratings = (data?.ratings || []) as MappedRating[];
   const dishes = data?.dishes || [];
+  const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
+  const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
+
+  const onHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+    setHeroPhotoIdx(idx);
+  }, []);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
@@ -217,13 +225,31 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
-        {/* Hero Image */}
+        {/* Hero Image Carousel */}
         <View style={styles.heroImageContainer}>
-          {business.photoUrl ? (
-            <Image source={{ uri: business.photoUrl }} style={styles.heroImage} resizeMode="cover" />
+          {photoUrls.length > 0 ? (
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={onHeroScroll}
+              scrollEventThrottle={16}
+            >
+              {photoUrls.map((url, i) => (
+                <Image key={i} source={{ uri: url }} style={styles.heroImage} resizeMode="cover" />
+              ))}
+            </ScrollView>
           ) : (
             <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
               <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
+            </View>
+          )}
+
+          {photoUrls.length > 1 && (
+            <View style={styles.heroDotContainer}>
+              {photoUrls.map((_, i) => (
+                <View key={i} style={[styles.heroDot, i === heroPhotoIdx ? styles.heroDotActive : styles.heroDotInactive]} />
+              ))}
             </View>
           )}
 
@@ -367,10 +393,27 @@ export default function BusinessProfileScreen() {
           {/* Photo Gallery */}
           <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>Photos</Text>
-            <View style={styles.photoGalleryEmpty}>
-              <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
-              <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
-            </View>
+            {photoUrls.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photoGalleryScroll}
+              >
+                {photoUrls.map((url, i) => (
+                  <Image
+                    key={i}
+                    source={{ uri: url }}
+                    style={styles.photoGalleryImage}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={styles.photoGalleryEmpty}>
+                <Ionicons name="camera-outline" size={28} color={Colors.textTertiary} />
+                <Text style={styles.photoGalleryEmptyText}>No photos yet</Text>
+              </View>
+            )}
           </View>
 
           {/* Claim Listing */}
@@ -408,7 +451,14 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
 
   heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
-  heroImage: { width: "100%", height: HERO_HEIGHT },
+  heroImage: { width: SCREEN_WIDTH, height: HERO_HEIGHT },
+  heroDotContainer: {
+    flexDirection: "row", justifyContent: "center", gap: 5,
+    position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
+  },
+  heroDot: { width: 7, height: 7, borderRadius: 4 },
+  heroDotActive: { backgroundColor: "#B8860B" },
+  heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   heroImagePlaceholder: {
     backgroundColor: Colors.surfaceRaised,
     alignItems: "center",
@@ -555,6 +605,11 @@ const styles = StyleSheet.create({
   ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", fontFamily: "DMSans_400Regular", lineHeight: 17 },
 
+  photoGalleryScroll: { gap: 10 },
+  photoGalleryImage: {
+    width: SCREEN_WIDTH - 48, height: 200, borderRadius: 14,
+    backgroundColor: Colors.surfaceRaised,
+  },
   photoGalleryEmpty: {
     backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 24,
     alignItems: "center", justifyContent: "center", gap: 6,

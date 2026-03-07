@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ScrollView, Platform, ActivityIndicator, Image,
+  TextInput, ScrollView, Platform, ActivityIndicator, Image, Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -29,9 +29,9 @@ interface MappedBusiness {
   rank: number;
   rankDelta: number;
   isChallenger: boolean;
-  priceRange: string | null;
-  featuredDish: string | null;
+  priceRange?: string;
   photoUrl?: string;
+  photoUrls?: string[];
   isOpenNow?: boolean;
   lat?: number;
   lng?: number;
@@ -39,12 +39,22 @@ interface MappedBusiness {
 
 function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: number }) {
   const [imgError, setImgError] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
   const initial = item.name.charAt(0).toUpperCase();
+  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
 
-  if (item.photoUrl && !imgError) {
+  if (photos.length === 0 || imgError) {
+    return (
+      <View style={[styles.cardPhotoFallback, { width: size, height: size }]}>
+        <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
+      </View>
+    );
+  }
+
+  if (photos.length === 1) {
     return (
       <Image
-        source={{ uri: item.photoUrl }}
+        source={{ uri: photos[0] }}
         style={[styles.cardPhoto, { width: size, height: size }]}
         onError={() => setImgError(true)}
       />
@@ -52,8 +62,24 @@ function BusinessPhoto({ item, size = 72 }: { item: MappedBusiness; size?: numbe
   }
 
   return (
-    <View style={[styles.cardPhotoFallback, { width: size, height: size }]}>
-      <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
+    <View style={{ width: size, height: size, position: "relative" }}>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={(e) => setActiveIdx(Math.round(e.nativeEvent.contentOffset.x / size))}
+        scrollEventThrottle={16}
+        style={{ width: size, height: size, borderRadius: 10, overflow: "hidden" }}
+      >
+        {photos.map((url, i) => (
+          <Image key={i} source={{ uri: url }} style={{ width: size, height: size }} resizeMode="cover" />
+        ))}
+      </ScrollView>
+      <View style={styles.miniDotContainer}>
+        {photos.map((_, i) => (
+          <View key={i} style={[styles.miniDot, i === activeIdx ? styles.miniDotActive : styles.miniDotInactive]} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -82,6 +108,12 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
               <Text style={styles.cardNeighborhood}>{item.neighborhood}</Text>
             </>
           ) : null}
+          {item.priceRange ? (
+            <>
+              <Text style={styles.cardDot}> · </Text>
+              <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
+            </>
+          ) : null}
         </View>
         <View style={styles.cardRow3}>
           {isOpen !== undefined && isOpen !== null && (
@@ -99,16 +131,64 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
   );
 }
 
-function GoogleMapView({ businesses }: { businesses: MappedBusiness[] }) {
+function MapBusinessCard({ item }: { item: MappedBusiness }) {
+  const categoryLabel = formatCategoryLabel(item.category);
+
+  const openInMaps = () => {
+    if (item.lat && item.lng) {
+      const url = Platform.OS === "web"
+        ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
+        : Platform.OS === "ios"
+        ? `maps:?q=${item.lat},${item.lng}`
+        : `geo:${item.lat},${item.lng}?q=${item.lat},${item.lng}(${encodeURIComponent(item.name)})`;
+      Linking.openURL(url);
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.mapCard}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
+      activeOpacity={0.75}
+    >
+      <View style={styles.mapCardRank}>
+        <Text style={styles.mapCardRankText}>{item.rank}</Text>
+      </View>
+      <View style={styles.mapCardInfo}>
+        <Text style={styles.mapCardName} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.mapCardMeta}>{categoryLabel}{item.neighborhood ? ` · ${item.neighborhood}` : ""}</Text>
+      </View>
+      <View style={styles.mapCardRight}>
+        <Text style={styles.mapCardScore}>{item.weightedScore.toFixed(2)}</Text>
+        {item.lat && item.lng ? (
+          <TouchableOpacity onPress={openInMaps} style={styles.mapPinBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="navigate" size={14} color={AMBER} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: string }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
+
+  const bizWithCoords = businesses.filter(b => b.lat && b.lng);
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
 
+    const timeout = setTimeout(() => {
+      if (!mapReady) setMapError(true);
+    }, 5000);
+
     const initMap = () => {
       if (!mapRef.current || !(window as any).google) return;
+      clearTimeout(timeout);
 
       const map = new (window as any).google.maps.Map(mapRef.current, {
         center: { lat: 32.7767, lng: -96.7970 },
@@ -120,43 +200,48 @@ function GoogleMapView({ businesses }: { businesses: MappedBusiness[] }) {
         ],
       });
       mapInstance.current = map;
-
-      updateMarkers(map, businesses);
+      setMapReady(true);
+      updateMarkers(map, bizWithCoords);
     };
 
     if ((window as any).google && (window as any).google.maps) {
       initMap();
     } else {
       const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || "";
+      if (!apiKey) {
+        clearTimeout(timeout);
+        setMapError(true);
+        return;
+      }
       const script = document.createElement("script");
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
       script.async = true;
       script.defer = true;
       script.onload = initMap;
+      script.onerror = () => { clearTimeout(timeout); setMapError(true); };
       document.head.appendChild(script);
     }
 
     return () => {
+      clearTimeout(timeout);
       markersRef.current.forEach(m => m.setMap(null));
       markersRef.current = [];
     };
   }, []);
 
   useEffect(() => {
-    if (mapInstance.current) {
-      updateMarkers(mapInstance.current, businesses);
+    if (mapInstance.current && mapReady) {
+      updateMarkers(mapInstance.current, bizWithCoords);
     }
-  }, [businesses]);
+  }, [businesses, mapReady]);
 
   function updateMarkers(map: any, items: MappedBusiness[]) {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
-
     const infoWindow = new (window as any).google.maps.InfoWindow();
 
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
-
       const marker = new (window as any).google.maps.Marker({
         position: { lat: biz.lat, lng: biz.lng },
         map,
@@ -175,9 +260,6 @@ function GoogleMapView({ businesses }: { businesses: MappedBusiness[] }) {
           <div style="font-family:sans-serif;max-width:220px;padding:4px">
             <div style="font-weight:700;font-size:14px;color:#1C1C1E">${biz.name}</div>
             <div style="font-size:12px;color:#636366;margin-top:2px">#${biz.rank} · ${biz.weightedScore.toFixed(2)} · ${label}</div>
-            <div style="margin-top:6px">
-              <a href="javascript:void(0)" onclick="window.__trViewBiz='${biz.slug}'" style="color:${AMBER};font-weight:600;font-size:13px;text-decoration:none">View Profile →</a>
-            </div>
           </div>
         `);
         infoWindow.open(map, marker);
@@ -187,18 +269,43 @@ function GoogleMapView({ businesses }: { businesses: MappedBusiness[] }) {
     });
   }
 
-  if (Platform.OS !== "web") {
+  // If Google Maps failed or no API key, show list-based map view with directions
+  if (Platform.OS !== "web" || mapError) {
     return (
-      <View style={styles.mapFallback}>
-        <Ionicons name="map-outline" size={48} color={Colors.textTertiary} />
-        <Text style={styles.mapFallbackText}>Map view is only available on web</Text>
-      </View>
+      <FlatList
+        data={businesses}
+        keyExtractor={(item: MappedBusiness) => item.id}
+        renderItem={({ item }: { item: MappedBusiness }) => <MapBusinessCard item={item} />}
+        contentContainerStyle={styles.mapListContainer}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View style={styles.mapListHeader}>
+            <Ionicons name="map" size={16} color={AMBER} />
+            <Text style={styles.mapListHeaderText}>
+              {bizWithCoords.length} of {businesses.length} places with locations
+            </Text>
+          </View>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Ionicons name="location-outline" size={32} color="#AEAEB2" />
+            <Text style={styles.emptyText}>No places found</Text>
+          </View>
+        }
+      />
     );
   }
 
   return (
-    <View style={styles.mapContainer}>
-      <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
+    <View style={{ flex: 1 }}>
+      <View style={styles.mapContainer}>
+        <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
+        {!mapReady && !mapError && (
+          <View style={styles.mapLoadingOverlay}>
+            <ActivityIndicator size="small" color={AMBER} />
+          </View>
+        )}
+      </View>
     </View>
   );
 }
@@ -301,7 +408,7 @@ export default function SearchScreen() {
           <ActivityIndicator size="large" color={AMBER} />
         </View>
       ) : viewMode === "map" ? (
-        <GoogleMapView businesses={filtered} />
+        <MapView businesses={filtered} city={city} />
       ) : (
         <FlatList
           data={filtered}
@@ -404,6 +511,13 @@ const styles = StyleSheet.create({
   cardPhoto: {
     borderRadius: 10, backgroundColor: "#F2F2F7",
   },
+  miniDotContainer: {
+    flexDirection: "row", justifyContent: "center", gap: 3,
+    position: "absolute", bottom: 3, left: 0, right: 0,
+  },
+  miniDot: { width: 4, height: 4, borderRadius: 2 },
+  miniDotActive: { backgroundColor: AMBER },
+  miniDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   cardPhotoFallback: {
     borderRadius: 10, backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
@@ -446,13 +560,39 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, fontWeight: "600", color: "#636366" },
   emptySubtext: { fontSize: 12, color: "#AEAEB2" },
 
-  // Map styles (Fix 4)
+  // Map styles
   mapContainer: {
     flex: 1, margin: 16, borderRadius: 12, overflow: "hidden",
+    borderWidth: 1, borderColor: "#E5E5EA", position: "relative" as const,
+  },
+  mapLoadingOverlay: {
+    position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.8)",
+  },
+  mapListContainer: { paddingHorizontal: 16, gap: 6, paddingTop: 4, paddingBottom: 90 },
+  mapListHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingVertical: 8, paddingHorizontal: 4,
+  },
+  mapListHeaderText: { fontSize: 12, color: "#636366", fontWeight: "500" },
+  mapCard: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
     borderWidth: 1, borderColor: "#E5E5EA",
   },
-  mapFallback: {
-    flex: 1, alignItems: "center", justifyContent: "center", gap: 12,
+  mapCardRank: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
+    alignItems: "center", justifyContent: "center",
   },
-  mapFallbackText: { fontSize: 14, color: "#636366" },
+  mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff" },
+  mapCardInfo: { flex: 1, gap: 2 },
+  mapCardName: { fontSize: 14, fontWeight: "600", color: "#1C1C1E" },
+  mapCardMeta: { fontSize: 11, color: "#636366" },
+  mapCardRight: { alignItems: "flex-end", gap: 4 },
+  mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER },
+  mapPinBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "rgba(184, 134, 11, 0.1)",
+    alignItems: "center", justifyContent: "center",
+  },
 });

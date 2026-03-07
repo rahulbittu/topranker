@@ -7,6 +7,7 @@ import {
   challengers,
   rankHistory,
   businessClaims,
+  businessPhotos,
   dishes,
   dishVotes,
   credibilityPenalties,
@@ -876,13 +877,45 @@ export async function searchBusinesses(
     .limit(limit);
 }
 
-export async function getAllCategories(city: string): Promise<{ category: string; count: number }[]> {
-  return db
+export async function getAllCategories(city: string): Promise<string[]> {
+  const rows = await db
     .select({
       category: businesses.category,
-      count: count(),
     })
     .from(businesses)
     .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
     .groupBy(businesses.category);
+  return rows.map(r => r.category);
+}
+
+export async function getBusinessPhotos(businessId: string): Promise<string[]> {
+  const rows = await db
+    .select({ photoUrl: businessPhotos.photoUrl })
+    .from(businessPhotos)
+    .where(eq(businessPhotos.businessId, businessId))
+    .orderBy(asc(businessPhotos.sortOrder))
+    .limit(3);
+  return rows.map(r => r.photoUrl);
+}
+
+export async function getBusinessPhotosMap(businessIds: string[]): Promise<Record<string, string[]>> {
+  if (businessIds.length === 0) return {};
+  const rows = await db
+    .select({
+      businessId: businessPhotos.businessId,
+      photoUrl: businessPhotos.photoUrl,
+      sortOrder: businessPhotos.sortOrder,
+    })
+    .from(businessPhotos)
+    .where(sql`${businessPhotos.businessId} = ANY(ARRAY[${sql.join(businessIds.map(id => sql`${id}`), sql`,`)}]::text[])`)
+    .orderBy(asc(businessPhotos.sortOrder));
+
+  const map: Record<string, string[]> = {};
+  for (const row of rows) {
+    if (!map[row.businessId]) map[row.businessId] = [];
+    if (map[row.businessId].length < 3) {
+      map[row.businessId].push(row.photoUrl);
+    }
+  }
+  return map;
 }

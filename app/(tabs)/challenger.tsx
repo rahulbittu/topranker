@@ -75,7 +75,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       <View style={styles.timerSection}>
         <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
         <Text style={styles.timerText}>
-          {countdown.days}d {countdown.hours}h {countdown.minutes}m remaining
+          {countdown.ended ? "Ended" : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m remaining`}
         </Text>
         <Text style={styles.progressText}>Day {daysElapsed}/{totalDays}</Text>
       </View>

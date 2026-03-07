@@ -341,11 +341,11 @@ export function formatTimeAgo(timestamp: number): string {
   return `${months}mo ago`;
 }
 
-export function formatCountdown(endDate: number): string {
+export function formatCountdown(endDate: number): { days: number; hours: number; minutes: number; ended: boolean } {
   const diff = endDate - Date.now();
-  if (diff <= 0) return "Ended";
+  if (diff <= 0) return { days: 0, hours: 0, minutes: 0, ended: true };
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  if (days > 0) return `${days}d ${hours}h left`;
-  return `${hours}h left`;
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return { days, hours, minutes, ended: false };
 }
