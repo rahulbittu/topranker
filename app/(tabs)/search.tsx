@@ -150,7 +150,7 @@ function MapBusinessCard({ item }: { item: MappedBusiness }) {
         <Text style={styles.mapCardMeta}>{catDisplay.emoji} {catDisplay.label}{item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}</Text>
       </View>
       <View style={styles.mapCardRight}>
-        <Text style={styles.mapCardScore}>{item.weightedScore.toFixed(2)}</Text>
+        <Text style={styles.mapCardScore}>{item.weightedScore.toFixed(1)}</Text>
         {item.lat && item.lng ? (
           <TouchableOpacity onPress={openInMaps} style={styles.mapPinBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <Ionicons name="navigate" size={14} color={AMBER} />
@@ -308,7 +308,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
               <Text style={styles.mapBottomSheetMeta}>
-                {getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(2)}
+                {getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(1)}
                 {selectedBiz.isOpenNow !== undefined ? ` \u00B7 ${selectedBiz.isOpenNow ? "OPEN" : "CLOSED"}` : ""}
               </Text>
             </View>
