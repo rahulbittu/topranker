@@ -9,12 +9,14 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { useCity } from "@/lib/city-context";
 import { AppLogo } from "@/components/Logo";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const { signup, googleLogin } = useAuth();
+  const { city } = useCity();
   const googleAvailable = isGoogleAuthAvailable();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -47,7 +49,7 @@ export default function SignupScreen() {
         username: username.trim().toLowerCase(),
         email: email.trim().toLowerCase(),
         password,
-        city: "Dallas",
+        city,
       });
       router.back();
     } catch (err: any) {
@@ -79,7 +81,7 @@ export default function SignupScreen() {
         <View style={styles.headerSection}>
           <AppLogo size="md" />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join the Dallas ranking community</Text>
+          <Text style={styles.subtitle}>Join the {city} ranking community</Text>
         </View>
 
         <TouchableOpacity
