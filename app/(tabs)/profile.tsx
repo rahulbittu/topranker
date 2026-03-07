@@ -285,7 +285,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
         </View>
 
-        {nextTier && (
+        {nextTier && nextRange && (
           <View style={styles.credProgress}>
             <View style={styles.credProgressHeader}>
               <Text style={styles.credProgressLabel}>
@@ -296,6 +296,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             <View style={styles.progressBarBg}>
               <View style={[styles.progressBarFill, { width: `${progressToNext}%` as any, backgroundColor: tierColor }]} />
             </View>
+            <Text style={styles.credProgressHint}>
+              {Math.max(nextRange.min - profile.credibilityScore, 0)} points to {TIER_DISPLAY_NAMES[nextTier]}
+            </Text>
           </View>
         )}
       </View>
@@ -601,6 +604,7 @@ const styles = StyleSheet.create({
   credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold" },
   progressBarBg: { height: 4, backgroundColor: Colors.surfaceRaised, borderRadius: 2, overflow: "hidden" },
   progressBarFill: { height: "100%", borderRadius: 2 },
+  credProgressHint: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
 
   statsRow: {
     flexDirection: "row", backgroundColor: "rgba(13,27,42,0.9)", borderRadius: 14,
