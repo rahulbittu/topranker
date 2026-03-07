@@ -324,6 +324,7 @@ export default function LeaderboardScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
           ]}
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
