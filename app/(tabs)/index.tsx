@@ -161,7 +161,11 @@ function RankedCard({ item }: { item: MappedBusiness }) {
     <TouchableOpacity
       activeOpacity={0.75}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      style={styles.rankedCard}
+      style={[
+        styles.rankedCard,
+        item.rank === 2 && styles.rankedCardSilver,
+        item.rank === 3 && styles.rankedCardBronze,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${item.ratingCount} ratings`}
     >
@@ -585,6 +589,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 12,
     elevation: 2,
+  },
+  rankedCardSilver: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.silver,
+  },
+  rankedCardBronze: {
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.bronze,
   },
   rankedPhoto: {
     width: 80,
