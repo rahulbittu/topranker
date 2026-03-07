@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, Linking, Share, Dimensions, Image,
-  NativeScrollEvent, NativeSyntheticEvent,
+  NativeScrollEvent, NativeSyntheticEvent, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -153,7 +153,7 @@ export default function BusinessProfileScreen() {
   const { id: slug } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["business", slug],
     queryFn: () => fetchBusinessBySlug(slug),
     enabled: !!slug,
@@ -166,6 +166,12 @@ export default function BusinessProfileScreen() {
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
   const [heroImgErrors, setHeroImgErrors] = useState<Set<number>>(new Set());
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const onHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -178,6 +184,25 @@ export default function BusinessProfileScreen() {
     return (
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <ActivityIndicator size="large" color={Colors.gold} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    return (
+      <View style={[styles.notFound, { paddingTop: topPad }]}>
+        <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
+        <Text style={[styles.notFoundText, { marginTop: 12 }]}>Couldn't load this business</Text>
+        <TouchableOpacity
+          onPress={() => refetch()}
+          style={{ marginTop: 12, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: BRAND.colors.amber, borderRadius: 20 }}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" }}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 8 }}>
+          <Text style={styles.backLink}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -223,6 +248,9 @@ export default function BusinessProfileScreen() {
     <View style={{ flex: 1, backgroundColor: Colors.background }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND.colors.amber} />
+        }
         contentContainerStyle={[
           styles.content,
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
