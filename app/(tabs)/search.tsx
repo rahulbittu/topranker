@@ -410,7 +410,7 @@ export default function SearchScreen() {
   const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["search", city, debouncedQuery],
     queryFn: () => fetchBusinessSearch(debouncedQuery, city),
-    staleTime: 15000,
+    staleTime: 30000,
   });
 
   const onRefresh = useCallback(() => { refetch(); }, [refetch]);

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, TextInput, RefreshControl, Alert,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -268,7 +269,11 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         style={styles.profileCard}
       >
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
+          {profile.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} contentFit="cover" />
+          ) : (
+            <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
+          )}
         </View>
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, styles.profileNameLight]}>{profile.displayName}</Text>
@@ -582,6 +587,7 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
   },
+  avatarImage: { width: "100%", height: "100%", borderRadius: 28 },
   avatarInitial: { fontSize: 24, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
   foundingBadge: {
     backgroundColor: "rgba(255,215,0,0.2)", borderRadius: 4,

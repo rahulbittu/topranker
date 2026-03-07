@@ -31,6 +31,7 @@ interface MappedRating {
   id: string;
   userName: string;
   userTier: CredibilityTier;
+  userAvatarUrl?: string;
   rawScore: number;
   weight: number;
   q1: number;
@@ -89,9 +90,13 @@ const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRati
       <View style={styles.ratingTop}>
         <View style={styles.ratingUser}>
           <View style={styles.ratingAvatar}>
-            <Text style={styles.ratingAvatarText}>
-              {rating.userName.charAt(0).toUpperCase()}
-            </Text>
+            {rating.userAvatarUrl ? (
+              <Image source={{ uri: rating.userAvatarUrl }} style={styles.ratingAvatarImg} contentFit="cover" />
+            ) : (
+              <Text style={styles.ratingAvatarText}>
+                {rating.userName.charAt(0).toUpperCase()}
+              </Text>
+            )}
           </View>
           <View>
             <Text style={styles.ratingName}>{rating.userName}</Text>
@@ -779,6 +784,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised,
     alignItems: "center", justifyContent: "center",
   },
+  ratingAvatarImg: { width: "100%", height: "100%", borderRadius: 15 },
   ratingAvatarText: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
   ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   ratingTierText: { fontSize: 10, fontFamily: "DMSans_500Medium" },
