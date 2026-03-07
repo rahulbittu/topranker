@@ -17,6 +17,7 @@ import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
+import * as Haptics from "expo-haptics";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 
 function usePressAnimation() {
@@ -308,6 +309,7 @@ export default function ChallengerScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
+    Haptics.selectionAsync();
     setRefreshing(true);
     await refetch();
     setRefreshing(false);

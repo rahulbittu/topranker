@@ -320,7 +320,7 @@ export default function LeaderboardScreen() {
     staleTime: 30000,
   });
 
-  const onRefresh = useCallback(() => { refetch(); }, [refetch]);
+  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
   // Filter by search query
   const filteredBiz = useMemo(() => {

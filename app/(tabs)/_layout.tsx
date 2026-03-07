@@ -11,7 +11,7 @@ const AMBER = BRAND.colors.amber;
 
 function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof Ionicons>["name"]; color: string; focused: boolean }) {
   return (
-    <View style={tabStyles.iconWrap}>
+    <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
       <Ionicons name={name} size={22} color={color} />
       {focused && <View style={tabStyles.activeDot} />}
     </View>
@@ -20,6 +20,13 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
 
 const tabStyles = StyleSheet.create({
   iconWrap: { alignItems: "center", gap: 2 },
+  iconWrapActive: {
+    shadowColor: AMBER,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 3,
+  },
   activeDot: {
     width: 5,
     height: 5,

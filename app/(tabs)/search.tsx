@@ -423,6 +423,7 @@ export default function SearchScreen() {
   const [city, setCity] = useState("Dallas");
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [priceFilter, setPriceFilter] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
@@ -435,7 +436,7 @@ export default function SearchScreen() {
     staleTime: 30000,
   });
 
-  const onRefresh = useCallback(() => { refetch(); }, [refetch]);
+  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
   const filtered = useMemo(() => {
     let list = allBusinesses;
@@ -443,8 +444,9 @@ export default function SearchScreen() {
     else if (activeFilter === "Challenging") list = list.filter((b: MappedBusiness) => b.isChallenger);
     else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
     else if (activeFilter === "Open Now") list = list.filter((b: MappedBusiness) => b.isOpenNow === true);
+    if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
-  }, [allBusinesses, activeFilter]);
+  }, [allBusinesses, activeFilter, priceFilter]);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -531,6 +533,22 @@ export default function SearchScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+      </View>
+
+      {/* Price Range Filter */}
+      <View style={styles.priceRow}>
+        {["$", "$$", "$$$", "$$$$"].map(p => (
+          <TouchableOpacity
+            key={p}
+            onPress={() => { Haptics.selectionAsync(); setPriceFilter(prev => prev === p ? null : p); }}
+            style={[styles.priceChip, priceFilter === p && styles.priceChipActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`Price ${p}${priceFilter === p ? ", selected" : ""}`}
+            accessibilityState={{ selected: priceFilter === p }}
+          >
+            <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {isLoading ? (
@@ -794,6 +812,33 @@ const styles = StyleSheet.create({
   },
   mapBottomSheetInfo: { flex: 1, gap: 2 },
   mapBottomSheetAction: { color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 },
+  priceRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    gap: 8,
+    paddingBottom: 10,
+  },
+  priceChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  priceChipActive: {
+    backgroundColor: AMBER,
+    borderColor: AMBER,
+  },
+  priceChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  priceChipTextActive: {
+    color: "#fff",
+  },
   activityPill: {
     flexDirection: "row",
     alignItems: "center",

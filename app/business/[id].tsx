@@ -426,6 +426,26 @@ export default function BusinessProfileScreen() {
           </View>
         </View>
 
+        {/* Quick Stats Bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{getRankDisplay(business.rank)}</Text>
+            <Text style={styles.statLabel}>Rank</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{business.ratingCount.toLocaleString()}</Text>
+            <Text style={styles.statLabel}>Ratings</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>
+              {ratings.length > 0 ? `${Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}%` : "--"}
+            </Text>
+            <Text style={styles.statLabel}>Would Return</Text>
+          </View>
+        </View>
+
         <View style={styles.body}>
           {/* Description */}
           {business.description && (
@@ -692,6 +712,33 @@ const styles = StyleSheet.create({
     fontSize: 11, fontFamily: "DMSans_600SemiBold", letterSpacing: 0.5,
   },
   priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  statsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: Colors.surface,
+    marginHorizontal: 16,
+    marginTop: -8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statItem: { alignItems: "center", gap: 2 },
+  statValue: {
+    fontSize: 18, fontWeight: "700", color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 10, color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular", textTransform: "uppercase", letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1, height: 30, backgroundColor: Colors.border,
+  },
 
   scoreCard: {
     backgroundColor: Colors.surface, borderRadius: 16,
