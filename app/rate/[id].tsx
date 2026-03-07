@@ -246,7 +246,7 @@ export default function RateScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { paddingTop: topPad, alignItems: "center", justifyContent: "center" }]}>
+      <View style={[styles.container, styles.centered, { paddingTop: topPad }]}>
         <ActivityIndicator size="large" color={Colors.gold} />
       </View>
     );
@@ -262,11 +262,11 @@ export default function RateScreen() {
 
   if (!user) {
     return (
-      <View style={[styles.container, { paddingTop: topPad, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 }]}>
+      <View style={[styles.container, styles.centeredPadded, { paddingTop: topPad }]}>
         <Ionicons name="lock-closed-outline" size={48} color={Colors.textTertiary} />
-        <Text style={[styles.errorText, { marginTop: 16 }]}>Sign in to rate businesses</Text>
+        <Text style={styles.signInPromptText}>Sign in to rate businesses</Text>
         <TouchableOpacity
-          style={[styles.primaryButton, { marginTop: 16, width: "100%" }]}
+          style={styles.signInPromptButton}
           onPress={() => router.replace("/auth/login")}
         >
           <Text style={styles.primaryButtonText}>Sign In</Text>
@@ -346,7 +346,7 @@ export default function RateScreen() {
             {nextTier && (
               <Text style={styles.tierNextText}>
                 {TIER_SCORE_RANGES[nextTier].min - userScore} pts to{" "}
-                <Text style={{ color: TIER_COLORS[nextTier] }}>{TIER_DISPLAY_NAMES[nextTier]}</Text>
+                <Text style={[styles.tierNextHighlight, { color: TIER_COLORS[nextTier] }]}>{TIER_DISPLAY_NAMES[nextTier]}</Text>
               </Text>
             )}
           </Animated.View>
@@ -368,7 +368,7 @@ export default function RateScreen() {
           </Animated.View>
 
           <TouchableOpacity
-            style={[styles.primaryButton, { width: "100%", marginTop: 8 }]}
+            style={[styles.primaryButton, styles.doneButton]}
             onPress={() => router.back()}
             activeOpacity={0.8}
             accessibilityRole="button"
@@ -662,7 +662,7 @@ export default function RateScreen() {
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
         <StepIndicator step={step - 1} total={6} />
-        <View style={{ width: 36 }} />
+        <View style={styles.navSpacer} />
       </View>
 
       <ProgressBar step={step - 1} total={6} />
@@ -740,7 +740,16 @@ export default function RateScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  centered: { alignItems: "center", justifyContent: "center" },
+  centeredPadded: { alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
   errorText: { color: Colors.text, textAlign: "center", marginTop: 40, fontFamily: "DMSans_400Regular" },
+  signInPromptText: { color: Colors.text, textAlign: "center", marginTop: 16, fontFamily: "DMSans_400Regular" },
+  signInPromptButton: {
+    backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
+    alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6,
+    marginTop: 16, width: "100%",
+  },
+  navSpacer: { width: 36 },
 
   navBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -1061,4 +1070,6 @@ const styles = StyleSheet.create({
     fontSize: 20, fontWeight: "700" as const, color: Colors.gold,
     fontFamily: "PlayfairDisplay_700Bold",
   },
+  doneButton: { width: "100%", marginTop: 8 },
+  tierNextHighlight: { fontFamily: "DMSans_600SemiBold" },
 });
