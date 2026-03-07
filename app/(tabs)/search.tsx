@@ -14,8 +14,17 @@ import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
+import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 const AMBER = BRAND.colors.amber;
+
+const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  Dallas: { lat: 32.7767, lng: -96.7970 },
+  Austin: { lat: 30.2672, lng: -97.7431 },
+  Houston: { lat: 29.7604, lng: -95.3698 },
+  "San Antonio": { lat: 29.4241, lng: -98.4936 },
+  "Fort Worth": { lat: 32.7555, lng: -97.3308 },
+};
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
@@ -172,6 +181,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
   const [selectedBiz, setSelectedBiz] = useState<MappedBusiness | null>(null);
@@ -180,18 +190,20 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
-    if (typeof window === "undefined") return;
 
-    const timeout = setTimeout(() => {
-      if (!mapReady) setMapError(true);
-    }, 5000);
+    const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+    if (!apiKey) {
+      setMapError(true);
+      return;
+    }
 
-    const initMap = () => {
-      if (!mapRef.current || !(window as any).google) return;
-      clearTimeout(timeout);
+    setGoogleMapsOptions({ key: apiKey, v: "weekly" });
 
-      const map = new (window as any).google.maps.Map(mapRef.current, {
-        center: { lat: 32.7767, lng: -96.7970 },
+    importLibrary("maps").then((mapsLib: any) => {
+      if (!mapRef.current) return;
+      const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
+      const map = new mapsLib.Map(mapRef.current, {
+        center,
         zoom: 12,
         disableDefaultUI: true,
         zoomControl: true,
@@ -200,66 +212,86 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
         ],
       });
       mapInstance.current = map;
-      setMapReady(true);
-      updateMarkers(map, bizWithCoords);
-    };
-
-    if ((window as any).google && (window as any).google.maps) {
-      initMap();
-    } else {
-      const apiKey = (window as any).__GOOGLE_MAPS_API_KEY || process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
-      if (!apiKey) {
-        clearTimeout(timeout);
-        setMapError(true);
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = initMap;
-      script.onerror = () => { clearTimeout(timeout); setMapError(true); };
-      document.head.appendChild(script);
-    }
+      importLibrary("core").then(() => {
+        const google = (window as any).google;
+        infoWindowRef.current = new google.maps.InfoWindow();
+        setMapReady(true);
+        updateMarkers(google, map, bizWithCoords);
+      });
+    }).catch(() => {
+      setMapError(true);
+    });
 
     return () => {
-      clearTimeout(timeout);
       markersRef.current.forEach(m => m.setMap(null));
       markersRef.current = [];
     };
   }, []);
 
   useEffect(() => {
-    if (mapInstance.current && mapReady) {
-      updateMarkers(mapInstance.current, bizWithCoords);
-    }
-  }, [businesses, mapReady]);
+    if (!mapInstance.current || !mapReady) return;
+    const google = (window as any).google;
+    if (!google) return;
+    const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
+    mapInstance.current.panTo(center);
+    updateMarkers(google, mapInstance.current, bizWithCoords);
+  }, [businesses, city, mapReady]);
 
-  function updateMarkers(map: any, items: MappedBusiness[]) {
+  function updateMarkers(google: any, map: any, items: MappedBusiness[]) {
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
 
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
-      const marker = new (window as any).google.maps.Marker({
+      const marker = new google.maps.Marker({
         position: { lat: biz.lat, lng: biz.lng },
         map,
         icon: {
           url: `data:image/svg+xml,${encodeURIComponent(
             `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36"><circle cx="18" cy="18" r="16" fill="${AMBER}" stroke="white" stroke-width="2"/><text x="18" y="23" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">${biz.rank}</text></svg>`
           )}`,
-          scaledSize: new (window as any).google.maps.Size(36, 36),
+          scaledSize: new google.maps.Size(36, 36),
         },
         title: biz.name,
       });
 
+      const catDisplay = getCategoryDisplay(biz.category);
+      const photoHtml = biz.photoUrls && biz.photoUrls[0]
+        ? `<img src="${biz.photoUrls[0]}" style="width:100%;height:80px;object-fit:cover;border-radius:6px 6px 0 0;display:block;" />`
+        : `<div style="width:100%;height:60px;background:linear-gradient(135deg,${AMBER},${BRAND.colors.amberDark});border-radius:6px 6px 0 0;display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-size:24px;font-weight:700;">${biz.name.charAt(0)}</span></div>`;
+
+      const infoContent = `
+        <div style="width:200px;font-family:sans-serif;cursor:pointer;" onclick="window.__mapNavTo__('${biz.slug}')">
+          ${photoHtml}
+          <div style="padding:8px 10px;">
+            <div style="font-weight:700;font-size:14px;color:#1a1a1a;">${biz.name}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px;">${catDisplay.emoji} ${catDisplay.label}${biz.neighborhood ? ` · ${biz.neighborhood}` : ""}</div>
+            <div style="font-size:13px;font-weight:700;color:${AMBER};margin-top:4px;">★ ${biz.weightedScore.toFixed(1)}</div>
+          </div>
+        </div>
+      `;
+
       marker.addListener("click", () => {
         setSelectedBiz(biz);
+        if (infoWindowRef.current) {
+          infoWindowRef.current.setContent(infoContent);
+          infoWindowRef.current.open(map, marker);
+        }
       });
 
       markersRef.current.push(marker);
     });
   }
+
+  // Register global nav handler for InfoWindow clicks
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      (window as any).__mapNavTo__ = (slug: string) => {
+        router.push({ pathname: "/business/[id]", params: { id: slug } });
+      };
+      return () => { delete (window as any).__mapNavTo__; };
+    }
+  }, []);
 
   if (Platform.OS !== "web" || mapError) {
     return (
