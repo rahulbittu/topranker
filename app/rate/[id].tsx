@@ -222,6 +222,7 @@ export default function RateScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       qc.invalidateQueries({ queryKey: ["business", slug] });
       qc.invalidateQueries({ queryKey: ["leaderboard"] });
+      qc.invalidateQueries({ queryKey: ["search"] });
       qc.invalidateQueries({ queryKey: ["profile"] });
       setShowConfirm(true);
     },
