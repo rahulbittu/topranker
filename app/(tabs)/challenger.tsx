@@ -20,6 +20,7 @@ import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import { useCity } from "@/lib/city-context";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -289,11 +290,12 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
 export default function ChallengerScreen() {
   const insets = useSafeAreaInsets();
+  const { city } = useCity();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const { data: challenges = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["challengers", "Dallas"],
-    queryFn: () => fetchActiveChallenges("Dallas"),
+    queryKey: ["challengers", city],
+    queryFn: () => fetchActiveChallenges(city),
     staleTime: 30000,
   });
 

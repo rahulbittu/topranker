@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Alert, Animated,
+  ScrollView, Platform, Animated,
   TextInput, RefreshControl, useWindowDimensions,
 } from "react-native";
 import { Image } from "expo-image";
@@ -18,6 +18,7 @@ import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
+import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -286,13 +287,15 @@ const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusine
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
+  const { city, setCity } = useCity();
   const [activeCategory, setActiveCategory] = useState<string>("restaurant");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCityPicker, setShowCityPicker] = useState(false);
 
   // Fetch dynamic categories from API
   const { data: dbCategories = [] } = useQuery({
-    queryKey: ["categories", "Dallas"],
-    queryFn: () => fetchCategories("Dallas"),
+    queryKey: ["categories", city],
+    queryFn: () => fetchCategories(city),
     staleTime: 300000,
   });
 
@@ -306,8 +309,8 @@ export default function LeaderboardScreen() {
     [dbCategories]);
 
   const { data: businesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["leaderboard", "Dallas", activeCategory],
-    queryFn: () => fetchLeaderboard("Dallas", activeCategory, 50),
+    queryKey: ["leaderboard", city, activeCategory],
+    queryFn: () => fetchLeaderboard(city, activeCategory, 50),
     staleTime: 30000,
   });
 
@@ -332,27 +335,39 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <View>
           <AppLogo size="md" />
-          <Text style={styles.headerSubtitle}>Top-rated in Dallas</Text>
+          <Text style={styles.headerSubtitle}>Top-rated in {city}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.citySelector}
-            onPress={() => {
-              if (Platform.OS === "web") {
-                window.alert("More cities coming soon!");
-              } else {
-                Alert.alert("Coming Soon", "More cities will be available in a future update.");
-              }
-            }}
+            onPress={() => setShowCityPicker(!showCityPicker)}
             accessibilityRole="button"
-            accessibilityLabel="Select city, currently Dallas"
+            accessibilityLabel={`Select city, currently ${city}`}
           >
             <Ionicons name="location-sharp" size={14} color={AMBER} />
-            <Text style={styles.citySelectorText}>Dallas</Text>
+            <Text style={styles.citySelectorText}>{city}</Text>
             <Ionicons name="chevron-down" size={14} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
+
+      {showCityPicker && (
+        <View style={styles.cityPickerDropdown}>
+          {SUPPORTED_CITIES.map((c) => (
+            <TouchableOpacity
+              key={c}
+              style={[styles.cityPickerItem, c === city && styles.cityPickerItemActive]}
+              onPress={() => { setCity(c); setShowCityPicker(false); Haptics.selectionAsync(); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${c}`}
+            >
+              <Ionicons name="location-sharp" size={12} color={c === city ? AMBER : Colors.textTertiary} />
+              <Text style={[styles.cityPickerText, c === city && styles.cityPickerTextActive]}>{c}</Text>
+              {c === city && <Ionicons name="checkmark" size={14} color={AMBER} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Search Bar */}
       <View style={styles.searchBar}>
@@ -512,6 +527,37 @@ const styles = StyleSheet.create({
   citySelectorText: {
     fontSize: 13,
     fontWeight: "600",
+    color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  cityPickerDropdown: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    overflow: "hidden",
+  },
+  cityPickerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  cityPickerItemActive: {
+    backgroundColor: Colors.goldFaint,
+  },
+  cityPickerText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_500Medium",
+  },
+  cityPickerTextActive: {
     color: Colors.text,
     fontFamily: "DMSans_600SemiBold",
   },

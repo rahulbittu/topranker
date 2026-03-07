@@ -18,6 +18,7 @@ import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/j
 
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
+import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 
 const AMBER = BRAND.colors.amber;
@@ -33,7 +34,6 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now"];
-const CITIES = ["Dallas", "Austin", "Houston", "San Antonio", "Fort Worth"];
 
 type ViewMode = "list" | "map";
 
@@ -369,7 +369,7 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("All");
-  const [city, setCity] = useState("Dallas");
+  const { city, setCity } = useCity();
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
@@ -413,7 +413,7 @@ export default function SearchScreen() {
 
       {showCityPicker && (
         <View style={styles.cityPickerDropdown}>
-          {CITIES.map(c => (
+          {SUPPORTED_CITIES.map(c => (
             <TouchableOpacity
               key={c}
               style={[styles.cityOption, city === c && styles.cityOptionActive]}
