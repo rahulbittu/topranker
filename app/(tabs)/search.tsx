@@ -221,7 +221,9 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     if (Platform.OS !== "web") return;
 
     const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+    console.log("[MapView] API key present:", !!apiKey, "Platform:", Platform.OS);
     if (!apiKey) {
+      console.warn("[MapView] No Google Maps API key found in EXPO_PUBLIC_GOOGLE_MAPS_API_KEY");
       setMapError(true);
       return;
     }
@@ -258,7 +260,8 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
         setMapReady(true);
         updateMarkers(google, map, bizWithCoords);
       });
-    }).catch(() => {
+    }).catch((err) => {
+      console.error("[MapView] Failed to load Google Maps:", err);
       setMapError(true);
     });
 
@@ -331,11 +334,20 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     }
   }, []);
 
-  if (Platform.OS !== "web" || mapError) {
+  if (Platform.OS !== "web") {
     return (
       <View style={styles.mapFallbackBanner}>
         <Ionicons name="map-outline" size={20} color={Colors.textTertiary} />
         <Text style={styles.mapFallbackText}>Map view is available on web</Text>
+      </View>
+    );
+  }
+
+  if (mapError) {
+    return (
+      <View style={styles.mapFallbackBanner}>
+        <Ionicons name="alert-circle-outline" size={20} color={Colors.red} />
+        <Text style={styles.mapFallbackText}>Could not load map. Check your API key and restart the server.</Text>
       </View>
     );
   }
