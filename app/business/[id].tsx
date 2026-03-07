@@ -327,6 +327,11 @@ export default function BusinessProfileScreen() {
         </View>
 
         <View style={styles.body}>
+          {/* Description */}
+          {business.description && (
+            <Text style={styles.descriptionText}>{business.description}</Text>
+          )}
+
           {/* Score */}
           <View style={styles.scoreCard}>
             <Text style={styles.scoreNumber}>{business.weightedScore.toFixed(2)}</Text>
@@ -516,6 +521,10 @@ const styles = StyleSheet.create({
 
   content: { gap: 0 },
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
+  descriptionText: {
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    lineHeight: 20,
+  },
 
   heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
   heroImage: { width: SCREEN_WIDTH, height: HERO_HEIGHT },
