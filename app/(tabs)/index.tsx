@@ -329,6 +329,9 @@ export default function LeaderboardScreen() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
+          initialNumToRender={8}
+          maxToRenderPerBatch={5}
+          windowSize={5}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
