@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
+import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 
@@ -405,14 +406,14 @@ export default function SearchScreen() {
         <View style={styles.viewToggle}>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "list" && styles.viewToggleBtnActive]}
-            onPress={() => setViewMode("list")}
+            onPress={() => { Haptics.selectionAsync(); setViewMode("list"); }}
           >
             <Ionicons name="list" size={16} color={viewMode === "list" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "list" && styles.viewToggleTextActive]}>List</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "map" && styles.viewToggleBtnActive]}
-            onPress={() => setViewMode("map")}
+            onPress={() => { Haptics.selectionAsync(); setViewMode("map"); }}
           >
             <Ionicons name="location" size={16} color={viewMode === "map" ? "#fff" : Colors.textSecondary} />
             <Text style={[styles.viewToggleText, viewMode === "map" && styles.viewToggleTextActive]}>Map</Text>
@@ -420,7 +421,7 @@ export default function SearchScreen() {
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {FILTERS.map(f => (
-            <TouchableOpacity key={f} onPress={() => setActiveFilter(f)} style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}>
+            <TouchableOpacity key={f} onPress={() => { Haptics.selectionAsync(); setActiveFilter(f); }} style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}>
               <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
             </TouchableOpacity>
           ))}
