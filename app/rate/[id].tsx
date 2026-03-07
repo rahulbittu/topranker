@@ -268,6 +268,8 @@ export default function RateScreen() {
         <TouchableOpacity
           style={styles.signInPromptButton}
           onPress={() => router.replace("/auth/login")}
+          accessibilityRole="button"
+          accessibilityLabel="Sign in to rate businesses"
         >
           <Text style={styles.primaryButtonText}>Sign In</Text>
         </TouchableOpacity>
@@ -693,6 +695,8 @@ export default function RateScreen() {
               goNext();
             }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Skip dish selection"
           >
             <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
@@ -706,6 +710,8 @@ export default function RateScreen() {
               submitMutation.mutate();
             }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Skip note and submit rating"
           >
             <Text style={styles.skipBtnText}>Skip & Submit</Text>
           </TouchableOpacity>
@@ -713,13 +719,15 @@ export default function RateScreen() {
         <TouchableOpacity
           style={[
             styles.primaryButton,
-            { flex: 1 },
+            styles.primaryButtonFlex,
             !canProceed() && styles.primaryButtonDisabled,
           ]}
           onPress={goNext}
           activeOpacity={0.8}
           disabled={!canProceed() || submitMutation.isPending}
           testID="next-step"
+          accessibilityRole="button"
+          accessibilityLabel={step === 6 ? "Submit rating" : "Next step"}
         >
           <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
             {submitMutation.isPending
@@ -960,6 +968,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
     alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6,
   },
+  primaryButtonFlex: { flex: 1 },
   primaryButtonDisabled: {
     backgroundColor: Colors.surfaceRaised,
   },
