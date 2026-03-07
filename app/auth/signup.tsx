@@ -10,7 +10,6 @@ import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollV
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
 import { AppLogo } from "@/components/Logo";
-import { BRAND } from "@/constants/brand";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();

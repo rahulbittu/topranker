@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   cardName: {
-    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
   },
   cardRankBadge: {
     fontSize: 16, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
