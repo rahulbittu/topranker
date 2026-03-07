@@ -817,7 +817,7 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: "700", color: BRAND.colors.amber, fontFamily: "DMSans_700Bold",
   },
   collapsibleBody: {
-    paddingHorizontal: 14, paddingBottom: 14, gap: 10,
+    paddingHorizontal: 14, paddingBottom: 14, paddingTop: 12, gap: 10,
     borderTopWidth: 1, borderTopColor: Colors.border,
   },
 
