@@ -9,10 +9,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { getCategoryDisplay, getRankDisplay } from "@/constants/brand";
+import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchBusinessSearch } from "@/lib/api";
 
-const AMBER = "#C49A1A";
+const AMBER = BRAND.colors.amber;
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending";
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending"];
@@ -47,7 +47,7 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
   if (photos.length === 0 || imgError) {
     return (
       <LinearGradient
-        colors={[AMBER, "#9A7510"]}
+        colors={[AMBER, BRAND.colors.amberDark]}
         style={[styles.cardPhotoFallback, { width: size, height: size, borderRadius: 10 }]}
       >
         <Text style={[styles.cardPhotoInitial, { fontSize: size * 0.35 }]}>{initial}</Text>
@@ -301,7 +301,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
             {selectedBiz.photoUrls && selectedBiz.photoUrls.length > 0 ? (
               <Image source={{ uri: selectedBiz.photoUrls[0] }} style={styles.mapBottomSheetPhoto} />
             ) : (
-              <LinearGradient colors={[AMBER, "#9A7510"]} style={[styles.mapBottomSheetPhoto, { alignItems: "center", justifyContent: "center" }]}>
+              <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapBottomSheetPhoto, { alignItems: "center", justifyContent: "center" }]}>
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 18 }}>{selectedBiz.name.charAt(0)}</Text>
               </LinearGradient>
             )}

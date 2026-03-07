@@ -15,6 +15,7 @@ import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
+import { BRAND } from "@/constants/brand";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -239,7 +240,7 @@ export default function BusinessProfileScreen() {
             >
               {photoUrls.map((url, i) => (
                 heroImgErrors.has(i) ? (
-                  <LinearGradient key={i} colors={["#C49A1A", "#9A7510"]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+                  <LinearGradient key={i} colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
                     <Text style={styles.heroPlaceholderInitial}>
                       {business.name.charAt(0).toUpperCase()}
                     </Text>
@@ -256,7 +257,7 @@ export default function BusinessProfileScreen() {
               ))}
             </ScrollView>
           ) : (
-            <LinearGradient colors={["#C49A1A", "#9A7510"]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+            <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder]}>
               <Text style={styles.heroPlaceholderInitial}>
                 {business.name.charAt(0).toUpperCase()}
               </Text>
@@ -485,10 +486,10 @@ const styles = StyleSheet.create({
     position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
   },
   heroDot: { width: 7, height: 7, borderRadius: 4 },
-  heroDotActive: { backgroundColor: "#C49A1A" },
+  heroDotActive: { backgroundColor: BRAND.colors.amber },
   heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   heroImagePlaceholder: {
-    backgroundColor: "#C49A1A",
+    backgroundColor: BRAND.colors.amber,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -576,7 +577,7 @@ const styles = StyleSheet.create({
   dishVoteCountText: { fontSize: 10, fontWeight: "700", color: Colors.textTertiary, fontFamily: "DMSans_700Bold" },
 
   rateButton: {
-    backgroundColor: "#C49A1A", borderRadius: 14, paddingVertical: 15,
+    backgroundColor: BRAND.colors.amber, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     shadowColor: "rgba(196,154,26,0.4)",
     shadowOffset: { width: 0, height: 4 },

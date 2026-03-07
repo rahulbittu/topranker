@@ -19,7 +19,7 @@ import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 import { BRAND } from "@/constants/brand";
 
-const AMBER = "#C49A1A";
+const AMBER = BRAND.colors.amber;
 
 function TierBadge({ tier }: { tier: CredibilityTier }) {
   const color = TIER_COLORS[tier];

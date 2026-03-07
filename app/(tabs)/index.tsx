@@ -10,11 +10,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { getCategoryDisplay, getRankDisplay } from "@/constants/brand";
+import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 
-const AMBER = "#C49A1A";
+const AMBER = BRAND.colors.amber;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_PADDING = 16;
 
@@ -40,7 +40,7 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
   if (photos.length === 0) {
     return (
       <LinearGradient
-        colors={[AMBER, "#9A7510"]}
+        colors={[AMBER, BRAND.colors.amberDark]}
         style={[{ height, alignItems: "center", justifyContent: "center" }]}
       >
         <Text style={{ fontSize: 40, color: "rgba(255,255,255,0.5)" }}>
@@ -168,7 +168,7 @@ function RankedCard({ item }: { item: MappedBusiness }) {
         />
       ) : (
         <LinearGradient
-          colors={[AMBER, "#9A7510"]}
+          colors={[AMBER, BRAND.colors.amberDark]}
           style={[styles.rankedPhoto, styles.rankedPhotoFallback]}
         >
           <Text style={styles.rankedPhotoInitial}>{initial}</Text>
