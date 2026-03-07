@@ -221,7 +221,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" }]}>{profile.displayName}</Text>
           <Text style={[styles.username, { color: "rgba(255,255,255,0.5)" }]}>@{profile.username}</Text>
-          <TierBadge tier={tier} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <TierBadge tier={tier} />
+            {profile.isFoundingMember && (
+              <View style={styles.foundingBadge}>
+                <Text style={styles.foundingBadgeText}>FOUNDING MEMBER</Text>
+              </View>
+            )}
+          </View>
         </View>
       </LinearGradient>
 
@@ -505,6 +512,14 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   avatarInitial: { fontSize: 24, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
+  foundingBadge: {
+    backgroundColor: "rgba(255,215,0,0.2)", borderRadius: 4,
+    paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: "rgba(255,215,0,0.4)",
+  },
+  foundingBadgeText: {
+    fontSize: 8, fontWeight: "700", color: "#FFD700",
+    fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
+  },
   profileInfo: { gap: 4 },
   profileName: {
     fontSize: 20, fontWeight: "700", color: Colors.text,
