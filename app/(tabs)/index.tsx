@@ -222,11 +222,13 @@ export default function LeaderboardScreen() {
     staleTime: 60000,
   });
 
-  // Build chip list from dynamic categories - default "restaurant" will be in the list
-  const categoryChips = dbCategories.map((slug: string) => {
-    const d = getCategoryDisplay(slug);
-    return { slug, label: d.label, emoji: d.emoji };
-  });
+  // Build chip list from dynamic categories, fallback to default while loading
+  const categoryChips = dbCategories.length > 0
+    ? dbCategories.map((slug: string) => {
+        const d = getCategoryDisplay(slug);
+        return { slug, label: d.label, emoji: d.emoji };
+      })
+    : [{ slug: "restaurant", label: "Restaurants", emoji: getCategoryDisplay("restaurant").emoji }];
 
   const { data: businesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["leaderboard", "Dallas", activeCategory],
