@@ -367,6 +367,15 @@ export default function LeaderboardScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
           ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
+          ListFooterComponent={
+            restBiz.length > 0 ? (
+              <View style={styles.listFooter}>
+                <View style={styles.listFooterLine} />
+                <Text style={styles.listFooterText}>End of rankings</Text>
+                <View style={styles.listFooterLine} />
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             !heroBiz ? (
               <View style={styles.loadingContainer}>
@@ -493,6 +502,9 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
+  listFooter: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 20, paddingHorizontal: 16 },
+  listFooterLine: { flex: 1, height: 1, backgroundColor: Colors.border },
+  listFooterText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   retryButton: {
     marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
