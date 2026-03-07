@@ -533,6 +533,35 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
+          {/* Rating Distribution — Anti-fraud transparency */}
+          {ratings.length >= 3 && (() => {
+            const dist = [0, 0, 0, 0, 0];
+            ratings.forEach(r => {
+              const bucket = Math.min(4, Math.max(0, Math.round(r.rawScore) - 1));
+              dist[bucket]++;
+            });
+            const maxCount = Math.max(...dist);
+            return (
+              <View style={styles.distCard}>
+                <Text style={styles.distTitle}>Rating Distribution</Text>
+                <Text style={styles.distSubtitle}>Transparent breakdown of all community ratings</Text>
+                {[5, 4, 3, 2, 1].map(score => {
+                  const count = dist[score - 1];
+                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+                  return (
+                    <View key={score} style={styles.distRow}>
+                      <Text style={styles.distLabel}>{score}</Text>
+                      <View style={styles.distBarBg}>
+                        <View style={[styles.distBarFill, { width: `${pct}%` as any, backgroundColor: score >= 4 ? Colors.green : score === 3 ? BRAND.colors.amber : Colors.red }]} />
+                      </View>
+                      <Text style={styles.distCount}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            );
+          })()}
+
           <View style={styles.sectionDivider} />
 
           {/* Action Bar */}
@@ -937,12 +966,24 @@ const styles = StyleSheet.create({
     gap: 10, ...Colors.cardShadow,
   },
 
+  distCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
+    ...Colors.cardShadow,
+  },
+  distTitle: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  distSubtitle: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginBottom: 4,
+  },
   distChart: { gap: 7 },
   distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  distLabel: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center" },
   distBarTrack: { flex: 1, height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
+  distBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
   distBarFill: { height: "100%", borderRadius: 2 },
-  distCount: { width: 16, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
+  distCount: { width: 20, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
 
   ratingRow: {
     backgroundColor: Colors.surface, borderRadius: 12, padding: 13,

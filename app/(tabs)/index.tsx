@@ -13,6 +13,7 @@ import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
+import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
@@ -328,7 +329,7 @@ export default function LeaderboardScreen() {
     : [{ slug: "restaurant", label: "Restaurants", emoji: getCategoryDisplay("restaurant").emoji }],
     [dbCategories]);
 
-  const { data: businesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
+  const { data: businesses = [], isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["leaderboard", city, activeCategory],
     queryFn: () => fetchLeaderboard(city, activeCategory, 50),
     staleTime: 30000,
@@ -356,6 +357,9 @@ export default function LeaderboardScreen() {
         <View>
           <AppLogo size="md" />
           <Text style={styles.headerSubtitle}>Top-rated in {city}</Text>
+          {dataUpdatedAt > 0 && (
+            <Text style={styles.lastUpdated}>Rankings updated {formatTimeAgo(dataUpdatedAt)}</Text>
+          )}
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity
@@ -526,6 +530,13 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontFamily: "DMSans_400Regular",
     marginTop: 2,
+  },
+  lastUpdated: {
+    fontSize: 9,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
+    marginTop: 1,
+    opacity: 0.7,
   },
   headerRight: {
     flexDirection: "row",
