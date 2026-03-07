@@ -9,7 +9,6 @@ const Colors = {
   borderLight: "#E5E5EA",
 
   gold: AMBER,
-  goldDim: AMBER,
   goldFaint: AMBER_FAINT,
   goldLight: "#FDF6E8",
 
@@ -21,10 +20,8 @@ const Colors = {
   textTertiary: "#8E8E93",
 
   green: "#34C759",
-  greenBright: "#34C759",
   greenFaint: "rgba(52, 199, 89, 0.08)",
   red: "#FF3B30",
-  redBright: "#FF3B30",
   redFaint: "rgba(255, 59, 48, 0.08)",
 
   blue: "#007AFF",
@@ -33,11 +30,6 @@ const Colors = {
   rankUp: "#34C759",
   rankDown: "#FF3B30",
   rankStable: "#8E8E93",
-
-  tierNew: "#8E8E93",
-  tierRegular: "#636366",
-  tierTrusted: AMBER,
-  tierTop: AMBER,
 
   tint: AMBER,
   tabIconDefault: "#8E8E93",
