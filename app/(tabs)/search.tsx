@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ScrollView, Platform, ActivityIndicator, Image, Linking,
+  TextInput, ScrollView, Platform, ActivityIndicator, Image, Linking, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -328,11 +328,13 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
-  const { data: allBusinesses = [], isLoading } = useQuery({
+  const { data: allBusinesses = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["search", city, query],
     queryFn: () => fetchBusinessSearch(query, city),
     staleTime: 15000,
   });
+
+  const onRefresh = useCallback(() => { refetch(); }, [refetch]);
 
   const filtered = useMemo(() => {
     let list = allBusinesses;
@@ -431,6 +433,9 @@ export default function SearchScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
           ]}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
