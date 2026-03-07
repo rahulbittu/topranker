@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import passport from "passport";
 import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
+import { handlePhotoProxy } from "./photos";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -326,6 +327,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(500).json({ error: err.message });
     }
   });
+
+  // Photo proxy for Google Places photos
+  app.get("/api/photos/proxy", handlePhotoProxy);
 
   // Deploy webhook (GitHub push → auto-rebuild)
   app.post("/api/webhook/deploy", handleWebhook);
