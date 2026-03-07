@@ -349,6 +349,16 @@ export default function BusinessProfileScreen() {
               <SubScoreBar label="Quality" value={avgQ1} />
               <SubScoreBar label="Value" value={avgQ2} />
               <SubScoreBar label="Service" value={avgQ3} />
+              <View style={styles.returnRateRow}>
+                <Ionicons
+                  name="refresh-circle"
+                  size={14}
+                  color={Colors.green}
+                />
+                <Text style={styles.returnRateText}>
+                  {Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}% would return
+                </Text>
+              </View>
             </View>
           )}
 
@@ -574,6 +584,13 @@ const styles = StyleSheet.create({
   subScoresCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: 14, gap: 10,
     ...Colors.cardShadow,
+  },
+  returnRateRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  returnRateText: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
   },
   subScoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   subScoreLabel: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", width: 60 },
