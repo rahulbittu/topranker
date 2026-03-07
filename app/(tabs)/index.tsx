@@ -1,22 +1,22 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, Animated, ActivityIndicator, Image,
-  Dimensions, NativeScrollEvent, NativeSyntheticEvent,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { getRankDisplay } from "@/lib/data";
-import { fetchLeaderboard } from "@/lib/api";
+import { getCategoryDisplay, getRankDisplay } from "@/constants/brand";
+import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
 
 const AMBER = "#C49A1A";
 const SCREEN_WIDTH = Dimensions.get("window").width;
-const CARD_PADDING = 14;
-const CARD_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
+const CARD_PADDING = 16;
 
 interface MappedBusiness {
   id: string;
@@ -36,30 +36,23 @@ interface MappedBusiness {
   photoUrls?: string[];
 }
 
-const CATEGORY_CHIPS = [
-  { slug: "all", label: "All", emoji: "\u2728" },
-  { slug: "restaurant", label: "Restaurants", emoji: "\u{1F37D}" },
-  { slug: "fast_food", label: "Fast Food", emoji: "\u{1F354}" },
-  { slug: "fine_dining", label: "Fine Dining", emoji: "\u{1F942}" },
-  { slug: "casual_dining", label: "Casual Dining", emoji: "\u{1F373}" },
-  { slug: "cafe", label: "Cafes", emoji: "\u2615" },
-  { slug: "bakery", label: "Bakeries", emoji: "\u{1F950}" },
-  { slug: "street_food", label: "Street Food", emoji: "\u{1F32E}" },
-  { slug: "bar", label: "Bars", emoji: "\u{1F37A}" },
-];
-
-function PhotoMosaic({ photos, height }: { photos: string[]; height: number }) {
+function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
   if (photos.length === 0) {
     return (
-      <View style={[styles.photoCarouselPlaceholder, { height }]}>
-        <Ionicons name="restaurant-outline" size={32} color={Colors.textTertiary} />
-      </View>
+      <LinearGradient
+        colors={[AMBER, "#9A7510"]}
+        style={[{ height, alignItems: "center", justifyContent: "center" }]}
+      >
+        <Text style={{ fontSize: 40, color: "rgba(255,255,255,0.5)" }}>
+          {getCategoryDisplay(category || "").emoji}
+        </Text>
+      </LinearGradient>
     );
   }
 
   if (photos.length === 1) {
     return (
-      <Image source={{ uri: photos[0] }} style={[styles.heroPhoto, { height }]} resizeMode="cover" />
+      <Image source={{ uri: photos[0] }} style={{ width: "100%" as any, height }} resizeMode="cover" />
     );
   }
 
@@ -72,7 +65,6 @@ function PhotoMosaic({ photos, height }: { photos: string[]; height: number }) {
     );
   }
 
-  // 3+ photos: left 60% one large, right two stacked with 2px gap
   return (
     <View style={{ flexDirection: "row", height, gap: 2 }}>
       <Image source={{ uri: photos[0] }} style={{ width: "60%", height }} resizeMode="cover" />
@@ -84,81 +76,121 @@ function PhotoMosaic({ photos, height }: { photos: string[]; height: number }) {
   );
 }
 
-function OpenStatusText({ isOpen }: { isOpen?: boolean }) {
-  if (isOpen === undefined || isOpen === null) return null;
+function HeroCard({ item }: { item: MappedBusiness }) {
+  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
+  const catDisplay = getCategoryDisplay(item.category);
+
   return (
-    <Text style={[
-      styles.statusText,
-      { color: isOpen ? Colors.green : Colors.red, textTransform: "uppercase" as const }
-    ]}>
-      {isOpen ? "Open" : "Closed"}
-    </Text>
+    <TouchableOpacity
+      activeOpacity={0.9}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
+      style={styles.heroCard}
+    >
+      <View style={{ position: "relative" }}>
+        <PhotoMosaic photos={photos} height={200} category={item.category} />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.7)"]}
+          style={styles.heroGradient}
+        />
+        {/* Crown badge */}
+        <View style={styles.heroCrownBadge}>
+          <Text style={styles.heroCrownText}>{"\u{1F451}"} #1 IN DALLAS</Text>
+        </View>
+        {/* Business name bottom-left */}
+        <Text style={styles.heroName} numberOfLines={1}>{item.name}</Text>
+        {/* Score bottom-right */}
+        <View style={styles.heroScoreArea}>
+          {item.isOpenNow !== undefined && (
+            <View style={[styles.openPill, item.isOpenNow ? styles.openPillOpen : styles.openPillClosed]}>
+              <Text style={styles.openPillText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
+            </View>
+          )}
+          <Text style={styles.heroScore}>{item.weightedScore.toFixed(1)}</Text>
+        </View>
+      </View>
+      {/* White strip below */}
+      <View style={styles.heroStrip}>
+        <Text style={styles.heroStripCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
+        >
+          <Text style={styles.heroStripLink}>{"View Profile \u2192"}</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
   );
 }
 
-function MovementIndicator({ delta }: { delta: number }) {
-  if (delta > 0) {
-    return <Text style={styles.moveUp}>{"\u2191"}{delta}</Text>;
-  }
-  if (delta < 0) {
-    return <Text style={styles.moveDown}>{"\u2193"}{Math.abs(delta)}</Text>;
-  }
-  return null;
-}
-
-function BusinessCard({ item }: { item: MappedBusiness }) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+function RankedCard({ item }: { item: MappedBusiness }) {
+  const [imgError, setImgError] = useState(false);
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
-  const isFirst = item.rank === 1;
+  const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
-
-  const onPressIn = () => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50 }).start();
-  const onPressOut = () => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }).start();
+  const initial = item.name.charAt(0).toUpperCase();
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <TouchableOpacity
-        activeOpacity={1}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-        style={styles.card}
-        testID={`leaderboard-row-${item.rank}`}
-      >
-        <PhotoMosaic photos={photos} height={180} />
-
-        <View style={styles.cardBody}>
-          <View style={styles.cardInfoRow}>
-            <View style={styles.cardInfoLeft}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <Text style={[styles.cardRankText, isFirst && { color: AMBER }]}>{rankLabel}</Text>
-                <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-              </View>
-              <Text style={styles.cardMeta} numberOfLines={1}>
-                {item.neighborhood}{item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
-              </Text>
-              <View style={styles.cardStatusRow}>
-                <OpenStatusText isOpen={item.isOpenNow} />
-                <MovementIndicator delta={item.rankDelta} />
-              </View>
-            </View>
-
-            <View style={styles.cardScoreBlock}>
-              <Text style={[styles.cardScore, isFirst && { color: AMBER }]}>
-                {item.weightedScore.toFixed(1)}
-              </Text>
-              <Text style={styles.cardRatingCount}>{item.ratingCount} ratings</Text>
-            </View>
-          </View>
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
+      style={styles.rankedCard}
+    >
+      {photos.length > 0 && !imgError ? (
+        <Image
+          source={{ uri: photos[0] }}
+          style={styles.rankedPhoto}
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <View style={[styles.rankedPhoto, styles.rankedPhotoFallback]}>
+          <Text style={styles.rankedPhotoInitial}>{initial}</Text>
         </View>
-      </TouchableOpacity>
-    </Animated.View>
+      )}
+      <View style={styles.rankedInfo}>
+        <View style={styles.rankedRow1}>
+          <Text style={styles.rankedName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.rankedRank}>{rankLabel}</Text>
+        </View>
+        <Text style={styles.rankedMeta} numberOfLines={1}>
+          {catDisplay.emoji} {catDisplay.label}
+          {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
+        </Text>
+        <View style={styles.rankedRow3}>
+          <Text style={styles.rankedScore}>{item.weightedScore.toFixed(1)}</Text>
+          {item.rankDelta !== 0 && (
+            <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
+              {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
+            </Text>
+          )}
+          {item.isOpenNow !== undefined && (
+            <View style={[styles.statusPillSmall, item.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
+              <Text style={styles.statusPillSmallText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
   const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  // Fetch dynamic categories from API
+  const { data: dbCategories = [] } = useQuery({
+    queryKey: ["categories", "Dallas"],
+    queryFn: () => fetchCategories("Dallas"),
+    staleTime: 60000,
+  });
+
+  // Build chip list: "All" first, then dynamic categories from DB
+  const categoryChips = [
+    { slug: "all", label: "All", emoji: "\u2728" },
+    ...dbCategories.map((slug: string) => {
+      const d = getCategoryDisplay(slug);
+      return { slug, label: d.label, emoji: d.emoji };
+    }),
+  ];
 
   const { data: businesses = [], isLoading } = useQuery({
     queryKey: ["leaderboard", "Dallas", activeCategory === "all" ? "restaurant" : activeCategory],
@@ -167,6 +199,8 @@ export default function LeaderboardScreen() {
   });
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const heroBiz = businesses.length > 0 ? businesses[0] : null;
+  const restBiz = businesses.slice(1);
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -188,7 +222,7 @@ export default function LeaderboardScreen() {
         contentContainerStyle={styles.chipsContainer}
         style={styles.chipsRow}
       >
-        {CATEGORY_CHIPS.map((chip) => {
+        {categoryChips.map((chip) => {
           const isActive = activeCategory === chip.slug;
           return (
             <TouchableOpacity
@@ -196,7 +230,9 @@ export default function LeaderboardScreen() {
               onPress={() => setActiveCategory(chip.slug)}
               style={[styles.chip, isActive && styles.chipActive]}
             >
-              <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+              <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
+                <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+              </View>
               <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
                 {chip.label}
               </Text>
@@ -207,24 +243,27 @@ export default function LeaderboardScreen() {
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.gold} />
+          <ActivityIndicator size="large" color={AMBER} />
         </View>
       ) : (
         <FlatList
-          data={businesses}
+          data={restBiz}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <BusinessCard item={item} />}
+          renderItem={({ item }) => <RankedCard item={item} />}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
           ]}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} /> : null}
           ListEmptyComponent={
-            <View style={styles.loadingContainer}>
-              <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyText}>No businesses found</Text>
-              <Text style={styles.emptySubtext}>Try a different category</Text>
-            </View>
+            !heroBiz ? (
+              <View style={styles.loadingContainer}>
+                <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={{ marginBottom: 12 }} />
+                <Text style={styles.emptyText}>No businesses found</Text>
+                <Text style={styles.emptySubtext}>Try a different category</Text>
+              </View>
+            ) : null
           }
         />
       )}
@@ -279,20 +318,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 24,
+    height: 40,
+    borderRadius: 100,
     backgroundColor: "#FFFFFF",
-    ...Colors.cardShadow,
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
   },
   chipActive: {
     backgroundColor: AMBER,
-    shadowOpacity: 0.15,
+    borderColor: AMBER,
+    shadowColor: AMBER,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  chipEmojiCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chipEmojiCircleActive: {
+    backgroundColor: "rgba(255,255,255,0.2)",
   },
   chipEmoji: {
-    fontSize: 16,
+    fontSize: 14,
   },
   chipLabel: {
     fontSize: 13,
@@ -304,98 +357,189 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
   },
 
-  list: { paddingHorizontal: CARD_PADDING, gap: 12, paddingTop: 4 },
+  list: { paddingHorizontal: CARD_PADDING, gap: 10, paddingTop: 4 },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
 
-  card: {
+  // Hero Card (#1)
+  heroCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     overflow: "hidden",
+    marginBottom: 4,
     ...Colors.cardShadow,
   },
-  heroPhoto: {
-    width: "100%" as any,
+  heroGradient: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  heroCrownBadge: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  heroCrownText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FFD700",
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.5,
+  },
+  heroName: {
+    position: "absolute",
+    bottom: 12,
+    left: 14,
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "PlayfairDisplay_700Bold",
+    letterSpacing: -0.3,
+    maxWidth: "60%",
+  },
+  heroScoreArea: {
+    position: "absolute",
+    bottom: 12,
+    right: 14,
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  heroScore: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#FFD700",
+    fontFamily: "PlayfairDisplay_900Black",
+    letterSpacing: -0.5,
+  },
+  openPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+  },
+  openPillOpen: { backgroundColor: "#34C759" },
+  openPillClosed: { backgroundColor: "#FF3B30" },
+  openPillText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#fff",
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.5,
+  },
+  heroStrip: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  heroStripCategory: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_500Medium",
+  },
+  heroStripLink: {
+    fontSize: 12,
+    color: AMBER,
+    fontFamily: "DMSans_600SemiBold",
+  },
+
+  // Ranked Cards (#2+)
+  rankedCard: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 12,
+    gap: 14,
+    borderWidth: 1,
+    borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  rankedPhoto: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     backgroundColor: Colors.surfaceRaised,
   },
-  photoCarouselPlaceholder: {
-    backgroundColor: Colors.surfaceRaised,
+  rankedPhotoFallback: {
+    backgroundColor: AMBER,
     alignItems: "center",
     justifyContent: "center",
   },
-
-  cardBody: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 4,
-  },
-  cardRankText: {
-    fontSize: 17,
+  rankedPhotoInitial: {
+    fontSize: 28,
     fontWeight: "700",
-    fontFamily: "PlayfairDisplay_700Bold",
-    color: Colors.text,
+    color: "#fff",
   },
-  cardInfoRow: {
+  rankedInfo: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 3,
+  },
+  rankedRow1: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  cardInfoLeft: {
-    flex: 1,
-    gap: 2,
-  },
-  cardName: {
-    fontSize: 17,
+  rankedName: {
+    fontSize: 15,
     fontWeight: "700",
     color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold",
-    letterSpacing: -0.2,
     flex: 1,
+    marginRight: 8,
   },
-  cardMeta: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_400Regular",
+  rankedRank: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: AMBER,
+    fontFamily: "PlayfairDisplay_900Black",
   },
-  cardStatusRow: {
+  rankedMeta: {
+    fontSize: 12,
+    color: AMBER,
+    fontFamily: "DMSans_500Medium",
+  },
+  rankedRow3: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginTop: 2,
   },
-  statusText: {
+  rankedScore: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: AMBER,
+    fontFamily: "PlayfairDisplay_900Black",
+    letterSpacing: -0.3,
+  },
+  rankedDelta: {
     fontSize: 11,
+    fontFamily: "DMSans_500Medium",
+  },
+  statusPillSmall: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 99,
+  },
+  statusPillOpen: { backgroundColor: "#34C759" },
+  statusPillClosed: { backgroundColor: "#FF3B30" },
+  statusPillSmallText: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: "#fff",
     fontFamily: "DMSans_600SemiBold",
-    letterSpacing: 0.5,
-  },
-  moveUp: {
-    fontSize: 11,
-    color: Colors.green,
-    fontFamily: "DMSans_500Medium",
-  },
-  moveDown: {
-    fontSize: 11,
-    color: Colors.red,
-    fontFamily: "DMSans_500Medium",
-  },
-
-  cardScoreBlock: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-    minWidth: 56,
-  },
-  cardScore: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
-    letterSpacing: -0.5,
-  },
-  cardRatingCount: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-    marginTop: 1,
+    letterSpacing: 0.3,
   },
 });

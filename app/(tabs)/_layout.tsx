@@ -5,6 +5,7 @@ import { Platform, StyleSheet, View } from "react-native";
 import React from "react";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 
 function NativeTabLayout() {
   return (
@@ -36,25 +37,22 @@ function ClassicTabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.tabIconSelected,
-        tabBarInactiveTintColor: Colors.tabIconDefault,
+        tabBarActiveTintColor: BRAND.colors.amber,
+        tabBarInactiveTintColor: "#8E8E93",
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: Colors.background,
-          borderTopWidth: 0,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.06,
-          shadowRadius: 8,
-          elevation: 8,
-          ...(isWeb ? { height: 84 } : {}),
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
+          borderTopColor: "#E5E5EA",
+          ...(isWeb ? { height: 56 + 28 } : { height: 56 + 34 }),
+          paddingTop: 6,
         },
         tabBarBackground: () => (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]} />
         ),
         tabBarLabelStyle: {
-          fontFamily: "DMSans_500Medium",
-          fontSize: 11,
+          fontFamily: "DMSans_600SemiBold",
+          fontSize: 10,
         },
       }}
     >
@@ -76,7 +74,7 @@ function ClassicTabLayout() {
         name="search"
         options={{
           title: "Discover",
-          tabBarIcon: ({ color }) => <Ionicons name="search" size={22} color={color} />,
+          tabBarIcon: ({ color }) => <Ionicons name="compass" size={22} color={color} />,
         }}
       />
       <Tabs.Screen

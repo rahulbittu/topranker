@@ -8,7 +8,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { getCategoryDisplay, getRankDisplay } from "@/lib/data";
+import { getCategoryDisplay, getRankDisplay } from "@/constants/brand";
 import { fetchBusinessSearch } from "@/lib/api";
 
 const AMBER = "#C49A1A";
@@ -59,10 +59,10 @@ function BusinessPhoto({ item, size = 80 }: { item: MappedBusiness; size?: numbe
   );
 }
 
-function BusinessCard({ item }: { item: MappedBusiness }) {
+function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
   const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
-  const rankLabel = getRankDisplay(item.rank);
+  const rankLabel = getRankDisplay(displayRank);
 
   return (
     <TouchableOpacity
@@ -84,23 +84,21 @@ function BusinessCard({ item }: { item: MappedBusiness }) {
               <Text style={styles.cardNeighborhood}>{item.neighborhood}</Text>
             </>
           ) : null}
-          {item.priceRange ? (
-            <>
-              <Text style={styles.cardDot}> {"\u00B7"} </Text>
-              <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
-            </>
-          ) : null}
         </View>
         <View style={styles.cardRow3}>
+          <Text style={styles.cardScore}>{item.weightedScore.toFixed(1)}</Text>
+          {item.rankDelta !== 0 && (
+            <Text style={{ fontSize: 11, color: item.rankDelta > 0 ? Colors.green : Colors.red, fontFamily: "DMSans_500Medium" }}>
+              {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
+            </Text>
+          )}
           {isOpen !== undefined && isOpen !== null && (
             <View style={[styles.statusPill, isOpen ? styles.statusPillOpen : styles.statusPillClosed]}>
-              <Text style={[styles.statusPillText, isOpen ? styles.statusPillTextOpen : styles.statusPillTextClosed]}>
+              <Text style={styles.statusPillText}>
                 {isOpen ? "OPEN" : "CLOSED"}
               </Text>
             </View>
           )}
-          <View style={{ flex: 1 }} />
-          <Text style={styles.cardScore}>{item.weightedScore.toFixed(2)}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -159,6 +157,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
 
   useEffect(() => {
     if (Platform.OS !== "web") return;
+    if (typeof window === "undefined") return;
 
     const timeout = setTimeout(() => {
       if (!mapReady) setMapError(true);
@@ -219,7 +218,6 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
 
     items.forEach(biz => {
       if (!biz.lat || !biz.lng) return;
-      const rankLabel = getRankDisplay(biz.rank);
       const marker = new (window as any).google.maps.Marker({
         position: { lat: biz.lat, lng: biz.lng },
         map,
@@ -240,7 +238,6 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
     });
   }
 
-  // If Google Maps failed or no API key, show list-based map view with directions
   if (Platform.OS !== "web" || mapError) {
     return (
       <FlatList
@@ -270,7 +267,7 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.mapContainer}>
-        <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
+        <div ref={mapRef as any} style={{ width: "100%", height: 380 }} />
         {!mapReady && !mapError && (
           <View style={styles.mapLoadingOverlay}>
             <ActivityIndicator size="small" color={AMBER} />
@@ -294,8 +291,12 @@ function MapView({ businesses, city }: { businesses: MappedBusiness[]; city: str
             )}
             <View style={{ flex: 1, gap: 2 }}>
               <Text style={styles.mapBottomSheetName}>{selectedBiz.name}</Text>
-              <Text style={styles.mapBottomSheetMeta}>{getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(2)}</Text>
+              <Text style={styles.mapBottomSheetMeta}>
+                {getRankDisplay(selectedBiz.rank)} {"\u00B7"} Score: {selectedBiz.weightedScore.toFixed(2)}
+                {selectedBiz.isOpenNow !== undefined ? ` \u00B7 ${selectedBiz.isOpenNow ? "OPEN" : "CLOSED"}` : ""}
+              </Text>
             </View>
+            <Text style={{ color: AMBER, fontFamily: "DMSans_600SemiBold", fontSize: 12 }}>{"View \u2192"}</Text>
           </View>
         </TouchableOpacity>
       )}
@@ -322,7 +323,7 @@ export default function SearchScreen() {
     if (activeFilter === "Top 10") list = list.filter((b: MappedBusiness) => b.rank <= 10);
     else if (activeFilter === "Challenging") list = list.filter((b: MappedBusiness) => b.isChallenger);
     else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
-    return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
+    return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
   }, [allBusinesses, activeFilter]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -406,7 +407,9 @@ export default function SearchScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item: MappedBusiness) => item.id}
-          renderItem={({ item }: { item: MappedBusiness }) => <BusinessCard item={item} />}
+          renderItem={({ item, index }: { item: MappedBusiness; index: number }) => (
+            <BusinessCard item={item} displayRank={index + 1} />
+          )}
           contentContainerStyle={[
             styles.resultList,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
@@ -438,18 +441,18 @@ const styles = StyleSheet.create({
   cityButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 20, borderWidth: 1, borderColor: "#E5E5EA",
   },
   cityButtonText: { fontSize: 13, fontWeight: "500", color: Colors.text, fontFamily: "DMSans_500Medium" },
 
   cityPickerDropdown: {
     marginHorizontal: 16, backgroundColor: Colors.background, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
+    borderWidth: 1, borderColor: "#E5E5EA", marginBottom: 8, overflow: "hidden",
   },
   cityOption: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
+    borderBottomWidth: 1, borderBottomColor: "#E5E5EA",
   },
   cityOptionActive: { backgroundColor: "rgba(196, 154, 26, 0.08)" },
   cityOptionText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular" },
@@ -472,11 +475,7 @@ const styles = StyleSheet.create({
   },
   viewToggle: {
     flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 8,
-    overflow: "hidden",
-    ...Colors.cardShadow,
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    overflow: "hidden", borderWidth: 1, borderColor: "#E5E5EA",
   },
   viewToggleBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -489,13 +488,9 @@ const styles = StyleSheet.create({
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    ...Colors.cardShadow,
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E5EA",
   },
-  filterChipActive: { backgroundColor: AMBER },
+  filterChipActive: { backgroundColor: AMBER, borderColor: AMBER },
   filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
@@ -507,8 +502,13 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 14,
-    padding: 14, minHeight: 96, gap: 14,
-    ...Colors.cardShadow,
+    padding: 12, minHeight: 96, gap: 14,
+    borderWidth: 1, borderColor: "#E5E5EA",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardPhoto: {
     borderRadius: 8, backgroundColor: Colors.surfaceRaised,
@@ -525,10 +525,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   cardName: {
-    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
+    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
   },
   cardRankBadge: {
-    fontSize: 14, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold",
+    fontSize: 16, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
   },
   cardRow2: {
     flexDirection: "row", alignItems: "center", flexWrap: "wrap",
@@ -537,18 +537,16 @@ const styles = StyleSheet.create({
   cardDot: { fontSize: 12, color: Colors.textTertiary },
   cardNeighborhood: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   cardRow3: {
-    flexDirection: "row", alignItems: "center", marginTop: 2,
+    flexDirection: "row", alignItems: "center", marginTop: 2, gap: 8,
   },
   statusPill: {
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 99,
+    paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99,
   },
   statusPillOpen: { backgroundColor: "#34C759" },
   statusPillClosed: { backgroundColor: "#FF3B30" },
-  statusPillText: { fontSize: 11, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
-  statusPillTextOpen: {},
-  statusPillTextClosed: {},
+  statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   cardScore: {
-    fontSize: 14, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold",
+    fontSize: 18, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
   },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
@@ -557,8 +555,8 @@ const styles = StyleSheet.create({
 
   // Map styles
   mapContainer: {
-    flex: 1, margin: 16, borderRadius: 12, overflow: "hidden",
-    borderWidth: 1, borderColor: Colors.border, position: "relative" as const,
+    margin: 16, borderRadius: 12, overflow: "hidden",
+    borderWidth: 1, borderColor: "#E5E5EA", position: "relative" as const,
   },
   mapLoadingOverlay: {
     position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
@@ -573,7 +571,7 @@ const styles = StyleSheet.create({
   mapCard: {
     flexDirection: "row", alignItems: "center",
     backgroundColor: "#FFFFFF", borderRadius: 12, padding: 12, gap: 10,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: "#E5E5EA",
   },
   mapCardRank: {
     width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
@@ -591,47 +589,29 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
 
-  // Bottom sheet for map pin tap
   mapBottomSheet: {
     position: "absolute" as const,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    bottom: 0, left: 0, right: 0,
     backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    padding: 16,
-    paddingTop: 12,
+    borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    padding: 16, paddingTop: 12,
     ...Colors.cardShadow,
     shadowOffset: { width: 0, height: -4 },
   },
   mapBottomSheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#E0E0E0",
-    alignSelf: "center",
-    marginBottom: 12,
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: "#E0E0E0", alignSelf: "center", marginBottom: 12,
   },
   mapBottomSheetRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    flexDirection: "row", alignItems: "center", gap: 12,
   },
   mapBottomSheetPhoto: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 56, height: 56, borderRadius: 8,
   },
   mapBottomSheetName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
   },
   mapBottomSheetMeta: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_400Regular",
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
 });

@@ -8,7 +8,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
-import { formatCountdown, formatTimeAgo, getCategoryDisplay, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
+import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
+import { getCategoryDisplay } from "@/constants/brand";
 
 const AMBER = "#C49A1A";
 
@@ -116,7 +117,10 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
 
   return (
     <View style={styles.reviewsSection}>
-      <Text style={styles.reviewsSectionTitle}>Community Reviews</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <Ionicons name="chatbubbles-outline" size={14} color={AMBER} />
+        <Text style={styles.reviewsSectionTitle}>COMMUNITY REVIEWS</Text>
+      </View>
       {displayReviews.map(review => (
         <ReviewRow key={review.id} review={review} />
       ))}
@@ -390,11 +394,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   reviewsSectionTitle: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 11,
+    fontWeight: "700",
     color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-    marginBottom: 4,
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 1,
   },
   reviewRow: {
     flexDirection: "row",
@@ -403,9 +407,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   reviewAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: AMBER,
     alignItems: "center",
     justifyContent: "center",

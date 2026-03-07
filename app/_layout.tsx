@@ -3,12 +3,14 @@ import {
   DMSans_500Medium,
   DMSans_600SemiBold,
   DMSans_700Bold,
+  DMSans_800ExtraBold,
 } from "@expo-google-fonts/dm-sans";
 import {
   PlayfairDisplay_400Regular,
   PlayfairDisplay_400Regular_Italic,
   PlayfairDisplay_700Bold,
   PlayfairDisplay_800ExtraBold,
+  PlayfairDisplay_900Black,
 } from "@expo-google-fonts/playfair-display";
 import { useFonts } from "expo-font";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -48,10 +50,12 @@ export default function RootLayout() {
     DMSans_500Medium,
     DMSans_600SemiBold,
     DMSans_700Bold,
+    DMSans_800ExtraBold,
     PlayfairDisplay_400Regular,
     PlayfairDisplay_400Regular_Italic,
     PlayfairDisplay_700Bold,
     PlayfairDisplay_800ExtraBold,
+    PlayfairDisplay_900Black,
   });
 
   useEffect(() => {

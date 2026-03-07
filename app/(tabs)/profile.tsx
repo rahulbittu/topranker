@@ -13,6 +13,7 @@ import {
   TIER_SCORE_RANGES, formatTimeAgo,
   type CredibilityTier,
 } from "@/lib/data";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
 import { fetchMemberProfile, type ApiMemberProfile } from "@/lib/api";
 import { AppLogo } from "@/components/Logo";
@@ -200,16 +201,19 @@ function ProfileContent({ profile }: { profile: ApiMemberProfile }) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.profileCard}>
+      <LinearGradient
+        colors={["#0D1B2A", "#1A3050"]}
+        style={styles.profileCard}
+      >
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{profile.displayName}</Text>
-          <Text style={styles.username}>@{profile.username}</Text>
+          <Text style={[styles.profileName, { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" }]}>{profile.displayName}</Text>
+          <Text style={[styles.username, { color: "rgba(255,255,255,0.5)" }]}>@{profile.username}</Text>
           <TierBadge tier={tier} />
         </View>
-      </View>
+      </LinearGradient>
 
       <View style={styles.credibilityCard}>
         <View style={styles.credScoreRow}>
@@ -395,15 +399,20 @@ const styles = StyleSheet.create({
   googleButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 12, height: 52,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+    borderRadius: 14, height: 52,
     width: "100%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   googleG: {
     fontSize: 20, fontWeight: "700", color: "#4285F4",
   },
   googleButtonText: {
-    fontSize: 16, fontWeight: "600", color: Colors.text,
+    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
   orDivider: {
     flexDirection: "row", alignItems: "center", gap: 12,
@@ -418,28 +427,33 @@ const styles = StyleSheet.create({
     position: "relative" as const,
   },
   input: {
-    width: "100%", height: 48, borderRadius: 10,
-    borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: 16, fontSize: 15, color: Colors.text,
-    backgroundColor: "#fff",
+    width: "100%", height: 48, borderRadius: 12,
+    borderWidth: 1, borderColor: "#E5E5EA",
+    paddingHorizontal: 14, fontSize: 14, color: Colors.text,
+    backgroundColor: "#fff", fontFamily: "DMSans_400Regular",
   },
   eyeButton: {
     position: "absolute" as const, right: 12, top: 0, bottom: 0,
     justifyContent: "center",
   },
   signInButton: {
-    backgroundColor: AMBER, borderRadius: 12, height: 52,
+    backgroundColor: AMBER, borderRadius: 14, height: 52,
     alignItems: "center", justifyContent: "center",
     width: "100%", marginTop: 4,
+    shadowColor: "rgba(196,154,26,0.35)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    elevation: 6,
   },
   signInButtonText: {
-    fontSize: 16, fontWeight: "700", color: "#fff",
+    fontSize: 15, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
   },
   signUpLink: {
     fontSize: 14, color: Colors.textSecondary, textAlign: "center", marginTop: 4,
   },
   signUpLinkBold: {
-    color: Colors.gold, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
+    color: "#007AFF", fontWeight: "600", fontFamily: "DMSans_600SemiBold",
   },
 
   // ===== Logged In =====
@@ -450,10 +464,10 @@ const styles = StyleSheet.create({
   },
   avatarCircle: {
     width: 60, height: 60, borderRadius: 30,
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: AMBER,
     alignItems: "center", justifyContent: "center",
   },
-  avatarInitial: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
+  avatarInitial: { fontSize: 24, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
   profileInfo: { gap: 4 },
   profileName: {
     fontSize: 20, fontWeight: "700", color: Colors.text,
@@ -487,13 +501,13 @@ const styles = StyleSheet.create({
   progressBarFill: { height: "100%", borderRadius: 2 },
 
   statsRow: {
-    flexDirection: "row", backgroundColor: "#FFFFFF", borderRadius: 14,
-    overflow: "hidden", ...Colors.cardShadow,
+    flexDirection: "row", backgroundColor: "rgba(13,27,42,0.9)", borderRadius: 14,
+    overflow: "hidden",
   },
   statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
-  statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: Colors.border },
-  statNum: { fontSize: 24, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
+  statNum: { fontSize: 24, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
 
   breakdownCard: {
     backgroundColor: "#FFFFFF", borderRadius: 14, padding: 16,

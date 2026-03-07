@@ -163,6 +163,7 @@ export default function BusinessProfileScreen() {
   const dishes = data?.dishes || [];
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
+  const [heroImgErrors, setHeroImgErrors] = useState<Set<number>>(new Set());
 
   const onHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -236,12 +237,28 @@ export default function BusinessProfileScreen() {
               scrollEventThrottle={16}
             >
               {photoUrls.map((url, i) => (
-                <Image key={i} source={{ uri: url }} style={styles.heroImage} resizeMode="cover" />
+                heroImgErrors.has(i) ? (
+                  <View key={i} style={[styles.heroImage, styles.heroImagePlaceholder]}>
+                    <Text style={styles.heroPlaceholderInitial}>
+                      {business.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                ) : (
+                  <Image
+                    key={i}
+                    source={{ uri: url }}
+                    style={styles.heroImage}
+                    resizeMode="cover"
+                    onError={() => setHeroImgErrors(prev => new Set(prev).add(i))}
+                  />
+                )
               ))}
             </ScrollView>
           ) : (
             <View style={[styles.heroImage, styles.heroImagePlaceholder]}>
-              <Ionicons name="restaurant-outline" size={48} color={Colors.textTertiary} />
+              <Text style={styles.heroPlaceholderInitial}>
+                {business.name.charAt(0).toUpperCase()}
+              </Text>
             </View>
           )}
 
@@ -460,9 +477,15 @@ const styles = StyleSheet.create({
   heroDotActive: { backgroundColor: "#C49A1A" },
   heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
   heroImagePlaceholder: {
-    backgroundColor: Colors.surfaceRaised,
+    backgroundColor: "#C49A1A",
     alignItems: "center",
     justifyContent: "center",
+  },
+  heroPlaceholderInitial: {
+    fontSize: 48,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    fontFamily: "PlayfairDisplay_700Bold",
   },
 
   navBar: {
@@ -500,8 +523,8 @@ const styles = StyleSheet.create({
     ...Colors.cardShadow,
   },
   scoreNumber: {
-    fontSize: 48, fontWeight: "700", color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -1.5,
+    fontSize: 48, fontWeight: "900", color: Colors.gold,
+    fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1.5,
   },
   scoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   scoreMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },

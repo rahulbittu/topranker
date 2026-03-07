@@ -1,60 +1,9 @@
-// Maps raw API/DB slugs to human-readable labels
-export const CATEGORY_LABELS: Record<string, string> = {
-  restaurants: "Restaurants",
-  restaurant: "Restaurants",
-  fast_food: "Fast Food",
-  fine_dining: "Fine Dining",
-  casual_dining: "Casual Dining",
-  cafes: "Cafes",
-  cafe: "Cafe",
-  bakeries: "Bakeries",
-  bakery: "Bakeries",
-  street_food: "Street Food",
-  bar: "Bar",
-  bars: "Bars",
-  brewery: "Breweries",
-  breweries: "Breweries",
-  bubble_tea: "Bubble Tea",
-  ice_cream: "Ice Cream",
-  buffet: "Buffets",
-  buffets: "Buffets",
-  brunch: "Brunch",
-  dessert_bar: "Dessert Bars",
-  food_hall: "Food Halls",
-};
-
-export const CATEGORY_EMOJIS: Record<string, string> = {
-  restaurants: "\u{1F37D}",
-  restaurant: "\u{1F37D}",
-  fast_food: "\u{1F354}",
-  fine_dining: "\u{1F942}",
-  casual_dining: "\u{1F373}",
-  cafes: "\u2615",
-  cafe: "\u2615",
-  bakeries: "\u{1F950}",
-  bakery: "\u{1F950}",
-  street_food: "\u{1F32E}",
-  bar: "\u{1F37A}",
-  bars: "\u{1F37A}",
-  brewery: "\u{1F37B}",
-  breweries: "\u{1F37B}",
-  bubble_tea: "\u{1F9CB}",
-  ice_cream: "\u{1F366}",
-  buffet: "\u{1F371}",
-  buffets: "\u{1F371}",
-  brunch: "\u{1F95E}",
-  dessert_bar: "\u{1F370}",
-  food_hall: "\u{1F3EA}",
-};
+// Re-export from brand constants for backwards compatibility
+export { CATEGORY_LABELS, CATEGORY_EMOJI as CATEGORY_EMOJIS, getCategoryDisplay, getRankDisplay } from "@/constants/brand";
+import { CATEGORY_LABELS } from "@/constants/brand";
 
 export function formatCategoryLabel(slug: string): string {
   return CATEGORY_LABELS[slug] || slug.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-}
-
-export function getCategoryDisplay(slug: string): { emoji: string; label: string } {
-  const label = CATEGORY_LABELS[slug] || slug.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-  const emoji = CATEGORY_EMOJIS[slug] || "\u{1F37D}";
-  return { emoji, label };
 }
 
 export const CATEGORY_MAP: Record<string, string> = {
@@ -150,12 +99,7 @@ export const RANK_COLORS = {
   navy: "#0D1B2A",
 };
 
-export function getRankDisplay(rank: number): string {
-  if (rank === 1) return "\u{1F947}";
-  if (rank === 2) return "\u{1F948}";
-  if (rank === 3) return "\u{1F949}";
-  return `#${rank}`;
-}
+// getRankDisplay is re-exported from @/constants/brand above
 
 export function getVoteWeight(credibilityScore: number): number {
   if (credibilityScore >= 600) return 1.000;

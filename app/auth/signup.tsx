@@ -9,6 +9,8 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { AppLogo } from "@/components/Logo";
+import { BRAND } from "@/constants/brand";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -70,7 +72,7 @@ export default function SignupScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerSection}>
-          <Text style={styles.brandName}>TOP RANKER</Text>
+          <AppLogo size="md" />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join the Dallas ranking community</Text>
         </View>
@@ -224,11 +226,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: { paddingHorizontal: 24, paddingTop: 8, gap: 14 },
 
-  headerSection: { gap: 4, marginBottom: 4 },
-  brandName: {
-    fontSize: 14, fontWeight: "700", color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: 2.5, marginBottom: 6,
-  },
+  headerSection: { gap: 8, marginBottom: 4, alignItems: "center" },
   title: {
     fontSize: 28, fontWeight: "700", color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.8,
