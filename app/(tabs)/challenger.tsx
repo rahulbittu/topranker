@@ -46,8 +46,8 @@ function ReviewRow({ review }: { review: ReviewItem }) {
   const initial = review.userName.charAt(0).toUpperCase();
 
   let tierBadgeBg: string = Colors.textTertiary;
-  if (review.userTier === "top") tierBadgeBg = "#C9973A";
-  else if (review.userTier === "trusted") tierBadgeBg = BRAND.colors.amber;
+  if (review.userTier === "top") tierBadgeBg = TIER_COLORS.top;
+  else if (review.userTier === "trusted") tierBadgeBg = TIER_COLORS.trusted;
 
   return (
     <View style={styles.reviewRow}>
