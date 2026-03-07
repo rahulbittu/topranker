@@ -248,25 +248,27 @@ export async function getActiveChallenges(
       ),
     );
 
-  const results = [];
+  if (challengerRows.length === 0) return [];
+
+  // Batch-fetch all referenced businesses in one query
+  const bizIds = new Set<string>();
   for (const c of challengerRows) {
-    const [challengerBiz] = await db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, c.challengerId));
-    const [defenderBiz] = await db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, c.defenderId));
-
-    results.push({
-      ...c,
-      challengerBusiness: challengerBiz,
-      defenderBusiness: defenderBiz,
-    });
+    bizIds.add(c.challengerId);
+    bizIds.add(c.defenderId);
   }
+  const bizIdArr = Array.from(bizIds);
+  const bizRows = await db
+    .select()
+    .from(businesses)
+    .where(sql`${businesses.id} = ANY(ARRAY[${sql.join(bizIdArr.map(id => sql`${id}`), sql`,`)}]::text[])`);
 
-  return results;
+  const bizMap = new Map(bizRows.map(b => [b.id, b]));
+
+  return challengerRows.map(c => ({
+    ...c,
+    challengerBusiness: bizMap.get(c.challengerId),
+    defenderBusiness: bizMap.get(c.defenderId),
+  }));
 }
 
 export async function getBusinessDishes(

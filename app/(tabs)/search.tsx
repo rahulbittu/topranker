@@ -53,7 +53,7 @@ interface MappedBusiness {
   lng?: number;
 }
 
-function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
+const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripWidth = containerWidth;
   const stripPhotos = photos.slice(0, 3);
@@ -105,7 +105,7 @@ function DiscoverPhotoStrip({ photos, height, category, containerWidth }: { phot
       )}
     </View>
   );
-}
+});
 
 const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -189,6 +189,8 @@ function MapBusinessCard({ item }: { item: MappedBusiness }) {
       style={styles.mapCard}
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={styles.mapCardRank}>
         <Text style={styles.mapCardRankText}>{rankLabel}</Text>

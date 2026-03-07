@@ -52,7 +52,7 @@ interface ReviewItem {
   createdAt: number;
 }
 
-function ReviewRow({ review }: { review: ReviewItem }) {
+const ReviewRow = React.memo(function ReviewRow({ review }: { review: ReviewItem }) {
   const tierColor = TIER_COLORS[review.userTier] || Colors.textTertiary;
   const tierName = TIER_DISPLAY_NAMES[review.userTier] || "New Member";
   const initial = review.userName.charAt(0).toUpperCase();
@@ -79,7 +79,7 @@ function ReviewRow({ review }: { review: ReviewItem }) {
       <Text style={styles.reviewScore}>{review.rawScore.toFixed(1)}</Text>
     </View>
   );
-}
+});
 
 function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   const [expanded, setExpanded] = useState(false);
@@ -156,7 +156,7 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   );
 }
 
-function FighterPhoto({ biz, label, score }: { biz: any; label: string; score?: number }) {
+const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { biz: any; label: string; score?: number }) {
   const [err, setErr] = useState(false);
   const photoUrl = biz.photoUrl || (biz.photoUrls && biz.photoUrls[0]);
 
@@ -196,7 +196,7 @@ function FighterPhoto({ biz, label, score }: { biz: any; label: string; score?: 
       {overlay}
     </View>
   );
-}
+});
 
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const [, setTick] = useState(0);

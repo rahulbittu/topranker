@@ -81,7 +81,7 @@ function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
   );
 }
 
-function RatingRow({ rating }: { rating: MappedRating }) {
+const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRating }) {
   const tierColor = TIER_COLORS[rating.userTier];
   const tierName = TIER_DISPLAY_NAMES[rating.userTier];
   return (
@@ -131,7 +131,7 @@ function RatingRow({ rating }: { rating: MappedRating }) {
       )}
     </View>
   );
-}
+});
 
 function ActionButton({ icon, label, onPress, disabled }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void; disabled?: boolean }) {
   return (
@@ -152,11 +152,21 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: React.Componen
 
 function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
 
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(!expanded);
+    if (expanded) setVisibleCount(5);
   };
+
+  const showMore = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setVisibleCount(v => v + 10);
+  };
+
+  const visibleRatings = ratings.slice(0, visibleCount);
+  const hasMore = visibleCount < ratings.length;
 
   return (
     <View style={styles.collapsibleSection}>
@@ -178,9 +188,14 @@ function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
       {expanded && (
         <View style={styles.collapsibleBody}>
           <DistributionChart ratings={ratings} />
-          {ratings.map((rating: MappedRating) => (
+          {visibleRatings.map((rating: MappedRating) => (
             <RatingRow key={rating.id} rating={rating} />
           ))}
+          {hasMore && (
+            <TouchableOpacity onPress={showMore} style={styles.showMoreBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Show more reviews">
+              <Text style={styles.showMoreText}>Show more ({ratings.length - visibleCount} remaining)</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -819,6 +834,13 @@ const styles = StyleSheet.create({
   collapsibleBody: {
     paddingHorizontal: 14, paddingBottom: 14, paddingTop: 12, gap: 10,
     borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  showMoreBtn: {
+    alignItems: "center", paddingVertical: 10,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 10,
+  },
+  showMoreText: {
+    fontSize: 13, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
   },
 
   reportLink: {

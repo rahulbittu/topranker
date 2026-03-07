@@ -38,7 +38,7 @@ interface MappedBusiness {
   photoUrls?: string[];
 }
 
-function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
+const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category }: { photos: string[]; height: number; category?: string }) {
   if (photos.length === 0) {
     return (
       <LinearGradient
@@ -76,9 +76,9 @@ function PhotoMosaic({ photos, height, category }: { photos: string[]; height: n
       </View>
     </View>
   );
-}
+});
 
-function StarRating({ score }: { score: number }) {
+const StarRating = React.memo(function StarRating({ score }: { score: number }) {
   const stars = [];
   for (let i = 1; i <= 5; i++) {
     const filled = score >= i;
@@ -93,7 +93,7 @@ function StarRating({ score }: { score: number }) {
     );
   }
   return <View style={styles.starRow}>{stars}</View>;
-}
+});
 
 function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
@@ -151,7 +151,7 @@ function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel
   );
 }
 
-function PhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
+const PhotoStrip = React.memo(function PhotoStrip({ photos, height, category, containerWidth }: { photos: string[]; height: number; category?: string; containerWidth: number }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripPhotos = photos.slice(0, 3);
   const stripWidth = containerWidth;
@@ -204,7 +204,7 @@ function PhotoStrip({ photos, height, category, containerWidth }: { photos: stri
       )}
     </View>
   );
-}
+});
 
 const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -275,7 +275,7 @@ export default function LeaderboardScreen() {
   const { data: dbCategories = [] } = useQuery({
     queryKey: ["categories", "Dallas"],
     queryFn: () => fetchCategories("Dallas"),
-    staleTime: 60000,
+    staleTime: 300000,
   });
 
   // Build chip list from dynamic categories, fallback to default while loading
@@ -405,6 +405,7 @@ export default function LeaderboardScreen() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
+          getItemLayout={(_, index) => ({ length: 222, offset: 222 * index, index })}
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
@@ -768,12 +769,6 @@ const styles = StyleSheet.create({
   rankedDelta: {
     fontSize: 11,
     fontFamily: "DMSans_500Medium",
-  },
-  rankedRow4: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 1,
   },
   statusPillSmall: {
     paddingHorizontal: 6,
