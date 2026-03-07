@@ -128,7 +128,7 @@ function RatingRow({ rating }: { rating: MappedRating }) {
   );
 }
 
-function ActionButton({ icon, label, onPress, disabled }: { icon: string; label: string; onPress: () => void; disabled?: boolean }) {
+function ActionButton({ icon, label, onPress, disabled }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void; disabled?: boolean }) {
   return (
     <TouchableOpacity
       style={[styles.actionBtn, disabled && styles.actionBtnDisabled]}
@@ -136,7 +136,7 @@ function ActionButton({ icon, label, onPress, disabled }: { icon: string; label:
       disabled={disabled}
       activeOpacity={0.7}
     >
-      <Ionicons name={icon as any} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
+      <Ionicons name={icon} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
       <Text style={[styles.actionBtnLabel, disabled && styles.actionBtnLabelDisabled]}>{label}</Text>
     </TouchableOpacity>
   );

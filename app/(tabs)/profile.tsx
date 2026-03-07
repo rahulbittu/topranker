@@ -36,10 +36,10 @@ function TierBadge({ tier }: { tier: CredibilityTier }) {
   );
 }
 
-function BreakdownRow({ label, value, icon }: { label: string; value: string; icon: string }) {
+function BreakdownRow({ label, value, icon }: { label: string; value: string; icon: React.ComponentProps<typeof Ionicons>["name"] }) {
   return (
     <View style={styles.breakdownRow}>
-      <Ionicons name={icon as any} size={14} color={Colors.textTertiary} />
+      <Ionicons name={icon} size={14} color={Colors.textTertiary} />
       <Text style={styles.breakdownLabel}>{label}</Text>
       <Text style={styles.breakdownValue}>{value}</Text>
     </View>
