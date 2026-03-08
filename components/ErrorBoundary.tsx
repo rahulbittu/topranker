@@ -7,6 +7,7 @@ import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { reportComponentCrash } from "@/lib/error-reporting";
 
 interface Props {
   children: ReactNode;
@@ -32,6 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
       stack: error.stack?.split("\n").slice(0, 5).join("\n"),
       componentStack: errorInfo.componentStack?.split("\n").slice(0, 5).join("\n"),
     });
+    reportComponentCrash(error, errorInfo.componentStack || undefined);
     this.props.onError?.(error, errorInfo);
   }
 

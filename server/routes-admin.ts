@@ -247,6 +247,43 @@ export function registerAdminRoutes(app: Express) {
     }
   });
 
+  // ── Analytics Dashboard ──────────────────────────────────
+  app.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const stats = getFunnelStats();
+      const recent = getRecentEvents(50);
+
+      // Calculate conversion rates
+      const signups = (stats.signup_completed || 0);
+      const pageViews = (stats.page_view || 0);
+      const firstRatings = (stats.first_rating || 0);
+      const challengerEntries = (stats.challenger_entered || 0);
+      const dashboardSubs = (stats.dashboard_pro_subscribed || 0);
+
+      const dashboard = {
+        overview: {
+          totalEvents: Object.values(stats).reduce((a, b) => a + b, 0),
+          uniqueEventTypes: Object.keys(stats).length,
+        },
+        funnel: {
+          pageViews,
+          signups,
+          firstRatings,
+          challengerEntries,
+          dashboardSubs,
+          signupRate: pageViews > 0 ? ((signups / pageViews) * 100).toFixed(1) + "%" : "N/A",
+          ratingRate: signups > 0 ? ((firstRatings / signups) * 100).toFixed(1) + "%" : "N/A",
+        },
+        recentActivity: recent.slice(0, 10),
+        generatedAt: new Date().toISOString(),
+      };
+
+      return res.json({ data: dashboard });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
       const months = Math.min(24, Math.max(1, parseInt(req.query.months as string) || 6));

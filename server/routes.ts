@@ -734,6 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       // Store as user metadata (future: dedicated column)
       (req.user as any).notificationPrefs = prefs;
+      log.tag("Notifications").info(`Preferences updated for user ${req.user!.id}: ${JSON.stringify(prefs)}`);
       return res.json({ data: prefs });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
