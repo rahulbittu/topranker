@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { log } from "./logger";
 
 /**
  * Proxy for Google Places photos.
@@ -69,7 +70,7 @@ export async function handlePhotoProxy(req: Request, res: Response) {
     if (err.name === "TimeoutError") {
       return res.status(504).json({ error: "Photo fetch timed out" });
     }
-    console.error("[PhotoProxy] Error:", err.message);
+    log.tag("PhotoProxy").error("Error:", err.message);
     return res.status(502).json({ error: "Failed to fetch photo" });
   }
 }

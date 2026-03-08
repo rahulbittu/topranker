@@ -2,6 +2,9 @@
  * Email service for TopRanker
  * Currently logs emails to console. Swap in Resend/SendGrid/SES when ready.
  */
+import { log } from "./logger";
+
+const emailLog = log.tag("Email");
 
 export interface EmailPayload {
   to: string;
@@ -12,10 +15,7 @@ export interface EmailPayload {
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
   // TODO: Replace with Resend/SendGrid when API key is configured
-  // Example with Resend:
-  //   const resend = new Resend(process.env.RESEND_API_KEY);
-  //   await resend.emails.send({ from: 'TopRanker <hello@topranker.com>', ...payload });
-  console.log(`[Email] To: ${payload.to} | Subject: ${payload.subject}`);
+  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
 }
 
 export async function sendWelcomeEmail(params: {

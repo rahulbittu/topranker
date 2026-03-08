@@ -1,3 +1,7 @@
+import { log } from "./logger";
+
+const dripLog = log.tag("EmailDrip");
+
 /**
  * Email drip sequence for TopRanker
  * Automated engagement emails sent at key moments after signup
@@ -21,7 +25,7 @@ interface DripEmailParams {
 
 async function sendEmail(to: string, subject: string, html: string, text: string) {
   // Same pluggable pattern as email.ts
-  console.log(`[EmailDrip] To: ${to} | Subject: ${subject}`);
+  dripLog.info(`To: ${to} | Subject: ${subject}`);
 }
 
 const BRAND_HEADER = `

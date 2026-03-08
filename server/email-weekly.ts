@@ -1,3 +1,7 @@
+import { log } from "./logger";
+
+const digestLog = log.tag("WeeklyDigest");
+
 /**
  * Weekly Email Digest — TopRanker
  *
@@ -210,11 +214,11 @@ export async function sendAllWeeklyDigests(
       await sendWeeklyDigest(user);
       sent++;
     } catch (err) {
-      console.error(`[WeeklyDigest] Failed for ${user.email}:`, err);
+      digestLog.error(`Failed for ${user.email}:`, err);
       failed++;
     }
   }
 
-  console.log(`[WeeklyDigest] Sent: ${sent}, Failed: ${failed}`);
+  digestLog.info(`Sent: ${sent}, Failed: ${failed}`);
   return { sent, failed };
 }

@@ -5,6 +5,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
+import { log as logger } from "./logger";
+
 const app = express();
 const log = console.log;
 
@@ -272,7 +274,7 @@ function setupErrorHandler(app: express.Application) {
     const status = error.status || error.statusCode || 500;
     const message = error.message || "Internal Server Error";
 
-    console.error("Internal Server Error:", err);
+    logger.error("Internal Server Error:", err);
 
     if (res.headersSent) {
       return next(err);
@@ -292,7 +294,7 @@ function setupErrorHandler(app: express.Application) {
   configureExpoAndLanding(app);
 
   const { seedDatabase } = await import("./seed");
-  seedDatabase().catch((err) => console.error("Seed error:", err));
+  seedDatabase().catch((err) => logger.error("Seed error:", err));
 
   setupErrorHandler(app);
 

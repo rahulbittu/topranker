@@ -5,6 +5,9 @@
  * Currently logs to console. Install `stripe` package and set STRIPE_SECRET_KEY to activate.
  * npm install stripe
  */
+import { log } from "./logger";
+
+const payLog = log.tag("Payments");
 
 interface PaymentIntent {
   id: string;
@@ -44,13 +47,13 @@ async function createPaymentIntent(params: CreatePaymentParams): Promise<Payment
         metadata: intent.metadata,
       };
     } catch (err: any) {
-      console.error("[Payments] Stripe error:", err.message);
+      payLog.error("Stripe error:", err.message);
       throw new Error("Payment processing failed");
     }
   }
 
   // Development: mock payment
-  console.log(`[Payments] Mock payment: $${(params.amount / 100).toFixed(2)} | ${params.description} | ${params.customerEmail}`);
+  payLog.info(`Mock payment: $${(params.amount / 100).toFixed(2)} | ${params.description} | ${params.customerEmail}`);
   return {
     id: `mock_pi_${Date.now()}`,
     amount: params.amount,

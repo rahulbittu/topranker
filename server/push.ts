@@ -5,6 +5,9 @@
  * In development: logs to console.
  * In production: sends via https://exp.host/--/api/v2/push/send
  */
+import { log } from "./logger";
+
+const pushLog = log.tag("Push");
 
 interface ExpoPushMessage {
   to: string;
@@ -47,7 +50,7 @@ export async function sendPushNotification(
 
   // In development, log instead of sending
   if (process.env.NODE_ENV !== "production") {
-    console.log("[Push] DEV MODE — would send:", JSON.stringify(messages, null, 2));
+    pushLog.debug("DEV MODE — would send:", messages);
     return messages.map(() => ({ status: "ok" as const, id: `dev-${Date.now()}` }));
   }
 
@@ -64,7 +67,7 @@ export async function sendPushNotification(
     const result = await response.json();
     return result.data as ExpoPushTicket[];
   } catch (err) {
-    console.error("[Push] Failed to send:", err);
+    pushLog.error("Failed to send:", err);
     return messages.map(() => ({ status: "error" as const, message: String(err) }));
   }
 }

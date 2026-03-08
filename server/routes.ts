@@ -6,6 +6,7 @@ import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
 import { sendWelcomeEmail } from "./email";
 import { isAdminEmail } from "@shared/admin";
+import { log } from "./logger";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -84,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         displayName: member.displayName,
         city: member.city,
         username: member.username,
-      }).catch((emailErr) => console.error("[Email] Welcome email failed:", emailErr));
+      }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
 
       req.login(
         {

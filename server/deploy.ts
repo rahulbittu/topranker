@@ -1,6 +1,9 @@
 import { exec } from "child_process";
 import * as crypto from "crypto";
 import type { Request, Response } from "express";
+import { log } from "./logger";
+
+const deployLog = log.tag("Deploy");
 
 interface DeployStatus {
   status: "idle" | "deploying" | "success" | "failed";
@@ -61,7 +64,7 @@ async function runDeploy() {
   };
 
   const addLog = (msg: string) => {
-    console.log(`[Deploy] ${msg}`);
+    deployLog.info(msg);
     deployStatus.log.push(`${new Date().toISOString()} ${msg}`);
   };
 
@@ -131,7 +134,7 @@ function sendNotification(title: string, message: string) {
     headers: { Title: title },
     body: message,
   }).catch((err) => {
-    console.log(`[Deploy] Notification failed: ${err.message}`);
+    deployLog.warn(`Notification failed: ${err.message}`);
   });
 }
 
