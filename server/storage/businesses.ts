@@ -65,7 +65,9 @@ export async function searchBusinesses(
   category?: string,
   limit: number = 20,
 ): Promise<Business[]> {
-  const q = "%" + query.toLowerCase() + "%";
+  // Input sanitization: max 100 chars, strip LIKE wildcards from user input
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
   return db
     .select()
     .from(businesses)

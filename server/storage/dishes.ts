@@ -18,7 +18,7 @@ export async function searchDishes(
   businessId: string,
   query: string,
 ): Promise<Dish[]> {
-  const normalized = query.toLowerCase().trim();
+  const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
 
   if (normalized.length < 2) {
     return getBusinessDishes(businessId, 5);
