@@ -4,6 +4,15 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 71 — Business Badge Display + DimensionValue Helper (March 8, 2026)
+#### Added
+- `lib/style-helpers.ts` — `pct()` DimensionValue helper for type-safe percentage widths/heights
+- Business badge section on `app/business/[id].tsx` — displays earned badges via `BadgeRowCompact`
+
+#### Changed
+- Applied `pct()` across 6 files, eliminating 10 `as any` casts (27 → 17 total)
+- **Total `as any` reduction: 43 → 17 (60%) across Sprints 70-71**
+
 ### Sprint 70 — Architectural Audit #4 + TypedIcon Type Safety (March 8, 2026)
 #### Changed
 - Created `TypedIcon` wrapper component — eliminates `as any` casts for Ionicons icon names
