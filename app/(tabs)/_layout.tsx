@@ -34,24 +34,15 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
 }
 
 const tabStyles = StyleSheet.create({
-  iconWrap: { alignItems: "center", gap: 2 },
-  iconWrapActive: {
-    shadowColor: AMBER,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 3,
-  },
+  iconWrap: { alignItems: "center", justifyContent: "center", height: 28 },
+  iconWrapActive: {},
   activeDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    position: "absolute",
+    bottom: -4,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
     backgroundColor: AMBER,
-    shadowColor: AMBER,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 3,
-    elevation: 2,
   },
 });
 

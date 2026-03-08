@@ -58,6 +58,11 @@ setInterval(() => {
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  // Health check — lightest possible response for connectivity checks and uptime monitoring
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.status(200).json({ status: "ok", ts: Date.now() });
+  });
+
   app.post("/api/auth/signup", authRateLimit, async (req: Request, res: Response) => {
     try {
       const { displayName, username, email, password, city } = req.body;
@@ -255,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await submitRating(memberId, parsed.data);
       return res.status(201).json({ data: result });
     } catch (err: any) {
-      if (err.message.includes("7+ days")) {
+      if (err.message.includes("3+ days")) {
         return res.status(403).json({ error: err.message });
       }
       if (err.message.includes("Already rated")) {

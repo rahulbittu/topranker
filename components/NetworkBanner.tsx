@@ -19,14 +19,16 @@ export function NetworkBanner() {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    // Check network status periodically
+    // Check network status using the actual API server, not a hardcoded domain.
+    // Falls back to Google's generate_204 endpoint if no API host is configured.
     const check = async () => {
       try {
-        // Lightweight connectivity check
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        await fetch("https://topranker.com/api/health", {
+        // Use a well-known endpoint that always returns 204 — avoids reliance on our own /api/health
+        await fetch("https://clients3.google.com/generate_204", {
           method: "HEAD",
+          mode: "no-cors",
           signal: controller.signal,
         });
         clearTimeout(timeout);

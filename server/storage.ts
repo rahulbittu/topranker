@@ -441,7 +441,7 @@ export async function submitRating(
   const daysActive = Math.floor(
     (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
   );
-  if (daysActive < 7) throw new Error("Account must be 7+ days old to rate");
+  if (daysActive < 3) throw new Error("Account must be 3+ days old to rate");
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView,
   Platform, ActivityIndicator, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,7 +28,7 @@ import { Image } from "expo-image";
 
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
 
-type RatingStep = 1 | 2 | 3 | 4 | 5 | 6;
+type RatingStep = 1 | 2;
 
 function CircleScorePicker({ value, onChange, circleSize }: { value: number; onChange: (v: number) => void; circleSize: number }) {
   return (
@@ -416,20 +416,16 @@ export default function RateScreen() {
 
   const canProceed = (): boolean => {
     switch (step) {
-      case 1: return q1Score > 0;
-      case 2: return q2Score > 0;
-      case 3: return q3Score > 0;
-      case 4: return wouldReturn !== null;
-      case 5: return true;
-      case 6: return true;
+      case 1: return q1Score > 0 && q2Score > 0 && q3Score > 0 && wouldReturn !== null;
+      case 2: return true;
       default: return false;
     }
   };
 
   const goNext = () => {
-    if (step < 6) {
+    if (step < 2) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      setStep((step + 1) as RatingStep);
+      setStep(2);
     } else {
       setSubmitError("");
       submitMutation.mutate();
@@ -438,7 +434,7 @@ export default function RateScreen() {
 
   const goBack = () => {
     if (step > 1) {
-      setStep((step - 1) as RatingStep);
+      setStep(1);
     } else {
       router.back();
     }
@@ -449,18 +445,58 @@ export default function RateScreen() {
       case 1:
         return (
           <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>01</Text>
-              <Text style={styles.stepTitle}>{q1Label}</Text>
-              <Text style={styles.stepSubtitle}>Tap a score from 1 to 5</Text>
+            {/* Q1: Quality */}
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{q1Label}</Text>
+              <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
             </View>
-            <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
-            <CircleScoreLabels circleSize={circleSize} />
-            {q1Score > 0 && (
-              <View style={styles.selectedBadge}>
-                <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q1Score - 1]}</Text>
+
+            {/* Q2: Value */}
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>Value for Money</Text>
+              <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
+            </View>
+
+            {/* Q3: Service */}
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{q3Label}</Text>
+              <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
+            </View>
+
+            {/* Would Return */}
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{returnLabel}</Text>
+              <View style={styles.yesNoRow}>
+                <TouchableOpacity
+                  style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setWouldReturn(true);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Yes, would return"
+                  accessibilityState={{ selected: wouldReturn === true }}
+                >
+                  <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />
+                  <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>YES</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    setWouldReturn(false);
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="No, would not return"
+                  accessibilityState={{ selected: wouldReturn === false }}
+                >
+                  <Ionicons name="close-circle" size={24} color={wouldReturn === false ? "#fff" : Colors.textTertiary} />
+                  <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
+                </TouchableOpacity>
               </View>
-            )}
+            </View>
           </Animated.View>
         );
 
@@ -468,115 +504,27 @@ export default function RateScreen() {
         return (
           <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step2" accessibilityRole="summary">
             <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>02</Text>
-              <Text style={styles.stepTitle}>Value for Money</Text>
-              <Text style={styles.stepSubtitle}>Was the price fair for what you received?</Text>
-            </View>
-            <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
-            <CircleScoreLabels circleSize={circleSize} />
-            {q2Score > 0 && (
-              <View style={styles.selectedBadge}>
-                <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q2Score - 1]}</Text>
-              </View>
-            )}
-          </Animated.View>
-        );
-
-      case 3:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step3" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>03</Text>
-              <Text style={styles.stepTitle}>{q3Label}</Text>
-              <Text style={styles.stepSubtitle}>Rate the overall experience</Text>
-            </View>
-            <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
-            <CircleScoreLabels circleSize={circleSize} />
-            {q3Score > 0 && (
-              <View style={styles.selectedBadge}>
-                <Text style={styles.selectedBadgeText}>{SCORE_LABELS[q3Score - 1]}</Text>
-              </View>
-            )}
-          </Animated.View>
-        );
-
-      case 4:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step4" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>04</Text>
-              <Text style={styles.stepTitle}>{returnLabel}</Text>
-              <Text style={styles.stepSubtitle}>One tap, be honest</Text>
-            </View>
-            <View style={styles.yesNoRow}>
-              <TouchableOpacity
-                style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setWouldReturn(true);
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="Yes, would return"
-                accessibilityHint="Double tap to select yes"
-                accessibilityState={{ selected: wouldReturn === true }}
-              >
-                <Ionicons
-                  name="checkmark-circle"
-                  size={32}
-                  color={wouldReturn === true ? "#fff" : Colors.textTertiary}
-                />
-                <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>
-                  YES
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setWouldReturn(false);
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel="No, would not return"
-                accessibilityHint="Double tap to select no"
-                accessibilityState={{ selected: wouldReturn === false }}
-              >
-                <Ionicons
-                  name="close-circle"
-                  size={32}
-                  color={wouldReturn === false ? "#fff" : Colors.textTertiary}
-                />
-                <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>
-                  NO
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
-        );
-
-      case 5:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step5" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>05</Text>
-              <Text style={styles.stepTitle}>Top Dish</Text>
-              <Text style={styles.stepSubtitle}>What stood out? (optional)</Text>
+              <Text style={styles.stepTitle}>Almost done!</Text>
+              <Text style={styles.stepSubtitle}>Optional extras — skip or add details</Text>
             </View>
 
+            {/* Dish selection */}
             {existingDishes.length > 0 && (
-              <View style={styles.dishPillsWrap}>
-                {existingDishes.map(dish => (
-                  <DishPill
-                    key={dish.id}
-                    dish={dish}
-                    selected={selectedDish === dish.name}
-                    onPress={() => {
-                      setSelectedDish(selectedDish === dish.name ? "" : dish.name);
-                      setDishInput("");
-                    }}
-                  />
-                ))}
+              <View>
+                <Text style={styles.compactLabel}>Top Dish</Text>
+                <View style={styles.dishPillsWrap}>
+                  {existingDishes.map(dish => (
+                    <DishPill
+                      key={dish.id}
+                      dish={dish}
+                      selected={selectedDish === dish.name}
+                      onPress={() => {
+                        setSelectedDish(selectedDish === dish.name ? "" : dish.name);
+                        setDishInput("");
+                      }}
+                    />
+                  ))}
+                </View>
               </View>
             )}
 
@@ -584,7 +532,7 @@ export default function RateScreen() {
               <View style={styles.dishInputWrap}>
                 <TextInput
                   style={styles.dishInput}
-                  placeholder="Or type a dish name..."
+                  placeholder="Type a dish name (optional)..."
                   placeholderTextColor={Colors.textTertiary}
                   value={dishInput}
                   onChangeText={handleDishSearch}
@@ -623,22 +571,12 @@ export default function RateScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
-          </Animated.View>
-        );
 
-      case 6:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step6" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepNumber}>06</Text>
-              <Text style={styles.stepTitle}>Quick Note</Text>
-              <Text style={styles.stepSubtitle}>One sentence review (optional)</Text>
-            </View>
-
+            {/* Quick Note */}
             <View style={styles.noteInputWrap}>
               <TextInput
-                style={styles.noteInput}
-                placeholder="In your own words..."
+                style={[styles.noteInput, { minHeight: 60 }]}
+                placeholder="Quick note (optional)..."
                 placeholderTextColor={Colors.textTertiary}
                 value={note}
                 onChangeText={t => t.length <= 160 && setNote(t)}
@@ -684,12 +622,13 @@ export default function RateScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="camera-outline" size={24} color={Colors.textTertiary} />
-                  <Text style={styles.photoAddText}>Add a photo (optional)</Text>
+                  <Ionicons name="camera-outline" size={20} color={Colors.textTertiary} />
+                  <Text style={styles.photoAddText}>Add photo</Text>
                 </TouchableOpacity>
               )}
             </View>
 
+            {/* Score summary */}
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>YOUR RATING</Text>
               <View style={styles.summaryGrid}>
@@ -735,20 +674,20 @@ export default function RateScreen() {
         <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={step > 1 ? "Previous step" : "Go back"}>
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <StepIndicator step={step - 1} total={6} />
+        <StepIndicator step={step - 1} total={2} />
         <View style={styles.navSpacer} />
       </View>
 
-      <ProgressBar step={step - 1} total={6} />
+      <ProgressBar step={step - 1} total={2} />
 
       <View style={styles.businessHeader}>
         <Text style={styles.rateLabel}>RATE</Text>
         <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
       </View>
 
-      <View style={styles.stepArea}>
+      <ScrollView style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
         {renderStepContent()}
-      </View>
+      </ScrollView>
 
       {!!submitError && (
         <View style={styles.errorBanner}>
@@ -758,25 +697,12 @@ export default function RateScreen() {
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: bottomPad + 12 }]}>
-        {step === 5 && (
-          <TouchableOpacity
-            style={styles.skipBtn}
-            onPress={() => {
-              setSelectedDish("");
-              setDishInput("");
-              goNext();
-            }}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Skip dish selection"
-          >
-            <Text style={styles.skipBtnText}>Skip</Text>
-          </TouchableOpacity>
-        )}
-        {step === 6 && (
+        {step === 2 && (
           <TouchableOpacity
             style={[styles.skipBtn, submitMutation.isPending && { opacity: 0.5 }]}
             onPress={() => {
+              setSelectedDish("");
+              setDishInput("");
               setNote("");
               setSubmitError("");
               submitMutation.mutate();
@@ -784,7 +710,7 @@ export default function RateScreen() {
             activeOpacity={0.7}
             disabled={submitMutation.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Skip note and submit rating"
+            accessibilityLabel="Skip extras and submit rating"
           >
             <Text style={styles.skipBtnText}>Skip & Submit</Text>
           </TouchableOpacity>
@@ -800,17 +726,17 @@ export default function RateScreen() {
           disabled={!canProceed() || submitMutation.isPending}
           testID="next-step"
           accessibilityRole="button"
-          accessibilityLabel={step === 6 ? "Submit rating" : "Next step"}
+          accessibilityLabel={step === 2 ? "Submit rating" : "Next step"}
         >
           <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
             {submitMutation.isPending
               ? "Submitting..."
-              : step === 6
+              : step === 2
                 ? "Submit Rating"
                 : "Next"
             }
           </Text>
-          {step < 6 && canProceed() && (
+          {step === 1 && canProceed() && (
             <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           )}
         </TouchableOpacity>
@@ -864,9 +790,15 @@ const styles = StyleSheet.create({
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, marginTop: 2,
   },
 
-  stepArea: { flex: 1, paddingHorizontal: 20, justifyContent: "center" },
+  stepArea: { flex: 1, paddingHorizontal: 20 },
+  stepAreaContent: { paddingVertical: 8 },
 
-  stepContent: { gap: 24 },
+  stepContent: { gap: 20 },
+  compactQuestion: { gap: 8 },
+  compactLabel: {
+    fontSize: 15, fontWeight: "600" as const, color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
   stepHeader: { gap: 4 },
   stepNumber: {
     fontSize: 32, fontWeight: "700" as const, color: Colors.gold,
@@ -913,10 +845,10 @@ const styles = StyleSheet.create({
     fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold",
   },
 
-  yesNoRow: { flexDirection: "row", gap: 16, marginTop: 16 },
+  yesNoRow: { flexDirection: "row", gap: 12 },
   yesNoBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
-    gap: 8, paddingVertical: 28, borderRadius: 20,
+    flexDirection: "row", gap: 6, paddingVertical: 14, borderRadius: 14,
     backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: Colors.border,
   },
   yesNoBtnYes: { backgroundColor: Colors.green, borderColor: Colors.green },
