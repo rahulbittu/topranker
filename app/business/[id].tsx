@@ -36,6 +36,9 @@ import {
 } from "@/components/business/SubComponents";
 import { evaluateBusinessBadges, getBusinessBadgeCount, type BusinessBadgeContext } from "@/lib/badges";
 import { BadgeRowCompact, BadgeSummary } from "@/components/profile/BadgeGrid";
+import ScoreCountUp from "@/components/animations/ScoreCountUp";
+import RankMovementPulse from "@/components/animations/RankMovementPulse";
+import { SlideUpView } from "@/components/animations/SlideUpView";
 
 const HERO_HEIGHT = 280;
 
@@ -264,7 +267,10 @@ export default function BusinessProfileScreen() {
         {/* Quick Stats Bar */}
         <View style={styles.statsBar}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{getRankDisplay(business.rank)}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Text style={styles.statValue}>{getRankDisplay(business.rank)}</Text>
+              <RankMovementPulse delta={business.rankDelta ?? 0} size={24} />
+            </View>
             <Text style={styles.statLabel}>Rank</Text>
           </View>
           <View style={styles.statDivider} />
@@ -344,7 +350,12 @@ export default function BusinessProfileScreen() {
 
           {/* Score */}
           <View style={styles.scoreCard}>
-            <AnimatedScore value={business.weightedScore} style={styles.scoreNumber} />
+            <ScoreCountUp
+              targetValue={business.weightedScore}
+              duration={1000}
+              decimalPlaces={1}
+              style={styles.scoreNumber}
+            />
             <Text style={styles.scoreLabel}>Weighted Score</Text>
             <View style={styles.scoreMetaRow}>
               <Text style={styles.scoreMetaItem}>{business.ratingCount.toLocaleString()} ratings</Text>
@@ -359,6 +370,7 @@ export default function BusinessProfileScreen() {
           </View>
 
           {/* Trust Explainer */}
+          <SlideUpView delay={100} distance={20}>
           <View style={styles.trustCard}>
             <View style={styles.trustCardHeader}>
               <Ionicons name="shield-checkmark" size={16} color={Colors.green} />
@@ -392,9 +404,11 @@ export default function BusinessProfileScreen() {
               )}
             </View>
           </View>
+          </SlideUpView>
 
           {/* Sub-scores */}
           {ratings.length > 0 && (
+            <SlideUpView delay={200} distance={20}>
             <View style={styles.subScoresCard}>
               <SubScoreBar label="Quality" value={avgQ1} />
               <SubScoreBar label="Value" value={avgQ2} />
@@ -410,6 +424,7 @@ export default function BusinessProfileScreen() {
                 </Text>
               </View>
             </View>
+            </SlideUpView>
           )}
 
           {/* Rating Distribution — Anti-fraud transparency */}
@@ -543,7 +558,9 @@ export default function BusinessProfileScreen() {
 
           {/* Community Ratings — collapsible */}
           {ratings.length > 0 && (
-            <CollapsibleReviews ratings={ratings} />
+            <SlideUpView delay={300} distance={20}>
+              <CollapsibleReviews ratings={ratings} />
+            </SlideUpView>
           )}
 
           {/* Photo Grid - only show if multiple photos exist beyond hero */}

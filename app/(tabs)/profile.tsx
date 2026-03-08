@@ -27,6 +27,9 @@ import { TYPOGRAPHY } from "@/constants/typography";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import ScoreCountUp from "@/components/animations/ScoreCountUp";
+import { FadeInView } from "@/components/animations/FadeInView";
+import { SlideUpView } from "@/components/animations/SlideUpView";
 import {
   TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
@@ -137,6 +140,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </View>
 
+      <FadeInView delay={100} duration={500}>
       <LinearGradient
         colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
         style={styles.profileCard}
@@ -161,12 +165,19 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
         </View>
       </LinearGradient>
+      </FadeInView>
 
       <View style={styles.credibilityCard}>
         <View style={styles.credScoreRow}>
           <View>
             <Text style={styles.credScoreLabel}>Credibility</Text>
-            <Text style={[styles.credScore, { color: tierColor }]}>{profile.credibilityScore}</Text>
+            <ScoreCountUp
+              targetValue={profile.credibilityScore}
+              duration={1000}
+              decimalPlaces={0}
+              style={[styles.credScore, { color: tierColor }] as any}
+              highlightThreshold={999}
+            />
           </View>
           <View style={styles.credWeightBox}>
             <Text style={styles.credWeightLabel}>{TIER_INFLUENCE_LABELS[tier]}</Text>
@@ -330,6 +341,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         )}
       </View>
 
+      <SlideUpView delay={200} distance={24}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Rating History</Text>
         <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
@@ -356,6 +368,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
         </TouchableOpacity>
       )}
+      </SlideUpView>
 
       {/* Saved Places */}
       <View style={styles.sectionHeader}>

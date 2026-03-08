@@ -27,6 +27,7 @@ import { getRecentErrors } from "../lib/error-reporting";
 import { getAllFlags } from "../lib/feature-flags";
 import { CATEGORY_CONFIDENCE_THRESHOLDS, DEFAULT_THRESHOLDS } from "../lib/data";
 import { adminRateLimiter } from "./rate-limiter";
+import { wrapAsync } from "./wrap-async";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -46,8 +47,7 @@ export function registerAdminRoutes(app: Express) {
   // Apply rate limiting to all admin routes (30 req/min per IP)
   app.use("/api/admin", adminRateLimiter);
   // ── Category Suggestions ─────────────────────────────────
-  app.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { status } = req.body;
       if (!["approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
@@ -58,25 +58,17 @@ export function registerAdminRoutes(app: Express) {
         return res.status(404).json({ error: "Suggestion not found" });
       }
       return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Seed Cities ──────────────────────────────────────────
-  app.post("/api/admin/seed-cities", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { seedCities } = await import("./seed-cities");
       await seedCities();
       return res.json({ data: { message: "Cities seeded successfully" } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Google Places Photo Fetching ─────────────────────────
-  app.post("/api/admin/fetch-photos", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/admin/fetch-photos", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const city = sanitizeString(req.body.city, 100) || undefined;
       const limit = Math.min(50, parseInt(req.body.limit as string) || 20);
       const businesses = await getBusinessesWithoutPhotos(city, limit);
@@ -100,23 +92,15 @@ export function registerAdminRoutes(app: Express) {
           results,
         },
       });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Claims ───────────────────────────────────────────────
-  app.get("/api/admin/claims", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/claims", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const data = await getPendingClaims();
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.patch("/api/admin/claims/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.patch("/api/admin/claims/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { status } = req.body;
       if (!["approved", "rejected"].includes(status)) {
         return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
@@ -124,32 +108,20 @@ export function registerAdminRoutes(app: Express) {
       const updated = await reviewClaim(req.params.id as string, status, req.user!.id);
       if (!updated) return res.status(404).json({ error: "Claim not found" });
       return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.get("/api/admin/claims/count", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/claims/count", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const count = await getClaimCount();
       return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Flags ────────────────────────────────────────────────
-  app.get("/api/admin/flags", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/flags", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const data = await getPendingFlags();
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.patch("/api/admin/flags/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.patch("/api/admin/flags/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { status } = req.body;
       if (!["confirmed", "dismissed"].includes(status)) {
         return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
@@ -157,54 +129,34 @@ export function registerAdminRoutes(app: Express) {
       const updated = await reviewFlag(req.params.id as string, status, req.user!.id);
       if (!updated) return res.status(404).json({ error: "Flag not found" });
       return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.get("/api/admin/flags/count", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/flags/count", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const count = await getFlagCount();
       return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Members ──────────────────────────────────────────────
-  app.get("/api/admin/members", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/members", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
       const data = await getAdminMemberList(limit);
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.get("/api/admin/members/count", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/members/count", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const count = await getMemberCount();
       return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Webhook Events ──────────────────────────────────────────
-  app.get("/api/admin/webhooks", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/webhooks", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const source = sanitizeString(req.query.source, 50) || "stripe";
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
       const events = await getRecentWebhookEvents(source, limit);
       return res.json({ data: events });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const event = await getWebhookEventById(req.params.id);
       if (!event) return res.status(404).json({ error: "Webhook event not found" });
 
@@ -216,48 +168,32 @@ export function registerAdminRoutes(app: Express) {
         return res.json({ data: { id: event.id, replayed: true } });
       }
       return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Performance Stats ─────────────────────────────────────
-  app.get("/api/admin/perf", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/perf", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const data = getPerfStats();
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Revenue Metrics ──────────────────────────────────────
-  app.get("/api/admin/revenue", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/revenue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { getRevenueMetrics } = await import("./storage");
       const metrics = await getRevenueMetrics();
       return res.json({ data: metrics });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Analytics / Conversion Funnel ───────────────────────
-  app.get("/api/admin/analytics", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/analytics", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const data = {
         funnel: getFunnelStats(),
         recentEvents: getRecentEvents(20),
       };
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Analytics Dashboard ──────────────────────────────────
-  app.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const stats = getFunnelStats();
       const recent = getRecentEvents(50);
 
@@ -287,14 +223,10 @@ export function registerAdminRoutes(app: Express) {
       };
 
       return res.json({ data: dashboard });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Server Metrics — Sprint 123 ─────────────────────────
-  app.get("/api/admin/metrics", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/metrics", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const uptime = process.uptime();
       const memoryUsage = process.memoryUsage().heapUsed;
       const nodeVersion = process.version;
@@ -310,14 +242,10 @@ export function registerAdminRoutes(app: Express) {
           errorCount,
         },
       });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Detailed Health Dashboard — Sprint 125 ─────────────
-  app.get("/api/admin/health/detailed", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/health/detailed", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const mem = process.memoryUsage();
       const cpu = process.cpuUsage();
       const flags = getAllFlags();
@@ -341,33 +269,22 @@ export function registerAdminRoutes(app: Express) {
           generatedAt: new Date().toISOString(),
         },
       });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // ── Confidence Thresholds (read-only) ──────────────────
-  app.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       return res.json({
         data: {
           thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
           defaults: DEFAULT_THRESHOLDS,
         },
       });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req: Request, res: Response) => {
-    try {
+  app.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const months = Math.min(24, Math.max(1, parseInt(req.query.months as string) || 6));
       const { getRevenueByMonth } = await import("./storage");
       const data = await getRevenueByMonth(months);
       return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 }

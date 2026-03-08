@@ -4,6 +4,7 @@
  * Pricing sourced from shared/pricing.ts (single source of truth).
  */
 import type { Express, Request, Response } from "express";
+import { wrapAsync } from "./wrap-async";
 import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus, expireFeaturedByPayment } from "./storage";
 import { sendPaymentReceiptEmail } from "./email";
 import { broadcast } from "./sse";
@@ -22,8 +23,7 @@ export function registerPaymentRoutes(app: Express) {
   // Apply strict rate limiting to all payment routes (20 req/min per IP)
   app.use("/api/payments", paymentRateLimiter);
 
-  app.post("/api/payments/challenger", requireAuth, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/payments/challenger", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const businessName = sanitizeString(req.body.businessName, 100);
       const slug = sanitizeSlug(req.body.slug);
       if (!businessName || !slug) {
@@ -60,13 +60,9 @@ export function registerPaymentRoutes(app: Express) {
         paymentId: payment.id,
       }).catch(() => {});
       return res.json({ data: payment });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.post("/api/payments/dashboard-pro", requireAuth, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/payments/dashboard-pro", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
@@ -100,13 +96,9 @@ export function registerPaymentRoutes(app: Express) {
         paymentId: payment.id,
       }).catch(() => {});
       return res.json({ data: payment });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
-  app.post("/api/payments/featured", requireAuth, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/payments/featured", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
@@ -150,14 +142,10 @@ export function registerPaymentRoutes(app: Express) {
         paymentId: payment.id,
       }).catch(() => {});
       return res.json({ data: payment });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   // Cancel a subscription/payment — checks ownership BEFORE mutating
-  app.post("/api/payments/cancel", requireAuth, async (req: Request, res: Response) => {
-    try {
+  app.post("/api/payments/cancel", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const { paymentId } = req.body;
       if (!paymentId) {
         return res.status(400).json({ error: "paymentId is required" });
@@ -178,8 +166,5 @@ export function registerPaymentRoutes(app: Express) {
       }
       log.info(`Payment ${paymentId} cancelled by ${req.user!.id}`);
       return res.json({ data: { id: updated!.id, status: "cancelled" } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 }

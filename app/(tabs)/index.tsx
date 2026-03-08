@@ -21,6 +21,8 @@ import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FadeInView } from "@/components/animations/FadeInView";
+import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -216,7 +218,11 @@ export default function LeaderboardScreen() {
         <FlatList
           data={restBiz}
           keyExtractor={item => item.id}
-          renderItem={({ item, index }) => <RankedCard item={item} index={index} />}
+          renderItem={({ item, index }) => (
+            <FadeInView delay={index * 100}>
+              <RankedCard item={item} index={index} />
+            </FadeInView>
+          )}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
@@ -262,13 +268,11 @@ export default function LeaderboardScreen() {
           }
           ListEmptyComponent={
             !heroBiz ? (
-              <View style={styles.loadingContainer}>
-                <Ionicons name="search-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
-                <Text style={styles.emptyText}>No businesses found</Text>
-                <Text style={styles.emptySubtext}>
-                  {searchQuery.trim() ? `No matches for "${searchQuery}"` : "Try a different category"}
-                </Text>
-              </View>
+              <EmptyStateAnimation
+                message={searchQuery.trim() ? `No matches for "${searchQuery}"` : "No businesses found. Try a different category."}
+                icon="search-outline"
+                style={{ marginTop: 24 }}
+              />
             ) : null
           }
         />

@@ -13,6 +13,7 @@
 
 import type { Express, Request, Response } from "express";
 import { apiRateLimiter } from "./rate-limiter";
+import { wrapAsync } from "./wrap-async";
 import { log } from "./logger";
 
 const expLog = log.tag("Experiments");
@@ -126,8 +127,7 @@ export function registerExperimentRoutes(app: Express): void {
    * Public — returns metadata for all active experiments.
    * No user-specific data is exposed.
    */
-  app.get("/api/experiments", apiRateLimiter, (_req: Request, res: Response) => {
-    try {
+  app.get("/api/experiments", apiRateLimiter, wrapAsync((_req: Request, res: Response) => {
       const active = Object.values(experiments)
         .filter((exp) => exp.active)
         .map((exp) => ({
@@ -137,19 +137,14 @@ export function registerExperimentRoutes(app: Express): void {
         }));
 
       return res.json({ data: active });
-    } catch (err: any) {
-      expLog.warn(`Failed to list experiments: ${err.message}`);
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 
   /**
    * GET /api/experiments/assign?experimentId=X
    * - Authenticated user → bucket by userId
    * - Unauthenticated → returns default variant ("control", isDefault: true)
    */
-  app.get("/api/experiments/assign", apiRateLimiter, (req: Request, res: Response) => {
-    try {
+  app.get("/api/experiments/assign", apiRateLimiter, wrapAsync((req: Request, res: Response) => {
       const experimentId = req.query.experimentId as string;
 
       if (!experimentId) {
@@ -182,9 +177,5 @@ export function registerExperimentRoutes(app: Express): void {
           isDefault,
         },
       });
-    } catch (err: any) {
-      expLog.warn(`Experiment assignment failed: ${err.message}`);
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  }));
 }
