@@ -503,7 +503,7 @@ var init_helpers = __esm({
 });
 
 // server/storage/members.ts
-import { eq, and, ne, sql as sql2, count, desc } from "drizzle-orm";
+import { eq, and, sql as sql2, count, desc } from "drizzle-orm";
 async function getMemberById(id) {
   const [member] = await db.select().from(members).where(eq(members.id, id));
   return member;
@@ -582,22 +582,25 @@ async function recalculateCredibilityScore(memberId) {
     const stddev = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
     varianceBonus = Math.min(stddev * 60, 150);
   }
-  const allMemberRatings = await db.select({
-    businessId: ratings.businessId,
-    createdAt: ratings.createdAt
-  }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
-  let earlyReviewCount = 0;
-  for (const r of allMemberRatings) {
-    const [countBefore] = await db.select({ count: count() }).from(ratings).where(
-      and(
-        eq(ratings.businessId, r.businessId),
-        ne(ratings.memberId, memberId),
-        sql2`${ratings.createdAt} < ${r.createdAt}`
-      )
-    );
-    if (countBefore.count < 10) earlyReviewCount++;
-  }
-  const pioneerRate = allMemberRatings.length > 0 ? earlyReviewCount / allMemberRatings.length : 0;
+  const [pioneerResult] = await db.execute(sql2`
+    SELECT
+      COUNT(*) AS total_ratings,
+      COUNT(*) FILTER (WHERE prior_count < 10) AS early_ratings
+    FROM (
+      SELECT r1.id,
+        (SELECT COUNT(*) FROM ${ratings} r2
+         WHERE r2.business_id = r1.business_id
+           AND r2.member_id != ${memberId}
+           AND r2.created_at < r1.created_at
+           AND r2.is_flagged = false) AS prior_count
+      FROM ${ratings} r1
+      WHERE r1.member_id = ${memberId}
+        AND r1.is_flagged = false
+    ) sub
+  `);
+  const totalMemberRatings = Number(pioneerResult?.total_ratings ?? 0);
+  const earlyReviewCount = Number(pioneerResult?.early_ratings ?? 0);
+  const pioneerRate = totalMemberRatings > 0 ? earlyReviewCount / totalMemberRatings : 0;
   const helpfulness = Math.round(pioneerRate * 100);
   const penaltyResult = await db.select({ total: sql2`COALESCE(SUM(${credibilityPenalties.finalPenalty}), 0)` }).from(credibilityPenalties).where(eq(credibilityPenalties.memberId, memberId));
   const totalPenalties = Number(penaltyResult[0]?.total ?? 0);
@@ -812,26 +815,22 @@ async function recalculateBusinessScore(businessId) {
   return score;
 }
 async function recalculateRanks(city, category) {
-  const allBusinesses = await db.select({
-    id: businesses.id,
-    rankPosition: businesses.rankPosition
-  }).from(businesses).where(
-    and2(
-      eq2(businesses.city, city),
-      eq2(businesses.category, category),
-      eq2(businesses.isActive, true)
-    )
-  ).orderBy(desc2(businesses.weightedScore));
-  for (let i = 0; i < allBusinesses.length; i++) {
-    const oldRank = allBusinesses[i].rankPosition;
-    const newRank = i + 1;
-    const delta = oldRank ? oldRank - newRank : 0;
-    await db.update(businesses).set({
-      rankPosition: newRank,
-      rankDelta: delta,
-      prevRankPosition: oldRank
-    }).where(eq2(businesses.id, allBusinesses[i].id));
-  }
+  await db.execute(sql3`
+    UPDATE ${businesses} b
+    SET
+      rank_position = sub.new_rank,
+      rank_delta = COALESCE(b.rank_position, sub.new_rank) - sub.new_rank,
+      prev_rank_position = b.rank_position
+    FROM (
+      SELECT id,
+        ROW_NUMBER() OVER (ORDER BY weighted_score DESC) AS new_rank
+      FROM ${businesses}
+      WHERE city = ${city}
+        AND category = ${category}
+        AND is_active = true
+    ) sub
+    WHERE b.id = sub.id
+  `);
 }
 async function getBusinessPhotos(businessId) {
   const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq2(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
@@ -4999,7 +4998,7 @@ function configureExpoAndLanding(app2) {
     next();
   });
   app2.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app2.use(express.static(path.resolve(process.cwd(), "static-build")));
+  app2.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
   const distPath = path.resolve(process.cwd(), "dist");
   const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
   if (hasDistBuild) {
@@ -5050,7 +5049,7 @@ body{background:#0a0e1a;overflow:hidden}
 <div id="_loading">
   <div class="sp"></div>
   <p>TOP RANKER</p>
-  <small>Loading app...</small>
+  <small>Loading app... (v4)</small>
 </div>
 <div id="root"></div>
 <script>
@@ -5091,6 +5090,7 @@ document.body.appendChild(s);
         return next();
       }
       if (req.path === "/" || req.path === "/index.html") {
+        log2(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
         return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
