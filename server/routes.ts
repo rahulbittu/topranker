@@ -8,6 +8,7 @@ import { handleBadgeShare } from "./badge-share";
 import { sendWelcomeEmail } from "./email";
 import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
+import { handleStripeWebhook } from "./stripe-webhook";
 import { log } from "./logger";
 import {
   getLeaderboard,
@@ -30,6 +31,7 @@ import {
   awardBadge,
   getEarnedBadgeIds,
   getBadgeLeaderboard,
+  getMemberPayments,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
@@ -594,6 +596,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Photo proxy for Google Places photos
   app.get("/api/photos/proxy", handlePhotoProxy);
+
+  // Stripe webhook — async payment status updates
+  app.post("/api/webhook/stripe", handleStripeWebhook);
+
+  // Payment history for authenticated member
+  app.get("/api/payments/history", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const payments = await getMemberPayments(req.user!.id, limit);
+      return res.json({ data: payments });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 
   // Deploy webhook (GitHub push → auto-rebuild)
   app.post("/api/webhook/deploy", handleWebhook);

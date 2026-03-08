@@ -74,6 +74,7 @@ export {
 export {
   createPaymentRecord,
   updatePaymentStatus,
+  updatePaymentStatusByStripeId,
   getMemberPayments,
   getBusinessPayments,
 } from "./payments";

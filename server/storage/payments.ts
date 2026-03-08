@@ -43,6 +43,18 @@ export async function updatePaymentStatus(
   return updated ?? null;
 }
 
+export async function updatePaymentStatusByStripeId(
+  stripePaymentIntentId: string,
+  status: string,
+): Promise<Payment | null> {
+  const [updated] = await db
+    .update(payments)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(payments.stripePaymentIntentId, stripePaymentIntentId))
+    .returning();
+  return updated ?? null;
+}
+
 export async function getMemberPayments(
   memberId: string,
   limit: number = 20,

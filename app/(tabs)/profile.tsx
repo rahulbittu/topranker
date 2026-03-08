@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { pct } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
+import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiMemberImpact } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
 import { useBookmarks } from "@/lib/bookmarks-context";
@@ -42,6 +43,17 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
     queryFn: fetchMemberImpact,
+    staleTime: 60000,
+  });
+
+  const { data: paymentHistory } = useQuery({
+    queryKey: ["payments", profile.id],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/payments/history?limit=10`, { credentials: "include" });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.data || [];
+    },
     staleTime: 60000,
   });
 
@@ -279,6 +291,43 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Text style={styles.emptyText}>No saved places yet</Text>
           <Text style={styles.emptySubtext}>Tap the bookmark icon on any business to save it</Text>
         </View>
+      )}
+
+      {/* Payment History */}
+      {paymentHistory && paymentHistory.length > 0 && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Payment History</Text>
+            <Text style={styles.sectionCount}>{paymentHistory.length}</Text>
+          </View>
+          {paymentHistory.map((p: any) => (
+            <View key={p.id} style={styles.paymentRow}>
+              <View style={styles.paymentIconWrap}>
+                <Ionicons
+                  name={p.type === "challenger_entry" ? "flash" : p.type === "featured_placement" ? "megaphone" : "speedometer"}
+                  size={16}
+                  color={p.status === "succeeded" ? AMBER : p.status === "failed" ? "#E53E3E" : Colors.textTertiary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.paymentType}>
+                  {p.type === "challenger_entry" ? "Challenger Entry" : p.type === "dashboard_pro" ? "Dashboard Pro" : "Featured Placement"}
+                </Text>
+                <Text style={styles.paymentDate}>
+                  {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                </Text>
+              </View>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={styles.paymentAmount}>${(p.amount / 100).toFixed(2)}</Text>
+                <Text style={[styles.paymentStatus, {
+                  color: p.status === "succeeded" ? Colors.green : p.status === "failed" ? "#E53E3E" : Colors.textTertiary,
+                }]}>
+                  {p.status}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </>
       )}
 
       <View style={styles.tierInfoSection}>
@@ -739,5 +788,30 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold", letterSpacing: 1,
     textTransform: "uppercase" as const,
     paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
+  },
+
+  // Payment History
+  paymentRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  paymentIconWrap: {
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: "rgba(196,154,26,0.1)",
+    alignItems: "center", justifyContent: "center",
+  },
+  paymentType: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  paymentDate: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 2,
+  },
+  paymentAmount: {
+    fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  paymentStatus: {
+    fontSize: 10, fontFamily: "DMSans_500Medium", marginTop: 2,
+    textTransform: "capitalize" as const,
   },
 });
