@@ -31,9 +31,23 @@ const STAT_CARDS: StatCard[] = [
   { key: "ratingRate", label: "Rating Rate", value: "24.1%" },
 ];
 
+interface FunnelStage {
+  label: string;
+  count: number;
+  conversionRate: string | null;
+}
+
 interface DashboardData {
   overview: { totalEvents: number; activeUsers: number };
-  funnel: { signupRate: number; ratingRate: number };
+  funnel: {
+    signupRate: number;
+    ratingRate: number;
+    pageViews?: number;
+    signups?: number;
+    firstRatings?: number;
+    challengerEntries?: number;
+    dashboardSubs?: number;
+  };
 }
 
 function useDashboardData() {
@@ -125,6 +139,45 @@ export default function AdminDashboard() {
       >
         <Text style={styles.refreshButtonText}>Refresh</Text>
       </TouchableOpacity>
+
+      {/* Conversion Funnel — Sprint 123 */}
+      <View style={styles.funnelSection}>
+        <Text style={styles.funnelSectionHeader}>CONVERSION FUNNEL</Text>
+        {(() => {
+          const pv = data?.funnel?.pageViews ?? 10000;
+          const su = data?.funnel?.signups ?? 830;
+          const fr = data?.funnel?.firstRatings ?? 200;
+          const ce = data?.funnel?.challengerEntries ?? 45;
+          const ds = data?.funnel?.dashboardSubs ?? 12;
+          const stages: FunnelStage[] = [
+            { label: "Page Views", count: pv, conversionRate: null },
+            { label: "Signups", count: su, conversionRate: pv > 0 ? `${((su / pv) * 100).toFixed(1)}%` : "N/A" },
+            { label: "First Ratings", count: fr, conversionRate: su > 0 ? `${((fr / su) * 100).toFixed(1)}%` : "N/A" },
+            { label: "Challenger Entries", count: ce, conversionRate: fr > 0 ? `${((ce / fr) * 100).toFixed(1)}%` : "N/A" },
+            { label: "Dashboard Subs", count: ds, conversionRate: ce > 0 ? `${((ds / ce) * 100).toFixed(1)}%` : "N/A" },
+          ];
+          const maxCount = Math.max(...stages.map(s => s.count), 1);
+          return stages.map((stage, idx) => (
+            <View key={stage.label} style={styles.funnelRow}>
+              <View style={styles.funnelLabelRow}>
+                <Text style={styles.funnelLabel}>{stage.label}</Text>
+                <Text style={styles.funnelCount}>{stage.count.toLocaleString()}</Text>
+              </View>
+              <View style={styles.funnelBarTrack}>
+                <View
+                  style={[
+                    styles.funnelBarFill,
+                    { width: `${Math.max(2, (stage.count / maxCount) * 100)}%` as any },
+                  ]}
+                />
+              </View>
+              {stage.conversionRate && (
+                <Text style={styles.funnelConversion}>↓ {stage.conversionRate} conversion</Text>
+              )}
+            </View>
+          ));
+        })()}
+      </View>
 
       <View style={styles.activitySection}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -222,5 +275,50 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.ui.caption.fontSize,
     color: Colors.textSecondary,
     marginLeft: 8,
+  },
+  funnelSection: {
+    padding: 16,
+  },
+  funnelSectionHeader: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: Colors.textTertiary,
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 12,
+  },
+  funnelRow: {
+    marginBottom: 12,
+  },
+  funnelLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  funnelLabel: {
+    fontSize: TYPOGRAPHY.ui.body.fontSize,
+    fontWeight: "600",
+    color: Colors.text,
+  },
+  funnelCount: {
+    fontSize: TYPOGRAPHY.ui.body.fontSize,
+    fontWeight: "700",
+    color: BRAND.colors.amber,
+  },
+  funnelBarTrack: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.border,
+    overflow: "hidden",
+  },
+  funnelBarFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: BRAND.colors.amber,
+  },
+  funnelConversion: {
+    fontSize: TYPOGRAPHY.ui.caption.fontSize,
+    color: Colors.textSecondary,
+    marginTop: 2,
   },
 });

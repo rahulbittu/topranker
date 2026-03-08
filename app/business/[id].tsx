@@ -21,6 +21,7 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { Analytics } from "@/lib/analytics";
+import { getShareUrl, getShareText } from "@/lib/sharing";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
@@ -150,10 +151,11 @@ export default function BusinessProfileScreen() {
   const handleShare = async () => {
     Haptics.selectionAsync();
     try {
-      const shareUrl = Platform.OS === "web" ? window.location.href : "";
       await Share.share({
-        message: `Check out ${business.name} on Top Ranker! Ranked ${getRankDisplay(business.rank)} with a ${business.weightedScore.toFixed(2)} score.${shareUrl ? ` ${shareUrl}` : ""}`,
+        message: getShareText(business.name, business.avgRating ?? business.weightedScore),
+        url: getShareUrl("business", business.slug),
       });
+      Analytics.shareBusiness(business.slug);
     } catch {}
   };
 

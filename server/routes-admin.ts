@@ -21,6 +21,8 @@ import {
 import { fetchAndStorePhotos } from "./google-places";
 import { getPerfStats } from "./perf-monitor";
 import { getFunnelStats, getRecentEvents } from "./analytics";
+import { getRequestLogs } from "./request-logger";
+import { getRecentErrors } from "../lib/error-reporting";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -279,6 +281,29 @@ export function registerAdminRoutes(app: Express) {
       };
 
       return res.json({ data: dashboard });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Server Metrics — Sprint 123 ─────────────────────────
+  app.get("/api/admin/metrics", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const uptime = process.uptime();
+      const memoryUsage = process.memoryUsage().heapUsed;
+      const nodeVersion = process.version;
+      const requestCount = getRequestLogs().length;
+      const errorCount = getRecentErrors().length;
+
+      return res.json({
+        data: {
+          uptime: Math.floor(uptime),
+          memoryUsage,
+          nodeVersion,
+          requestCount,
+          errorCount,
+        },
+      });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

@@ -192,7 +192,8 @@ describe("GDPR Deletion API Endpoints", () => {
 
   it("routes.ts imports scheduleDeletion from gdpr", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
-    expect(content).toContain("import { scheduleDeletion, getDeletionStatus } from");
+    expect(content).toContain("scheduleDeletion, getDeletionStatus");
+    expect(content).toContain("from \"./gdpr\"");
   });
 
   it("POST /api/account/schedule-deletion endpoint exists", () => {

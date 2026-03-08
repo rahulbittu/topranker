@@ -39,7 +39,7 @@ import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/sche
 import { authRateLimiter } from "./rate-limiter";
 import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
-import { scheduleDeletion, getDeletionStatus } from "./gdpr";
+import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -341,6 +341,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: request.status,
           note: "You can cancel this request by checking your deletion status within 30 days.",
         },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Cancel pending account deletion — GDPR grace period cancellation
+  // Compliance (Jordan Blake): Allow users to cancel within 30-day grace period
+  app.post("/api/account/cancel-deletion", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const cancelled = cancelDeletion(userId);
+
+      if (!cancelled) {
+        return res.status(404).json({ error: "No pending deletion request found" });
+      }
+
+      log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
+
+      return res.json({
+        data: { cancelled: true },
       });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
