@@ -2,6 +2,40 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 120] - 2026-03-08
+### Added
+- Request logging middleware (server/request-logger.ts) — structured in-memory request log with 500-entry buffer
+- Feature flags foundation (lib/feature-flags.ts) — in-memory flag system with 4 pre-registered flags
+- SLT + Architecture backlog meeting (Sprint 120) — reviewed Sprints 115-119, prioritized 120-124
+### Changed
+- CHANGELOG updated with Sprints 117-120
+- 949+ tests across 53 files
+
+## [Sprint 119] - 2026-03-08
+### Added
+- Connection pooling module (server/db-pool.ts) — ConnectionPool class with configurable pool size, drain, health check
+- Offline sync foundation (lib/offline-sync.ts) — SyncAction queue with retry logic, MAX_RETRIES = 3
+- API versioning documentation (docs/API-VERSIONING.md) — header-based strategy, deprecation policy, sunset headers
+### Changed
+- Health check enhanced with nodeVersion, memoryUsage fields
+- 949 tests across 52 files
+
+## [Sprint 118] - 2026-03-08
+### Added
+- i18n foundation (lib/i18n.ts) — translation module with locale detection, interpolation, pluralization
+- Social sharing module (lib/social-sharing.ts) — share card generation, deep link construction
+- X-Response-Time header middleware — measures request duration in milliseconds
+### Changed
+- 900+ tests across 51 files
+
+## [Sprint 117] - 2026-03-08
+### Added
+- Accessibility testing utility (lib/accessibility-test.ts) — automated a11y checks for contrast, labels, touch targets
+- GDPR deletion grace period enhancement — 30-day soft delete with recovery window
+- Revenue analytics enhancements — monthly breakdown, cohort tracking
+### Changed
+- 850+ tests across 50 files
+
 ## [Sprint 116] - 2026-03-08
 ### Added
 - Admin analytics dashboard endpoint (GET /api/admin/analytics/dashboard) with conversion funnel rates
