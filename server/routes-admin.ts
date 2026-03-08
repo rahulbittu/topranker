@@ -20,6 +20,7 @@ import {
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { getPerfStats } from "./perf-monitor";
+import { getFunnelStats, getRecentEvents } from "./analytics";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -228,6 +229,19 @@ export function registerAdminRoutes(app: Express) {
       const { getRevenueMetrics } = await import("./storage");
       const metrics = await getRevenueMetrics();
       return res.json({ data: metrics });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Analytics / Conversion Funnel ───────────────────────
+  app.get("/api/admin/analytics", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const data = {
+        funnel: getFunnelStats(),
+        recentEvents: getRecentEvents(20),
+      };
+      return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

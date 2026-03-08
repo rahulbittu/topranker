@@ -34,7 +34,7 @@ import {
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 import { authRateLimiter } from "./rate-limiter";
-import { sanitizeString } from "./sanitize";
+import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -137,7 +137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/signup", authRateLimiter, async (req: Request, res: Response) => {
     try {
-      const { displayName, username, email, password, city } = req.body;
+      const { password, city } = req.body;
+      const displayName = sanitizeString(req.body.displayName, 100);
+      const username = sanitizeString(req.body.username, 50);
+      const email = sanitizeEmail(req.body.email);
 
       if (!displayName || !username || !email || !password) {
         return res.status(400).json({ error: "All fields are required" });
@@ -394,8 +397,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!business) {
         return res.status(404).json({ error: "Business not found" });
       }
-      const { role, phone } = req.body;
-      if (!role || typeof role !== "string" || role.trim().length === 0) {
+      const role = sanitizeString(req.body.role, 100);
+      const phone = sanitizeString(req.body.phone, 20);
+      if (!role || role.length === 0) {
         return res.status(400).json({ error: "Role is required" });
       }
 
@@ -406,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
       }
 
-      const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
+      const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
       const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
 
       // Send email notifications (non-blocking)
@@ -490,7 +494,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dishes/search", async (req: Request, res: Response) => {
     try {
       const businessId = req.query.business_id as string;
-      const query = (req.query.q as string) || "";
+      const query = sanitizeString(req.query.q, 200);
       if (!businessId) return res.status(400).json({ error: "business_id required" });
       const data = await searchDishes(businessId, query);
       return res.json({ data });
@@ -505,6 +509,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
+
+      // Sanitize rating score to [1, 5] range
+      parsed.data.score = sanitizeNumber(parsed.data.score, 1, 5, 3);
 
       const memberId = req.user!.id;
       const result = await submitRating(memberId, parsed.data);

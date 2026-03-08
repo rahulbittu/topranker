@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, RefreshControl, Alert,
+  Platform, ActivityIndicator, RefreshControl, Alert, Switch,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,6 +40,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
+  const [notifRatingUpdates, setNotifRatingUpdates] = useState(true);
+  const [notifChallengeResults, setNotifChallengeResults] = useState(true);
+  const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(false);
 
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
@@ -461,6 +464,52 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
+      {/* Notification Preferences */}
+      <View style={styles.notifCard}>
+        <View style={styles.notifHeader}>
+          <Ionicons name="notifications-outline" size={16} color={Colors.text} />
+          <Text style={styles.notifHeaderText}>Notifications</Text>
+        </View>
+        <View style={styles.notifRow}>
+          <View style={styles.notifLabelWrap}>
+            <Text style={styles.notifLabel}>Rating updates</Text>
+            <Text style={styles.notifDesc}>When someone rates a business you own</Text>
+          </View>
+          <Switch
+            value={notifRatingUpdates}
+            onValueChange={setNotifRatingUpdates}
+            trackColor={{ false: Colors.border, true: AMBER }}
+            thumbColor="#fff"
+          />
+        </View>
+        <View style={styles.notifSep} />
+        <View style={styles.notifRow}>
+          <View style={styles.notifLabelWrap}>
+            <Text style={styles.notifLabel}>Challenge results</Text>
+            <Text style={styles.notifDesc}>Challenger competition updates</Text>
+          </View>
+          <Switch
+            value={notifChallengeResults}
+            onValueChange={setNotifChallengeResults}
+            trackColor={{ false: Colors.border, true: AMBER }}
+            thumbColor="#fff"
+          />
+        </View>
+        <View style={styles.notifSep} />
+        <View style={styles.notifRow}>
+          <View style={styles.notifLabelWrap}>
+            <Text style={styles.notifLabel}>Weekly digest</Text>
+            <Text style={styles.notifDesc}>Weekly email with top rankings</Text>
+          </View>
+          <Switch
+            value={notifWeeklyDigest}
+            onValueChange={setNotifWeeklyDigest}
+            trackColor={{ false: Colors.border, true: AMBER }}
+            thumbColor="#fff"
+          />
+        </View>
+      </View>
+
       {/* Legal Links */}
       <View style={styles.legalLinks}>
         <TouchableOpacity
@@ -845,5 +894,32 @@ const styles = StyleSheet.create({
   paymentStatus: {
     fontSize: 10, fontFamily: "DMSans_500Medium", marginTop: 2,
     textTransform: "capitalize" as const,
+  },
+
+  // Notification Preferences
+  notifCard: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.border,
+    padding: 16, marginTop: 16, gap: 0,
+  },
+  notifHeader: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14,
+  },
+  notifHeaderText: {
+    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  notifRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  notifLabelWrap: { flex: 1, marginRight: 12 },
+  notifLabel: {
+    fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular",
+  },
+  notifDesc: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 2,
+  },
+  notifSep: {
+    height: 1, backgroundColor: Colors.border, marginVertical: 4,
   },
 });

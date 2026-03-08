@@ -1,54 +1,102 @@
-import React, { Component, ComponentType, PropsWithChildren } from "react";
-import { ErrorFallback, ErrorFallbackProps } from "@/components/ErrorFallback";
-
-export type ErrorBoundaryProps = PropsWithChildren<{
-  FallbackComponent?: ComponentType<ErrorFallbackProps>;
-  onError?: (error: Error, stackTrace: string) => void;
-}>;
-
-type ErrorBoundaryState = { error: Error | null };
-
 /**
- * This is a special case for for using the class components. Error boundaries must be class components because React only provides error boundary functionality through lifecycle methods (componentDidCatch and getDerivedStateFromError) which are not available in functional components.
- * https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary
+ * Error Boundary — Sprint 110
+ * Catches unhandled errors and displays a recovery UI.
+ * Owner: Sarah Nakamura (Lead Engineer)
  */
+import React, { Component, type ErrorInfo, type ReactNode } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 
-export class ErrorBoundary extends Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  state: ErrorBoundaryState = { error: null };
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+}
 
-  static defaultProps: {
-    FallbackComponent: ComponentType<ErrorFallbackProps>;
-  } = {
-    FallbackComponent: ErrorFallback,
-  };
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { error };
+export class ErrorBoundary extends Component<Props, State> {
+  state: State = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, info: { componentStack: string }): void {
-    if (typeof this.props.onError === "function") {
-      this.props.onError(error, info.componentStack);
-    }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[ErrorBoundary]", error, errorInfo);
+    this.props.onError?.(error, errorInfo);
   }
 
-  resetError = (): void => {
-    this.setState({ error: null });
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null });
   };
 
   render() {
-    const { FallbackComponent } = this.props;
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
 
-    return this.state.error && FallbackComponent ? (
-      <FallbackComponent
-        error={this.state.error}
-        resetError={this.resetError}
-      />
-    ) : (
-      this.props.children
-    );
+      return (
+        <View style={styles.container}>
+          <Text style={styles.icon}>⚠</Text>
+          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.message}>
+            {this.state.error?.message || "An unexpected error occurred"}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={this.handleRetry}
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
+          >
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return this.props.children;
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 32,
+    backgroundColor: Colors.background,
+  },
+  icon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontFamily: "DMSans_700Bold",
+    color: Colors.text,
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 14,
+    fontFamily: "DMSans_400Regular",
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryBtn: {
+    backgroundColor: BRAND.colors.amber,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  retryText: {
+    fontSize: 15,
+    fontFamily: "DMSans_700Bold",
+    color: "#FFFFFF",
+  },
+});
