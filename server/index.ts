@@ -169,7 +169,7 @@ function configureExpoAndLanding(app: express.Application) {
   });
 
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app.use(express.static(path.resolve(process.cwd(), "static-build")));
+  app.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
 
   const distPath = path.resolve(process.cwd(), "dist");
   const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
@@ -231,7 +231,7 @@ body{background:#0a0e1a;overflow:hidden}
 <div id="_loading">
   <div class="sp"></div>
   <p>TOP RANKER</p>
-  <small>Loading app...</small>
+  <small>Loading app... (v4)</small>
 </div>
 <div id="root"></div>
 <script>
@@ -275,6 +275,7 @@ document.body.appendChild(s);
       }
 
       if (req.path === "/" || req.path === "/index.html") {
+        log(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
         return res.status(200).type("html").send(webIndexHtml);
       }
 
