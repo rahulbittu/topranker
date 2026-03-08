@@ -226,7 +226,7 @@ export function HeroCard({ item, categoryLabel }: { item: MappedBusiness; catego
 }
 
 // ── RankedCard ──────────────────────────────────────────────────
-export const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
+export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { item: MappedBusiness; index?: number }) {
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = Math.min(screenWidth, 600) - CARD_PADDING * 2;
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
@@ -237,11 +237,15 @@ export const RankedCard = React.memo(function RankedCard({ item }: { item: Mappe
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
+  const slideAnim = useRef(new Animated.Value(8)).current;
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
+    const delay = Math.min(index * 60, 300); // Stagger up to 300ms
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      ]),
     ]).start();
   }, []);
 

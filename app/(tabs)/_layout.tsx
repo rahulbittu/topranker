@@ -25,14 +25,17 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
 
   useEffect(() => {
     if (focused) {
-      scale.value = withSpring(1.18, { damping: 8, stiffness: 200 });
-      glowOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
-      glowScale.value = withSpring(1, { damping: 12, stiffness: 120 });
+      // Unified spring config for cohesive motion
+      const springConfig = { damping: 14, stiffness: 160 };
+      scale.value = withSpring(1.12, springConfig);
+      glowOpacity.value = withSpring(1, springConfig);
+      glowScale.value = withSpring(1, springConfig);
       hapticTabSwitch();
     } else {
-      scale.value = withSpring(1, { damping: 10 });
-      glowOpacity.value = withTiming(0, { duration: 200 });
-      glowScale.value = withTiming(0.6, { duration: 200 });
+      const springConfig = { damping: 16, stiffness: 140 };
+      scale.value = withSpring(1, springConfig);
+      glowOpacity.value = withSpring(0, springConfig);
+      glowScale.value = withSpring(0.5, springConfig);
     }
   }, [focused]);
 

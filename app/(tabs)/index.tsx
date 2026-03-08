@@ -205,7 +205,7 @@ export default function LeaderboardScreen() {
         <FlatList
           data={restBiz}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => <RankedCard item={item} />}
+          renderItem={({ item, index }) => <RankedCard item={item} index={index} />}
           contentContainerStyle={[
             styles.list,
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }

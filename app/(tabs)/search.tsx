@@ -72,6 +72,8 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 
     importLibrary("maps").then((mapsLib: any) => {
       if (!mapRef.current || mapInstance.current) return;
+      // Verify DOM element is still attached to prevent IntersectionObserver errors
+      if (!mapRef.current.isConnected) return;
       const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
 
       const map = new mapsLib.Map(mapRef.current, {
@@ -110,6 +112,9 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     return () => {
       markersRef.current.forEach(m => m.setMap?.(null));
       markersRef.current = [];
+      // Clear map instance so it's re-created on next mount (prevents stale DOM ref)
+      mapInstance.current = null;
+      setMapReady(false);
     };
   }, []);
 
