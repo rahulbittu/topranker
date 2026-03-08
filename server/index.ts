@@ -6,6 +6,7 @@ import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 import { log as logger } from "./logger";
+import { securityHeaders } from "./security-headers";
 
 const app = express();
 const log = console.log;
@@ -294,6 +295,7 @@ function setupErrorHandler(app: express.Application) {
 (async () => {
   setupCors(app);
   setupBodyParsing(app);
+  app.use(securityHeaders);
   setupRequestLogging(app);
 
   const server = await registerRoutes(app);

@@ -9,7 +9,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
 const EFFECTIVE_DATE = "March 1, 2026";
-const LAST_UPDATED = "March 7, 2026";
+const LAST_UPDATED = "March 8, 2026";
 
 const SECTIONS = [
   {
@@ -39,6 +39,7 @@ You acknowledge that Trust Scores may affect the weight of your ratings and that
 - Represent that your Content is truthful and based on genuine experience
 - Agree not to submit fake, misleading, or paid-for ratings
 - Retain ownership of your User Content
+- Ratings are processed in real-time and reflected in rankings immediately through our live update system
 
 We reserve the right to remove any Content that violates these Terms, including but not limited to: spam, hate speech, defamation, or content designed to manipulate rankings.`,
   },
@@ -67,7 +68,11 @@ Violations may result in listing suspension or permanent removal.`,
 - Dashboard Pro: $49/month (recurring, cancel anytime)
 - Featured Placement: $199/week (recurring)
 
-All payments are processed through our payment provider (Stripe). Refund policies are governed by our Refund Policy. Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date.`,
+All payments are processed through our payment provider (Stripe). Refund policies are governed by our Refund Policy. Subscriptions auto-renew unless cancelled at least 24 hours before the renewal date.
+
+You may cancel Featured Placement subscriptions at any time. Upon cancellation, your placement expires immediately and no further charges will be made. Challenger entries are non-refundable once a challenge begins.
+
+Payment events are processed through secure webhook infrastructure. Failed payment events may be replayed by our operations team to ensure accurate account status.`,
   },
   {
     title: "8. Prohibited Conduct",
@@ -99,7 +104,15 @@ Our maximum aggregate liability for any claim shall not exceed the amount you pa
     body: `We may update these Terms at any time. Material changes will be communicated via in-app notification or email at least 30 days before taking effect. Continued use after changes constitutes acceptance.`,
   },
   {
-    title: "13. Contact",
+    title: "13. Real-Time Data & Communications",
+    body: `TopRanker delivers real-time updates through server-sent events (SSE) when you use the App. This includes live ranking changes, rating updates, and challenge results.
+
+Transactional emails (welcome, payment confirmations, challenge results) are sent via our email provider. You may not opt out of transactional emails while maintaining an active account. Marketing and promotional communications can be managed in your notification settings.
+
+We reserve the right to send service-critical notifications (security alerts, terms changes, payment issues) regardless of notification preferences.`,
+  },
+  {
+    title: "14. Contact",
     body: `For legal inquiries: legal@topranker.com
 For support: support@topranker.com
 TopRanker Inc., Dallas, TX, United States`,

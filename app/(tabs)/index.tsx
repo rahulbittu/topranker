@@ -31,6 +31,7 @@ export default function LeaderboardScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
+  const [showBanner, setShowBanner] = useState(true);
 
   // Fetch dynamic categories from API
   const { data: dbCategories = [] } = useQuery({
@@ -220,7 +221,26 @@ export default function LeaderboardScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
-          ListHeaderComponent={heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
+          ListHeaderComponent={
+            <>
+              {showBanner && (
+                <View style={styles.welcomeBanner}>
+                  <Text style={styles.welcomeBannerText}>Trust-weighted rankings by real people.</Text>
+                  <Text style={styles.welcomeBannerSubtext}>Rate businesses you've visited to build your credibility.</Text>
+                  <TouchableOpacity
+                    style={styles.welcomeBannerClose}
+                    onPress={() => setShowBanner(false)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Dismiss welcome banner"
+                  >
+                    <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              {heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
+            </>
+          }
           ListFooterComponent={
             restBiz.length > 0 ? (
               <View style={styles.listFooter}>
@@ -332,5 +352,21 @@ const styles = StyleSheet.create({
   suggestChipText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center",
+  },
+  welcomeBanner: {
+    backgroundColor: "#0D1B2A", borderRadius: 12,
+    padding: 16, marginBottom: 12, marginHorizontal: 0,
+    position: "relative" as const,
+  },
+  welcomeBannerText: {
+    color: "#FFFFFF", fontSize: 14, fontFamily: "DMSans_600SemiBold",
+    paddingRight: 24,
+  },
+  welcomeBannerSubtext: {
+    color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "DMSans_400Regular",
+    marginTop: 4, paddingRight: 24,
+  },
+  welcomeBannerClose: {
+    position: "absolute" as const, top: 12, right: 12,
   },
 });

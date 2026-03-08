@@ -1,6 +1,7 @@
 /**
  * Payment routes — extracted from routes.ts per Arch Audit #8.
- * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
+ * Handles Challenger, Dashboard Pro, and Featured Placement.
+ * Pricing sourced from shared/pricing.ts (single source of truth).
  */
 import type { Express, Request, Response } from "express";
 import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus, expireFeaturedByPayment } from "./storage";

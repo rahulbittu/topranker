@@ -1,11 +1,13 @@
 /**
  * Payment service for TopRanker
- * Handles Challenger entry fees ($99) and Business Dashboard Pro ($49/mo)
+ * Handles Challenger entry fees, Dashboard Pro, and Featured Placement.
+ * Pricing sourced from shared/pricing.ts (single source of truth).
  *
  * Currently logs to console. Install `stripe` package and set STRIPE_SECRET_KEY to activate.
  * npm install stripe
  */
 import { log } from "./logger";
+import { PRICING } from "../shared/pricing";
 
 const payLog = log.tag("Payments");
 
@@ -70,7 +72,7 @@ export async function createChallengerPayment(params: {
   userId: string;
 }): Promise<PaymentIntent> {
   return createPaymentIntent({
-    amount: 9900, // $99.00
+    amount: PRICING.challenger.amountCents,
     description: `TopRanker Challenger Entry: ${params.businessName}`,
     metadata: {
       type: "challenger_entry",
@@ -88,7 +90,7 @@ export async function createDashboardProPayment(params: {
   userId: string;
 }): Promise<PaymentIntent> {
   return createPaymentIntent({
-    amount: 4900, // $49.00/mo
+    amount: PRICING.dashboardPro.amountCents,
     description: `TopRanker Business Dashboard Pro: ${params.businessName}`,
     metadata: {
       type: "dashboard_pro",
@@ -107,7 +109,7 @@ export async function createFeaturedPlacementPayment(params: {
   userId: string;
 }): Promise<PaymentIntent> {
   return createPaymentIntent({
-    amount: 19900, // $199.00/week
+    amount: PRICING.featuredPlacement.amountCents,
     description: `TopRanker Featured Placement: ${params.businessName} in ${params.city}`,
     metadata: {
       type: "featured_placement",

@@ -9,7 +9,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
 const EFFECTIVE_DATE = "March 1, 2026";
-const LAST_UPDATED = "March 7, 2026";
+const LAST_UPDATED = "March 8, 2026";
 
 const SECTIONS = [
   {
@@ -24,7 +24,11 @@ Location Data: Approximate location (city-level) from your profile. Precise GPS 
 
 Device Data: Device model, OS version, app version. Used for compatibility and crash reporting.
 
-Push Notification Tokens: If you enable notifications, your device token is stored to deliver alerts.`,
+Push Notification Tokens: If you enable notifications, your device token is stored to deliver alerts.
+
+Real-Time Connection Data: When using the App, a persistent connection (SSE) is maintained to deliver live updates. Connection metadata (connect/disconnect times) is logged for performance monitoring but not linked to your identity.
+
+Webhook Event Data: Payment status updates received from payment providers are logged for operational integrity. These logs contain transaction identifiers but no additional personal data beyond what is already collected for payment processing.`,
   },
   {
     title: "2. How We Use Your Information",
@@ -37,7 +41,10 @@ Push Notification Tokens: If you enable notifications, your device token is stor
 - Send push notifications for ratings, tier changes, and challenges — opt-out available
 - Detect and prevent fraud, fake reviews, and ranking manipulation
 - Improve our algorithms and product experience
-- Comply with legal obligations`,
+- Comply with legal obligations
+- Deliver real-time ranking and rating updates via server-sent events
+- Process and replay webhook events for payment accuracy
+- Send transactional emails via Resend (our email delivery provider)`,
   },
   {
     title: "3. Trust Score Data",
@@ -55,7 +62,7 @@ You may request an explanation of the factors influencing your tier via support@
     title: "4. Data Sharing",
     body: `We do NOT sell your personal data. We share data only:
 
-- With service providers: Payment processing (Stripe), email delivery (Resend/SendGrid), push notifications (Expo), cloud hosting
+- With service providers: Payment processing (Stripe), email delivery (Resend), push notifications (Expo), cloud hosting, real-time event delivery infrastructure
 - With business owners: Your ratings and reviews are visible to claimed business owners (not your email or personal details)
 - For legal compliance: When required by law, court order, or government request
 - In aggregated form: Anonymous analytics for public rankings and reports
@@ -100,6 +107,9 @@ To exercise any right: privacy@topranker.com`,
 - Rate limiting on all API endpoints
 - Regular security audits and vulnerability scanning
 - Access controls limiting employee data access to need-to-know basis
+- Webhook signature verification for payment event authenticity
+- Admin-only access to webhook replay with double-gated authentication
+- Real-time connections secured with same-origin policy and TLS
 
 No system is 100% secure. We will notify affected users within 72 hours of a confirmed data breach.`,
   },
