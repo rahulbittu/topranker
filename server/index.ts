@@ -207,22 +207,16 @@ function configureExpoAndLanding(app: express.Application) {
     });
 
     // Serve root path directly so Replit preview gets instant HTTP 200.
-    // Metro will handle the JS bundle requests via proxy below.
+    // ALWAYS use the bootstrap page in dev — never serve dist/index.html here.
+    // dist/index.html uses <script defer> for a ~3.5MB bundle which blocks the
+    // browser load event. Replit's preview waits for load, so it spins forever.
+    // The bootstrap page uses createElement('script') which doesn't block load.
     app.get("/", (req: Request, res: Response, next: NextFunction) => {
       const platform = req.header("expo-platform");
       if (platform && (platform === "ios" || platform === "android")) {
         return next();
       }
 
-      // Check if dist build exists (pre-built) — serve that first
-      if (hasDistBuild) {
-        return res.sendFile(path.join(distPath, "index.html"));
-      }
-
-      // Otherwise serve a lightweight bootstrap page that loads the Metro bundle.
-      // This gives Replit preview an instant 200 while Metro starts.
-      const metroHost = req.get("host") || "localhost:5000";
-      const protocol = req.header("x-forwarded-proto") || req.protocol || "http";
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       res.status(200).send(`<!DOCTYPE html>
