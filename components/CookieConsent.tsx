@@ -43,10 +43,20 @@ export function CookieConsent() {
           <Text style={styles.link} onPress={() => router.push("/legal/privacy")}>Learn more</Text>
         </Text>
         <View style={styles.buttons}>
-          <TouchableOpacity style={styles.declineBtn} onPress={decline}>
+          <TouchableOpacity
+            style={styles.declineBtn}
+            onPress={decline}
+            accessibilityRole="button"
+            accessibilityLabel="Accept essential cookies only"
+          >
             <Text style={styles.declineBtnText}>Essential Only</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.acceptBtn} onPress={accept}>
+          <TouchableOpacity
+            style={styles.acceptBtn}
+            onPress={accept}
+            accessibilityRole="button"
+            accessibilityLabel="Accept all cookies"
+          >
             <Text style={styles.acceptBtnText}>Accept All</Text>
           </TouchableOpacity>
         </View>

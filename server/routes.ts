@@ -39,6 +39,7 @@ import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/sche
 import { authRateLimiter } from "./rate-limiter";
 import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
+import { scheduleDeletion, getDeletionStatus } from "./gdpr";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -311,6 +312,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deletionDate: deletionDate.toISOString(),
           gracePeriodDays: 30,
           note: "You can cancel this request by logging in within 30 days.",
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── GDPR Deletion Grace Period ──────────────────────────────
+  // Compliance (Jordan Blake): Schedule deletion with 30-day grace period
+  app.post("/api/account/schedule-deletion", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const request = scheduleDeletion(userId, 30);
+
+      log.tag("GDPR").info(
+        `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
+      );
+
+      return res.json({
+        data: {
+          message: "Account deletion scheduled",
+          scheduledAt: request.scheduledAt.toISOString(),
+          deleteAt: request.deleteAt.toISOString(),
+          gracePeriodDays: 30,
+          status: request.status,
+          note: "You can cancel this request by checking your deletion status within 30 days.",
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Get current deletion status for authenticated user
+  app.get("/api/account/deletion-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const status = getDeletionStatus(userId);
+
+      if (!status) {
+        return res.json({ data: { hasPendingDeletion: false } });
+      }
+
+      return res.json({
+        data: {
+          hasPendingDeletion: status.status === "pending",
+          scheduledAt: status.scheduledAt.toISOString(),
+          deleteAt: status.deleteAt.toISOString(),
+          status: status.status,
         },
       });
     } catch (err: any) {

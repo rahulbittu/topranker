@@ -201,6 +201,12 @@ export const Analytics = {
     track("challenger_share_image", { challenge_id: challengeId }),
 
   // Revenue
+  dashboardProViewed: (slug: string) =>
+    track("dashboard_view", { slug, tier: "pro" }),
+
+  featuredViewed: (slug: string) =>
+    track("featured_placement_tap", { slug, source: "featured_section" }),
+
   dashboardUpgradeTap: (businessSlug: string) =>
     track("dashboard_upgrade_tap", { business: businessSlug }),
 
