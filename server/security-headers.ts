@@ -52,8 +52,30 @@ function isLocalhostOrigin(origin: string): boolean {
 }
 
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  const isDev = process.env.NODE_ENV !== "production";
+
   // ── CORS ──────────────────────────────────────────────────────────
   const origin = req.headers.origin as string | undefined;
+
+  if (isDev) {
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, expo-platform");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Max-Age", "86400");
+    }
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-API-Version", "1.0.0");
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    res.setHeader("X-Request-Id", requestId);
+    return next();
+  }
+
+  // ── Production-only below ─────────────────────────────────────────
   const wildcardAllowed = allowedOrigins.has("*");
 
   if (
@@ -70,35 +92,22 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       "Content-Type, Authorization"
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    // Cache preflight for 24 hours
     res.setHeader("Access-Control-Max-Age", "86400");
   }
 
-  // Handle preflight — return early with 204 No Content
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // ── Security Headers ──────────────────────────────────────────────
-  // Prevent MIME-type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
-
-  // Prevent clickjacking
   res.setHeader("X-Frame-Options", "DENY");
-
-  // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
-
-  // Referrer policy — send origin only for cross-origin
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Permissions policy — disable unused browser features
   res.setHeader(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(self), payment=(self)"
   );
 
-  // Content Security Policy — restrict resource loading origins
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com",
@@ -113,18 +122,12 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   ].join("; ");
   res.setHeader("Content-Security-Policy", csp);
 
-  // HSTS — enforce HTTPS (1 year, include subdomains)
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
-    );
-  }
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
 
-  // API versioning header
   res.setHeader("X-API-Version", "1.0.0");
-
-  // Request ID for tracing
   const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   res.setHeader("X-Request-Id", requestId);
 
