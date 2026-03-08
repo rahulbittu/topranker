@@ -4824,6 +4824,9 @@ function securityHeaders(req, res, next) {
       return res.status(204).end();
     }
     res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.setHeader("X-API-Version", "1.0.0");
     const requestId2 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     res.setHeader("X-Request-Id", requestId2);
@@ -5009,13 +5012,20 @@ function configureExpoAndLanding(app2) {
       ws: true,
       logger: void 0,
       on: {
-        error: (_err, _req, res) => {
+        error: (_err, req, res) => {
           if (res && "writeHead" in res && !res.headersSent) {
-            res.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            const httpReq = req;
+            const acceptsHtml = httpReq.headers?.accept?.includes("text/html");
+            if (acceptsHtml) {
+              res.status(200).type("html").send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            } else {
+              res.status(503).set("Retry-After", "3").send("Metro bundler starting...");
+            }
           }
         }
       }
     });
+    const webIndexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta httpEquiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" /><title>${appName}</title><style id="expo-reset">html,body{height:100%}body{overflow:hidden}#root{display:flex;height:100%;flex:1}</style></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script src="/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&transform.reactCompiler=true&unstable_transformProfile=hermes-stable" defer></script></body></html>`;
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
         return next();
@@ -5023,6 +5033,9 @@ function configureExpoAndLanding(app2) {
       const platform = req.header("expo-platform");
       if (platform && (platform === "ios" || platform === "android")) {
         return next();
+      }
+      if (req.path === "/" || req.path === "/index.html") {
+        return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
     });
