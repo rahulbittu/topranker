@@ -70,6 +70,14 @@ export {
   getBadgeLeaderboard,
 } from "./badges";
 
+// Payments
+export {
+  createPaymentRecord,
+  updatePaymentStatus,
+  getMemberPayments,
+  getBusinessPayments,
+} from "./payments";
+
 // Claims & Flags
 export {
   submitClaim,

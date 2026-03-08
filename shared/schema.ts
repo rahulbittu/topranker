@@ -380,6 +380,35 @@ export const categorySuggestions = pgTable("category_suggestions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const payments = pgTable(
+  "payments",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    memberId: varchar("member_id")
+      .notNull()
+      .references(() => members.id),
+    businessId: varchar("business_id")
+      .references(() => businesses.id),
+    type: text("type").notNull(), // challenger_entry, dashboard_pro, featured_placement
+    amount: integer("amount").notNull(), // in cents
+    currency: text("currency").notNull().default("usd"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    status: text("status").notNull().default("pending"), // pending, succeeded, failed, refunded
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at"),
+  },
+  (table) => [
+    index("idx_payments_member").on(table.memberId),
+    index("idx_payments_business").on(table.businessId),
+    index("idx_payments_status").on(table.status),
+  ],
+);
+
+export type Payment = typeof payments.$inferSelect;
+
 export const insertMemberSchema = createInsertSchema(members).pick({
   displayName: true,
   username: true,

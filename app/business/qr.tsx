@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Platform, Share,
+  View, Text, StyleSheet, TouchableOpacity, Platform, Share, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -40,29 +40,15 @@ export default function QRCodeScreen() {
         <Text style={styles.title}>{name}</Text>
         <Text style={styles.subtitle}>Display this code for diners to scan and rate</Text>
 
-        {/* QR Code Display Area */}
+        {/* QR Code Display Area — server-generated via Google Charts API */}
         <View style={styles.qrContainer}>
           <View style={styles.qrPlaceholder}>
-            <View style={styles.qrInner}>
-              {/* ASCII art QR-like grid for visual representation */}
-              <View style={styles.qrGrid}>
-                {Array.from({ length: 7 }, (_, row) => (
-                  <View key={row} style={styles.qrRow}>
-                    {Array.from({ length: 7 }, (_, col) => {
-                      const isCorner = (row < 3 && col < 3) || (row < 3 && col > 3) || (row > 3 && col < 3);
-                      const isFilled = isCorner || (row === 3 && col === 3) || Math.random() > 0.4;
-                      return (
-                        <View
-                          key={col}
-                          style={[styles.qrCell, isFilled && styles.qrCellFilled]}
-                        />
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
-              <Ionicons name="qr-code-outline" size={80} color={BRAND.colors.navy} style={styles.qrIcon} />
-            </View>
+            <Image
+              source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrUrl)}&color=0D1B2A` }}
+              style={styles.qrImage}
+              resizeMode="contain"
+              accessibilityLabel={`QR code for ${name}`}
+            />
           </View>
           <Text style={styles.qrUrl}>{qrUrl}</Text>
         </View>
@@ -99,9 +85,22 @@ export default function QRCodeScreen() {
             style={styles.printBtn}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              // TODO: Generate printable PDF with QR code
               if (Platform.OS === "web") {
-                window.print();
+                // Open a clean print window with just the QR code
+                const printWindow = window.open("", "_blank");
+                if (printWindow) {
+                  printWindow.document.write(`
+                    <html><head><title>QR Code — ${name}</title>
+                    <style>body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif}
+                    h1{font-size:28px;color:#0D1B2A;margin:0 0 4px}p{color:#888;font-size:14px;margin:0 0 24px}
+                    img{width:240px;height:240px;border:3px solid #0D1B2A;border-radius:12px;padding:8px}
+                    .url{font-size:11px;color:#aaa;margin-top:12px}.brand{color:#C49A1A;font-weight:900;font-size:11px;letter-spacing:1px;margin-top:20px}</style></head>
+                    <body><h1>${name}</h1><p>Scan to rate on TopRanker</p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}&color=0D1B2A" />
+                    <div class="url">${qrUrl}</div><div class="brand">TOPRANKER</div></body></html>`);
+                  printWindow.document.close();
+                  printWindow.print();
+                }
               }
             }}
             activeOpacity={0.85}
@@ -147,12 +146,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
   },
-  qrInner: { alignItems: "center", justifyContent: "center" },
-  qrGrid: { position: "absolute", opacity: 0.15 },
-  qrRow: { flexDirection: "row" },
-  qrCell: { width: 18, height: 18, margin: 1, borderRadius: 2 },
-  qrCellFilled: { backgroundColor: BRAND.colors.navy },
-  qrIcon: { opacity: 0.8 },
+  qrImage: { width: 180, height: 180 },
   qrUrl: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center",

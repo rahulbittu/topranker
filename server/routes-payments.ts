@@ -3,7 +3,7 @@
  * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
  */
 import type { Express, Request, Response } from "express";
-import { getBusinessBySlug } from "./storage";
+import { getBusinessBySlug, createPaymentRecord } from "./storage";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -30,6 +30,16 @@ export function registerPaymentRoutes(app: Express) {
         customerEmail: req.user!.email || "",
         userId: req.user!.id,
       });
+      // Record in audit trail
+      await createPaymentRecord({
+        memberId: req.user!.id,
+        businessId: business.id,
+        type: "challenger_entry",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata,
+      });
       return res.json({ data: payment });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -52,6 +62,15 @@ export function registerPaymentRoutes(app: Express) {
         businessName: business.name,
         customerEmail: req.user!.email || "",
         userId: req.user!.id,
+      });
+      await createPaymentRecord({
+        memberId: req.user!.id,
+        businessId: business.id,
+        type: "dashboard_pro",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata,
       });
       return res.json({ data: payment });
     } catch (err: any) {
@@ -76,6 +95,15 @@ export function registerPaymentRoutes(app: Express) {
         city: business.city,
         customerEmail: req.user!.email || "",
         userId: req.user!.id,
+      });
+      await createPaymentRecord({
+        memberId: req.user!.id,
+        businessId: business.id,
+        type: "featured_placement",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata,
       });
       return res.json({ data: payment });
     } catch (err: any) {
