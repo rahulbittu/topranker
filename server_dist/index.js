@@ -694,10 +694,25 @@ async function getMemberImpact(memberId) {
       eq(ratings.isFlagged, false)
     )
   ).groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
+  const lastRatingRows = await db.select({
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    ratedAt: ratings.createdAt
+  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(desc(ratings.createdAt)).limit(1);
+  const lastRating = lastRatingRows.length > 0 ? {
+    businessName: lastRatingRows[0].businessName,
+    businessSlug: lastRatingRows[0].businessSlug,
+    rawScore: lastRatingRows[0].rawScore,
+    weight: lastRatingRows[0].weight,
+    ratedAt: lastRatingRows[0].ratedAt.toISOString()
+  } : null;
   const movedUp = memberRatings.filter((r) => r.rankDelta > 0);
   return {
     businessesMovedUp: movedUp.length,
-    topContributions: movedUp.sort((a, b) => b.rankDelta - a.rankDelta).slice(0, 5).map((r) => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta }))
+    topContributions: movedUp.sort((a, b) => b.rankDelta - a.rankDelta).slice(0, 5).map((r) => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta })),
+    lastRating
   };
 }
 var init_members = __esm({
@@ -3374,6 +3389,22 @@ function getAllFlags() {
   return Array.from(flagStore.values());
 }
 
+// lib/data.ts
+var CATEGORY_CONFIDENCE_THRESHOLDS = {
+  fast_food: { provisional: 3, early: 8, established: 20 },
+  casual_dining: { provisional: 3, early: 8, established: 20 },
+  buffet: { provisional: 3, early: 8, established: 20 },
+  restaurant: { provisional: 3, early: 10, established: 25 },
+  cafe: { provisional: 3, early: 10, established: 25 },
+  brunch: { provisional: 3, early: 10, established: 25 },
+  bar: { provisional: 3, early: 10, established: 25 },
+  fine_dining: { provisional: 5, early: 15, established: 35 },
+  brewery: { provisional: 5, early: 12, established: 30 },
+  dessert_bar: { provisional: 3, early: 12, established: 30 },
+  food_hall: { provisional: 5, early: 12, established: 30 }
+};
+var DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
+
 // server/routes-admin.ts
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3640,6 +3671,18 @@ function registerAdminRoutes(app2) {
           activeConnections: 0,
           featureFlags: flags,
           generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      return res.json({
+        data: {
+          thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
+          defaults: DEFAULT_THRESHOLDS
         }
       });
     } catch (err) {
@@ -4795,11 +4838,11 @@ function securityHeaders(req, res, next) {
   );
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com",
     "frame-src 'self' https://accounts.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
