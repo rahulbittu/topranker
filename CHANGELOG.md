@@ -4,6 +4,23 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 66 — Search Extraction + Rich Favicons (March 8, 2026)
+#### Changed
+- Extracted `DiscoverPhotoStrip`, `BusinessCard`, `MapBusinessCard`, `haversineKm` from `search.tsx` into `components/search/SubComponents.tsx`
+- `search.tsx` reduced from 1,159 to 833 LOC (-28%)
+- Removed unused imports: `Animated`, `useWindowDimensions`, `Linking`, `usePressAnimation`, `useBookmarks`
+- Removed ~75 unused styles from search.tsx StyleSheet
+- `app.json` favicon switched from SVG to PNG (Expo compatibility)
+- `+html.tsx` now declares multi-size favicons (32, 48, 180, 192px)
+
+#### Added
+- Rich SVG favicon source with navy gradient, gold podium, star accent, rank numbers, shadows, glow effects
+- `scripts/generate-favicons.js` — sharp-based PNG generation pipeline (6 sizes from SVG master)
+- `favicon.png` (48px), `favicon-32.png`, `favicon-192.png`, `favicon-512.png` — all brand-aligned
+- `apple-touch-icon.png` (180px) — dedicated iOS home screen icon
+- `splash-icon.png` replaced with rich branded version (was crude blocky podium)
+- Legal compliance roadmap: ToS, Privacy Policy, content moderation planned for Sprints 67-70
+
 ### Sprint 65 — UI Polish + Team Domain Commitments (March 8, 2026)
 #### Changed
 - Search bar redesign: amber icon circle, 48px height, brand-aligned placeholder "Find the best of what you want..."

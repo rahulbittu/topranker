@@ -9,9 +9,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover" />
 
+        {/* Rich multi-size favicons */}
         <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" />
         <link rel="icon" type="image/png" href="/assets/images/favicon.png" sizes="48x48" />
-        <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+        <link rel="icon" type="image/png" href="/assets/images/favicon-32.png" sizes="32x32" />
+        <link rel="icon" type="image/png" href="/assets/images/favicon-192.png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png" sizes="180x180" />
         <title>TopRanker - Trust-Weighted Restaurant Rankings</title>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

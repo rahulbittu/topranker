@@ -36,7 +36,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/favicon.svg"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       [

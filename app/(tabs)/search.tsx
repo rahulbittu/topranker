@@ -1,8 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Animated,
-  TextInput, ScrollView, Platform, ActivityIndicator, Linking, RefreshControl,
-  useWindowDimensions,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  TextInput, ScrollView, Platform, ActivityIndicator, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -17,23 +16,13 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
 import * as Location from "expo-location";
-import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
-import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, MOCK_FEATURED } from "@/components/FeaturedCard";
-
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { DiscoverPhotoStrip, BusinessCard, MapBusinessCard, haversineKm } from "@/components/search/SubComponents";
 
 const AMBER = BRAND.colors.amber;
-const CARD_H_MARGIN = 16;
 
 const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   Dallas: { lat: 32.7767, lng: -96.7970 },
@@ -47,206 +36,6 @@ type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now" | "
 const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now", "Near Me"];
 
 type ViewMode = "list" | "map";
-
-const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, height, category, containerWidth, name }: { photos: string[]; height: number; category?: string; containerWidth: number; name?: string }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const stripWidth = containerWidth;
-  const stripPhotos = photos.slice(0, 3);
-
-  if (stripPhotos.length === 0) {
-    const initial = name?.charAt(0)?.toUpperCase() || "";
-    return (
-      <LinearGradient
-        colors={[AMBER, BRAND.colors.amberDark]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.discoverStripFallback, { height }]}
-      >
-        {initial ? (
-          <Text style={styles.discoverStripFallbackInitial}>{initial}</Text>
-        ) : (
-          <Text style={styles.discoverStripFallbackEmoji}>
-            {getCategoryDisplay(category || "").emoji}
-          </Text>
-        )}
-      </LinearGradient>
-    );
-  }
-
-  const handleScroll = useCallback((e: any) => {
-    const x = e.nativeEvent.contentOffset.x;
-    setActiveIndex(Math.round(x / stripWidth));
-  }, [stripWidth]);
-
-  return (
-    <View>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        style={{ height }}
-      >
-        {stripPhotos.map((uri, i) => (
-          <SafeImage
-            key={i}
-            uri={uri}
-            style={{ width: stripWidth, height }}
-            contentFit="cover"
-            category={category}
-          />
-        ))}
-      </ScrollView>
-      {stripPhotos.length > 1 && (
-        <View style={styles.discoverDotRow}>
-          {stripPhotos.map((_, i) => (
-            <View key={i} style={[styles.discoverDot, i === activeIndex && styles.discoverDotActive]} />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-});
-
-const BusinessCard = React.memo(function BusinessCard({ item, displayRank, distanceKm }: { item: MappedBusiness; displayRank: number; distanceKm?: number }) {
-  const { width: screenWidth } = useWindowDimensions();
-  const cardWidth = Math.min(screenWidth, 600) - CARD_H_MARGIN * 2;
-  const catDisplay = getCategoryDisplay(item.category);
-  const isOpen = item.isOpenNow;
-  const rankLabel = getRankDisplay(displayRank);
-  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
-  const { isBookmarked, toggleBookmark } = useBookmarks();
-  const saved = isBookmarked(item.id);
-  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
-  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
-
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-    <TouchableOpacity
-      style={styles.card}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
-    >
-      <View style={styles.cardPhotoStripWrap}>
-        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} name={item.name} />
-        <View style={styles.discoverRankBadge}>
-          <Text style={styles.discoverRankBadgeText}>{rankLabel}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.cardBookmarkBtn}
-          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
-        >
-          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={12} color={saved ? AMBER : "#fff"} />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.cardInfo}>
-        <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-        <View style={styles.cardRow2}>
-          <Text style={styles.cardCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
-          {item.neighborhood ? (
-            <>
-              <Text style={styles.cardDot}> {"\u00B7"} </Text>
-              <Text style={styles.cardNeighborhood}>{item.neighborhood}</Text>
-            </>
-          ) : null}
-          {item.priceRange ? (
-            <>
-              <Text style={styles.cardDot}> {"\u00B7"} </Text>
-              <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
-            </>
-          ) : null}
-          {distanceKm != null && (
-            <>
-              <Text style={styles.cardDot}> {"\u00B7"} </Text>
-              <Ionicons name="navigate-outline" size={10} color={AMBER} />
-              <Text style={styles.cardDistance}>{distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`}</Text>
-            </>
-          )}
-        </View>
-        <View style={styles.cardRow3}>
-          <Text style={styles.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
-          {item.ratingCount ? (
-            <Text style={styles.cardRatingCount}>({item.ratingCount.toLocaleString()} weighted)</Text>
-          ) : null}
-          {(item.ratingCount ?? 0) >= 10 && (
-            <View style={styles.verifiedPill}>
-              <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
-            </View>
-          )}
-          {item.rankDelta !== 0 && (
-            <Text style={[styles.cardDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
-              {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
-            </Text>
-          )}
-          {isOpen !== undefined && isOpen !== null && (
-            <View style={[styles.statusPill, isOpen ? styles.statusPillOpen : styles.statusPillClosed]}>
-              <Text style={styles.statusPillText}>
-                {isOpen ? "OPEN" : "CLOSED"}
-              </Text>
-            </View>
-          )}
-          {item.ratingCount && item.ratingCount >= 20 && (
-            <View style={styles.activityPill}>
-              <Ionicons name="flame" size={9} color={AMBER} />
-              <Text style={styles.activityPillText}>ACTIVE</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-    </Animated.View>
-  );
-});
-
-function MapBusinessCard({ item }: { item: MappedBusiness }) {
-  const catDisplay = getCategoryDisplay(item.category);
-  const rankLabel = getRankDisplay(item.rank);
-
-  const openInMaps = () => {
-    if (item.lat && item.lng) {
-      const url = Platform.OS === "web"
-        ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
-        : Platform.OS === "ios"
-        ? `maps:?q=${item.lat},${item.lng}`
-        : `geo:${item.lat},${item.lng}?q=${item.lat},${item.lng}(${encodeURIComponent(item.name)})`;
-      Linking.openURL(url);
-    }
-  };
-
-  return (
-    <TouchableOpacity
-      style={styles.mapCard}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      activeOpacity={0.75}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
-    >
-      <View style={styles.mapCardRank}>
-        <Text style={styles.mapCardRankText}>{rankLabel}</Text>
-      </View>
-      <View style={styles.mapCardInfo}>
-        <Text style={styles.mapCardName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.mapCardMeta}>{catDisplay.emoji} {catDisplay.label}{item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}</Text>
-      </View>
-      <View style={styles.mapCardRight}>
-        <Text style={styles.mapCardScore}>{item.weightedScore.toFixed(1)}</Text>
-        {item.lat && item.lng ? (
-          <TouchableOpacity onPress={openInMaps} style={styles.mapPinBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="navigate" size={14} color={AMBER} />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 let _mapsInitialized = false;
 
@@ -868,62 +657,6 @@ const styles = StyleSheet.create({
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { fontSize: 11, color: Colors.textTertiary, paddingBottom: 4, fontFamily: "DMSans_400Regular" },
 
-  card: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  cardPhotoStripWrap: {
-    position: "relative" as const,
-  },
-  discoverStripFallback: { alignItems: "center", justifyContent: "center" },
-  discoverStripFallbackEmoji: { fontSize: 32, color: "rgba(255,255,255,0.5)" },
-  discoverStripFallbackInitial: { fontSize: 40, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
-  discoverDotRow: {
-    flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 5,
-    position: "absolute", bottom: 0, left: 0, right: 0,
-    paddingVertical: 6, backgroundColor: "rgba(0,0,0,0.15)",
-  },
-  discoverDot: {
-    width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.45)",
-  },
-  discoverDotActive: {
-    backgroundColor: AMBER, width: 8, height: 8, borderRadius: 4,
-  },
-  discoverRankBadge: {
-    position: "absolute", top: 8, left: 8,
-    backgroundColor: AMBER, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
-  },
-  discoverRankBadgeText: {
-    fontSize: 12, fontWeight: "800", color: "#fff", fontFamily: "PlayfairDisplay_900Black",
-  },
-  cardBookmarkBtn: {
-    position: "absolute", top: 6, right: 6,
-    width: 26, height: 26, borderRadius: 13,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center", justifyContent: "center",
-  },
-  cardInfo: { padding: 10, gap: 4 },
-  cardName: {
-    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  cardRow2: {
-    flexDirection: "row", alignItems: "center", flexWrap: "wrap",
-  },
-  cardCategory: { fontSize: 12, color: AMBER, fontWeight: "500", fontFamily: "DMSans_500Medium" },
-  cardDot: { fontSize: 12, color: Colors.textTertiary },
-  cardNeighborhood: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
-  cardDistance: { fontSize: 11, color: AMBER, fontFamily: "DMSans_500Medium", marginLeft: 2 },
-  cardRow3: {
-    flexDirection: "row", alignItems: "center", marginTop: 2, gap: 8,
-  },
-  statusPill: {
-    paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99,
-  },
   statusPillOpen: {
     backgroundColor: Colors.green,
     shadowColor: Colors.green,
@@ -933,16 +666,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   statusPillClosed: { backgroundColor: Colors.red },
-  statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
-  cardScore: {
-    fontSize: 15, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
-  },
-  cardRatingCount: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  cardDelta: {
-    fontSize: 11, fontFamily: "DMSans_500Medium",
-  },
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
@@ -1060,33 +783,6 @@ const styles = StyleSheet.create({
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 
-  // Compact list cards for map view
-  mapListContainer: { paddingHorizontal: 16, gap: 6, paddingTop: 4, paddingBottom: 90 },
-  mapListHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingVertical: 8, paddingHorizontal: 4,
-  },
-  mapListHeaderText: { fontSize: 12, color: Colors.textSecondary, fontWeight: "500", fontFamily: "DMSans_500Medium" },
-  mapCard: {
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 10, gap: 10,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  mapCardRank: {
-    width: 30, height: 30, borderRadius: 15, backgroundColor: AMBER,
-    alignItems: "center", justifyContent: "center",
-  },
-  mapCardRankText: { fontSize: 13, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
-  mapCardInfo: { flex: 1, gap: 2 },
-  mapCardName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_700Bold" },
-  mapCardMeta: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
-  mapCardRight: { alignItems: "flex-end", gap: 4 },
-  mapCardScore: { fontSize: 15, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold" },
-  mapPinBtn: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: Colors.goldFaint,
-    alignItems: "center", justifyContent: "center",
-  },
   priceRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
@@ -1133,27 +829,5 @@ const styles = StyleSheet.create({
   },
   sortChipTextActive: {
     color: "#fff", fontWeight: "600",
-  },
-  verifiedPill: {
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-    borderRadius: 99,
-    backgroundColor: `${Colors.green}15`,
-  },
-  activityPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 99,
-    backgroundColor: `${AMBER}15`,
-  },
-  activityPillText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: AMBER,
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.3,
   },
 });
