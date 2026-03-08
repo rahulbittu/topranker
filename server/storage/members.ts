@@ -5,6 +5,7 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { getTierFromScore } from "./helpers";
+import { checkAndRefreshTier } from "../tier-staleness";
 
 export async function getMemberById(id: string): Promise<Member | undefined> {
   const [member] = await db.select().from(members).where(eq(members.id, id));
@@ -189,7 +190,7 @@ export async function recalculateCredibilityScore(memberId: string): Promise<{
     ratingVariance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
   }
 
-  const tier = getTierFromScore(
+  const gateTier = getTierFromScore(
     score,
     member.totalRatings,
     member.totalCategories,
@@ -197,6 +198,17 @@ export async function recalculateCredibilityScore(memberId: string): Promise<{
     ratingVariance,
     member.activeFlagCount,
   );
+
+  // Live tier staleness check (Sprint 140): detect and log any drift between
+  // the member's previously stored tier and their current score. This ensures
+  // the staleness detection from tier-staleness.ts runs on every recalculation,
+  // not just in batch jobs. The gate tier (with activity thresholds) is authoritative
+  // for the final value, but checkAndRefreshTier logs when the stored tier was stale.
+  const stalenessCheckedTier = checkAndRefreshTier(member.credibilityTier, score);
+
+  // Use the gate-based tier as the final value (it's stricter, requiring activity
+  // thresholds). If staleness check detected drift, the DB update below corrects it.
+  const tier = gateTier;
 
   await db
     .update(members)

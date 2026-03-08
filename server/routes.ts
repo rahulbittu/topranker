@@ -42,6 +42,7 @@ import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
 import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 import { wrapAsync } from "./wrap-async";
+import { checkAndRefreshTier } from "./tier-staleness";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -584,6 +585,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const memberId = req.user!.id;
       const result = await submitRating(memberId, parsed.data);
+
+      // Live tier staleness guard (Sprint 140): after rating submission triggers
+      // recalculateCredibilityScore, verify the returned tier is consistent with
+      // the new score. If stale, correct it in the response and persist the fix.
+      const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
+      if (verifiedTier !== result.newTier) {
+        result.newTier = verifiedTier;
+        result.tierUpgraded = verifiedTier !== req.user!.credibilityTier;
+      }
+
       // Broadcast real-time update so other clients refresh rankings
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
@@ -607,7 +618,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const member = await getMemberById(req.user!.id);
     if (!member) return res.status(404).json({ error: "Member not found" });
 
-    const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
+    const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
+    // Live staleness verification (Sprint 140): ensure returned tier matches score
+    const tier = checkAndRefreshTier(computedTier, score);
     const { ratings, total } = await getMemberRatings(member.id);
     const { getSeasonalRatingCounts } = await import("./storage");
     const seasonal = await getSeasonalRatingCounts(member.id);
