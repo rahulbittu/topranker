@@ -4,6 +4,17 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 72 — Category DB Migration + SafeImage Typed Wrapper + E2E Evaluation (March 8, 2026)
+#### Added
+- `categories` and `category_suggestions` tables in Drizzle schema with proper FK relations, jsonb fields, and insert validation
+- `components/categories/SuggestCategory.tsx` — User-facing category suggestion form with vertical selector
+- `docs/evaluations/E2E-FRAMEWORK-EVAL.md` — Maestro recommended over Detox for Expo compatibility
+- 9 new schema validation tests (total: 159 across 12 files)
+
+#### Changed
+- `SafeImage` now accepts `ViewStyle | ImageStyle` — single internal cast replaces 8 external `as any` casts
+- **Production `as any` casts: 17 → 7 (84% total reduction from 43 across 3 sprints)**
+
 ### Sprint 71 — Business Badge Display + DimensionValue Helper (March 8, 2026)
 #### Added
 - `lib/style-helpers.ts` — `pct()` DimensionValue helper for type-safe percentage widths/heights

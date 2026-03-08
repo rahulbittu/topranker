@@ -4,9 +4,15 @@ import { Image, type ImageStyle } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { BRAND, getCategoryDisplay } from "@/constants/brand";
 
+/**
+ * Accepts both ImageStyle and ViewStyle to avoid `as any` casts at call sites.
+ * expo-image's Image component accepts ViewStyle-compatible styles at runtime.
+ */
+type SafeImageStyle = StyleProp<ImageStyle> | StyleProp<ViewStyle>;
+
 interface SafeImageProps {
   uri: string;
-  style: StyleProp<ImageStyle>;
+  style: SafeImageStyle;
   category?: string;
   fallbackText?: string;
   contentFit?: "cover" | "contain" | "fill";
@@ -27,7 +33,7 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
         colors={[BRAND.colors.amber, BRAND.colors.amberDark]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[style, fallbackStyles.container]}
+        style={[style as StyleProp<ViewStyle>, fallbackStyles.container]}
       >
         {initial ? (
           <Text style={fallbackStyles.initial}>{initial}</Text>
@@ -41,7 +47,7 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
   return (
     <Image
       source={{ uri }}
-      style={style}
+      style={style as StyleProp<ImageStyle>}
       contentFit={contentFit}
       transition={200}
       onError={() => setFailed(true)}

@@ -18,6 +18,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { pct } from "@/lib/style-helpers";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -50,25 +51,25 @@ export const PhotoMosaic = React.memo(function PhotoMosaic({
 
   if (photos.length === 1) {
     return (
-      <SafeImage uri={photos[0]} style={{ width: "100%" as any, height } as any} category={category} />
+      <SafeImage uri={photos[0]} style={{ width: pct(100), height }} category={category} />
     );
   }
 
   if (photos.length === 2) {
     return (
       <View style={[s.mosaicRow, { height }]}>
-        <SafeImage uri={photos[0]} style={[s.mosaicMainPhoto, { height }] as any} category={category} />
-        <SafeImage uri={photos[1]} style={[s.mosaicFlex, { height }] as any} category={category} />
+        <SafeImage uri={photos[0]} style={[s.mosaicMainPhoto, { height }]} category={category} />
+        <SafeImage uri={photos[1]} style={[s.mosaicFlex, { height }]} category={category} />
       </View>
     );
   }
 
   return (
     <View style={[s.mosaicRow, { height }]}>
-      <SafeImage uri={photos[0]} style={[s.mosaicMainPhoto, { height }] as any} category={category} />
+      <SafeImage uri={photos[0]} style={[s.mosaicMainPhoto, { height }]} category={category} />
       <View style={s.mosaicSideColumn}>
-        <SafeImage uri={photos[1]} style={s.mosaicFlex as any} category={category} />
-        <SafeImage uri={photos[2]} style={s.mosaicFlex as any} category={category} />
+        <SafeImage uri={photos[1]} style={s.mosaicFlex} category={category} />
+        <SafeImage uri={photos[2]} style={s.mosaicFlex} category={category} />
       </View>
     </View>
   );
@@ -142,7 +143,7 @@ export const PhotoStrip = React.memo(function PhotoStrip({
           <SafeImage
             key={i}
             uri={uri}
-            style={{ width: stripWidth, height } as any}
+            style={{ width: stripWidth, height }}
             category={category}
           />
         ))}

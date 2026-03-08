@@ -349,6 +349,37 @@ export const credibilityPenalties = pgTable("credibility_penalties", {
   appliedAt: timestamp("applied_at").notNull().defaultNow(),
 });
 
+export const categories = pgTable("categories", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  slug: text("slug").unique().notNull(),
+  label: text("label").notNull(),
+  emoji: text("emoji").notNull(),
+  vertical: text("vertical").notNull(),
+  atAGlanceFields: jsonb("at_a_glance_fields").notNull().default(sql`'[]'::jsonb`),
+  scoringHints: jsonb("scoring_hints").notNull().default(sql`'[]'::jsonb`),
+  isActive: boolean("is_active").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const categorySuggestions = pgTable("category_suggestions", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  vertical: text("vertical").notNull(),
+  suggestedBy: varchar("suggested_by")
+    .notNull()
+    .references(() => members.id),
+  status: text("status").notNull().default("pending"),
+  voteCount: integer("vote_count").notNull().default(1),
+  reviewedBy: varchar("reviewed_by").references(() => members.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertMemberSchema = createInsertSchema(members).pick({
   displayName: true,
   username: true,
@@ -394,4 +425,12 @@ export type QrScan = typeof qrScans.$inferSelect;
 export type RatingFlag = typeof ratingFlags.$inferSelect;
 export type MemberBadge = typeof memberBadges.$inferSelect;
 export type CredibilityPenalty = typeof credibilityPenalties.$inferSelect;
+export type Category = typeof categories.$inferSelect;
+export type CategorySuggestionRow = typeof categorySuggestions.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
+
+export const insertCategorySuggestionSchema = z.object({
+  name: z.string().min(2).max(50),
+  description: z.string().min(10).max(200),
+  vertical: z.enum(["food", "services", "wellness", "entertainment", "retail"]),
+});
