@@ -170,8 +170,13 @@ function configureExpoAndLanding(app: express.Application) {
   );
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
+  const isProduction = process.env.NODE_ENV === "production";
 
   log("Serving static Expo files with dynamic manifest routing");
+
+  app.get("/_health", (_req: Request, res: Response) => {
+    res.status(200).send("ok");
+  });
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
@@ -193,35 +198,67 @@ function configureExpoAndLanding(app: express.Application) {
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build")));
 
-  const metroProxy = createProxyMiddleware({
-    target: "http://localhost:8081",
-    changeOrigin: true,
-    ws: true,
-    logger: undefined,
-    on: {
-      error: (_err, _req, res) => {
-        if (res && "writeHead" in res && !res.headersSent) {
-          (res as Response).status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
-        }
+  const distPath = path.resolve(process.cwd(), "dist");
+  const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
+
+  if (hasDistBuild) {
+    app.use(express.static(distPath, {
+      maxAge: isProduction ? "1d" : 0,
+      index: false,
+    }));
+    log(`Serving static web build from ${distPath}`);
+  }
+
+  if (!isProduction) {
+    const metroProxy = createProxyMiddleware({
+      target: "http://localhost:8081",
+      changeOrigin: true,
+      ws: true,
+      logger: undefined,
+      on: {
+        error: (_err, _req, res) => {
+          if (res && "writeHead" in res && !res.headersSent) {
+            (res as Response).status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+          }
+        },
       },
-    },
-  });
+    });
 
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith("/api")) {
+        return next();
+      }
 
-    const platform = req.header("expo-platform");
-    if (platform && (platform === "ios" || platform === "android")) {
-      return next();
-    }
+      const platform = req.header("expo-platform");
+      if (platform && (platform === "ios" || platform === "android")) {
+        return next();
+      }
 
-    return metroProxy(req, res, next);
-  });
+      return metroProxy(req, res, next);
+    });
 
-  log("Expo routing: Checking expo-platform header on / and /manifest");
-  log("Metro proxy: Forwarding web requests to localhost:8081");
+    log("Expo routing: Checking expo-platform header on / and /manifest");
+    log("Metro proxy: Forwarding web requests to localhost:8081");
+  } else {
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      if (req.path.startsWith("/api")) {
+        return next();
+      }
+
+      const platform = req.header("expo-platform");
+      if (platform && (platform === "ios" || platform === "android")) {
+        return next();
+      }
+
+      if (hasDistBuild) {
+        return res.sendFile(path.join(distPath, "index.html"));
+      }
+
+      return serveLandingPage({ req, res, landingPageTemplate, appName });
+    });
+
+    log("Production mode: Serving static dist build (no Metro proxy)");
+  }
 }
 
 function setupErrorHandler(app: express.Application) {
