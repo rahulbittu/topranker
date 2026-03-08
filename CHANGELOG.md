@@ -4,6 +4,12 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 65 — UI Polish + Team Domain Commitments (March 8, 2026)
+#### Changed
+- Search bar redesign: amber icon circle, 48px height, brand-aligned placeholder "Find the best of what you want..."
+- Header subtitle: "Find the best in {city}, with confidence"
+- Documented all 8 team members' personal domain commitments for TopRanker perfection
+
 ### Sprint 64 — UI/UX Design Sprint (March 8, 2026)
 #### Changed
 - Animated splash: replaced emoji crown with `LeaderboardMark` SVG, added "TOP"/"Ranker" wordmark hierarchy, navy background

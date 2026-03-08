@@ -370,7 +370,7 @@ export default function LeaderboardScreen() {
       <View style={styles.header}>
         <View>
           <AppLogo size="md" />
-          <Text style={styles.headerSubtitle}>Top-rated in {city}</Text>
+          <Text style={styles.headerSubtitle}>Find the best in {city}, with confidence</Text>
           {dataUpdatedAt > 0 && (
             <Text style={styles.lastUpdated}>Rankings updated {formatTimeAgo(dataUpdatedAt)}</Text>
           )}
@@ -408,11 +408,19 @@ export default function LeaderboardScreen() {
       )}
 
       {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <Ionicons name="search" size={16} color={Colors.textTertiary} />
+      <TouchableOpacity
+        style={styles.searchBar}
+        activeOpacity={0.9}
+        onPress={() => router.push("/(tabs)/search")}
+        accessibilityRole="search"
+        accessibilityLabel="Search for restaurants, dishes, and more"
+      >
+        <View style={styles.searchIconCircle}>
+          <Ionicons name="search" size={14} color={AMBER} />
+        </View>
         <TextInput
           style={styles.searchInput}
-          placeholder="Filter this list..."
+          placeholder="Find the best of what you want..."
           placeholderTextColor={Colors.textTertiary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -425,7 +433,7 @@ export default function LeaderboardScreen() {
             <Ionicons name="close-circle" size={16} color={Colors.textTertiary} />
           </TouchableOpacity>
         )}
-      </View>
+      </TouchableOpacity>
 
       {/* Category Chips */}
       <ScrollView
@@ -612,12 +620,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 16,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surfaceRaised,
-    paddingHorizontal: 14,
-    gap: 8,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.surface,
+    paddingHorizontal: 6,
+    paddingRight: 14,
+    gap: 10,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  searchIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${AMBER}12`,
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchInput: {
     flex: 1,
