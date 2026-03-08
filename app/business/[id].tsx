@@ -1,14 +1,9 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Linking, Share, useWindowDimensions, Animated, Easing,
+  Platform, Linking, Share, useWindowDimensions,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
-  LayoutAnimation, UIManager,
 } from "react-native";
-
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -19,225 +14,20 @@ import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, type ApiDish } from "@/lib/api";
 import {
-  formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
+  getCategoryDisplay, getRankDisplay,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
+import {
+  SubScoreBar, DistributionChart, RatingRow, ActionButton,
+  CollapsibleReviews, AnimatedScore, DishPill,
+  type MappedRating,
+} from "@/components/business/SubComponents";
 
 const HERO_HEIGHT = 280;
-
-interface MappedRating {
-  id: string;
-  userName: string;
-  userTier: CredibilityTier;
-  userAvatarUrl?: string;
-  rawScore: number;
-  weight: number;
-  q1: number;
-  q2: number;
-  q3: number;
-  wouldReturn: boolean;
-  comment: string | null;
-  createdAt: number;
-}
-
-function SubScoreBar({ label, value }: { label: string; value: number }) {
-  const pct = Math.min((value / 5) * 100, 100);
-  return (
-    <View style={styles.subScoreRow}>
-      <Text style={styles.subScoreLabel}>{label}</Text>
-      <View style={styles.subScoreTrack}>
-        <View style={[styles.subScoreFill, { width: `${pct}%` as any }]} />
-      </View>
-      <Text style={styles.subScoreValue}>{value.toFixed(1)}</Text>
-    </View>
-  );
-}
-
-const DistributionChart = React.memo(function DistributionChart({ ratings }: { ratings: MappedRating[] }) {
-  const counts = [5, 4, 3, 2, 1].map(n => ({
-    star: n,
-    count: ratings.filter(r => Math.round(r.rawScore) === n).length
-  }));
-  const maxCount = Math.max(...counts.map(c => c.count), 1);
-
-  return (
-    <View style={styles.distChart}>
-      {counts.map(({ star, count }) => (
-        <View key={star} style={styles.distRow}>
-          <Text style={styles.distStar}>{star}</Text>
-          <View style={styles.distBarTrack}>
-            <View
-              style={[styles.distBarFill, {
-                width: `${(count / maxCount) * 100}%` as any,
-                backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.border,
-              }]}
-            />
-          </View>
-          <Text style={styles.distCount}>{count}</Text>
-        </View>
-      ))}
-    </View>
-  );
-});
-
-const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRating }) {
-  const tierColor = TIER_COLORS[rating.userTier];
-  const tierName = TIER_DISPLAY_NAMES[rating.userTier];
-  return (
-    <View style={styles.ratingRow}>
-      <View style={styles.ratingTop}>
-        <View style={styles.ratingUser}>
-          <View style={styles.ratingAvatar}>
-            {rating.userAvatarUrl ? (
-              <Image source={{ uri: rating.userAvatarUrl }} style={styles.ratingAvatarImg} contentFit="cover" />
-            ) : (
-              <Text style={styles.ratingAvatarText}>
-                {rating.userName.charAt(0).toUpperCase()}
-              </Text>
-            )}
-          </View>
-          <View>
-            <Text style={styles.ratingName}>{rating.userName}</Text>
-            <Text style={[styles.ratingTierText, { color: tierColor }]}>{tierName}</Text>
-          </View>
-        </View>
-        <View style={styles.ratingScoreBox}>
-          <Text style={styles.ratingScore}>{rating.rawScore.toFixed(1)}</Text>
-          <Text style={styles.ratingWeight}>{rating.weight.toFixed(2)}x</Text>
-          <Text style={styles.ratingTime}>{formatTimeAgo(rating.createdAt)}</Text>
-        </View>
-      </View>
-      <View style={styles.ratingSubScores}>
-        <View style={styles.ratingSubItem}>
-          <Text style={styles.ratingSubLabel}>Quality</Text>
-          <Text style={styles.ratingSubVal}>{rating.q1}</Text>
-        </View>
-        <View style={styles.ratingSubItem}>
-          <Text style={styles.ratingSubLabel}>Value</Text>
-          <Text style={styles.ratingSubVal}>{rating.q2}</Text>
-        </View>
-        <View style={styles.ratingSubItem}>
-          <Text style={styles.ratingSubLabel}>Service</Text>
-          <Text style={styles.ratingSubVal}>{rating.q3}</Text>
-        </View>
-        <View style={styles.ratingSubItem}>
-          <Text style={styles.ratingSubLabel}>Return</Text>
-          <Ionicons
-            name={rating.wouldReturn ? "checkmark-circle" : "close-circle"}
-            size={14}
-            color={rating.wouldReturn ? Colors.green : Colors.red}
-          />
-        </View>
-      </View>
-      {rating.comment && (
-        <Text style={styles.ratingComment}>"{rating.comment}"</Text>
-      )}
-    </View>
-  );
-});
-
-function ActionButton({ icon, label, onPress, disabled }: { icon: React.ComponentProps<typeof Ionicons>["name"]; label: string; onPress: () => void; disabled?: boolean }) {
-  return (
-    <TouchableOpacity
-      style={[styles.actionBtn, disabled && styles.actionBtnDisabled]}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-    >
-      <Ionicons name={icon} size={18} color={disabled ? Colors.textTertiary : Colors.text} />
-      <Text style={[styles.actionBtnLabel, disabled && styles.actionBtnLabelDisabled]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(5);
-
-  const toggleExpanded = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded(!expanded);
-    if (expanded) setVisibleCount(5);
-  };
-
-  const showMore = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setVisibleCount(v => v + 10);
-  };
-
-  const visibleRatings = ratings.slice(0, visibleCount);
-  const hasMore = visibleCount < ratings.length;
-
-  return (
-    <View style={styles.collapsibleSection}>
-      <TouchableOpacity
-        style={styles.collapsibleHeader}
-        onPress={toggleExpanded}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={expanded ? "Collapse community reviews" : "Expand community reviews"}
-      >
-        <Ionicons name="chatbubbles-outline" size={16} color={BRAND.colors.amber} />
-        <Text style={styles.collapsibleTitle}>Community Reviews</Text>
-        <View style={styles.collapsibleBadge}>
-          <Text style={styles.collapsibleBadgeText}>{ratings.length}</Text>
-        </View>
-        <View style={{ flex: 1 }} />
-        <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={18} color={Colors.textTertiary} />
-      </TouchableOpacity>
-      {expanded && (
-        <View style={styles.collapsibleBody}>
-          <DistributionChart ratings={ratings} />
-          {visibleRatings.map((rating: MappedRating) => (
-            <RatingRow key={rating.id} rating={rating} />
-          ))}
-          {hasMore && (
-            <TouchableOpacity onPress={showMore} style={styles.showMoreBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Show more reviews">
-              <Text style={styles.showMoreText}>Show more ({ratings.length - visibleCount} remaining)</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-    </View>
-  );
-}
-
-function AnimatedScore({ value, style }: { value: number; style: any }) {
-  const animVal = useRef(new Animated.Value(0)).current;
-  const [displayVal, setDisplayVal] = useState("0.00");
-
-  useEffect(() => {
-    animVal.setValue(0);
-    const listener = animVal.addListener(({ value: v }) => {
-      setDisplayVal(v.toFixed(2));
-    });
-    Animated.timing(animVal, {
-      toValue: value,
-      duration: 800,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-    return () => animVal.removeListener(listener);
-  }, [value]);
-
-  return <Text style={style}>{displayVal}</Text>;
-}
-
-function DishPill({ dish }: { dish: ApiDish }) {
-  return (
-    <View style={styles.dishPill}>
-      <Text style={styles.dishPillText}>{dish.name}</Text>
-      <Text style={styles.dishVoteCountText}>{dish.voteCount}</Text>
-    </View>
-  );
-}
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -995,35 +785,17 @@ const styles = StyleSheet.create({
   returnRateText: {
     fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
   },
-  subScoreRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  subScoreLabel: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", width: 60 },
-  subScoreTrack: { flex: 1, height: 3, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
-  subScoreFill: { height: "100%", backgroundColor: Colors.gold, borderRadius: 2 },
-  subScoreValue: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold", width: 28, textAlign: "right" },
 
   actionBar: {
     flexDirection: "row", justifyContent: "space-around",
     paddingVertical: 12,
   },
-  actionBtn: { alignItems: "center", gap: 5 },
-  actionBtnDisabled: { opacity: 0.3 },
-  actionBtnLabel: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  actionBtnLabelDisabled: { color: Colors.textTertiary },
 
   sectionContainer: { gap: 10 },
   sectionDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  sectionHeaderBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  sectionCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  dishPill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 20,
-    paddingHorizontal: 12, paddingVertical: 7,
-  },
-  dishPillText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_500Medium" },
-  dishVoteCountText: { fontSize: 10, fontWeight: "700", color: Colors.textTertiary, fontFamily: "DMSans_700Bold" },
 
   rateButton: {
     backgroundColor: BRAND.colors.amber, borderRadius: 14, paddingVertical: 15,
@@ -1069,10 +841,6 @@ const styles = StyleSheet.create({
   },
   directionsBtnText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
-  card: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14,
-    gap: 10, ...Colors.cardShadow,
-  },
 
   rankHistoryCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
@@ -1112,39 +880,12 @@ const styles = StyleSheet.create({
   distSubtitle: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginBottom: 4,
   },
-  distChart: { gap: 7 },
   distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  distStar: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   distLabel: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center" },
-  distBarTrack: { flex: 1, height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: "hidden" },
   distBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
   distBarFill: { height: "100%", borderRadius: 2 },
   distCount: { width: 20, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
 
-  ratingRow: {
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 13,
-    gap: 8, ...Colors.cardShadow,
-  },
-  ratingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  ratingUser: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
-  ratingAvatar: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: Colors.surfaceRaised,
-    alignItems: "center", justifyContent: "center",
-  },
-  ratingAvatarImg: { width: "100%", height: "100%", borderRadius: 15 },
-  ratingAvatarText: { fontSize: 13, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
-  ratingName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  ratingTierText: { fontSize: 10, fontFamily: "DMSans_500Medium" },
-  ratingScoreBox: { alignItems: "flex-end", gap: 1 },
-  ratingScore: { fontSize: 17, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
-  ratingWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  ratingTime: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  ratingSubScores: { flexDirection: "row", gap: 14 },
-  ratingSubItem: { alignItems: "center", gap: 2 },
-  ratingSubLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  ratingComment: { fontSize: 12, color: Colors.textSecondary, fontStyle: "italic", fontFamily: "DMSans_400Regular", lineHeight: 17 },
 
   photoGrid: {
     flexDirection: "row", flexWrap: "wrap", gap: 4, borderRadius: 12, overflow: "hidden",
@@ -1166,36 +907,6 @@ const styles = StyleSheet.create({
   },
   claimBtnText: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
-  collapsibleSection: {
-    backgroundColor: Colors.surface, borderRadius: 14, overflow: "hidden",
-    ...Colors.cardShadow,
-  },
-  collapsibleHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    padding: 14,
-  },
-  collapsibleTitle: {
-    fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.3,
-  },
-  collapsibleBadge: {
-    backgroundColor: `${BRAND.colors.amber}15`, paddingHorizontal: 7, paddingVertical: 2,
-    borderRadius: 8,
-  },
-  collapsibleBadgeText: {
-    fontSize: 11, fontWeight: "700", color: BRAND.colors.amber, fontFamily: "DMSans_700Bold",
-  },
-  collapsibleBody: {
-    paddingHorizontal: 14, paddingBottom: 14, paddingTop: 12, gap: 10,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  showMoreBtn: {
-    alignItems: "center", paddingVertical: 10,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 10,
-  },
-  showMoreText: {
-    fontSize: 13, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
-  },
 
   reportLink: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

@@ -4,6 +4,46 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 61 — Component Extraction: business/[id].tsx (March 7, 2026)
+#### Changed
+- Extracted 7 presentational components from `app/business/[id].tsx` into `components/business/SubComponents.tsx`
+  - SubScoreBar, DistributionChart, RatingRow, ActionButton, CollapsibleReviews, AnimatedScore, DishPill
+- Reduced `app/business/[id].tsx` from 1,210 LOC to 921 LOC (-24%)
+- Removed ~80 lines of unused styles and cleaned up unused imports
+- Moved Android LayoutAnimation setup to SubComponents.tsx where it's consumed
+
+### Sprint 60 — Architectural Audit #2 + Search Sanitization (March 7, 2026)
+#### Security
+- Search input sanitization: strip ILIKE wildcards (`%`, `_`, `\`), truncate to 100 chars
+- Applied to both `searchBusinesses` and `searchDishes` storage functions
+
+#### Added
+- 9 new tests for search sanitization (total: 94)
+- Architectural Audit #2 document (`docs/audits/ARCH-AUDIT-60.md`)
+
+### Sprint 59 — Rate Limiting + CORS (March 7, 2026)
+#### Security
+- Rate limiter factory pattern: `createRateLimiter(name, maxRequests, windowMs)`
+- API rate limit (100 req/min) applied to all 8 public endpoint prefixes
+- Production CORS whitelist: topranker.com, www.topranker.com
+
+#### Added
+- 7 new tests for rate limiting (total: 85)
+
+### Sprint 58 — Structured Logging (March 7, 2026)
+#### Added
+- `server/logger.ts` — Structured logger with 4 levels, tagged modules, JSON serialization
+- 8 new tests for logger (total: 78)
+
+#### Changed
+- Migrated 8 server files from raw `console.log`/`console.error` to structured logger
+
+### Sprint 57 — Storage Domain Split + TypeScript Fix (March 7, 2026)
+#### Changed
+- Split monolithic `server/storage.ts` (1,010 LOC) into 6 domain modules (max 230 LOC each)
+  - `server/storage/members.ts`, `businesses.ts`, `ratings.ts`, `challengers.ts`, `dishes.ts`, `helpers.ts`
+- Fixed `NodeJS.Timeout` to `ReturnType<typeof setTimeout>` — zero TypeScript errors achieved
+
 ### Sprint 56 — Architectural Audit CRITICAL Fixes (March 7, 2026)
 #### Security
 - **CRITICAL**: Removed hardcoded session secret fallback — server now crashes on missing `SESSION_SECRET`
