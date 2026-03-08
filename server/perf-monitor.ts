@@ -57,8 +57,10 @@ export function perfMonitor(req: Request, res: Response, next: NextFunction) {
       perfLog.warn(`Slow request: ${route} took ${duration.toFixed(0)}ms`);
     }
 
-    // Set Server-Timing header
-    res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
+    // Set Server-Timing header (only if headers not yet sent)
+    if (!res.headersSent) {
+      res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
+    }
   });
 
   next();

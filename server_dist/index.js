@@ -26,6 +26,7 @@ __export(schema_exports, {
   credibilityPenalties: () => credibilityPenalties,
   dishVotes: () => dishVotes,
   dishes: () => dishes,
+  featuredPlacements: () => featuredPlacements,
   insertCategorySuggestionSchema: () => insertCategorySuggestionSchema,
   insertMemberSchema: () => insertMemberSchema,
   insertRatingSchema: () => insertRatingSchema,
@@ -35,7 +36,8 @@ __export(schema_exports, {
   qrScans: () => qrScans,
   rankHistory: () => rankHistory,
   ratingFlags: () => ratingFlags,
-  ratings: () => ratings
+  ratings: () => ratings,
+  webhookEvents: () => webhookEvents
 });
 import { sql } from "drizzle-orm";
 import {
@@ -53,7 +55,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -124,7 +126,8 @@ var init_schema = __esm({
         index("idx_biz_city_cat").on(table.city, table.category),
         index("idx_biz_score").on(table.weightedScore),
         index("idx_biz_rank").on(table.city, table.category, table.rankPosition),
-        index("idx_biz_slug").on(table.slug)
+        index("idx_biz_slug").on(table.slug),
+        index("idx_biz_google_place").on(table.googlePlaceId)
       ]
     );
     ratings = pgTable(
@@ -351,6 +354,45 @@ var init_schema = __esm({
         index("idx_payments_member").on(table.memberId),
         index("idx_payments_business").on(table.businessId),
         index("idx_payments_status").on(table.status)
+      ]
+    );
+    webhookEvents = pgTable(
+      "webhook_events",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        source: text("source").notNull(),
+        // stripe, github, etc.
+        eventId: text("event_id").notNull(),
+        // Stripe event ID (evt_xxx)
+        eventType: text("event_type").notNull(),
+        // payment_intent.succeeded, etc.
+        payload: jsonb("payload").notNull(),
+        processed: boolean("processed").notNull().default(false),
+        error: text("error"),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_webhook_events_source").on(table.source),
+        index("idx_webhook_events_event_id").on(table.eventId)
+      ]
+    );
+    featuredPlacements = pgTable(
+      "featured_placements",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        businessId: varchar("business_id").notNull().references(() => businesses.id),
+        paymentId: varchar("payment_id").references(() => payments.id),
+        city: text("city").notNull(),
+        startsAt: timestamp("starts_at").notNull().defaultNow(),
+        expiresAt: timestamp("expires_at").notNull(),
+        status: text("status").notNull().default("active"),
+        // active, expired, cancelled
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_featured_business").on(table.businessId),
+        index("idx_featured_city_status").on(table.city, table.status),
+        index("idx_featured_expires").on(table.expiresAt)
       ]
     );
     insertMemberSchema = createInsertSchema(members).pick({
@@ -1239,8 +1281,16 @@ async function createPaymentRecord(params) {
   }).returning();
   return payment;
 }
+async function getPaymentById(id) {
+  const [payment] = await db.select().from(payments).where(eq8(payments.id, id)).limit(1);
+  return payment ?? null;
+}
 async function updatePaymentStatus(id, status) {
   const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq8(payments.id, id)).returning();
+  return updated ?? null;
+}
+async function updatePaymentStatusByStripeId(stripePaymentIntentId, status) {
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq8(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
   return updated ?? null;
 }
 async function getMemberPayments(memberId, limit = 20) {
@@ -1257,17 +1307,113 @@ var init_payments = __esm({
   }
 });
 
+// server/storage/webhook-events.ts
+import { eq as eq9, desc as desc7 } from "drizzle-orm";
+async function logWebhookEvent(params) {
+  const [event] = await db.insert(webhookEvents).values({
+    source: params.source,
+    eventId: params.eventId,
+    eventType: params.eventType,
+    payload: params.payload,
+    processed: params.processed ?? false,
+    error: params.error || null
+  }).returning();
+  return event;
+}
+async function markWebhookProcessed(id, error) {
+  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq9(webhookEvents.id, id));
+}
+async function getWebhookEventById(id) {
+  const [event] = await db.select().from(webhookEvents).where(eq9(webhookEvents.id, id)).limit(1);
+  return event ?? null;
+}
+async function getRecentWebhookEvents(source, limit = 50) {
+  return db.select().from(webhookEvents).where(eq9(webhookEvents.source, source)).orderBy(desc7(webhookEvents.createdAt)).limit(limit);
+}
+var init_webhook_events = __esm({
+  "server/storage/webhook-events.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/featured-placements.ts
+import { eq as eq10, and as and8, gt, lte, desc as desc8 } from "drizzle-orm";
+async function createFeaturedPlacement(params) {
+  const startsAt = /* @__PURE__ */ new Date();
+  const expiresAt = new Date(startsAt.getTime() + FEATURED_DURATION_DAYS * 24 * 60 * 60 * 1e3);
+  const [placement] = await db.insert(featuredPlacements).values({
+    businessId: params.businessId,
+    paymentId: params.paymentId || null,
+    city: params.city,
+    startsAt,
+    expiresAt,
+    status: "active"
+  }).returning();
+  return placement;
+}
+async function getActiveFeaturedInCity(city) {
+  const now = /* @__PURE__ */ new Date();
+  return db.select().from(featuredPlacements).where(
+    and8(
+      eq10(featuredPlacements.city, city),
+      eq10(featuredPlacements.status, "active"),
+      gt(featuredPlacements.expiresAt, now)
+    )
+  ).orderBy(desc8(featuredPlacements.createdAt));
+}
+async function getBusinessFeaturedStatus(businessId) {
+  const now = /* @__PURE__ */ new Date();
+  const [placement] = await db.select().from(featuredPlacements).where(
+    and8(
+      eq10(featuredPlacements.businessId, businessId),
+      eq10(featuredPlacements.status, "active"),
+      gt(featuredPlacements.expiresAt, now)
+    )
+  ).orderBy(desc8(featuredPlacements.createdAt)).limit(1);
+  return placement ?? null;
+}
+async function expireFeaturedByPayment(paymentId) {
+  const [updated] = await db.update(featuredPlacements).set({ status: "cancelled" }).where(
+    and8(
+      eq10(featuredPlacements.paymentId, paymentId),
+      eq10(featuredPlacements.status, "active")
+    )
+  ).returning();
+  return updated ?? null;
+}
+async function expireOldPlacements() {
+  const now = /* @__PURE__ */ new Date();
+  const result = await db.update(featuredPlacements).set({ status: "expired" }).where(
+    and8(
+      eq10(featuredPlacements.status, "active"),
+      lte(featuredPlacements.expiresAt, now)
+    )
+  ).returning();
+  return result.length;
+}
+var FEATURED_DURATION_DAYS;
+var init_featured_placements = __esm({
+  "server/storage/featured-placements.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    FEATURED_DURATION_DAYS = 7;
+  }
+});
+
 // server/storage/claims.ts
-import { eq as eq9, and as and8, count as count5, desc as desc7 } from "drizzle-orm";
+import { eq as eq11, and as and9, count as count5, desc as desc9 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
 }
 async function getClaimByMemberAndBusiness(memberId, businessId) {
   const [claim] = await db.select().from(businessClaims).where(
-    and8(
-      eq9(businessClaims.memberId, memberId),
-      eq9(businessClaims.businessId, businessId)
+    and9(
+      eq11(businessClaims.memberId, memberId),
+      eq11(businessClaims.businessId, businessId)
     )
   );
   return claim;
@@ -1282,14 +1428,14 @@ async function getPendingClaims() {
     verificationMethod: businessClaims.verificationMethod,
     status: businessClaims.status,
     submittedAt: businessClaims.submittedAt
-  }).from(businessClaims).leftJoin(businesses, eq9(businessClaims.businessId, businesses.id)).leftJoin(members, eq9(businessClaims.memberId, members.id)).where(eq9(businessClaims.status, "pending")).orderBy(desc7(businessClaims.submittedAt));
+  }).from(businessClaims).leftJoin(businesses, eq11(businessClaims.businessId, businesses.id)).leftJoin(members, eq11(businessClaims.memberId, members.id)).where(eq11(businessClaims.status, "pending")).orderBy(desc9(businessClaims.submittedAt));
 }
 async function reviewClaim(id, status, reviewedBy) {
-  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(businessClaims.id, id)).returning();
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq11(businessClaims.id, id)).returning();
   return updated ?? null;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq9(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq11(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -1301,14 +1447,14 @@ async function getPendingFlags() {
     aiFraudProbability: ratingFlags.aiFraudProbability,
     status: ratingFlags.status,
     createdAt: ratingFlags.createdAt
-  }).from(ratingFlags).leftJoin(members, eq9(ratingFlags.flaggerId, members.id)).where(eq9(ratingFlags.status, "pending")).orderBy(desc7(ratingFlags.createdAt));
+  }).from(ratingFlags).leftJoin(members, eq11(ratingFlags.flaggerId, members.id)).where(eq11(ratingFlags.status, "pending")).orderBy(desc9(ratingFlags.createdAt));
 }
 async function reviewFlag(id, status, reviewedBy) {
-  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(ratingFlags.id, id)).returning();
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq11(ratingFlags.id, id)).returning();
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq9(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq11(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -1324,16 +1470,21 @@ var storage_exports = {};
 __export(storage_exports, {
   awardBadge: () => awardBadge,
   createCategorySuggestion: () => createCategorySuggestion,
+  createFeaturedPlacement: () => createFeaturedPlacement,
   createMember: () => createMember,
   createPaymentRecord: () => createPaymentRecord,
   deleteBusinessPhotos: () => deleteBusinessPhotos,
+  expireFeaturedByPayment: () => expireFeaturedByPayment,
+  expireOldPlacements: () => expireOldPlacements,
   getActiveChallenges: () => getActiveChallenges,
+  getActiveFeaturedInCity: () => getActiveFeaturedInCity,
   getAdminMemberList: () => getAdminMemberList,
   getAllCategories: () => getAllCategories,
   getBadgeLeaderboard: () => getBadgeLeaderboard,
   getBusinessById: () => getBusinessById,
   getBusinessBySlug: () => getBusinessBySlug,
   getBusinessDishes: () => getBusinessDishes,
+  getBusinessFeaturedStatus: () => getBusinessFeaturedStatus,
   getBusinessPayments: () => getBusinessPayments,
   getBusinessPhotos: () => getBusinessPhotos,
   getBusinessPhotosMap: () => getBusinessPhotosMap,
@@ -1356,17 +1507,22 @@ __export(storage_exports, {
   getMemberImpact: () => getMemberImpact,
   getMemberPayments: () => getMemberPayments,
   getMemberRatings: () => getMemberRatings,
+  getPaymentById: () => getPaymentById,
   getPendingClaims: () => getPendingClaims,
   getPendingFlags: () => getPendingFlags,
   getPendingSuggestions: () => getPendingSuggestions,
   getRankHistory: () => getRankHistory,
+  getRecentWebhookEvents: () => getRecentWebhookEvents,
   getSeasonalRatingCounts: () => getSeasonalRatingCounts,
   getTemporalMultiplier: () => getTemporalMultiplier,
   getTierFromScore: () => getTierFromScore,
   getTrendingBusinesses: () => getTrendingBusinesses,
   getVoteWeight: () => getVoteWeight,
+  getWebhookEventById: () => getWebhookEventById,
   hasBadge: () => hasBadge,
   insertBusinessPhotos: () => insertBusinessPhotos,
+  logWebhookEvent: () => logWebhookEvent,
+  markWebhookProcessed: () => markWebhookProcessed,
   recalculateBusinessScore: () => recalculateBusinessScore,
   recalculateCredibilityScore: () => recalculateCredibilityScore,
   recalculateRanks: () => recalculateRanks,
@@ -1380,6 +1536,7 @@ __export(storage_exports, {
   updateChallengerVotes: () => updateChallengerVotes,
   updateMemberStats: () => updateMemberStats,
   updatePaymentStatus: () => updatePaymentStatus,
+  updatePaymentStatusByStripeId: () => updatePaymentStatusByStripeId,
   updatePushToken: () => updatePushToken
 });
 var init_storage = __esm({
@@ -1394,6 +1551,8 @@ var init_storage = __esm({
     init_categories();
     init_badges();
     init_payments();
+    init_webhook_events();
+    init_featured_placements();
     init_claims();
   }
 });
@@ -1463,10 +1622,38 @@ __export(email_exports, {
   sendClaimAdminNotification: () => sendClaimAdminNotification,
   sendClaimConfirmationEmail: () => sendClaimConfirmationEmail,
   sendEmail: () => sendEmail,
+  sendPaymentReceiptEmail: () => sendPaymentReceiptEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
 async function sendEmail(payload) {
-  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
+  if (!RESEND_API_KEY) {
+    emailLog.info(`[DEV] To: ${payload.to} | Subject: ${payload.subject}`);
+    return;
+  }
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text
+      })
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
+    } else {
+      emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
+    }
+  } catch (err) {
+    emailLog.error(`Email send failed: ${err.message}`);
+  }
 }
 async function sendWelcomeEmail(params) {
   const { email, displayName, city, username } = params;
@@ -1605,6 +1792,79 @@ Once approved, you'll get access to your business dashboard.
     text: text2
   });
 }
+async function sendPaymentReceiptEmail(params) {
+  const { email, displayName, type, amount, businessName, paymentId } = params;
+  const firstName = displayName.split(" ")[0];
+  const dollars = (amount / 100).toFixed(2);
+  const typeLabel = type === "challenger_entry" ? "Challenger Entry" : type === "dashboard_pro" ? "Dashboard Pro Subscription" : type === "featured_placement" ? "Featured Placement" : type;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Payment Receipt</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, thank you for your purchase!
+          </p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8E6E1;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+            <tr style="background:#F7F6F3;">
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Item</td>
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;text-align:right;">Amount</td>
+            </tr>
+            <tr>
+              <td style="padding:14px 16px;color:#0D1B2A;font-size:14px;">
+                <strong>${typeLabel}</strong><br>
+                <span style="color:#888;font-size:12px;">${businessName}</span>
+              </td>
+              <td style="padding:14px 16px;color:#0D1B2A;font-size:18px;font-weight:700;text-align:right;">$${dollars}</td>
+            </tr>
+            <tr style="border-top:1px solid #E8E6E1;">
+              <td style="padding:12px 16px;color:#555;font-size:12px;">Reference</td>
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-align:right;font-family:monospace;">${paymentId}</td>
+            </tr>
+          </table>
+
+          <p style="margin:0;color:#888;font-size:12px;line-height:1.5;">
+            Questions about this charge? Contact us at support@topranker.com
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Payment Receipt
+
+Hi ${firstName},
+
+Thank you for your purchase!
+
+Item: ${typeLabel}
+Business: ${businessName}
+Amount: $${dollars}
+Reference: ${paymentId}
+
+Questions? Contact support@topranker.com
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `TopRanker Receipt: $${dollars} \u2014 ${typeLabel}`,
+    html,
+    text: text2
+  });
+}
 async function sendClaimAdminNotification(params) {
   const adminEmail = "admin@topranker.com";
   await sendEmail({
@@ -1619,12 +1879,14 @@ async function sendClaimAdminNotification(params) {
     text: `New claim: ${params.businessName} by ${params.claimantName} (${params.claimantEmail})`
   });
 }
-var emailLog;
+var emailLog, RESEND_API_KEY, FROM_ADDRESS;
 var init_email = __esm({
   "server/email.ts"() {
     "use strict";
     init_logger();
     emailLog = log.tag("Email");
+    RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+    FROM_ADDRESS = process.env.EMAIL_FROM || "TopRanker <noreply@topranker.com>";
   }
 });
 
@@ -1735,6 +1997,118 @@ var init_seed_cities = __esm({
   }
 });
 
+// server/stripe-webhook.ts
+var stripe_webhook_exports = {};
+__export(stripe_webhook_exports, {
+  handleStripeWebhook: () => handleStripeWebhook,
+  processStripeEvent: () => processStripeEvent
+});
+function verifyAndParseEvent(req) {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const sig = req.headers["stripe-signature"];
+  if (secret && sig) {
+    try {
+      const stripe = __require("stripe")(process.env.STRIPE_SECRET_KEY);
+      return stripe.webhooks.constructEvent(req.body, sig, secret);
+    } catch (err) {
+      whLog.error(`Signature verification failed: ${err.message}`);
+      return null;
+    }
+  }
+  try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    return body;
+  } catch {
+    return null;
+  }
+}
+async function processStripeEvent(event) {
+  const newStatus = STATUS_MAP[event.type];
+  if (!newStatus) {
+    whLog.info(`Ignoring event type: ${event.type}`);
+    return { updated: false };
+  }
+  const obj = event.data.object;
+  const paymentIntentId = event.type === "charge.refunded" ? obj.payment_intent || obj.id : obj.id;
+  whLog.info(`Processing ${event.type} for ${paymentIntentId} \u2192 ${newStatus}`);
+  const updated = await updatePaymentStatusByStripeId(paymentIntentId, newStatus);
+  if (!updated) {
+    whLog.warn(`No payment record found for PI: ${paymentIntentId}`);
+  }
+  return { updated: !!updated };
+}
+async function handleStripeWebhook(req, res) {
+  const event = verifyAndParseEvent(req);
+  if (!event) {
+    return res.status(400).json({ error: "Invalid webhook payload" });
+  }
+  const logEntry = await logWebhookEvent({
+    source: "stripe",
+    eventId: event.id,
+    eventType: event.type,
+    payload: event
+  });
+  try {
+    const result = await processStripeEvent(event);
+    await markWebhookProcessed(logEntry.id);
+    return res.json({ received: true, ...result });
+  } catch (err) {
+    whLog.error(`Failed to update payment status: ${err.message}`);
+    await markWebhookProcessed(logEntry.id, err.message);
+    return res.status(500).json({ error: "Internal error processing webhook" });
+  }
+}
+var whLog, STATUS_MAP;
+var init_stripe_webhook = __esm({
+  "server/stripe-webhook.ts"() {
+    "use strict";
+    init_logger();
+    init_storage();
+    whLog = log.tag("StripeWebhook");
+    STATUS_MAP = {
+      "payment_intent.succeeded": "succeeded",
+      "payment_intent.payment_failed": "failed",
+      "charge.refunded": "refunded"
+    };
+  }
+});
+
+// shared/pricing.ts
+var PRICING;
+var init_pricing = __esm({
+  "shared/pricing.ts"() {
+    "use strict";
+    PRICING = {
+      challenger: {
+        amountCents: 9900,
+        displayAmount: "$99",
+        label: "Challenger Entry",
+        description: "30-day head-to-head business competition",
+        refundable: false,
+        type: "one_time"
+      },
+      dashboardPro: {
+        amountCents: 4900,
+        displayAmount: "$49/mo",
+        label: "Dashboard Pro",
+        description: "Advanced analytics and business insights",
+        refundable: true,
+        type: "recurring",
+        interval: "month"
+      },
+      featuredPlacement: {
+        amountCents: 19900,
+        displayAmount: "$199/wk",
+        label: "Featured Placement",
+        description: "Premium visibility in search and rankings",
+        refundable: true,
+        type: "recurring",
+        interval: "week"
+      }
+    };
+  }
+});
+
 // server/payments.ts
 var payments_exports = {};
 __export(payments_exports, {
@@ -1777,8 +2151,7 @@ async function createPaymentIntent(params) {
 }
 async function createChallengerPayment(params) {
   return createPaymentIntent({
-    amount: 9900,
-    // $99.00
+    amount: PRICING.challenger.amountCents,
     description: `TopRanker Challenger Entry: ${params.businessName}`,
     metadata: {
       type: "challenger_entry",
@@ -1790,8 +2163,7 @@ async function createChallengerPayment(params) {
 }
 async function createDashboardProPayment(params) {
   return createPaymentIntent({
-    amount: 4900,
-    // $49.00/mo
+    amount: PRICING.dashboardPro.amountCents,
     description: `TopRanker Business Dashboard Pro: ${params.businessName}`,
     metadata: {
       type: "dashboard_pro",
@@ -1803,8 +2175,7 @@ async function createDashboardProPayment(params) {
 }
 async function createFeaturedPlacementPayment(params) {
   return createPaymentIntent({
-    amount: 19900,
-    // $199.00/week
+    amount: PRICING.featuredPlacement.amountCents,
     description: `TopRanker Featured Placement: ${params.businessName} in ${params.city}`,
     metadata: {
       type: "featured_placement",
@@ -1820,6 +2191,7 @@ var init_payments2 = __esm({
   "server/payments.ts"() {
     "use strict";
     init_logger();
+    init_pricing();
     payLog = log.tag("Payments");
   }
 });
@@ -1848,6 +2220,7 @@ async function seedDatabase() {
       neighborhood: biz.neighborhood,
       address: biz.address,
       phone: biz.phone,
+      website: biz.website || null,
       lat: biz.lat,
       lng: biz.lng,
       weightedScore: biz.weightedScore,
@@ -2137,41 +2510,41 @@ var init_seed = __esm({
     init_db();
     init_schema();
     SEED_BUSINESSES = [
-      { name: "Spice Garden", slug: "spice-garden-dallas", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Thirty years of perfecting North Indian cuisine.", priceRange: "$$$", phone: "(214) 555-0192", address: "3821 Cedar Springs Rd, Uptown, Dallas", lat: "32.8087452", lng: "-96.8024537", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop" },
-      { name: "The Yard Kitchen", slug: "the-yard-kitchen-dallas", neighborhood: "Bishop Arts", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 1, totalRatings: 287, description: "Farm-to-table restaurant in Bishop Arts District.", priceRange: "$$", phone: "(214) 555-0234", address: "402 N Bishop Ave, Bishop Arts, Dallas", lat: "32.7505612", lng: "-96.8267483", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Lucky Cat Ramen", slug: "lucky-cat-ramen-dallas", neighborhood: "Deep Ellum", category: "restaurant", weightedScore: "4.510", rawAvgScore: "4.38", rankPosition: 3, rankDelta: -1, totalRatings: 198, description: "Authentic Japanese ramen with house-made noodles.", priceRange: "$$", phone: "(214) 555-0345", address: "2815 Main St, Deep Ellum, Dallas", lat: "32.7833148", lng: "-96.7836459", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
-      { name: "Smoke & Vine", slug: "smoke-and-vine-dallas", neighborhood: "Oak Lawn", category: "restaurant", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 4, rankDelta: 2, totalRatings: 156, description: "Texas BBQ meets fine wine in this Oak Lawn gem.", priceRange: "$$$", phone: "(214) 555-0456", address: "4011 Lemmon Ave, Oak Lawn, Dallas", lat: "32.8118523", lng: "-96.8200134", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Abuela's Kitchen", slug: "abuelas-kitchen-dallas", neighborhood: "Oak Cliff", category: "restaurant", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Three generations of Mexican recipes from Oaxaca.", priceRange: "$", phone: "(214) 555-0567", address: "1234 Jefferson Blvd, Oak Cliff, Dallas", lat: "32.7453102", lng: "-96.8312487", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Seoul Brothers", slug: "seoul-brothers-dallas", neighborhood: "Carrollton", category: "restaurant", weightedScore: "4.150", rawAvgScore: "4.00", rankPosition: 6, rankDelta: -2, totalRatings: 143, description: "Korean fusion with bold flavors in Carrollton.", priceRange: "$$", phone: "(214) 555-0678", address: "2570 Old Denton Rd, Carrollton, Dallas", lat: "32.9537482", lng: "-96.8903456", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=600&h=400&fit=crop" },
-      { name: "Pecan Lodge", slug: "pecan-lodge-dallas", neighborhood: "Deep Ellum", category: "restaurant", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 7, rankDelta: 0, totalRatings: 523, description: "The most decorated BBQ joint in Dallas history.", priceRange: "$$", phone: "(214) 555-0948", address: "2702 Main St, Deep Ellum, Dallas", lat: "32.7844523", lng: "-96.7842178", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Lucia", slug: "lucia-dallas", neighborhood: "Bishop Arts", category: "restaurant", weightedScore: "3.920", rawAvgScore: "3.85", rankPosition: 8, rankDelta: 1, totalRatings: 167, description: "Chef David Uygur's intimate Italian-inspired dining room.", priceRange: "$$$$", phone: "(214) 555-0666", address: "408 W 8th St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8276789", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop" },
-      { name: "Khao Noodle Shop", slug: "khao-noodle-dallas", neighborhood: "Lowest Greenville", category: "restaurant", weightedScore: "3.800", rawAvgScore: "3.75", rankPosition: 9, rankDelta: -1, totalRatings: 154, description: "Northern Thai street food with zero compromise.", priceRange: "$$", phone: "(214) 555-0887", address: "4812 Bryan St, Lowest Greenville, Dallas", lat: "32.7908432", lng: "-96.7712345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
-      { name: "Fearing's", slug: "fearings-dallas", neighborhood: "Uptown", category: "restaurant", weightedScore: "3.680", rawAvgScore: "3.60", rankPosition: 10, rankDelta: 0, totalRatings: 178, description: "Dean Fearing's flagship inside the Ritz-Carlton.", priceRange: "$$$$", phone: "(214) 555-0220", address: "2121 McKinney Ave, Uptown, Dallas", lat: "32.7978432", lng: "-96.8012345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Cultivar Coffee", slug: "cultivar-coffee-dallas", neighborhood: "East Dallas", category: "cafe", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Single-origin pour-overs and house-roasted beans.", priceRange: "$$", phone: "(214) 555-0789", address: "313 N Bishop Ave, East Dallas, Dallas", lat: "32.7932145", lng: "-96.7645321", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Houndstooth Coffee", slug: "houndstooth-coffee-dallas", neighborhood: "Henderson", category: "cafe", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 167, description: "Specialty coffee bar with minimalist aesthetic.", priceRange: "$$", phone: "(214) 555-0890", address: "1900 N Henderson Ave, Henderson, Dallas", lat: "32.7998765", lng: "-96.7789012", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "The Brew Room", slug: "the-brew-room-dallas", neighborhood: "Uptown", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 132, description: "Cozy Uptown cafe with craft coffee and pastries.", priceRange: "$", phone: "(214) 555-0901", address: "2901 Thomas Ave, Uptown, Dallas", lat: "32.8012345", lng: "-96.7976543", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop" },
-      { name: "Mudleaf Coffee", slug: "mudleaf-coffee-dallas", neighborhood: "Oak Cliff", category: "cafe", weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 98, description: "Community-focused coffee shop in Oak Cliff.", priceRange: "$", phone: "(214) 555-1012", address: "1621 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8345678", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop" },
-      { name: "Merit Coffee", slug: "merit-coffee-dallas", neighborhood: "Design District", category: "cafe", weightedScore: "4.100", rawAvgScore: "4.00", rankPosition: 5, rankDelta: 0, totalRatings: 76, description: "Texas-based specialty coffee roasters.", priceRange: "$$", phone: "(214) 555-1123", address: "1445 Hi Line Dr, Design District, Dallas", lat: "32.7856789", lng: "-96.8123456", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop" },
-      { name: "Taco Stop", slug: "taco-stop-dallas", neighborhood: "Oak Cliff", category: "street_food", weightedScore: "4.710", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Legendary street tacos \u2014 the al pastor is unreal.", priceRange: "$", phone: "(214) 555-1234", address: "2811 Greenville Ave, Oak Cliff, Dallas", lat: "32.7423456", lng: "-96.8378901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Fuel City Tacos", slug: "fuel-city-tacos-dallas", neighborhood: "Riverfront", category: "street_food", weightedScore: "4.540", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 378, description: "Gas station tacos that are famous citywide.", priceRange: "$", phone: "(214) 555-1345", address: "801 S Riverfront Blvd, Riverfront, Dallas", lat: "32.7701234", lng: "-96.8178901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
+      { name: "Spice Garden", slug: "spice-garden-dallas", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Thirty years of perfecting North Indian cuisine.", priceRange: "$$$", phone: "(214) 555-0192", address: "3821 Cedar Springs Rd, Uptown, Dallas", lat: "32.8087452", lng: "-96.8024537", isOpenNow: true, website: "https://spicegardendallas.com", photoUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop" },
+      { name: "The Yard Kitchen", slug: "the-yard-kitchen-dallas", neighborhood: "Bishop Arts", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 1, totalRatings: 287, description: "Farm-to-table restaurant in Bishop Arts District.", priceRange: "$$", phone: "(214) 555-0234", address: "402 N Bishop Ave, Bishop Arts, Dallas", lat: "32.7505612", lng: "-96.8267483", isOpenNow: true, website: "https://theyardkitchen.com", photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "Lucky Cat Ramen", slug: "lucky-cat-ramen-dallas", neighborhood: "Deep Ellum", category: "restaurant", weightedScore: "4.510", rawAvgScore: "4.38", rankPosition: 3, rankDelta: -1, totalRatings: 198, description: "Authentic Japanese ramen with house-made noodles.", priceRange: "$$", phone: "(214) 555-0345", address: "2815 Main St, Deep Ellum, Dallas", lat: "32.7833148", lng: "-96.7836459", isOpenNow: false, website: "https://luckycatramen.com", photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
+      { name: "Smoke & Vine", slug: "smoke-and-vine-dallas", neighborhood: "Oak Lawn", category: "restaurant", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 4, rankDelta: 2, totalRatings: 156, description: "Texas BBQ meets fine wine in this Oak Lawn gem.", priceRange: "$$$", phone: "(214) 555-0456", address: "4011 Lemmon Ave, Oak Lawn, Dallas", lat: "32.8118523", lng: "-96.8200134", isOpenNow: true, website: "https://smokeandvinedallas.com", photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Abuela's Kitchen", slug: "abuelas-kitchen-dallas", neighborhood: "Oak Cliff", category: "restaurant", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Three generations of Mexican recipes from Oaxaca.", priceRange: "$", phone: "(214) 555-0567", address: "1234 Jefferson Blvd, Oak Cliff, Dallas", lat: "32.7453102", lng: "-96.8312487", isOpenNow: true, website: "https://abuelaskitchendallas.com", photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Seoul Brothers", slug: "seoul-brothers-dallas", neighborhood: "Carrollton", category: "restaurant", weightedScore: "4.150", rawAvgScore: "4.00", rankPosition: 6, rankDelta: -2, totalRatings: 143, description: "Korean fusion with bold flavors in Carrollton.", priceRange: "$$", phone: "(214) 555-0678", address: "2570 Old Denton Rd, Carrollton, Dallas", lat: "32.9537482", lng: "-96.8903456", isOpenNow: false, website: "https://seoulbrothersdallas.com", photoUrl: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=600&h=400&fit=crop" },
+      { name: "Pecan Lodge", slug: "pecan-lodge-dallas", neighborhood: "Deep Ellum", category: "restaurant", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 7, rankDelta: 0, totalRatings: 523, description: "The most decorated BBQ joint in Dallas history.", priceRange: "$$", phone: "(214) 555-0948", address: "2702 Main St, Deep Ellum, Dallas", lat: "32.7844523", lng: "-96.7842178", isOpenNow: true, website: "https://pecanlodge.com", photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Lucia", slug: "lucia-dallas", neighborhood: "Bishop Arts", category: "restaurant", weightedScore: "3.920", rawAvgScore: "3.85", rankPosition: 8, rankDelta: 1, totalRatings: 167, description: "Chef David Uygur's intimate Italian-inspired dining room.", priceRange: "$$$$", phone: "(214) 555-0666", address: "408 W 8th St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8276789", isOpenNow: false, website: "https://luciadallas.com", photoUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop" },
+      { name: "Khao Noodle Shop", slug: "khao-noodle-dallas", neighborhood: "Lowest Greenville", category: "restaurant", weightedScore: "3.800", rawAvgScore: "3.75", rankPosition: 9, rankDelta: -1, totalRatings: 154, description: "Northern Thai street food with zero compromise.", priceRange: "$$", phone: "(214) 555-0887", address: "4812 Bryan St, Lowest Greenville, Dallas", lat: "32.7908432", lng: "-96.7712345", isOpenNow: true, website: "https://khaonoodleshop.com", photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
+      { name: "Fearing's", slug: "fearings-dallas", neighborhood: "Uptown", category: "restaurant", weightedScore: "3.680", rawAvgScore: "3.60", rankPosition: 10, rankDelta: 0, totalRatings: 178, description: "Dean Fearing's flagship inside the Ritz-Carlton.", priceRange: "$$$$", phone: "(214) 555-0220", address: "2121 McKinney Ave, Uptown, Dallas", lat: "32.7978432", lng: "-96.8012345", isOpenNow: true, website: "https://fearingsrestaurant.com", photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Cultivar Coffee", slug: "cultivar-coffee-dallas", neighborhood: "East Dallas", category: "cafe", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Single-origin pour-overs and house-roasted beans.", priceRange: "$$", phone: "(214) 555-0789", address: "313 N Bishop Ave, East Dallas, Dallas", lat: "32.7932145", lng: "-96.7645321", isOpenNow: true, website: "https://cultivarcoffee.com", photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+      { name: "Houndstooth Coffee", slug: "houndstooth-coffee-dallas", neighborhood: "Henderson", category: "cafe", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 167, description: "Specialty coffee bar with minimalist aesthetic.", priceRange: "$$", phone: "(214) 555-0890", address: "1900 N Henderson Ave, Henderson, Dallas", lat: "32.7998765", lng: "-96.7789012", isOpenNow: true, website: "https://houndstoothcoffee.com", photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "The Brew Room", slug: "the-brew-room-dallas", neighborhood: "Uptown", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 132, description: "Cozy Uptown cafe with craft coffee and pastries.", priceRange: "$", phone: "(214) 555-0901", address: "2901 Thomas Ave, Uptown, Dallas", lat: "32.8012345", lng: "-96.7976543", isOpenNow: false, website: "https://thebrewroomdallas.com", photoUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop" },
+      { name: "Mudleaf Coffee", slug: "mudleaf-coffee-dallas", neighborhood: "Oak Cliff", category: "cafe", weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 98, description: "Community-focused coffee shop in Oak Cliff.", priceRange: "$", phone: "(214) 555-1012", address: "1621 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8345678", isOpenNow: true, website: "https://mudleafcoffee.com", photoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop" },
+      { name: "Merit Coffee", slug: "merit-coffee-dallas", neighborhood: "Design District", category: "cafe", weightedScore: "4.100", rawAvgScore: "4.00", rankPosition: 5, rankDelta: 0, totalRatings: 76, description: "Texas-based specialty coffee roasters.", priceRange: "$$", phone: "(214) 555-1123", address: "1445 Hi Line Dr, Design District, Dallas", lat: "32.7856789", lng: "-96.8123456", isOpenNow: false, website: "https://meritcoffee.com", photoUrl: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop" },
+      { name: "Taco Stop", slug: "taco-stop-dallas", neighborhood: "Oak Cliff", category: "street_food", weightedScore: "4.710", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Legendary street tacos \u2014 the al pastor is unreal.", priceRange: "$", phone: "(214) 555-1234", address: "2811 Greenville Ave, Oak Cliff, Dallas", lat: "32.7423456", lng: "-96.8378901", isOpenNow: true, website: "https://tacostopdallas.com", photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Fuel City Tacos", slug: "fuel-city-tacos-dallas", neighborhood: "Riverfront", category: "street_food", weightedScore: "4.540", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 378, description: "Gas station tacos that are famous citywide.", priceRange: "$", phone: "(214) 555-1345", address: "801 S Riverfront Blvd, Riverfront, Dallas", lat: "32.7701234", lng: "-96.8178901", isOpenNow: true, website: "https://fuelcitytacos.com", photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
       { name: "Elote Man", slug: "elote-man-dallas", neighborhood: "Pleasant Grove", category: "street_food", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 3, rankDelta: 1, totalRatings: 189, description: "Mexican street corn done right.", priceRange: "$", phone: "(214) 555-1456", address: "Mobile - Pleasant Grove area", lat: "32.7234567", lng: "-96.7456789", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=600&h=400&fit=crop" },
-      { name: "Kabob King", slug: "kabob-king-dallas", neighborhood: "Richardson", category: "street_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 4, rankDelta: -1, totalRatings: 145, description: "Pakistani-style seekh kabobs grilled fresh.", priceRange: "$", phone: "(214) 555-1567", address: "750 W Arapaho Rd, Richardson, Dallas", lat: "32.9512345", lng: "-96.7534567", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" },
-      { name: "Chimmy's Churros", slug: "chimmys-churros-dallas", neighborhood: "Deep Ellum", category: "street_food", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 112, description: "Fresh churros with creative dipping sauces.", priceRange: "$", phone: "(214) 555-1678", address: "2737 Main St, Deep Ellum, Dallas", lat: "32.7834567", lng: "-96.7823456", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop" },
-      { name: "Midnight Rambler", slug: "midnight-rambler-dallas", neighborhood: "Downtown", category: "bar", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Sophisticated cocktail bar in the Joule Hotel basement.", priceRange: "$$$", phone: "(214) 555-1789", address: "1530 Main St, Downtown, Dallas", lat: "32.7812345", lng: "-96.7967890", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Atwater Alley", slug: "atwater-alley-dallas", neighborhood: "Deep Ellum", category: "bar", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 1, totalRatings: 198, description: "Craft beer and creative cocktails in Deep Ellum.", priceRange: "$$", phone: "(214) 555-1890", address: "2815 Elm St, Deep Ellum, Dallas", lat: "32.7823456", lng: "-96.7834567", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "The Grapevine Bar", slug: "the-grapevine-bar-dallas", neighborhood: "Greenville", category: "bar", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 3, rankDelta: -1, totalRatings: 167, description: "Oldest bar in Dallas with classic dive bar vibes.", priceRange: "$", phone: "(214) 555-1901", address: "3902 Maple Ave, Greenville, Dallas", lat: "32.8134567", lng: "-96.8123456", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop" },
-      { name: "Javier's Cigar Bar", slug: "javiers-cigar-bar-dallas", neighborhood: "Knox-Henderson", category: "bar", weightedScore: "4.120", rawAvgScore: "4.00", rankPosition: 4, rankDelta: 0, totalRatings: 134, description: "Upscale cigar lounge with premium spirits.", priceRange: "$$$", phone: "(214) 555-2012", address: "4912 Cole Ave, Knox-Henderson, Dallas", lat: "32.8212345", lng: "-96.7912345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop" },
-      { name: "Lee Harvey's", slug: "lee-harveys-dallas", neighborhood: "Cedars", category: "bar", weightedScore: "3.950", rawAvgScore: "3.85", rankPosition: 5, rankDelta: 0, totalRatings: 189, description: "Iconic outdoor patio bar in the Cedars.", priceRange: "$", phone: "(214) 555-2123", address: "1807 Gould St, Cedars, Dallas", lat: "32.7723456", lng: "-96.7923456", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1538488881038-e252a119ace7?w=600&h=400&fit=crop" },
-      { name: "Village Baking Co.", slug: "village-baking-co-dallas", neighborhood: "Greenville", category: "bakery", weightedScore: "4.730", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan sourdough and French pastries.", priceRange: "$$", phone: "(214) 555-2234", address: "2009 Greenville Ave, Greenville, Dallas", lat: "32.8012345", lng: "-96.7712345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
-      { name: "La Casita Bakeshop", slug: "la-casita-bakeshop-dallas", neighborhood: "Oak Cliff", category: "bakery", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Mexican-inspired pastries and traditional conchas.", priceRange: "$", phone: "(214) 555-2345", address: "1522 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8334567", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
-      { name: "Bisous Bisous", slug: "bisous-bisous-patisserie-dallas", neighborhood: "Knox-Henderson", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 156, description: "French macaron specialists with seasonal flavors.", priceRange: "$$", phone: "(214) 555-2456", address: "3809 McKinney Ave, Knox-Henderson, Dallas", lat: "32.8112345", lng: "-96.7934567", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop" },
-      { name: "Empire Baking Co.", slug: "empire-baking-co-dallas", neighborhood: "East Dallas", category: "bakery", weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 132, description: "Dallas staple for bread and celebration cakes.", priceRange: "$$", phone: "(214) 555-2567", address: "5450 W Lovers Lane, East Dallas, Dallas", lat: "32.8534567", lng: "-96.7812345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=600&h=400&fit=crop" },
-      { name: "Haute Sweets", slug: "haute-sweets-patisserie-dallas", neighborhood: "Bishop Arts", category: "bakery", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 89, description: "Avant-garde desserts and sculptural pastries.", priceRange: "$$$", phone: "(214) 555-2678", address: "414 W Davis St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8278901", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop" },
-      { name: "Raising Cane's", slug: "raising-canes-dallas", neighborhood: "Greenville", category: "fast_food", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "One love \u2014 chicken fingers, crinkle fries, Texas toast, and that sauce.", priceRange: "$", phone: "(214) 555-2789", address: "5809 Greenville Ave, Greenville, Dallas", lat: "32.8612345", lng: "-96.7712345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-dallas", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 2, rankDelta: 0, totalRatings: 678, description: "Texas institution. The honey butter chicken biscuit is legendary.", priceRange: "$", phone: "(214) 555-2890", address: "Multiple locations, Dallas", lat: "32.7767000", lng: "-96.7970000", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "In-N-Out Burger", slug: "in-n-out-burger-dallas", neighborhood: "Uptown", category: "fast_food", weightedScore: "4.150", rawAvgScore: "4.00", rankPosition: 3, rankDelta: 1, totalRatings: 445, description: "California import that Dallas can't get enough of.", priceRange: "$", phone: "(214) 555-2901", address: "3500 McKinney Ave, Uptown, Dallas", lat: "32.8112345", lng: "-96.8012345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop" },
-      { name: "Wingstop", slug: "wingstop-dallas-hq", neighborhood: "Addison", category: "fast_food", weightedScore: "3.980", rawAvgScore: "3.85", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Dallas-born wing chain \u2014 the original HQ location.", priceRange: "$", phone: "(214) 555-3012", address: "5501 LBJ Freeway, Addison, Dallas", lat: "32.9512345", lng: "-96.8312345", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop" },
-      { name: "Taco Bell Cantina", slug: "taco-bell-cantina-dallas", neighborhood: "Deep Ellum", category: "fast_food", weightedScore: "3.820", rawAvgScore: "3.70", rankPosition: 5, rankDelta: 0, totalRatings: 201, description: "The elevated Taco Bell experience with booze.", priceRange: "$", phone: "(214) 555-3123", address: "2649 Main St, Deep Ellum, Dallas", lat: "32.7843210", lng: "-96.7854321", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop" }
+      { name: "Kabob King", slug: "kabob-king-dallas", neighborhood: "Richardson", category: "street_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 4, rankDelta: -1, totalRatings: 145, description: "Pakistani-style seekh kabobs grilled fresh.", priceRange: "$", phone: "(214) 555-1567", address: "750 W Arapaho Rd, Richardson, Dallas", lat: "32.9512345", lng: "-96.7534567", isOpenNow: true, website: "https://kabobkingdallas.com", photoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" },
+      { name: "Chimmy's Churros", slug: "chimmys-churros-dallas", neighborhood: "Deep Ellum", category: "street_food", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 112, description: "Fresh churros with creative dipping sauces.", priceRange: "$", phone: "(214) 555-1678", address: "2737 Main St, Deep Ellum, Dallas", lat: "32.7834567", lng: "-96.7823456", isOpenNow: true, website: "https://chimmyschurros.com", photoUrl: "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop" },
+      { name: "Midnight Rambler", slug: "midnight-rambler-dallas", neighborhood: "Downtown", category: "bar", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Sophisticated cocktail bar in the Joule Hotel basement.", priceRange: "$$$", phone: "(214) 555-1789", address: "1530 Main St, Downtown, Dallas", lat: "32.7812345", lng: "-96.7967890", isOpenNow: true, website: "https://midnightrambler.com", photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Atwater Alley", slug: "atwater-alley-dallas", neighborhood: "Deep Ellum", category: "bar", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 1, totalRatings: 198, description: "Craft beer and creative cocktails in Deep Ellum.", priceRange: "$$", phone: "(214) 555-1890", address: "2815 Elm St, Deep Ellum, Dallas", lat: "32.7823456", lng: "-96.7834567", isOpenNow: true, website: "https://atwateralley.com", photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "The Grapevine Bar", slug: "the-grapevine-bar-dallas", neighborhood: "Greenville", category: "bar", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 3, rankDelta: -1, totalRatings: 167, description: "Oldest bar in Dallas with classic dive bar vibes.", priceRange: "$", phone: "(214) 555-1901", address: "3902 Maple Ave, Greenville, Dallas", lat: "32.8134567", lng: "-96.8123456", isOpenNow: false, website: "https://thegrapevinebar.com", photoUrl: "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop" },
+      { name: "Javier's Cigar Bar", slug: "javiers-cigar-bar-dallas", neighborhood: "Knox-Henderson", category: "bar", weightedScore: "4.120", rawAvgScore: "4.00", rankPosition: 4, rankDelta: 0, totalRatings: 134, description: "Upscale cigar lounge with premium spirits.", priceRange: "$$$", phone: "(214) 555-2012", address: "4912 Cole Ave, Knox-Henderson, Dallas", lat: "32.8212345", lng: "-96.7912345", isOpenNow: true, website: "https://javierscigarbar.com", photoUrl: "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop" },
+      { name: "Lee Harvey's", slug: "lee-harveys-dallas", neighborhood: "Cedars", category: "bar", weightedScore: "3.950", rawAvgScore: "3.85", rankPosition: 5, rankDelta: 0, totalRatings: 189, description: "Iconic outdoor patio bar in the Cedars.", priceRange: "$", phone: "(214) 555-2123", address: "1807 Gould St, Cedars, Dallas", lat: "32.7723456", lng: "-96.7923456", isOpenNow: true, website: "https://leeharveys.com", photoUrl: "https://images.unsplash.com/photo-1538488881038-e252a119ace7?w=600&h=400&fit=crop" },
+      { name: "Village Baking Co.", slug: "village-baking-co-dallas", neighborhood: "Greenville", category: "bakery", weightedScore: "4.730", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan sourdough and French pastries.", priceRange: "$$", phone: "(214) 555-2234", address: "2009 Greenville Ave, Greenville, Dallas", lat: "32.8012345", lng: "-96.7712345", isOpenNow: true, website: "https://villagebakingco.com", photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+      { name: "La Casita Bakeshop", slug: "la-casita-bakeshop-dallas", neighborhood: "Oak Cliff", category: "bakery", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Mexican-inspired pastries and traditional conchas.", priceRange: "$", phone: "(214) 555-2345", address: "1522 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8334567", isOpenNow: true, website: "https://lacasitabakeshop.com", photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+      { name: "Bisous Bisous", slug: "bisous-bisous-patisserie-dallas", neighborhood: "Knox-Henderson", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 156, description: "French macaron specialists with seasonal flavors.", priceRange: "$$", phone: "(214) 555-2456", address: "3809 McKinney Ave, Knox-Henderson, Dallas", lat: "32.8112345", lng: "-96.7934567", isOpenNow: false, website: "https://bisousbisous.com", photoUrl: "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop" },
+      { name: "Empire Baking Co.", slug: "empire-baking-co-dallas", neighborhood: "East Dallas", category: "bakery", weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 132, description: "Dallas staple for bread and celebration cakes.", priceRange: "$$", phone: "(214) 555-2567", address: "5450 W Lovers Lane, East Dallas, Dallas", lat: "32.8534567", lng: "-96.7812345", isOpenNow: true, website: "https://empirebaking.com", photoUrl: "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=600&h=400&fit=crop" },
+      { name: "Haute Sweets", slug: "haute-sweets-patisserie-dallas", neighborhood: "Bishop Arts", category: "bakery", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 89, description: "Avant-garde desserts and sculptural pastries.", priceRange: "$$$", phone: "(214) 555-2678", address: "414 W Davis St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8278901", isOpenNow: false, website: "https://hautesweetspatisserie.com", photoUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop" },
+      { name: "Raising Cane's", slug: "raising-canes-dallas", neighborhood: "Greenville", category: "fast_food", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "One love \u2014 chicken fingers, crinkle fries, Texas toast, and that sauce.", priceRange: "$", phone: "(214) 555-2789", address: "5809 Greenville Ave, Greenville, Dallas", lat: "32.8612345", lng: "-96.7712345", isOpenNow: true, website: "https://raisingcanes.com", photoUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-dallas", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 2, rankDelta: 0, totalRatings: 678, description: "Texas institution. The honey butter chicken biscuit is legendary.", priceRange: "$", phone: "(214) 555-2890", address: "Multiple locations, Dallas", lat: "32.7767000", lng: "-96.7970000", isOpenNow: true, website: "https://whataburger.com", photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "In-N-Out Burger", slug: "in-n-out-burger-dallas", neighborhood: "Uptown", category: "fast_food", weightedScore: "4.150", rawAvgScore: "4.00", rankPosition: 3, rankDelta: 1, totalRatings: 445, description: "California import that Dallas can't get enough of.", priceRange: "$", phone: "(214) 555-2901", address: "3500 McKinney Ave, Uptown, Dallas", lat: "32.8112345", lng: "-96.8012345", isOpenNow: true, website: "https://in-n-out.com", photoUrl: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop" },
+      { name: "Wingstop", slug: "wingstop-dallas-hq", neighborhood: "Addison", category: "fast_food", weightedScore: "3.980", rawAvgScore: "3.85", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Dallas-born wing chain \u2014 the original HQ location.", priceRange: "$", phone: "(214) 555-3012", address: "5501 LBJ Freeway, Addison, Dallas", lat: "32.9512345", lng: "-96.8312345", isOpenNow: false, website: "https://wingstop.com", photoUrl: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop" },
+      { name: "Taco Bell Cantina", slug: "taco-bell-cantina-dallas", neighborhood: "Deep Ellum", category: "fast_food", weightedScore: "3.820", rawAvgScore: "3.70", rankPosition: 5, rankDelta: 0, totalRatings: 201, description: "The elevated Taco Bell experience with booze.", priceRange: "$", phone: "(214) 555-3123", address: "2649 Main St, Deep Ellum, Dallas", lat: "32.7843210", lng: "-96.7854321", isOpenNow: true, website: "https://tacobell.com/cantina", photoUrl: "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop" }
     ];
     SEED_DISHES = [
       { businessSlug: "spice-garden-dallas", dishes: [
@@ -2395,8 +2768,8 @@ async function authenticateGoogleUser(idToken) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq10 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq10(members2.id, member.id));
+    const { eq: eq12 } = await import("drizzle-orm");
+    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq12(members2.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -2821,6 +3194,59 @@ async function fetchAndStorePhotos(businessId, googlePlaceId) {
   return photoRefs.length;
 }
 
+// server/perf-monitor.ts
+init_logger();
+var perfLog = log.tag("Perf");
+var SLOW_THRESHOLD_MS = 500;
+var stats = {
+  totalRequests: 0,
+  slowRequests: 0,
+  avgDurationMs: 0,
+  maxDurationMs: 0,
+  byRoute: /* @__PURE__ */ new Map()
+};
+var totalDurationMs = 0;
+function perfMonitor(req, res, next) {
+  const start = performance.now();
+  res.on("finish", () => {
+    const duration = performance.now() - start;
+    const route = `${req.method} ${req.route?.path || req.path}`;
+    stats.totalRequests++;
+    totalDurationMs += duration;
+    stats.avgDurationMs = totalDurationMs / stats.totalRequests;
+    stats.maxDurationMs = Math.max(stats.maxDurationMs, duration);
+    let routeStats = stats.byRoute.get(route);
+    if (!routeStats) {
+      routeStats = { count: 0, totalMs: 0, maxMs: 0 };
+      stats.byRoute.set(route, routeStats);
+    }
+    routeStats.count++;
+    routeStats.totalMs += duration;
+    routeStats.maxMs = Math.max(routeStats.maxMs, duration);
+    if (duration > SLOW_THRESHOLD_MS) {
+      stats.slowRequests++;
+      perfLog.warn(`Slow request: ${route} took ${duration.toFixed(0)}ms`);
+    }
+    res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
+  });
+  next();
+}
+function getPerfStats() {
+  const routes = Array.from(stats.byRoute.entries()).map(([route, s]) => ({
+    route,
+    count: s.count,
+    avgMs: Math.round(s.totalMs / s.count),
+    maxMs: Math.round(s.maxMs)
+  })).sort((a, b) => b.maxMs - a.maxMs).slice(0, 20);
+  return {
+    totalRequests: stats.totalRequests,
+    slowRequests: stats.slowRequests,
+    avgDurationMs: Math.round(stats.avgDurationMs),
+    maxDurationMs: Math.round(stats.maxDurationMs),
+    slowestRoutes: routes
+  };
+}
+
 // server/routes-admin.ts
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -2961,10 +3387,69 @@ function registerAdminRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
+  app2.get("/api/admin/webhooks", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const source = req.query.source || "stripe";
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+      const events = await getRecentWebhookEvents(source, limit);
+      return res.json({ data: events });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const event = await getWebhookEventById(req.params.id);
+      if (!event) return res.status(404).json({ error: "Webhook event not found" });
+      const { processStripeEvent: processStripeEvent2 } = await Promise.resolve().then(() => (init_stripe_webhook(), stripe_webhook_exports));
+      if (event.source === "stripe" && event.payload) {
+        await processStripeEvent2(event.payload);
+        await markWebhookProcessed(event.id);
+        return res.json({ data: { id: event.id, replayed: true } });
+      }
+      return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/perf", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const data = getPerfStats();
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 }
 
 // server/routes-payments.ts
 init_storage();
+init_email();
+
+// server/sse.ts
+var clients = /* @__PURE__ */ new Set();
+function addClient(res) {
+  clients.add(res);
+  res.on("close", () => {
+    clients.delete(res);
+  });
+}
+function broadcast(type, payload = {}) {
+  const event = { type, payload, timestamp: Date.now() };
+  const data = `data: ${JSON.stringify(event)}
+
+`;
+  for (const client of clients) {
+    try {
+      client.write(data);
+    } catch {
+      clients.delete(client);
+    }
+  }
+}
+
+// server/routes-payments.ts
+init_logger();
 function requireAuth2(req, res, next) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
@@ -2998,6 +3483,15 @@ function registerPaymentRoutes(app2) {
         status: payment.status,
         metadata: payment.metadata
       });
+      sendPaymentReceiptEmail({
+        email: req.user.email || "",
+        displayName: req.user.displayName || "Member",
+        type: "challenger_entry",
+        amount: payment.amount,
+        businessName,
+        paymentId: payment.id
+      }).catch(() => {
+      });
       return res.json({ data: payment });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -3029,6 +3523,15 @@ function registerPaymentRoutes(app2) {
         status: payment.status,
         metadata: payment.metadata
       });
+      sendPaymentReceiptEmail({
+        email: req.user.email || "",
+        displayName: req.user.displayName || "Member",
+        type: "dashboard_pro",
+        amount: payment.amount,
+        businessName: business.name,
+        paymentId: payment.id
+      }).catch(() => {
+      });
       return res.json({ data: payment });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -3052,7 +3555,7 @@ function registerPaymentRoutes(app2) {
         customerEmail: req.user.email || "",
         userId: req.user.id
       });
-      await createPaymentRecord({
+      const paymentRecord = await createPaymentRecord({
         memberId: req.user.id,
         businessId: business.id,
         type: "featured_placement",
@@ -3061,52 +3564,168 @@ function registerPaymentRoutes(app2) {
         status: payment.status,
         metadata: payment.metadata
       });
+      if (payment.status === "succeeded") {
+        await createFeaturedPlacement({
+          businessId: business.id,
+          paymentId: paymentRecord.id,
+          city: business.city
+        });
+        broadcast("featured_updated", { businessId: business.id, city: business.city });
+      }
+      sendPaymentReceiptEmail({
+        email: req.user.email || "",
+        displayName: req.user.displayName || "Member",
+        type: "featured_placement",
+        amount: payment.amount,
+        businessName: business.name,
+        paymentId: payment.id
+      }).catch(() => {
+      });
       return res.json({ data: payment });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/payments/cancel", requireAuth2, async (req, res) => {
+    try {
+      const { paymentId } = req.body;
+      if (!paymentId) {
+        return res.status(400).json({ error: "paymentId is required" });
+      }
+      const existing = await getPaymentById(paymentId);
+      if (!existing) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      if (existing.memberId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized to cancel this payment" });
+      }
+      const updated = await updatePaymentStatus(paymentId, "cancelled");
+      if (existing.type === "featured_placement") {
+        await expireFeaturedByPayment(paymentId).catch(() => {
+        });
+        broadcast("featured_updated", { cancelled: true });
+      }
+      log.info(`Payment ${paymentId} cancelled by ${req.user.id}`);
+      return res.json({ data: { id: updated.id, status: "cancelled" } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   });
 }
 
-// server/routes.ts
-init_logger();
+// server/routes-badges.ts
 init_storage();
-init_schema();
+init_logger();
 function requireAuth3(req, res, next) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
   next();
 }
-var rateLimitBuckets = /* @__PURE__ */ new Map();
-function createRateLimiter(name, maxRequests, windowMs) {
-  const bucket = /* @__PURE__ */ new Map();
-  rateLimitBuckets.set(name, bucket);
-  return function rateLimit(req, res, next) {
+function registerBadgeRoutes(app2) {
+  app2.get("/api/members/:id/badges", async (req, res) => {
+    try {
+      const memberId = req.params.id;
+      const badges = await getMemberBadges(memberId);
+      return res.json({ data: badges });
+    } catch (err) {
+      log.error(`Failed to fetch member badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+  app2.post("/api/badges/award", requireAuth3, async (req, res) => {
+    try {
+      const memberId = req.user.id;
+      const { badgeId, badgeFamily } = req.body;
+      if (!badgeId || !badgeFamily) {
+        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
+      }
+      const result = await awardBadge(memberId, badgeId, badgeFamily);
+      return res.json({ data: result, awarded: result !== null });
+    } catch (err) {
+      log.error(`Failed to award badge: ${err.message}`);
+      return res.status(500).json({ error: "Failed to award badge" });
+    }
+  });
+  app2.get("/api/badges/earned", requireAuth3, async (req, res) => {
+    try {
+      const memberId = req.user.id;
+      const badgeIds = await getEarnedBadgeIds(memberId);
+      const badgeCount = badgeIds.length;
+      return res.json({ data: { badgeIds, badgeCount } });
+    } catch (err) {
+      log.error(`Failed to fetch earned badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch earned badges" });
+    }
+  });
+  app2.get("/api/badges/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+      const data = await getBadgeLeaderboard(limit);
+      return res.json({ data });
+    } catch (err) {
+      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
+    }
+  });
+}
+
+// server/routes.ts
+init_stripe_webhook();
+init_logger();
+init_storage();
+init_schema();
+
+// server/rate-limiter.ts
+init_logger();
+var rlLog = log.tag("RateLimiter");
+var windows = /* @__PURE__ */ new Map();
+setInterval(() => {
+  const now = Date.now();
+  Array.from(windows.entries()).forEach(([key, entry]) => {
+    if (now > entry.resetAt) windows.delete(key);
+  });
+}, 6e4);
+var DEFAULT_OPTIONS = {
+  windowMs: 6e4,
+  // 1 minute
+  maxRequests: 100
+  // 100 requests per minute
+};
+function rateLimiter(options = {}) {
+  const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
+  return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const now = Date.now();
-    const entry = bucket.get(ip);
-    if (entry && entry.resetAt > now) {
-      if (entry.count >= maxRequests) {
-        return res.status(429).json({ error: "Too many requests. Please try again later." });
-      }
-      entry.count++;
-    } else {
-      bucket.set(ip, { count: 1, resetAt: now + windowMs });
+    let entry = windows.get(ip);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + windowMs };
+      windows.set(ip, entry);
+    }
+    entry.count++;
+    res.setHeader("X-RateLimit-Limit", String(maxRequests));
+    res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
+    res.setHeader("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1e3)));
+    if (entry.count > maxRequests) {
+      rlLog.warn(`Rate limit exceeded for ${ip}: ${entry.count}/${maxRequests}`);
+      return res.status(429).json({
+        error: "Too many requests. Please try again later.",
+        retryAfter: Math.ceil((entry.resetAt - now) / 1e3)
+      });
     }
     next();
   };
 }
-var authRateLimit = createRateLimiter("auth", 10, 6e4);
-var apiRateLimit = createRateLimiter("api", 100, 6e4);
-setInterval(() => {
-  const now = Date.now();
-  for (const [, bucket] of rateLimitBuckets) {
-    for (const [ip, entry] of bucket) {
-      if (entry.resetAt <= now) bucket.delete(ip);
-    }
+var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10 });
+var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100 });
+
+// server/routes.ts
+function requireAuth4(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
   }
-}, 3e5);
+  next();
+}
 async function registerRoutes(app2) {
   setupAuth(app2);
   app2.use("/api", (req, res, next) => {
@@ -3126,25 +3745,64 @@ async function registerRoutes(app2) {
     };
     next();
   });
-  app2.use("/api/leaderboard", apiRateLimit);
-  app2.use("/api/businesses", apiRateLimit);
-  app2.use("/api/dishes", apiRateLimit);
-  app2.use("/api/challengers", apiRateLimit);
-  app2.use("/api/trending", apiRateLimit);
-  app2.use("/api/members", apiRateLimit);
-  app2.use("/api/ratings", apiRateLimit);
-  app2.use("/api/photos", apiRateLimit);
   app2.get("/api/health", (_req, res) => {
     res.status(200).json({ status: "ok", ts: Date.now() });
   });
-  app2.post("/api/auth/signup", authRateLimit, async (req, res) => {
+  const SSE_MAX_PER_IP = 5;
+  const SSE_TIMEOUT_MS = 18e5;
+  const sseConnectionsByIp = /* @__PURE__ */ new Map();
+  app2.get("/api/events", (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+    const currentCount = sseConnectionsByIp.get(clientIp) || 0;
+    if (currentCount >= SSE_MAX_PER_IP) {
+      log.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
+      return res.status(429).json({ error: "Too many SSE connections from this IP" });
+    }
+    sseConnectionsByIp.set(clientIp, currentCount + 1);
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no"
+    });
+    res.write('data: {"type":"connected","timestamp":' + Date.now() + "}\n\n");
+    addClient(res);
+    const keepAlive = setInterval(() => {
+      try {
+        res.write(": ping\n\n");
+      } catch {
+        clearInterval(keepAlive);
+      }
+    }, 3e4);
+    const timeout = setTimeout(() => {
+      try {
+        res.end();
+      } catch {
+      }
+    }, SSE_TIMEOUT_MS);
+    const cleanup = () => {
+      clearInterval(keepAlive);
+      clearTimeout(timeout);
+      const count6 = sseConnectionsByIp.get(clientIp) || 1;
+      if (count6 <= 1) {
+        sseConnectionsByIp.delete(clientIp);
+      } else {
+        sseConnectionsByIp.set(clientIp, count6 - 1);
+      }
+    };
+    req.on("close", cleanup);
+  });
+  app2.post("/api/auth/signup", authRateLimiter, async (req, res) => {
     try {
       const { displayName, username, email, password, city } = req.body;
       if (!displayName || !username || !email || !password) {
         return res.status(400).json({ error: "All fields are required" });
       }
-      if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+      if (!/\d/.test(password)) {
+        return res.status(400).json({ error: "Password must contain at least one number" });
       }
       const member = await registerMember({ displayName, username, email, password, city });
       sendWelcomeEmail({
@@ -3172,7 +3830,7 @@ async function registerRoutes(app2) {
       return res.status(400).json({ error: err.message });
     }
   });
-  app2.post("/api/auth/login", authRateLimit, (req, res, next) => {
+  app2.post("/api/auth/login", authRateLimiter, (req, res, next) => {
     passport2.authenticate("local", (err, user, info) => {
       if (err) return res.status(500).json({ error: "Internal server error" });
       if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
@@ -3182,7 +3840,7 @@ async function registerRoutes(app2) {
       });
     })(req, res, next);
   });
-  app2.post("/api/auth/google", authRateLimit, async (req, res) => {
+  app2.post("/api/auth/google", authRateLimiter, async (req, res) => {
     try {
       const { idToken } = req.body;
       if (!idToken) {
@@ -3232,6 +3890,36 @@ async function registerRoutes(app2) {
         photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
       }));
       return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/featured", async (req, res) => {
+    try {
+      const city = req.query.city || "Dallas";
+      const placements = await getActiveFeaturedInCity(city);
+      if (placements.length === 0) {
+        return res.json({ data: [] });
+      }
+      const featured = await Promise.all(
+        placements.map(async (p) => {
+          const biz = await getBusinessById(p.businessId);
+          if (!biz) return null;
+          const photoMap = await getBusinessPhotosMap([biz.id]);
+          return {
+            id: biz.id,
+            name: biz.name,
+            slug: biz.slug,
+            category: biz.category,
+            photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || void 0,
+            weightedScore: biz.weightedScore || 0,
+            tagline: biz.tagline || `Top ${biz.category} in ${city}`,
+            totalRatings: biz.totalRatings || 0,
+            expiresAt: p.expiresAt
+          };
+        })
+      );
+      return res.json({ data: featured.filter(Boolean) });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -3297,7 +3985,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/businesses/:slug/claim", requireAuth3, async (req, res) => {
+  app2.post("/api/businesses/:slug/claim", requireAuth4, async (req, res) => {
     try {
       const business = await getBusinessBySlug(req.params.slug);
       if (!business) {
@@ -3332,7 +4020,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.get("/api/businesses/:slug/dashboard", requireAuth3, async (req, res) => {
+  app2.get("/api/businesses/:slug/dashboard", requireAuth4, async (req, res) => {
     try {
       const business = await getBusinessBySlug(req.params.slug);
       if (!business) {
@@ -3389,7 +4077,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/ratings", requireAuth3, async (req, res) => {
+  app2.post("/api/ratings", requireAuth4, async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -3397,6 +4085,8 @@ async function registerRoutes(app2) {
       }
       const memberId = req.user.id;
       const result = await submitRating(memberId, parsed.data);
+      broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
+      broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
       return res.status(201).json({ data: result });
     } catch (err) {
       if (err.message.includes("3+ days")) {
@@ -3411,7 +4101,7 @@ async function registerRoutes(app2) {
       return res.status(400).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me", requireAuth3, async (req, res) => {
+  app2.get("/api/members/me", requireAuth4, async (req, res) => {
     try {
       const member = await getMemberById(req.user.id);
       if (!member) return res.status(404).json({ error: "Member not found" });
@@ -3502,7 +4192,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me/impact", requireAuth3, async (req, res) => {
+  app2.get("/api/members/me/impact", requireAuth4, async (req, res) => {
     try {
       const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       const data = await getMemberImpact2(req.user.id);
@@ -3511,7 +4201,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/members/me/push-token", requireAuth3, async (req, res) => {
+  app2.post("/api/members/me/push-token", requireAuth4, async (req, res) => {
     try {
       const { pushToken } = req.body;
       if (!pushToken || typeof pushToken !== "string") {
@@ -3524,7 +4214,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/category-suggestions", requireAuth3, async (req, res) => {
+  app2.post("/api/category-suggestions", requireAuth4, async (req, res) => {
     try {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -3550,54 +4240,20 @@ async function registerRoutes(app2) {
     }
   });
   app2.get("/api/photos/proxy", handlePhotoProxy);
+  app2.post("/api/webhook/stripe", handleStripeWebhook);
+  app2.get("/api/payments/history", requireAuth4, async (req, res) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+      const payments2 = await getMemberPayments(req.user.id, limit);
+      return res.json({ data: payments2 });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
   app2.post("/api/webhook/deploy", handleWebhook);
   app2.get("/api/deploy/status", handleDeployStatus);
   app2.get("/share/badge/:badgeId", handleBadgeShare);
-  app2.get("/api/members/:id/badges", async (req, res) => {
-    try {
-      const memberId = req.params.id;
-      const badges = await getMemberBadges(memberId);
-      return res.json({ data: badges });
-    } catch (err) {
-      log.error(`Failed to fetch member badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badges" });
-    }
-  });
-  app2.post("/api/badges/award", requireAuth3, async (req, res) => {
-    try {
-      const memberId = req.user.id;
-      const { badgeId, badgeFamily } = req.body;
-      if (!badgeId || !badgeFamily) {
-        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
-      }
-      const result = await awardBadge(memberId, badgeId, badgeFamily);
-      return res.json({ data: result, awarded: result !== null });
-    } catch (err) {
-      log.error(`Failed to award badge: ${err.message}`);
-      return res.status(500).json({ error: "Failed to award badge" });
-    }
-  });
-  app2.get("/api/badges/earned", requireAuth3, async (req, res) => {
-    try {
-      const memberId = req.user.id;
-      const badgeIds = await getEarnedBadgeIds(memberId);
-      const badgeCount = badgeIds.length;
-      return res.json({ data: { badgeIds, badgeCount } });
-    } catch (err) {
-      log.error(`Failed to fetch earned badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch earned badges" });
-    }
-  });
-  app2.get("/api/badges/leaderboard", async (req, res) => {
-    try {
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-      const data = await getBadgeLeaderboard(limit);
-      return res.json({ data });
-    } catch (err) {
-      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
-    }
-  });
+  registerBadgeRoutes(app2);
   registerAdminRoutes(app2);
   const httpServer = createServer(app2);
   return httpServer;
@@ -3608,6 +4264,39 @@ init_logger();
 import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
+
+// server/security-headers.ts
+function securityHeaders(req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(), microphone=(), geolocation=(self), payment=(self)"
+  );
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'"
+  ].join("; ");
+  res.setHeader("Content-Security-Policy", csp);
+  if (process.env.NODE_ENV === "production") {
+    res.setHeader(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains; preload"
+    );
+  }
+  next();
+}
+
+// server/index.ts
 var app = express();
 var log2 = console.log;
 function setupCors(app2) {
@@ -3817,6 +4506,9 @@ function setupErrorHandler(app2) {
 (async () => {
   setupCors(app);
   setupBodyParsing(app);
+  app.use(securityHeaders);
+  app.use("/api", apiRateLimiter);
+  app.use(perfMonitor);
   setupRequestLogging(app);
   const server = await registerRoutes(app);
   configureExpoAndLanding(app);
