@@ -20,12 +20,19 @@ function setupCors(app: express.Application) {
   app.use((req, res, next) => {
     const origins = new Set<string>();
 
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+    // Production origins
+    origins.add("https://topranker.com");
+    origins.add("https://www.topranker.com");
+
+    // Replit origins (from config)
+    const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
+    if (replitDevDomain) {
+      origins.add(`https://${replitDevDomain}`);
     }
 
-    if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d: string) => {
+    const replitDomains = process.env.REPLIT_DOMAINS;
+    if (replitDomains) {
+      replitDomains.split(",").forEach((d: string) => {
         origins.add(`https://${d.trim()}`);
       });
     }

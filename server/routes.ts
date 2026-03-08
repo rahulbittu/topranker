@@ -33,32 +33,57 @@ function requireAuth(req: Request, res: Response, next: Function) {
   next();
 }
 
-// Simple in-memory rate limiter for auth endpoints
-const authAttempts = new Map<string, { count: number; resetAt: number }>();
-function authRateLimit(req: Request, res: Response, next: Function) {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  const entry = authAttempts.get(ip);
-  if (entry && entry.resetAt > now) {
-    if (entry.count >= 10) {
-      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+// In-memory rate limiter — per IP, configurable limits
+const rateLimitBuckets = new Map<string, Map<string, { count: number; resetAt: number }>>();
+
+function createRateLimiter(name: string, maxRequests: number, windowMs: number) {
+  const bucket = new Map<string, { count: number; resetAt: number }>();
+  rateLimitBuckets.set(name, bucket);
+
+  return function rateLimit(req: Request, res: Response, next: Function) {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const entry = bucket.get(ip);
+    if (entry && entry.resetAt > now) {
+      if (entry.count >= maxRequests) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      entry.count++;
+    } else {
+      bucket.set(ip, { count: 1, resetAt: now + windowMs });
     }
-    entry.count++;
-  } else {
-    authAttempts.set(ip, { count: 1, resetAt: now + 60000 }); // 10 per minute
-  }
-  next();
+    next();
+  };
 }
+
+// Auth: 10 requests per minute (strict)
+const authRateLimit = createRateLimiter("auth", 10, 60000);
+
+// API: 100 requests per minute (general public endpoints)
+const apiRateLimit = createRateLimiter("api", 100, 60000);
+
 // Cleanup old entries every 5 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of authAttempts) {
-    if (entry.resetAt <= now) authAttempts.delete(ip);
+  for (const [, bucket] of rateLimitBuckets) {
+    for (const [ip, entry] of bucket) {
+      if (entry.resetAt <= now) bucket.delete(ip);
+    }
   }
 }, 300000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
+
+  // Global API rate limit — 100 req/min per IP (excludes /api/health and /api/auth)
+  app.use("/api/leaderboard", apiRateLimit);
+  app.use("/api/businesses", apiRateLimit);
+  app.use("/api/dishes", apiRateLimit);
+  app.use("/api/challengers", apiRateLimit);
+  app.use("/api/trending", apiRateLimit);
+  app.use("/api/members", apiRateLimit);
+  app.use("/api/ratings", apiRateLimit);
+  app.use("/api/photos", apiRateLimit);
 
   // Health check — lightest possible response for connectivity checks and uptime monitoring
   app.get("/api/health", (_req: Request, res: Response) => {
