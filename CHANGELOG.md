@@ -4,6 +4,60 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 90 — Architectural Audit #8 + Payment Route Extraction (March 8, 2026)
+#### Changed
+- Extracted 3 payment routes to `server/routes-payments.ts` (85 LOC)
+- `routes.ts` reduced from 732 to 665 LOC (under 700 threshold)
+- Audit #8: 5/6 ALL CLEAR, 1 WATCH resolved same-sprint
+
+### Sprint 89 — Payment Endpoints + Claim Email Notifications (March 8, 2026)
+#### Added
+- POST `/api/payments/challenger` ($99 entry), `/api/payments/dashboard-pro` ($49/mo), `/api/payments/featured` ($199/week)
+- Claim confirmation email (branded HTML to business owner)
+- Claim admin notification email (alert to review team)
+- 11 new tests for payment contracts and email notifications (total: 294)
+
+#### Changed
+- `enter-challenger.tsx` wired to real payment API (was setTimeout stub)
+
+### Sprint 88 — Business Claims API + Real Dashboard + Admin Extraction (March 8, 2026)
+#### Added
+- POST `/api/businesses/:slug/claim` — real claim submission with duplicate detection
+- GET `/api/businesses/:slug/dashboard` — real analytics replacing MOCK_ANALYTICS
+- `server/routes-admin.ts` — 14 admin routes extracted with `requireAdmin` middleware
+- `submitClaim` and `getClaimByMemberAndBusiness` storage functions
+- 18 new tests for claims, dashboard, and timeAgo formatter (total: 283)
+
+#### Changed
+- `claim.tsx` wired to real API (was console.log stub)
+- `dashboard.tsx` uses React Query + real data, removed MOCK_ANALYTICS
+- `routes.ts` reduced by ~260 LOC from admin extraction
+
+### Sprint 87 — Google Places Photo Pipeline + Brand Hardening (March 8, 2026)
+#### Added
+- `server/google-places.ts` — fetch photo refs from Google Places API (New)
+- `insertBusinessPhotos`, `getBusinessesWithoutPhotos`, `deleteBusinessPhotos` storage functions
+- POST `/api/admin/fetch-photos` for batch photo fetching
+- On-demand photo fetch in business detail route
+- `resolvePhotoUrl()` in `lib/api.ts` for Places ref → proxy URL conversion
+- `navyDark` (#162940) to `BRAND.colors`
+- 34 new tests: push token (13) + Google Places photos (21) (total: 265)
+
+#### Changed
+- Replaced 4 hardcoded navy gradient hex values with `BRAND.colors.navyDark`
+
+### Sprint 86 — Teardown & Rebuild (March 8, 2026)
+#### Added
+- `assets/audio/AUDIO-ASSETS.md` — audio asset specifications for 5 sound files
+- `.env.example` — environment variable template
+- Onboarding persistence via AsyncStorage
+- Push token storage endpoint: POST `/api/members/me/push-token`
+- `updatePushToken` storage function
+
+#### Fixed
+- Replaced hardcoded gold hex values with brand constants (`Colors.gold`, `Colors.goldFaint`)
+- Unified credibility tier system across all files
+
 ### Sprint 85 — Architectural Audit #7 + Full Badge Metadata + Admin Users Tab (March 8, 2026)
 #### Added
 - Architectural Audit #7: 5/6 ALL CLEAR, 1 WATCH (routes.ts file size)
