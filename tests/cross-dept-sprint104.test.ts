@@ -155,10 +155,11 @@ describe("Security Headers Middleware — Sprint 104", () => {
     expect(headers["X-Content-Type-Options"]).toBe("nosniff");
   });
 
-  it('sets X-Frame-Options to "DENY"', () => {
+  it('omits X-Frame-Options in dev (allows iframe preview)', () => {
     const { req, res, headers, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["X-Frame-Options"]).toBe("DENY");
+    // In non-production, X-Frame-Options is not set to allow Replit iframe preview
+    expect(headers["X-Frame-Options"]).toBeUndefined();
   });
 
   it('sets Referrer-Policy to "strict-origin-when-cross-origin"', () => {

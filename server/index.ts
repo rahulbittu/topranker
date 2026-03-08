@@ -189,12 +189,70 @@ function configureExpoAndLanding(app: express.Application) {
       ws: true,
       logger: undefined,
       on: {
-        error: (_err, _req, res) => {
+        error: (_err, proxyReq, res) => {
           if (res && "writeHead" in res && !res.headersSent) {
-            (res as Response).status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            const httpRes = res as Response;
+            // Only return HTML loading page for browser page requests (Accept: text/html).
+            // For JS/CSS/asset requests, return 503 with correct content type to avoid
+            // MIME type mismatch errors that break the app.
+            const accept = (proxyReq as any)?.headers?.accept || "";
+            if (typeof accept === "string" && accept.includes("text/html")) {
+              httpRes.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            } else {
+              httpRes.status(503).set("Retry-After", "3").send("");
+            }
           }
         },
       },
+    });
+
+    // Serve root path directly so Replit preview gets instant HTTP 200.
+    // Metro will handle the JS bundle requests via proxy below.
+    app.get("/", (req: Request, res: Response, next: NextFunction) => {
+      const platform = req.header("expo-platform");
+      if (platform && (platform === "ios" || platform === "android")) {
+        return next();
+      }
+
+      // Check if dist build exists (pre-built) — serve that first
+      if (hasDistBuild) {
+        return res.sendFile(path.join(distPath, "index.html"));
+      }
+
+      // Otherwise serve a lightweight bootstrap page that loads the Metro bundle.
+      // This gives Replit preview an instant 200 while Metro starts.
+      const metroHost = req.get("host") || "localhost:5000";
+      const protocol = req.header("x-forwarded-proto") || req.protocol || "http";
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.status(200).send(`<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${appName}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;font-family:-apple-system,system-ui,sans-serif}
+#loading{color:#c8a951;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;flex-direction:column;gap:16px}
+.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+h1{font-size:24px;font-weight:700;letter-spacing:2px}
+p{font-size:13px;color:#8890a8}
+</style>
+</head><body>
+<div id="loading"><div class="spinner"></div><h1>TOP RANKER</h1><p>Loading...</p></div>
+<div id="root"></div>
+<script>
+// Dynamically load Metro bundle — doesn't block load event
+(function(){
+  var s=document.createElement('script');
+  s.src='/index.bundle?platform=web&dev=true&hot=true';
+  s.async=true;
+  s.onerror=function(){setTimeout(function(){location.reload()},3000)};
+  document.body.appendChild(s);
+})();
+</script>
+</body></html>`);
     });
 
     app.use((req: Request, res: Response, next: NextFunction) => {

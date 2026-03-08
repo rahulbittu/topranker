@@ -71,18 +71,17 @@ describe("securityHeaders middleware", () => {
     expect(headers["Content-Security-Policy"]).toContain("default-src 'self'");
   });
 
-  it("CSP includes frame-ancestors 'none'", () => {
+  it("CSP frame-ancestors is '*' in dev (allows Replit iframe)", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
+    expect(headers["Content-Security-Policy"]).toContain("frame-ancestors *");
   });
 
-  it("CSP connect-src includes stripe and resend", () => {
+  it("CSP connect-src is wildcard in dev (allows Metro HMR)", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
     const csp = headers["Content-Security-Policy"];
-    expect(csp).toContain("https://api.stripe.com");
-    expect(csp).toContain("https://api.resend.com");
+    expect(csp).toContain("connect-src *");
   });
 });
 

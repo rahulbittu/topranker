@@ -80,11 +80,16 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   }
 
   // ── Security Headers ──────────────────────────────────────────────
+  const isProduction = process.env.NODE_ENV === "production";
+
   // Prevent MIME-type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
 
-  // Prevent clickjacking
-  res.setHeader("X-Frame-Options", "DENY");
+  // Prevent clickjacking — in production only.
+  // In dev/Replit, the app is displayed in an iframe preview pane.
+  if (isProduction) {
+    res.setHeader("X-Frame-Options", "DENY");
+  }
 
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
@@ -99,15 +104,18 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   );
 
   // Content Security Policy — restrict resource loading origins
+  // In dev: allow frame-ancestors for Replit preview iframe + ws: for HMR
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com",
+    isProduction
+      ? "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com"
+      : "connect-src *",
     "frame-src 'self' https://accounts.google.com",
-    "frame-ancestors 'none'",
+    isProduction ? "frame-ancestors 'none'" : "frame-ancestors *",
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; ");
