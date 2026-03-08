@@ -503,6 +503,21 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </View>
 
+      {/* Admin Panel — for admins only */}
+      {profile && ["rahul@topranker.com", "admin@topranker.com", "alex@demo.com"].includes(profile.email) && (
+        <TouchableOpacity
+          style={styles.adminLink}
+          onPress={() => router.push("/admin")}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Open admin panel"
+        >
+          <Ionicons name="shield-checkmark" size={14} color={BRAND.colors.amber} />
+          <Text style={styles.adminLinkText}>Admin Panel</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      )}
+
       {/* Delete Account — App Store requirement */}
       <TouchableOpacity
         style={styles.deleteAccountBtn}
@@ -610,6 +625,15 @@ const styles = StyleSheet.create({
   logoutBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
+  },
+  adminLink: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14, marginHorizontal: 20, marginBottom: 12,
+  },
+  adminLinkText: {
+    flex: 1, fontSize: 14, fontWeight: "600", color: BRAND.colors.amber,
+    fontFamily: "DMSans_600SemiBold",
   },
   deleteAccountBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
