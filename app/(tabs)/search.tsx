@@ -19,7 +19,8 @@ import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
-import { FeaturedSection, MOCK_FEATURED } from "@/components/FeaturedCard";
+import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
+import { getApiUrl } from "@/lib/query-client";
 import { DiscoverPhotoStrip, BusinessCard, MapBusinessCard, haversineKm } from "@/components/search/SubComponents";
 
 const AMBER = BRAND.colors.amber;
@@ -222,6 +223,17 @@ export default function SearchScreen() {
   const { data: trending = [] } = useQuery({
     queryKey: ["trending", city],
     queryFn: () => fetchTrending(city, 3),
+    staleTime: 60000,
+  });
+
+  const { data: featuredBusinesses = [] } = useQuery<FeaturedBusiness[]>({
+    queryKey: ["featured", city],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/featured?city=${encodeURIComponent(city)}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.data || [];
+    },
     staleTime: 60000,
   });
 
@@ -511,7 +523,7 @@ export default function SearchScreen() {
           ListHeaderComponent={
             <>
               {/* Featured / Promoted Listings */}
-              {activeFilter === "Top 10" && <FeaturedSection featured={MOCK_FEATURED} />}
+              {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
 
               {/* Trending This Week — PRD requirement */}
               {!debouncedQuery && trending.length > 0 && (

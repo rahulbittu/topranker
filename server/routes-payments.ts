@@ -3,7 +3,9 @@
  * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
  */
 import type { Express, Request, Response } from "express";
-import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement } from "./storage";
+import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, updatePaymentStatus } from "./storage";
+import { sendPaymentReceiptEmail } from "./email";
+import { log } from "./logger";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -40,6 +42,15 @@ export function registerPaymentRoutes(app: Express) {
         status: payment.status,
         metadata: payment.metadata,
       });
+      // Send receipt email (fire-and-forget)
+      sendPaymentReceiptEmail({
+        email: req.user!.email || "",
+        displayName: req.user!.displayName || "Member",
+        type: "challenger_entry",
+        amount: payment.amount,
+        businessName,
+        paymentId: payment.id,
+      }).catch(() => {});
       return res.json({ data: payment });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -72,6 +83,14 @@ export function registerPaymentRoutes(app: Express) {
         status: payment.status,
         metadata: payment.metadata,
       });
+      sendPaymentReceiptEmail({
+        email: req.user!.email || "",
+        displayName: req.user!.displayName || "Member",
+        type: "dashboard_pro",
+        amount: payment.amount,
+        businessName: business.name,
+        paymentId: payment.id,
+      }).catch(() => {});
       return res.json({ data: payment });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -113,7 +132,39 @@ export function registerPaymentRoutes(app: Express) {
           city: business.city,
         });
       }
+      sendPaymentReceiptEmail({
+        email: req.user!.email || "",
+        displayName: req.user!.displayName || "Member",
+        type: "featured_placement",
+        amount: payment.amount,
+        businessName: business.name,
+        paymentId: payment.id,
+      }).catch(() => {});
       return res.json({ data: payment });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Cancel a subscription/payment — marks payment as cancelled
+  app.post("/api/payments/cancel", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { paymentId } = req.body;
+      if (!paymentId) {
+        return res.status(400).json({ error: "paymentId is required" });
+      }
+      const updated = await updatePaymentStatus(paymentId, "cancelled");
+      if (!updated) {
+        return res.status(404).json({ error: "Payment not found" });
+      }
+      // Verify the payment belongs to the requesting user
+      if (updated.memberId !== req.user!.id) {
+        // Revert — user doesn't own this payment
+        await updatePaymentStatus(paymentId, updated.status);
+        return res.status(403).json({ error: "Not authorized to cancel this payment" });
+      }
+      log.info(`Payment ${paymentId} cancelled by ${req.user!.id}`);
+      return res.json({ data: { id: updated.id, status: "cancelled" } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

@@ -172,6 +172,94 @@ Once approved, you'll get access to your business dashboard.
   });
 }
 
+export async function sendPaymentReceiptEmail(params: {
+  email: string;
+  displayName: string;
+  type: string;
+  amount: number;
+  businessName: string;
+  paymentId: string;
+}): Promise<void> {
+  const { email, displayName, type, amount, businessName, paymentId } = params;
+  const firstName = displayName.split(" ")[0];
+  const dollars = (amount / 100).toFixed(2);
+
+  const typeLabel = type === "challenger_entry" ? "Challenger Entry"
+    : type === "dashboard_pro" ? "Dashboard Pro Subscription"
+    : type === "featured_placement" ? "Featured Placement"
+    : type;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Payment Receipt</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, thank you for your purchase!
+          </p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E8E6E1;border-radius:10px;overflow:hidden;margin-bottom:20px;">
+            <tr style="background:#F7F6F3;">
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Item</td>
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;text-align:right;">Amount</td>
+            </tr>
+            <tr>
+              <td style="padding:14px 16px;color:#0D1B2A;font-size:14px;">
+                <strong>${typeLabel}</strong><br>
+                <span style="color:#888;font-size:12px;">${businessName}</span>
+              </td>
+              <td style="padding:14px 16px;color:#0D1B2A;font-size:18px;font-weight:700;text-align:right;">$${dollars}</td>
+            </tr>
+            <tr style="border-top:1px solid #E8E6E1;">
+              <td style="padding:12px 16px;color:#555;font-size:12px;">Reference</td>
+              <td style="padding:12px 16px;color:#888;font-size:11px;text-align:right;font-family:monospace;">${paymentId}</td>
+            </tr>
+          </table>
+
+          <p style="margin:0;color:#888;font-size:12px;line-height:1.5;">
+            Questions about this charge? Contact us at support@topranker.com
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Payment Receipt
+
+Hi ${firstName},
+
+Thank you for your purchase!
+
+Item: ${typeLabel}
+Business: ${businessName}
+Amount: $${dollars}
+Reference: ${paymentId}
+
+Questions? Contact support@topranker.com
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: `TopRanker Receipt: $${dollars} — ${typeLabel}`,
+    html,
+    text,
+  });
+}
+
 export async function sendClaimAdminNotification(params: {
   businessName: string;
   claimantName: string;

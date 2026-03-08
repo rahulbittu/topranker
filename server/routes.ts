@@ -32,6 +32,7 @@ import {
   getEarnedBadgeIds,
   getBadgeLeaderboard,
   getMemberPayments,
+  getActiveFeaturedInCity,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
@@ -229,6 +230,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
       }));
       return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Active featured businesses for a city — used by FeaturedSection
+  app.get("/api/featured", async (req: Request, res: Response) => {
+    try {
+      const city = (req.query.city as string) || "Dallas";
+      const placements = await getActiveFeaturedInCity(city);
+      if (placements.length === 0) {
+        return res.json({ data: [] });
+      }
+      // Resolve business details for each placement
+      const featured = await Promise.all(
+        placements.map(async (p) => {
+          const biz = await getBusinessById(p.businessId);
+          if (!biz) return null;
+          const photoMap = await getBusinessPhotosMap([biz.id]);
+          return {
+            id: biz.id,
+            name: biz.name,
+            slug: biz.slug,
+            category: biz.category,
+            photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || undefined,
+            weightedScore: biz.weightedScore || 0,
+            tagline: (biz as any).tagline || `Top ${biz.category} in ${city}`,
+            totalRatings: biz.totalRatings || 0,
+            expiresAt: p.expiresAt,
+          };
+        }),
+      );
+      return res.json({ data: featured.filter(Boolean) });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
