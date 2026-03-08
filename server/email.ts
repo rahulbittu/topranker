@@ -3,14 +3,14 @@
  * Currently logs emails to console. Swap in Resend/SendGrid/SES when ready.
  */
 
-interface EmailPayload {
+export interface EmailPayload {
   to: string;
   subject: string;
   html: string;
-  text: string;
+  text?: string;
 }
 
-async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(payload: EmailPayload): Promise<void> {
   // TODO: Replace with Resend/SendGrid when API key is configured
   // Example with Resend:
   //   const resend = new Resend(process.env.RESEND_API_KEY);

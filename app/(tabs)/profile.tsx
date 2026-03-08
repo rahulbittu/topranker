@@ -452,6 +452,16 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Saved Places</Text>
         <Text style={styles.sectionCount}>{bookmarkCount}</Text>
+        {bookmarkCount > 0 && (
+          <TouchableOpacity
+            onPress={() => router.push("/saved")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="View all saved places"
+          >
+            <Text style={{ fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" }}>View All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {savedList.length > 0 ? (
