@@ -779,6 +779,17 @@ export default function BusinessProfileScreen() {
             <Ionicons name="flag-outline" size={12} color={Colors.textTertiary} />
             <Text style={styles.reportLinkText}>Report Suspicious Activity</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.claimLink}
+            onPress={() => router.push({ pathname: "/business/claim", params: { name: business.name, slug: business.slug } })}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Claim ${business.name} as your business`}
+          >
+            <Ionicons name="shield-checkmark-outline" size={12} color={BRAND.colors.amber} />
+            <Text style={styles.claimLinkText}>Own this business? Claim it</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -1191,4 +1202,9 @@ const styles = StyleSheet.create({
     gap: 5, paddingVertical: 16, marginTop: 4,
   },
   reportLinkText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  claimLink: {
+    flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center",
+    paddingVertical: 8,
+  },
+  claimLinkText: { fontSize: 11, color: BRAND.colors.amber, fontFamily: "DMSans_500Medium" },
 });
