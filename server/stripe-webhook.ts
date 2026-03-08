@@ -5,7 +5,7 @@
  */
 import type { Request, Response } from "express";
 import { log } from "./logger";
-import { updatePaymentStatusByStripeId } from "./storage";
+import { updatePaymentStatusByStripeId, logWebhookEvent, markWebhookProcessed } from "./storage";
 
 const whLog = log.tag("StripeWebhook");
 
@@ -62,10 +62,19 @@ export async function handleStripeWebhook(req: Request, res: Response) {
     return res.status(400).json({ error: "Invalid webhook payload" });
   }
 
+  // Log every webhook event for audit/replay
+  const logEntry = await logWebhookEvent({
+    source: "stripe",
+    eventId: event.id,
+    eventType: event.type,
+    payload: event,
+  });
+
   const newStatus = STATUS_MAP[event.type];
   if (!newStatus) {
     // Unhandled event type — acknowledge but skip processing
     whLog.info(`Ignoring event type: ${event.type}`);
+    await markWebhookProcessed(logEntry.id);
     return res.json({ received: true });
   }
 
@@ -80,12 +89,13 @@ export async function handleStripeWebhook(req: Request, res: Response) {
   try {
     const updated = await updatePaymentStatusByStripeId(paymentIntentId, newStatus);
     if (!updated) {
-      // Payment record not found — may be from a different system
       whLog.warn(`No payment record found for PI: ${paymentIntentId}`);
     }
+    await markWebhookProcessed(logEntry.id);
     return res.json({ received: true, updated: !!updated });
   } catch (err: any) {
     whLog.error(`Failed to update payment status: ${err.message}`);
+    await markWebhookProcessed(logEntry.id, err.message);
     return res.status(500).json({ error: "Internal error processing webhook" });
   }
 }

@@ -3,7 +3,7 @@
  * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
  */
 import type { Express, Request, Response } from "express";
-import { getBusinessBySlug, createPaymentRecord } from "./storage";
+import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement } from "./storage";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -96,7 +96,7 @@ export function registerPaymentRoutes(app: Express) {
         customerEmail: req.user!.email || "",
         userId: req.user!.id,
       });
-      await createPaymentRecord({
+      const paymentRecord = await createPaymentRecord({
         memberId: req.user!.id,
         businessId: business.id,
         type: "featured_placement",
@@ -105,6 +105,14 @@ export function registerPaymentRoutes(app: Express) {
         status: payment.status,
         metadata: payment.metadata,
       });
+      // Create active featured placement (7-day window)
+      if (payment.status === "succeeded") {
+        await createFeaturedPlacement({
+          businessId: business.id,
+          paymentId: paymentRecord.id,
+          city: business.city,
+        });
+      }
       return res.json({ data: payment });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

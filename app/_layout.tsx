@@ -180,6 +180,8 @@ function RootLayoutNav() {
       <Stack.Screen name="business/[id]" options={{ headerShown: false, presentation: "card" }} />
       <Stack.Screen name="business/claim" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="business/enter-challenger" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="business/enter-featured" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="business/enter-dashboard-pro" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="business/qr" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="business/dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="legal/terms" options={{ headerShown: false }} />

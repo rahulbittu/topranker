@@ -409,6 +409,56 @@ export const payments = pgTable(
 
 export type Payment = typeof payments.$inferSelect;
 
+// ── Webhook Events (audit log for all incoming webhooks) ─────────────
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    source: text("source").notNull(), // stripe, github, etc.
+    eventId: text("event_id").notNull(), // Stripe event ID (evt_xxx)
+    eventType: text("event_type").notNull(), // payment_intent.succeeded, etc.
+    payload: jsonb("payload").notNull(),
+    processed: boolean("processed").notNull().default(false),
+    error: text("error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_webhook_events_source").on(table.source),
+    index("idx_webhook_events_event_id").on(table.eventId),
+  ],
+);
+
+export type WebhookEvent = typeof webhookEvents.$inferSelect;
+
+// ── Featured Placements (active featured business placements) ────────
+export const featuredPlacements = pgTable(
+  "featured_placements",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    paymentId: varchar("payment_id")
+      .references(() => payments.id),
+    city: text("city").notNull(),
+    startsAt: timestamp("starts_at").notNull().defaultNow(),
+    expiresAt: timestamp("expires_at").notNull(),
+    status: text("status").notNull().default("active"), // active, expired, cancelled
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_featured_business").on(table.businessId),
+    index("idx_featured_city_status").on(table.city, table.status),
+    index("idx_featured_expires").on(table.expiresAt),
+  ],
+);
+
+export type FeaturedPlacement = typeof featuredPlacements.$inferSelect;
+
 export const insertMemberSchema = createInsertSchema(members).pick({
   displayName: true,
   username: true,

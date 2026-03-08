@@ -79,6 +79,21 @@ export {
   getBusinessPayments,
 } from "./payments";
 
+// Webhook Events
+export {
+  logWebhookEvent,
+  markWebhookProcessed,
+  getRecentWebhookEvents,
+} from "./webhook-events";
+
+// Featured Placements
+export {
+  createFeaturedPlacement,
+  getActiveFeaturedInCity,
+  getBusinessFeaturedStatus,
+  expireOldPlacements,
+} from "./featured-placements";
+
 // Claims & Flags
 export {
   submitClaim,
