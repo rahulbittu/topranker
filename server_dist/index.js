@@ -3532,6 +3532,37 @@ function registerAdminRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
+  app2.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const stats2 = getFunnelStats();
+      const recent = getRecentEvents(50);
+      const signups = stats2.signup_completed || 0;
+      const pageViews = stats2.page_view || 0;
+      const firstRatings = stats2.first_rating || 0;
+      const challengerEntries = stats2.challenger_entered || 0;
+      const dashboardSubs = stats2.dashboard_pro_subscribed || 0;
+      const dashboard = {
+        overview: {
+          totalEvents: Object.values(stats2).reduce((a, b) => a + b, 0),
+          uniqueEventTypes: Object.keys(stats2).length
+        },
+        funnel: {
+          pageViews,
+          signups,
+          firstRatings,
+          challengerEntries,
+          dashboardSubs,
+          signupRate: pageViews > 0 ? (signups / pageViews * 100).toFixed(1) + "%" : "N/A",
+          ratingRate: signups > 0 ? (firstRatings / signups * 100).toFixed(1) + "%" : "N/A"
+        },
+        recentActivity: recent.slice(0, 10),
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      return res.json({ data: dashboard });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
   app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req, res) => {
     try {
       const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
@@ -4482,6 +4513,7 @@ async function registerRoutes(app2) {
         weeklyDigest: weeklyDigest === true
       };
       req.user.notificationPrefs = prefs;
+      log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(prefs)}`);
       return res.json({ data: prefs });
     } catch (err) {
       return res.status(500).json({ error: err.message });
