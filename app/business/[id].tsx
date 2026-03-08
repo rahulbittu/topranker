@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
+import { Analytics } from "@/lib/analytics";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
@@ -48,6 +49,14 @@ export default function BusinessProfileScreen() {
   });
 
   const business = data?.business;
+
+  // Track view_business when business detail loads — Sprint 115 (Rachel Wei)
+  React.useEffect(() => {
+    if (business && slug) {
+      Analytics.viewBusiness(slug, business.category);
+    }
+  }, [business?.id]);
+
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const saved = business ? isBookmarked(business.id) : false;
   const ratings = (data?.ratings || []) as MappedRating[];
@@ -487,6 +496,7 @@ export default function BusinessProfileScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Claim this business listing"
                 onPress={() => {
+                  Analytics.dashboardUpgradeTap(business.slug);
                   if (Platform.OS === "web") {
                     window.alert("Business claiming will be available soon. Contact us to get started.");
                   } else {

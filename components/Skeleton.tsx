@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, View, StyleSheet, ViewStyle } from "react-native";
 import Colors from "@/constants/colors";
+import { useThemeColors } from "@/lib/theme-context";
 
 function SkeletonBlock({ style }: { style?: ViewStyle }) {
   const opacity = useRef(new Animated.Value(0.3)).current;
@@ -24,8 +25,9 @@ function SkeletonBlock({ style }: { style?: ViewStyle }) {
 }
 
 export function LeaderboardSkeleton() {
+  const themeColors = useThemeColors();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       {/* Hero skeleton */}
       <View style={styles.heroSkeleton}>
         <SkeletonBlock style={{ width: "100%", height: 240, borderRadius: 16 }} />
@@ -50,8 +52,9 @@ export function LeaderboardSkeleton() {
 }
 
 export function BusinessDetailSkeleton() {
+  const themeColors = useThemeColors();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <SkeletonBlock style={{ width: "100%", height: 240, borderRadius: 0 }} />
       <View style={styles.detailCard}>
         <SkeletonBlock style={{ width: "80%", height: 20, borderRadius: 6 }} />
