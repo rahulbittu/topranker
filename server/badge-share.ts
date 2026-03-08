@@ -8,19 +8,73 @@
  */
 import type { Request, Response } from "express";
 
-// Badge data is duplicated server-side (minimal subset) to avoid importing
-// React Native modules on the server. Only id, name, description, rarity, icon needed.
+// All 61 badge metadata — server-side lookup for OG previews.
+// Duplicated from lib/badges.ts to avoid importing React Native modules on the server.
 const BADGE_META: Record<string, { name: string; description: string; rarity: string; color: string; icon: string }> = {
-  "first-taste":       { name: "First Taste", description: "Submit your very first rating", rarity: "common", color: "#636366", icon: "star" },
-  "ten-strong":        { name: "Ten Strong", description: "Rate 10 businesses", rarity: "common", color: "#636366", icon: "star" },
-  "half-century":      { name: "Half Century", description: "Rate 50 businesses", rarity: "rare", color: "#1565C0", icon: "star" },
-  "centurion":         { name: "Centurion", description: "Rate 100 businesses", rarity: "epic", color: "#7B1FA2", icon: "trophy" },
-  "week-warrior":      { name: "Week Warrior", description: "7-day rating streak", rarity: "rare", color: "#1565C0", icon: "flame" },
-  "monthly-devotion":  { name: "Monthly Devotion", description: "30-day rating streak", rarity: "epic", color: "#7B1FA2", icon: "flame" },
-  "texas-tour":        { name: "Texas Tour", description: "Rate in 3+ Texas cities", rarity: "rare", color: "#1565C0", icon: "map" },
-  "night-owl":         { name: "Night Owl", description: "Rate after midnight", rarity: "common", color: "#636366", icon: "moon" },
-  "founding-member":   { name: "Founding Member", description: "Joined during the founding period", rarity: "legendary", color: "#9A7510", icon: "diamond" },
-  "kingmaker":         { name: "Kingmaker", description: "Your rating moved a business to #1", rarity: "legendary", color: "#9A7510", icon: "trophy" },
+  // User Milestone Badges
+  "first-taste":       { name: "First Taste", description: "Submit your very first rating", rarity: "common", color: "#FFD700", icon: "star" },
+  "getting-started":   { name: "Getting Started", description: "Rate 5 businesses", rarity: "common", color: "#FF6B35", icon: "flame" },
+  "ten-strong":        { name: "Ten Strong", description: "Rate 10 businesses", rarity: "common", color: "#4CAF50", icon: "ribbon" },
+  "quarter-century":   { name: "Quarter Century", description: "Rate 25 businesses", rarity: "rare", color: "#2196F3", icon: "medal" },
+  "half-century":      { name: "Half Century", description: "Rate 50 businesses", rarity: "rare", color: "#7C4DFF", icon: "trophy" },
+  "centurion":         { name: "Centurion", description: "Rate 100 businesses", rarity: "epic", color: "#9C27B0", icon: "shield-checkmark" },
+  "rating-machine":    { name: "Rating Machine", description: "Rate 250 businesses", rarity: "epic", color: "#E040FB", icon: "flash" },
+  "legendary-judge":   { name: "Legendary Judge", description: "Rate 500 businesses", rarity: "legendary", color: "#C49A1A", icon: "diamond" },
+  // User Streak Badges
+  "three-day-streak":  { name: "On a Roll", description: "Rate on 3 consecutive days", rarity: "common", color: "#FF7043", icon: "flame-outline" },
+  "week-warrior":      { name: "Week Warrior", description: "Rate on 7 consecutive days", rarity: "rare", color: "#FF5722", icon: "flame" },
+  "two-week-streak":   { name: "Unstoppable", description: "Rate on 14 consecutive days", rarity: "epic", color: "#FF3D00", icon: "bonfire" },
+  "monthly-devotion":  { name: "Monthly Devotion", description: "Rate on 30 consecutive days", rarity: "legendary", color: "#DD2C00", icon: "infinite" },
+  // User Explorer Badges
+  "curious-palate":    { name: "Curious Palate", description: "Rate in 3 different categories", rarity: "common", color: "#26A69A", icon: "compass" },
+  "category-hopper":   { name: "Category Hopper", description: "Rate in 5 different categories", rarity: "rare", color: "#00897B", icon: "map" },
+  "master-explorer":   { name: "Master Explorer", description: "Rate in 10 different categories", rarity: "epic", color: "#006064", icon: "earth" },
+  "city-hopper":       { name: "City Hopper", description: "Rate businesses in 2 different cities", rarity: "rare", color: "#5C6BC0", icon: "airplane" },
+  "texas-tour":        { name: "Texas Tour", description: "Rate businesses in 4 Texas cities", rarity: "legendary", color: "#C49A1A", icon: "flag" },
+  "night-owl":         { name: "Night Owl", description: "Submit a rating after midnight", rarity: "rare", color: "#3F51B5", icon: "moon" },
+  "early-bird":        { name: "Early Bird", description: "Submit a rating before 7 AM", rarity: "rare", color: "#FFC107", icon: "sunny" },
+  // User Social Badges
+  "first-referral":    { name: "Connector", description: "Invite a friend who creates an account", rarity: "rare", color: "#29B6F6", icon: "people" },
+  "squad-builder":     { name: "Squad Builder", description: "Invite 5 friends who join TopRanker", rarity: "epic", color: "#0288D1", icon: "people-circle" },
+  "community-leader":  { name: "Community Leader", description: "Invite 25 friends who join TopRanker", rarity: "legendary", color: "#C49A1A", icon: "megaphone" },
+  "helpful-voice":     { name: "Helpful Voice", description: "5 of your ratings marked as helpful", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
+  "influencer":        { name: "Influencer", description: "25 of your ratings marked as helpful", rarity: "epic", color: "#43A047", icon: "hand-left" },
+  // User Tier Badges
+  "tier-city":         { name: "City Regular", description: "Reach the Regular tier (100+ credibility)", rarity: "rare", color: "#6B6B6B", icon: "star" },
+  "tier-trusted":      { name: "Trusted Judge", description: "Reach the Trusted tier (300+ credibility)", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },
+  "tier-top":          { name: "Top Judge", description: "Reach the Top Judge tier (600+ credibility)", rarity: "legendary", color: "#C49A1A", icon: "trophy" },
+  // User Special Badges
+  "founding-member":   { name: "Founding Member", description: "Joined TopRanker in its first year", rarity: "legendary", color: "#C49A1A", icon: "sparkles" },
+  "perfect-score":     { name: "Perfect 5", description: "Give a perfect 5.0 rating", rarity: "common", color: "#E91E63", icon: "heart" },
+  "tough-critic":      { name: "Tough Critic", description: "Give a rating of 1.0", rarity: "rare", color: "#F44336", icon: "alert-circle" },
+  "impact-maker":      { name: "Impact Maker", description: "Your rating moves a business up in rankings", rarity: "rare", color: "#4CAF50", icon: "trending-up" },
+  "king-maker":        { name: "King Maker", description: "Your rating moves a business to #1", rarity: "legendary", color: "#C49A1A", icon: "podium" },
+  // User Seasonal Badges
+  "spring-explorer":   { name: "Spring Explorer", description: "Rate 5 businesses in March, April, or May", rarity: "rare", color: "#66BB6A", icon: "flower" },
+  "summer-heat":       { name: "Summer Heat", description: "Rate 5 businesses in June, July, or August", rarity: "rare", color: "#FF9800", icon: "sunny" },
+  "fall-harvest":      { name: "Fall Harvest", description: "Rate 5 businesses in September, October, or November", rarity: "rare", color: "#BF360C", icon: "leaf" },
+  "winter-chill":      { name: "Winter Chill", description: "Rate 5 businesses in December, January, or February", rarity: "rare", color: "#42A5F5", icon: "snow" },
+  "year-round":        { name: "Year-Round Rater", description: "Earn all 4 seasonal badges", rarity: "legendary", color: "#C49A1A", icon: "earth" },
+  // Business Milestone Badges
+  "biz-first-rating":  { name: "On the Map", description: "Receive the first rating", rarity: "common", color: "#4CAF50", icon: "location" },
+  "biz-10-ratings":    { name: "Getting Noticed", description: "Receive 10 ratings", rarity: "common", color: "#42A5F5", icon: "eye" },
+  "biz-25-ratings":    { name: "Local Favorite", description: "Receive 25 ratings", rarity: "rare", color: "#EF5350", icon: "heart-circle" },
+  "biz-50-ratings":    { name: "Community Choice", description: "Receive 50 ratings", rarity: "rare", color: "#AB47BC", icon: "people" },
+  "biz-100-ratings":   { name: "City Icon", description: "Receive 100 ratings", rarity: "epic", color: "#C49A1A", icon: "star" },
+  "biz-250-ratings":   { name: "Legendary Spot", description: "Receive 250 ratings", rarity: "legendary", color: "#C49A1A", icon: "diamond" },
+  "biz-top-10":        { name: "Top 10", description: "Reach top 10 in your city's category", rarity: "rare", color: "#7C4DFF", icon: "trending-up" },
+  "biz-top-3":         { name: "Podium Finish", description: "Reach top 3 in your city's category", rarity: "epic", color: "#C49A1A", icon: "podium" },
+  "biz-number-one":    { name: "Number One", description: "Reach #1 in your city's category", rarity: "legendary", color: "#FFD700", icon: "trophy" },
+  "biz-high-rated":    { name: "Highly Rated", description: "Maintain an average score above 4.0", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
+  "biz-exceptional":   { name: "Exceptional", description: "Maintain an average score above 4.5", rarity: "epic", color: "#FFC107", icon: "sparkles" },
+  "biz-perfect-rep":   { name: "Perfect Reputation", description: "Average score of 4.8+ with 25+ ratings", rarity: "legendary", color: "#C49A1A", icon: "ribbon" },
+  "biz-steady-climber": { name: "Steady Climber", description: "Improve ranking for 3 consecutive weeks", rarity: "rare", color: "#26A69A", icon: "arrow-up-circle" },
+  "biz-unstoppable-rise": { name: "Unstoppable Rise", description: "Improve ranking for 8 consecutive weeks", rarity: "epic", color: "#FF7043", icon: "rocket" },
+  "biz-trusted-approved": { name: "Trusted Approved", description: "Receive 5+ ratings from Trusted tier judges", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },
+  "biz-top-judge-pick": { name: "Top Judge's Pick", description: "Rated 4.0+ by 3 Top Judge tier members", rarity: "legendary", color: "#C49A1A", icon: "medal" },
+  "biz-challenger-winner": { name: "Challenger Champion", description: "Win a challenger battle", rarity: "epic", color: "#FF6F00", icon: "flash" },
+  "biz-new-entry":     { name: "New Entry", description: "Just added to TopRanker", rarity: "common", color: "#29B6F6", icon: "sparkles" },
+  "biz-verified":      { name: "Verified Business", description: "Business ownership verified by TopRanker", rarity: "rare", color: "#2196F3", icon: "checkmark-circle" },
 };
 
 const RARITY_COLORS: Record<string, string> = {

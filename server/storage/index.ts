@@ -19,6 +19,8 @@ export {
   getMemberRatings,
   getMemberImpact,
   getSeasonalRatingCounts,
+  getAdminMemberList,
+  getMemberCount,
 } from "./members";
 
 // Businesses

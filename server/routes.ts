@@ -35,6 +35,8 @@ import {
   getPendingFlags,
   reviewFlag,
   getFlagCount,
+  getAdminMemberList,
+  getMemberCount,
 } from "./storage";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 
@@ -656,6 +658,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Admin access required" });
       }
       const count = await getFlagCount();
+      return res.json({ data: { count } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Admin Members ──────────────────────────────────────────
+
+  // GET /api/admin/members — list all members for admin
+  app.get("/api/admin/members", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const data = await getAdminMemberList(limit);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/admin/members/count — total member count
+  app.get("/api/admin/members/count", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const count = await getMemberCount();
       return res.json({ data: { count } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

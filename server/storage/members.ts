@@ -1,4 +1,4 @@
-import { eq, and, ne, sql, count, gte } from "drizzle-orm";
+import { eq, and, ne, sql, count, gte, desc } from "drizzle-orm";
 import {
   members, ratings, businesses, credibilityPenalties,
   type Member,
@@ -24,6 +24,31 @@ export async function getMemberByEmail(email: string): Promise<Member | undefine
 export async function getMemberByAuthId(authId: string): Promise<Member | undefined> {
   const [member] = await db.select().from(members).where(eq(members.authId, authId));
   return member;
+}
+
+export async function getAdminMemberList(limit: number = 50) {
+  return db
+    .select({
+      id: members.id,
+      displayName: members.displayName,
+      username: members.username,
+      email: members.email,
+      city: members.city,
+      credibilityTier: members.credibilityTier,
+      credibilityScore: members.credibilityScore,
+      totalRatings: members.totalRatings,
+      isBanned: members.isBanned,
+      isFoundingMember: members.isFoundingMember,
+      joinedAt: members.joinedAt,
+    })
+    .from(members)
+    .orderBy(desc(members.joinedAt))
+    .limit(limit);
+}
+
+export async function getMemberCount(): Promise<number> {
+  const [result] = await db.select({ cnt: count() }).from(members);
+  return Number(result?.cnt ?? 0);
 }
 
 export async function createMember(data: {

@@ -4,6 +4,17 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 85 — Architectural Audit #7 + Full Badge Metadata + Admin Users Tab (March 8, 2026)
+#### Added
+- Architectural Audit #7: 5/6 ALL CLEAR, 1 WATCH (routes.ts file size)
+- Admin Users tab with real member listing from database
+- `getAdminMemberList` and `getMemberCount` storage functions
+- Admin members API endpoints (GET list, GET count)
+
+#### Changed
+- Expanded server-side badge metadata from 10 to all 61 badges for share-by-link
+- Admin overview uses real user count instead of hardcoded value
+
 ### Sprint 84 — Badge Share-by-Link + TypeScript Error Fixes (March 8, 2026)
 #### Added
 - `server/badge-share.ts` — Server-rendered badge share page with OG meta for social previews

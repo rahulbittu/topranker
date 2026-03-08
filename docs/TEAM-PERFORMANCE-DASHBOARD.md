@@ -384,8 +384,9 @@
 | 82 | 8 | 2 | ~80 | James Park, Mei Lin |
 | 83 | 16 | 9 | ~450 | Sage, Priya, Jordan, James Park |
 | 84 | 13 | 8 | ~350 | Marcus, Sage, James Park, Mei Lin |
+| 85 | 12 | 7 | ~300 | Marcus, Mei Lin, Sage, Priya, James Park |
 
-**Total Story Points: 699** | **Total Sprints: 84** | **Avg Velocity: 8.3 pts/sprint**
+**Total Story Points: 711** | **Total Sprints: 85** | **Avg Velocity: 8.4 pts/sprint**
 
 ---
 

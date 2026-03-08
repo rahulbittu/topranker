@@ -434,6 +434,24 @@ export async function reviewAdminClaim(id: string, status: "approved" | "rejecte
   return res.json();
 }
 
+export interface AdminMember {
+  id: string;
+  displayName: string;
+  username: string;
+  email: string;
+  city: string;
+  credibilityTier: string;
+  credibilityScore: number;
+  totalRatings: number;
+  isBanned: boolean;
+  isFoundingMember: boolean;
+  joinedAt: string;
+}
+
+export async function fetchAdminMembers(limit: number = 50) {
+  return apiFetch<AdminMember[]>(`/api/admin/members?limit=${limit}`);
+}
+
 export async function reviewAdminFlag(id: string, status: "confirmed" | "dismissed") {
   const res = await fetch(`${getApiUrl()}/api/admin/flags/${id}`, {
     method: "PATCH",

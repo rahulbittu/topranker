@@ -16,8 +16,9 @@ import {
   fetchCategorySuggestions, reviewCategorySuggestion,
   fetchPendingClaims, fetchPendingFlags,
   reviewAdminClaim, reviewAdminFlag,
+  fetchAdminMembers,
   type CategorySuggestionItem,
-  type AdminClaim, type AdminFlag,
+  type AdminClaim, type AdminFlag, type AdminMember,
 } from "@/lib/api";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -141,6 +142,12 @@ export default function AdminScreen() {
     enabled: !!isAdmin,
   });
 
+  const { data: memberList = [], isLoading: membersLoading } = useQuery({
+    queryKey: ["admin-members"],
+    queryFn: () => fetchAdminMembers(50),
+    enabled: !!isAdmin,
+  });
+
   const reviewMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "approved" | "rejected" }) =>
       reviewCategorySuggestion(id, status),
@@ -255,7 +262,7 @@ export default function AdminScreen() {
 
             <View style={styles.statsGrid}>
               <StatCard label="Total Ratings" value="1,247" icon="star-outline" color={BRAND.colors.amber} />
-              <StatCard label="Active Users" value="342" icon="people-outline" color="#6366F1" />
+              <StatCard label="Total Users" value={String(memberList.length)} icon="people-outline" color="#6366F1" />
               <StatCard label="Revenue (MTD)" value="$891" icon="card-outline" color={Colors.green} />
               <StatCard label="Avg Rating" value="3.8" icon="analytics-outline" color="#EC4899" />
             </View>
@@ -333,6 +340,41 @@ export default function AdminScreen() {
                 onApprove={() => handleFlagAction(flag.id, "confirmed")}
                 onReject={() => handleFlagAction(flag.id, "dismissed")}
               />
+            ))}
+          </>
+        )}
+
+        {activeTab === "users" && (
+          <>
+            <Text style={styles.sectionTitle}>Members ({memberList.length})</Text>
+            {membersLoading && <Text style={styles.emptySub}>Loading members...</Text>}
+            {!membersLoading && memberList.length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="people-outline" size={48} color={Colors.textTertiary} />
+                <Text style={styles.emptyTitle}>No Members</Text>
+              </View>
+            )}
+            {memberList.map(member => (
+              <View key={member.id} style={styles.memberRow}>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName} numberOfLines={1}>{member.displayName}</Text>
+                  <Text style={styles.memberMeta}>
+                    @{member.username} · {member.city} · {member.totalRatings} ratings
+                  </Text>
+                </View>
+                <View style={styles.memberRight}>
+                  <View style={[styles.tierPill, { backgroundColor: member.credibilityTier === "top" ? `${BRAND.colors.amber}20` : `${Colors.textTertiary}15` }]}>
+                    <Text style={[styles.tierPillText, { color: member.credibilityTier === "top" ? BRAND.colors.amber : Colors.textTertiary }]}>
+                      {member.credibilityTier.toUpperCase()}
+                    </Text>
+                  </View>
+                  {member.isBanned && (
+                    <View style={styles.bannedPill}>
+                      <Text style={styles.bannedText}>BANNED</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
             ))}
           </>
         )}
@@ -425,6 +467,31 @@ const styles = StyleSheet.create({
   rejectBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: "rgba(239,68,68,0.1)", alignItems: "center", justifyContent: "center",
+  },
+
+  memberRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: Colors.surfaceRaised, borderRadius: 12, padding: 14, gap: 12,
+  },
+  memberInfo: { flex: 1, gap: 2 },
+  memberName: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  memberMeta: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+  memberRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  tierPill: {
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  tierPillText: {
+    fontSize: 8, fontWeight: "800", fontFamily: "DMSans_800ExtraBold", letterSpacing: 0.5,
+  },
+  bannedPill: {
+    backgroundColor: "rgba(255,59,48,0.15)", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  bannedText: {
+    fontSize: 8, fontWeight: "800", color: Colors.red, fontFamily: "DMSans_800ExtraBold",
   },
 
   emptyState: { alignItems: "center", gap: 8, paddingVertical: 40 },
