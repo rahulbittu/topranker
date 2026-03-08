@@ -32,6 +32,7 @@ import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/lib/auth-context";
 import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import Colors from "@/constants/colors";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { CookieConsent } from "@/components/CookieConsent";
@@ -370,8 +371,9 @@ export default function RootLayout() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <CityProvider>
-            <BookmarksProvider>
+          <ThemeProvider>
+            <CityProvider>
+              <BookmarksProvider>
               <GestureHandlerRootView style={styles.root}>
                 <KeyboardProvider>
                   <RootLayoutNav />
@@ -380,8 +382,9 @@ export default function RootLayout() {
                   {showSplash && <AnimatedSplash onFinish={handleSplashFinish} />}
                 </KeyboardProvider>
               </GestureHandlerRootView>
-            </BookmarksProvider>
-          </CityProvider>
+              </BookmarksProvider>
+            </CityProvider>
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ErrorBoundary>

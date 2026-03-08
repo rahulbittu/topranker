@@ -12,6 +12,7 @@ import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
+import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
 
 const NOTIFICATION_KEYS = {
@@ -101,7 +102,26 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { city, setCity } = useCity();
+  const { theme, setTheme } = useTheme();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
+
+  const THEME_LABELS: Record<ThemePreference, string> = {
+    system: "System",
+    light: "Light",
+    dark: "Dark",
+  };
+
+  const handleThemeChange = () => {
+    Alert.alert(
+      "Appearance",
+      "Choose your theme preference",
+      [
+        { text: "System (auto)", onPress: () => setTheme("system"), style: theme === "system" ? "cancel" : "default" },
+        { text: "Light", onPress: () => setTheme("light"), style: theme === "light" ? "cancel" : "default" },
+        { text: "Dark", onPress: () => setTheme("dark"), style: theme === "dark" ? "cancel" : "default" },
+      ],
+    );
+  };
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState({
@@ -187,6 +207,12 @@ export default function SettingsScreen() {
             label="City"
             sublabel={CITY_LABELS[city] || city}
             onPress={handleCityChange}
+          />
+          <NavigationRow
+            icon="moon-outline"
+            label="Appearance"
+            sublabel={THEME_LABELS[theme]}
+            onPress={handleThemeChange}
           />
           {user && (
             <NavigationRow
