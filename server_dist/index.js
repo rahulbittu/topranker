@@ -3339,6 +3339,41 @@ function getRecentEvents(limit = 50) {
   return buffer.slice(-limit);
 }
 
+// server/request-logger.ts
+var requestLogs = [];
+function getRequestLogs(limit) {
+  if (limit && limit > 0) {
+    return requestLogs.slice(-limit);
+  }
+  return [...requestLogs];
+}
+
+// lib/error-reporting.ts
+var errorBuffer = [];
+function getRecentErrors(limit = 20) {
+  return errorBuffer.slice(-limit);
+}
+
+// lib/feature-flags.ts
+var flagStore = /* @__PURE__ */ new Map();
+var defaultFlags = [
+  { name: "dark_mode", enabled: true, description: "Dark mode theme support" },
+  { name: "i18n", enabled: false, description: "Internationalization support" },
+  { name: "offline_sync", enabled: false, description: "Offline data synchronization" },
+  { name: "social_sharing", enabled: false, description: "Social sharing integration" }
+];
+for (const flag of defaultFlags) {
+  flagStore.set(flag.name, {
+    name: flag.name,
+    enabled: flag.enabled,
+    description: flag.description,
+    createdAt: Date.now()
+  });
+}
+function getAllFlags() {
+  return Array.from(flagStore.values());
+}
+
 // server/routes-admin.ts
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3559,6 +3594,54 @@ function registerAdminRoutes(app2) {
         generatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       return res.json({ data: dashboard });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/metrics", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const uptime = process.uptime();
+      const memoryUsage = process.memoryUsage().heapUsed;
+      const nodeVersion = process.version;
+      const requestCount = getRequestLogs().length;
+      const errorCount = getRecentErrors().length;
+      return res.json({
+        data: {
+          uptime: Math.floor(uptime),
+          memoryUsage,
+          nodeVersion,
+          requestCount,
+          errorCount
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const mem = process.memoryUsage();
+      const cpu = process.cpuUsage();
+      const flags = getAllFlags();
+      return res.json({
+        data: {
+          uptime: Math.floor(process.uptime()),
+          memory: {
+            heapUsed: mem.heapUsed,
+            heapTotal: mem.heapTotal,
+            rss: mem.rss
+          },
+          nodeVersion: process.version,
+          platform: process.platform,
+          cpuUsage: {
+            user: cpu.user,
+            system: cpu.system
+          },
+          activeConnections: 0,
+          featureFlags: flags,
+          generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -3917,6 +4000,33 @@ function rateLimiter(options = {}) {
 var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10 });
 var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100 });
 
+// server/gdpr.ts
+var deletionRequests = /* @__PURE__ */ new Map();
+function scheduleDeletion(userId, gracePeriodDays) {
+  const now = /* @__PURE__ */ new Date();
+  const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1e3);
+  const request = {
+    userId,
+    scheduledAt: now,
+    deleteAt,
+    status: "pending"
+  };
+  deletionRequests.set(userId, request);
+  return request;
+}
+function cancelDeletion(userId) {
+  const request = deletionRequests.get(userId);
+  if (!request || request.status !== "pending") {
+    return false;
+  }
+  request.status = "cancelled";
+  deletionRequests.set(userId, request);
+  return true;
+}
+function getDeletionStatus(userId) {
+  return deletionRequests.get(userId) || null;
+}
+
 // server/routes.ts
 function requireAuth4(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3951,6 +4061,8 @@ async function registerRoutes(app2) {
       version: "1.0.0",
       uptime: Math.floor(uptime),
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      nodeVersion: process.version,
+      memoryUsage: memUsage.heapUsed,
       memory: {
         heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
         heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
@@ -4146,6 +4258,61 @@ async function registerRoutes(app2) {
           deletionDate: deletionDate.toISOString(),
           gracePeriodDays: 30,
           note: "You can cancel this request by logging in within 30 days."
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/account/schedule-deletion", requireAuth4, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const request = scheduleDeletion(userId, 30);
+      log.tag("GDPR").info(
+        `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
+      );
+      return res.json({
+        data: {
+          message: "Account deletion scheduled",
+          scheduledAt: request.scheduledAt.toISOString(),
+          deleteAt: request.deleteAt.toISOString(),
+          gracePeriodDays: 30,
+          status: request.status,
+          note: "You can cancel this request by checking your deletion status within 30 days."
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/account/cancel-deletion", requireAuth4, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const cancelled = cancelDeletion(userId);
+      if (!cancelled) {
+        return res.status(404).json({ error: "No pending deletion request found" });
+      }
+      log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
+      return res.json({
+        data: { cancelled: true }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/account/deletion-status", requireAuth4, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const status = getDeletionStatus(userId);
+      if (!status) {
+        return res.json({ data: { hasPendingDeletion: false } });
+      }
+      return res.json({
+        data: {
+          hasPendingDeletion: status.status === "pending",
+          scheduledAt: status.scheduledAt.toISOString(),
+          deleteAt: status.deleteAt.toISOString(),
+          status: status.status
         }
       });
     } catch (err) {
@@ -4628,11 +4795,12 @@ function securityHeaders(req, res, next) {
   );
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+    "frame-src 'self' https://accounts.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
@@ -4835,8 +5003,20 @@ function setupErrorHandler(app2) {
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
   app.use(perfMonitor);
+  app.use((req, res, next) => {
+    const start = process.hrtime();
+    res.on("finish", () => {
+      if (res.headersSent) return;
+      const [seconds, nanoseconds] = process.hrtime(start);
+      const durationMs = (seconds * 1e3 + nanoseconds / 1e6).toFixed(2);
+      res.setHeader("X-Response-Time", `${durationMs}ms`);
+    });
+    next();
+  });
   setupRequestLogging(app);
   const server = await registerRoutes(app);
+  const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
+  log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
   const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
   seedDatabase2().catch((err) => log.error("Seed error:", err));
