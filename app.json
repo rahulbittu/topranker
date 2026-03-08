@@ -15,10 +15,19 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.topranker.app"
+      "bundleIdentifier": "com.topranker.app",
+      "associatedDomains": ["applinks:topranker.com"]
     },
     "android": {
       "package": "com.topranker.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [{ "scheme": "https", "host": "topranker.com", "pathPrefix": "/business/" }],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#F7F6F3",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
