@@ -197,6 +197,7 @@ export function mapApiBusiness(biz: ApiBusiness) {
 export function mapApiRating(rating: ApiRating) {
   return {
     id: rating.id,
+    memberId: rating.memberId,
     userName: rating.memberName || "Anonymous",
     userTier: (rating.memberTier || "community") as CredibilityTier,
     userAvatarUrl: rating.memberAvatarUrl || undefined,
@@ -323,6 +324,7 @@ export interface ApiMemberImpact {
   businessesMovedUp: number;
   businessesMovedToFirst?: number;
   topContributions: { name: string; slug: string; rankChange: number }[];
+  lastRating?: { businessName: string; businessSlug: string; rawScore: string; weight: string; ratedAt: string } | null;
 }
 
 export async function fetchMemberImpact() {

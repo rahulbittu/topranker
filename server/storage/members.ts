@@ -301,7 +301,11 @@ export async function updatePushToken(memberId: string, pushToken: string): Prom
 
 export async function getMemberImpact(
   memberId: string,
-): Promise<{ businessesMovedUp: number; topContributions: { name: string; slug: string; rankChange: number }[] }> {
+): Promise<{
+  businessesMovedUp: number;
+  topContributions: { name: string; slug: string; rankChange: number }[];
+  lastRating: { businessName: string; businessSlug: string; rawScore: string; weight: string; ratedAt: string } | null;
+}> {
   const memberRatings = await db
     .select({
       businessId: ratings.businessId,
@@ -319,6 +323,31 @@ export async function getMemberImpact(
     )
     .groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
 
+  // Get the user's most recent rating for consequence display
+  const lastRatingRows = await db
+    .select({
+      businessName: businesses.name,
+      businessSlug: businesses.slug,
+      rawScore: ratings.rawScore,
+      weight: ratings.weight,
+      ratedAt: ratings.createdAt,
+    })
+    .from(ratings)
+    .innerJoin(businesses, eq(ratings.businessId, businesses.id))
+    .where(eq(ratings.memberId, memberId))
+    .orderBy(desc(ratings.createdAt))
+    .limit(1);
+
+  const lastRating = lastRatingRows.length > 0
+    ? {
+        businessName: lastRatingRows[0].businessName,
+        businessSlug: lastRatingRows[0].businessSlug,
+        rawScore: lastRatingRows[0].rawScore,
+        weight: lastRatingRows[0].weight,
+        ratedAt: lastRatingRows[0].ratedAt.toISOString(),
+      }
+    : null;
+
   const movedUp = memberRatings.filter(r => r.rankDelta > 0);
   return {
     businessesMovedUp: movedUp.length,
@@ -326,5 +355,6 @@ export async function getMemberImpact(
       .sort((a, b) => b.rankDelta - a.rankDelta)
       .slice(0, 5)
       .map(r => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta })),
+    lastRating,
   };
 }

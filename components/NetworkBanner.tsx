@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === "ios" ? 50 : 8,
   },
   bannerOffline: {
-    backgroundColor: "#E53935",
+    backgroundColor: BRAND.colors.navy,
   },
   bannerOnline: {
     backgroundColor: "#4CAF50",

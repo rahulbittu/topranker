@@ -20,6 +20,7 @@ import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
 import { pct } from "@/lib/style-helpers";
+import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -300,12 +301,25 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
         <View style={s.rankedRow3}>
-          {(item.ratingCount ?? 0) >= 10 && (
-            <View style={s.verifiedPill}>
-              <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
-              <Text style={s.verifiedPillText}>VERIFIED</Text>
-            </View>
-          )}
+          {(() => {
+            const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
+            if (confidence === "strong" || confidence === "established") {
+              return (
+                <View style={s.verifiedPill}>
+                  <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
+                  <Text style={s.verifiedPillText}>VERIFIED</Text>
+                </View>
+              );
+            }
+            return (
+              <View style={[s.verifiedPill, { backgroundColor: `${BRAND.colors.amber}15` }]}>
+                <Ionicons name="hourglass-outline" size={9} color={BRAND.colors.amber} />
+                <Text style={[s.verifiedPillText, { color: BRAND.colors.amber }]}>
+                  {RANK_CONFIDENCE_LABELS[confidence].label.toUpperCase()}
+                </Text>
+              </View>
+            );
+          })()}
           <Text style={s.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
           {item.rankDelta !== 0 && (
             <View style={[s.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>

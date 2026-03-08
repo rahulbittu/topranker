@@ -14,6 +14,7 @@ import {
   getTierFromScore,
   getVoteWeight,
   getTemporalMultiplier,
+  getRankConfidence,
   TIER_SCORE_RANGES,
   TIER_WEIGHTS,
   TIER_DISPLAY_NAMES,
@@ -184,5 +185,47 @@ describe("Tier Display Names", () => {
     expect(TIER_DISPLAY_NAMES.city).toBe("Regular");
     expect(TIER_DISPLAY_NAMES.trusted).toBe("Trusted");
     expect(TIER_DISPLAY_NAMES.top).toBe("Top Judge");
+  });
+});
+
+describe("Rank Confidence — Category-Aware", () => {
+  it("returns default thresholds when no category is provided", () => {
+    expect(getRankConfidence(0)).toBe("provisional");
+    expect(getRankConfidence(2)).toBe("provisional");
+    expect(getRankConfidence(3)).toBe("early");
+    expect(getRankConfidence(9)).toBe("early");
+    expect(getRankConfidence(10)).toBe("established");
+    expect(getRankConfidence(24)).toBe("established");
+    expect(getRankConfidence(25)).toBe("strong");
+    expect(getRankConfidence(100)).toBe("strong");
+  });
+
+  it("uses lower thresholds for high-volume categories (fast_food)", () => {
+    expect(getRankConfidence(2, "fast_food")).toBe("provisional");
+    expect(getRankConfidence(3, "fast_food")).toBe("early");
+    expect(getRankConfidence(8, "fast_food")).toBe("established");
+    expect(getRankConfidence(20, "fast_food")).toBe("strong");
+  });
+
+  it("uses higher thresholds for niche categories (fine_dining)", () => {
+    expect(getRankConfidence(4, "fine_dining")).toBe("provisional");
+    expect(getRankConfidence(5, "fine_dining")).toBe("early");
+    expect(getRankConfidence(14, "fine_dining")).toBe("early");
+    expect(getRankConfidence(15, "fine_dining")).toBe("established");
+    expect(getRankConfidence(34, "fine_dining")).toBe("established");
+    expect(getRankConfidence(35, "fine_dining")).toBe("strong");
+  });
+
+  it("uses default thresholds for unknown categories", () => {
+    expect(getRankConfidence(3, "unknown_category")).toBe("early");
+    expect(getRankConfidence(10, "unknown_category")).toBe("established");
+    expect(getRankConfidence(25, "unknown_category")).toBe("strong");
+  });
+
+  it("handles brewery with mid-range thresholds", () => {
+    expect(getRankConfidence(4, "brewery")).toBe("provisional");
+    expect(getRankConfidence(5, "brewery")).toBe("early");
+    expect(getRankConfidence(12, "brewery")).toBe("established");
+    expect(getRankConfidence(30, "brewery")).toBe("strong");
   });
 });

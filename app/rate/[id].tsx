@@ -16,6 +16,7 @@ import Colors from "@/constants/colors";
 import { pct } from "@/lib/style-helpers";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS, TIER_SCORE_RANGES,
+  TIER_INFLUENCE_LABELS,
   type CredibilityTier, getQ1Label, getQ3Label, getWouldReturnLabel,
   getCredibilityTier,
 } from "@/lib/data";
@@ -558,10 +559,10 @@ export default function RateScreen() {
               <View style={styles.summaryScoreRow}>
                 <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
                 <Text style={styles.summaryWeightLabel}>
-                  {rawScore.toFixed(1)} x {voteWeight.toFixed(2)} =
+                  {TIER_INFLUENCE_LABELS[userTier]}
                 </Text>
                 <Text style={[styles.summaryWeightVal, { color: Colors.gold }]}>
-                  {weightedScore.toFixed(2)}
+                  {weightedScore.toFixed(1)}
                 </Text>
               </View>
             </View>

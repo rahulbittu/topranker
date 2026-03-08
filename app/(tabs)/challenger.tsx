@@ -17,9 +17,9 @@ import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger, type ApiBusiness } from "@/lib/api";
-import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
+import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, getRankConfidence, RANK_CONFIDENCE_LABELS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { pct } from "@/lib/style-helpers";
+import { pct, formatCompact } from "@/lib/style-helpers";
 import * as Haptics from "expo-haptics";
 import { ShareCardView, useShareCard } from "@/components/ShareCard";
 import { ChallengerSkeleton } from "@/components/Skeleton";
@@ -240,7 +240,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
     const chPct = total > 0 ? ((challengerVotes / total) * 100).toFixed(0) : "50";
     try {
       await Share.share({
-        message: `${catDisplay.emoji} ${catDisplay.label} Challenge in ${challenge.city}\n\n${defender} (${defPct}%) vs ${challenger} (${chPct}%)\n\n${defenderVotes.toFixed(1)} vs ${challengerVotes.toFixed(1)} weighted votes\n${countdown.ended ? "Challenge ended!" : `${countdown.days}d ${countdown.hours}h remaining`}\n\nVote now on TopRanker!`,
+        message: `${catDisplay.emoji} ${catDisplay.label} Challenge in ${challenge.city}\n\n${defender} (${defPct}%) vs ${challenger} (${chPct}%)\n\n${formatCompact(defenderVotes)} vs ${formatCompact(challengerVotes)} weighted votes\n${countdown.ended ? "Challenge ended!" : `${countdown.days}d ${countdown.hours}h remaining`}\n\nVote now on TopRanker!`,
       });
     } catch {}
   };
@@ -263,8 +263,13 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
           <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" score={parseFloat(challenge.defenderBusiness.weightedScore) || 0} />
-          <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
+          <Text style={styles.voteCount}>{formatCompact(defenderVotes)}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
+          {(() => {
+            const conf = getRankConfidence(challenge.defenderBusiness.totalRatings, challenge.category);
+            if (conf === "strong" || conf === "established") return null;
+            return <Text style={styles.fighterConfidence}>{RANK_CONFIDENCE_LABELS[conf].label}</Text>;
+          })()}
         </TouchableOpacity>
 
         <View style={styles.vsContainer}>
@@ -283,8 +288,13 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
           <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" score={parseFloat(challenge.challengerBusiness.weightedScore) || 0} />
-          <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
+          <Text style={styles.voteCount}>{formatCompact(challengerVotes)}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
+          {(() => {
+            const conf = getRankConfidence(challenge.challengerBusiness.totalRatings, challenge.category);
+            if (conf === "strong" || conf === "established") return null;
+            return <Text style={styles.fighterConfidence}>{RANK_CONFIDENCE_LABELS[conf].label}</Text>;
+          })()}
         </TouchableOpacity>
       </View>
 
@@ -379,6 +389,14 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
       <View style={styles.voteCta}>
         <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
+      </View>
+
+      {/* How Voting Works — Sprint 131 */}
+      <View style={styles.howVotingWorks}>
+        <Ionicons name="information-circle-outline" size={13} color={Colors.textTertiary} />
+        <Text style={styles.howVotingWorksText}>
+          Your vote weight depends on your credibility tier. Higher-tier members have more influence on the outcome.
+        </Text>
       </View>
 
       <TouchableOpacity
@@ -635,6 +653,10 @@ const styles = StyleSheet.create({
   voteLabel: {
     ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
   },
+  fighterConfidence: {
+    fontSize: 9, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
+    marginTop: 2, textAlign: "center",
+  },
   vsContainer: { alignItems: "center", width: 40 },
   vsDivider: { width: 1, height: 24, backgroundColor: Colors.border },
   vsText: {
@@ -699,6 +721,14 @@ const styles = StyleSheet.create({
   },
   voteCtaText: {
     fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium",
+  },
+  howVotingWorks: {
+    flexDirection: "row", alignItems: "flex-start", gap: 6,
+    paddingHorizontal: 16, paddingTop: 6,
+  },
+  howVotingWorksText: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    flex: 1, lineHeight: 14,
   },
   shareBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

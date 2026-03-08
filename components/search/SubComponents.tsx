@@ -14,6 +14,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { BRAND, getCategoryDisplay, getRankDisplay } from "@/constants/brand";
+import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
 import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
@@ -151,11 +152,24 @@ export const BusinessCard = React.memo(function BusinessCard({
           {item.ratingCount ? (
             <Text style={s.cardRatingCount}>({item.ratingCount.toLocaleString()} weighted)</Text>
           ) : null}
-          {(item.ratingCount ?? 0) >= 10 && (
-            <View style={s.verifiedPill}>
-              <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
-            </View>
-          )}
+          {(() => {
+            const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
+            if (conf === "strong" || conf === "established") {
+              return (
+                <View style={s.verifiedPill}>
+                  <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
+                </View>
+              );
+            }
+            if (conf === "early") {
+              return (
+                <View style={[s.verifiedPill, { backgroundColor: `${AMBER}15` }]}>
+                  <Ionicons name="hourglass-outline" size={8} color={AMBER} />
+                </View>
+              );
+            }
+            return null;
+          })()}
           {item.rankDelta !== 0 && (
             <Text style={[s.cardDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}

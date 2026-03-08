@@ -25,6 +25,7 @@ import type { ApiDish } from "@/lib/api";
 
 export interface MappedRating {
   id: string;
+  memberId: string;
   userName: string;
   userTier: CredibilityTier;
   userAvatarUrl?: string;

@@ -2,6 +2,22 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 126] - 2026-03-08
+### Changed
+- Rating confirmation: "Rating Submitted" → "Your Rating is Live", removed raw weight display (x0.10), replaced with influence labels
+- Profile credibility card: "Vote Weight 0.10x" → "Starter Influence · New Member"
+- Tier journey: raw weights replaced with influence labels (Starter/Growing/Strong/Maximum)
+- Offline banner: emergency red → navy (premium, less alarming)
+- Challenger vote counts: reduced decimal precision via formatCompact
+- Business detail "Would Return": shows "--" instead of "0%" when < 2 ratings
+- Trust explainer text adapts for low-data businesses
+### Added
+- Rank confidence system: provisional/early/established/strong with visual badges
+- TIER_INFLUENCE_LABELS for human-friendly influence communication
+- formatCompact() and formatReturnRate() utility functions
+- Confidence pill on leaderboard cards (replaces VERIFIED for thin data)
+- Confidence badge on business detail page
+
 ## [Sprint 124] - 2026-03-08
 ### Added
 - Visual regression testing utility (lib/visual-regression.ts) — screenshot comparison abstraction with 8 critical screens, diff threshold, manifest generation

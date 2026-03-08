@@ -15,3 +15,22 @@ import type { DimensionValue } from "react-native";
 export function pct(n: number): DimensionValue {
   return `${n}%` as DimensionValue;
 }
+
+/**
+ * Format large numbers for display. Reduces false precision.
+ * 893.233 → "893"  |  2235.65 → "2.2k"  |  45123 → "45.1k"
+ */
+export function formatCompact(n: number): string {
+  if (n >= 10000) return `${(n / 1000).toFixed(0)}k`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return Math.round(n).toLocaleString();
+}
+
+/**
+ * Format "Would Return" percentage safely for low-data cases.
+ * Returns "--" when sample size is too small to be meaningful.
+ */
+export function formatReturnRate(positiveCount: number, totalCount: number): string {
+  if (totalCount < 2) return "--";
+  return `${Math.round((positiveCount / totalCount) * 100)}%`;
+}

@@ -15,6 +15,7 @@ import Animated, {
 import Colors from "@/constants/colors";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_SCORE_RANGES,
+  TIER_INFLUENCE_LABELS,
   type CredibilityTier,
 } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
@@ -152,10 +153,10 @@ export function RatingConfirmation({
       </Animated.View>
 
       <Animated.Text entering={FadeInDown.delay(200).duration(400)} style={s.confirmTitle}>
-        Rating Submitted
+        Your Rating is Live
       </Animated.Text>
       <Animated.Text entering={FadeInDown.delay(300).duration(400)} style={s.confirmSub}>
-        Your weighted vote has been counted
+        Your voice is now part of this ranking
       </Animated.Text>
 
       <Animated.View entering={FadeInUp.delay(400).duration(500)} style={s.rankChangeCard}>
@@ -202,18 +203,21 @@ export function RatingConfirmation({
 
       <Animated.View entering={FadeInUp.delay(700).duration(500)} style={s.scoreBreakdownCard}>
         <View style={s.scoreBreakdownRow}>
-          <Text style={s.scoreBreakdownLabel}>Raw Score</Text>
-          <Text style={s.scoreBreakdownVal}>{rawScore.toFixed(2)}</Text>
+          <Text style={s.scoreBreakdownLabel}>Your Score</Text>
+          <Text style={s.scoreBreakdownVal}>{rawScore.toFixed(1)}</Text>
         </View>
         <View style={s.scoreBreakdownRow}>
-          <Text style={s.scoreBreakdownLabel}>Your Weight ({tierDisplayName})</Text>
-          <Text style={[s.scoreBreakdownVal, { color: tierColor }]}>x {voteWeight.toFixed(2)}</Text>
+          <Text style={s.scoreBreakdownLabel}>{TIER_INFLUENCE_LABELS[userTier]}</Text>
+          <Text style={[s.scoreBreakdownVal, { color: tierColor }]}>{tierDisplayName}</Text>
         </View>
         <View style={s.scoreBreakdownDivider} />
         <View style={s.scoreBreakdownRow}>
-          <Text style={s.scoreBreakdownLabelBold}>Weighted Score</Text>
-          <Text style={s.scoreBreakdownValBold}>{weightedScore.toFixed(2)}</Text>
+          <Text style={s.scoreBreakdownLabelBold}>Contribution</Text>
+          <Text style={s.scoreBreakdownValBold}>{weightedScore.toFixed(1)}</Text>
         </View>
+        <Text style={s.influenceHint}>
+          Rate consistently to grow your influence
+        </Text>
       </Animated.View>
 
       <TouchableOpacity
@@ -353,6 +357,10 @@ const s = StyleSheet.create({
   },
   scoreBreakdownValBold: {
     fontSize: 20, fontWeight: "700", color: Colors.gold, fontFamily: "PlayfairDisplay_700Bold",
+  },
+  influenceHint: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", marginTop: 4,
   },
   doneButton: {
     width: "100%", marginTop: 8, backgroundColor: Colors.text, borderRadius: 14,

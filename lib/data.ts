@@ -71,6 +71,53 @@ export const TIER_DISPLAY_NAMES: Record<CredibilityTier, string> = {
   top: "Top Judge",
 };
 
+/** Human-readable influence labels — shown instead of raw "x0.10" */
+export const TIER_INFLUENCE_LABELS: Record<CredibilityTier, string> = {
+  community: "Starter Influence",
+  city: "Growing Influence",
+  trusted: "Strong Influence",
+  top: "Maximum Influence",
+};
+
+/** Ranking confidence based on total ratings */
+export type RankConfidence = "provisional" | "early" | "established" | "strong";
+
+/**
+ * Category-specific confidence thresholds.
+ * High-volume categories (fast food, casual dining) calibrate faster.
+ * Niche categories (fine dining, breweries) need more ratings for confidence.
+ */
+const CATEGORY_CONFIDENCE_THRESHOLDS: Record<string, { provisional: number; early: number; established: number }> = {
+  fast_food:      { provisional: 3, early: 8,  established: 20 },
+  casual_dining:  { provisional: 3, early: 8,  established: 20 },
+  buffet:         { provisional: 3, early: 8,  established: 20 },
+  restaurant:     { provisional: 3, early: 10, established: 25 },
+  cafe:           { provisional: 3, early: 10, established: 25 },
+  brunch:         { provisional: 3, early: 10, established: 25 },
+  bar:            { provisional: 3, early: 10, established: 25 },
+  fine_dining:    { provisional: 5, early: 15, established: 35 },
+  brewery:        { provisional: 5, early: 12, established: 30 },
+  dessert_bar:    { provisional: 3, early: 12, established: 30 },
+  food_hall:      { provisional: 5, early: 12, established: 30 },
+};
+
+const DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
+
+export function getRankConfidence(totalRatings: number, category?: string): RankConfidence {
+  const t = (category && CATEGORY_CONFIDENCE_THRESHOLDS[category]) || DEFAULT_THRESHOLDS;
+  if (totalRatings < t.provisional) return "provisional";
+  if (totalRatings < t.early) return "early";
+  if (totalRatings < t.established) return "established";
+  return "strong";
+}
+
+export const RANK_CONFIDENCE_LABELS: Record<RankConfidence, { label: string; description: string }> = {
+  provisional: { label: "Provisional Rank", description: "Needs more ratings to stabilize" },
+  early: { label: "Early Ranking", description: "Building confidence with each rating" },
+  established: { label: "Established", description: "Ranking reflects community consensus" },
+  strong: { label: "High Confidence", description: "Strong community agreement" },
+};
+
 export const TIER_WEIGHTS: Record<CredibilityTier, number> = {
   community: 0.10,
   city: 0.35,

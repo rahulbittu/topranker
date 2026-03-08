@@ -13,7 +13,7 @@ import Colors from "@/constants/colors";
 import { isAdminEmail } from "@/shared/admin";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
-  TIER_SCORE_RANGES, formatTimeAgo,
+  TIER_SCORE_RANGES, TIER_INFLUENCE_LABELS, formatTimeAgo,
   type CredibilityTier,
 } from "@/lib/data";
 import { LinearGradient } from "expo-linear-gradient";
@@ -43,6 +43,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
+  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
   const [notifRatingUpdates, setNotifRatingUpdates] = useState(true);
   const [notifChallengeResults, setNotifChallengeResults] = useState(true);
   const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(false);
@@ -98,7 +99,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
     if (key === "weeklyDigest") setNotifWeeklyDigest(value);
     track("notification_settings_change", { setting: key, enabled: value });
     try {
-      await fetch(getApiUrl("/api/members/me/notification-preferences"), {
+      await fetch(getApiUrl() + "/api/members/me/notification-preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -167,12 +168,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       <View style={styles.credibilityCard}>
         <View style={styles.credScoreRow}>
           <View>
-            <Text style={styles.credScoreLabel}>Credibility Score</Text>
+            <Text style={styles.credScoreLabel}>Credibility</Text>
             <Text style={[styles.credScore, { color: tierColor }]}>{profile.credibilityScore}</Text>
           </View>
           <View style={styles.credWeightBox}>
-            <Text style={styles.credWeightLabel}>Vote Weight</Text>
-            <Text style={[styles.credWeight, { color: tierColor }]}>{weight.toFixed(2)}x</Text>
+            <Text style={styles.credWeightLabel}>{TIER_INFLUENCE_LABELS[tier]}</Text>
+            <Text style={[styles.credWeight, { color: tierColor }]}>{TIER_DISPLAY_NAMES[tier]}</Text>
           </View>
         </View>
 
@@ -194,8 +195,30 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         )}
       </View>
 
-      {/* Credibility Growth Prompt */}
-      {nextTier && (
+      {/* New User Getting Started — Sprint 128 */}
+      {profile.totalRatings === 0 && (
+        <TouchableOpacity
+          style={styles.gettingStartedCard}
+          onPress={() => router.push("/(tabs)/search")}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Find a place to rate"
+        >
+          <View style={styles.gettingStartedIcon}>
+            <Ionicons name="restaurant" size={24} color={AMBER} />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={styles.gettingStartedTitle}>Rate Your First Place</Text>
+            <Text style={styles.gettingStartedDesc}>
+              Your influence grows with every honest rating. Find a restaurant you know well and share your experience.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={AMBER} />
+        </TouchableOpacity>
+      )}
+
+      {/* Credibility Growth Prompt — hidden for brand-new users */}
+      {nextTier && profile.totalRatings > 0 && (
         <View style={styles.growthPrompt}>
           <Ionicons name="trending-up" size={18} color={AMBER} />
           <Text style={styles.growthPromptText}>Keep rating to unlock your next tier</Text>
@@ -229,6 +252,26 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.joinedText}>
           Member since {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </Text>
+      )}
+
+      {/* Last Rating Consequence — Sprint 127 */}
+      {impact?.lastRating && (
+        <TouchableOpacity
+          style={styles.lastRatingCard}
+          onPress={() => router.push({ pathname: "/business/[id]", params: { id: impact.lastRating!.businessSlug } })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.lastRatingHeader}>
+            <Ionicons name="checkmark-circle" size={16} color={Colors.green} />
+            <Text style={styles.lastRatingTitle}>Your Last Rating</Text>
+          </View>
+          <Text style={styles.lastRatingBizName} numberOfLines={1}>
+            {impact.lastRating.businessName}
+          </Text>
+          <Text style={styles.lastRatingDetail}>
+            Score {parseFloat(impact.lastRating.rawScore).toFixed(1)} {"\u00B7"} {TIER_INFLUENCE_LABELS[tier]}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Pride Mechanism — PRD: "Your ratings contributed to X businesses moving up" */}
@@ -265,22 +308,57 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       )}
 
       <View style={styles.breakdownCard}>
-        <Text style={styles.breakdownTitle}>Score Breakdown</Text>
-        <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
-        <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
-        <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
-        <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
-        <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
-        <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
-        {(breakdown.penalties || 0) > 0 && (
-          <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
+        {profile.totalRatings < 5 ? (
+          <>
+            <TouchableOpacity
+              style={styles.breakdownTitleRow}
+              onPress={() => setBreakdownExpanded(!breakdownExpanded)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.breakdownTitle}>Score Breakdown</Text>
+              <Ionicons name={breakdownExpanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textTertiary} />
+            </TouchableOpacity>
+            {!breakdownExpanded && (
+              <Text style={styles.breakdownHint}>
+                Rate {5 - profile.totalRatings} more place{5 - profile.totalRatings !== 1 ? "s" : ""} to see meaningful score details
+              </Text>
+            )}
+            {breakdownExpanded && (
+              <>
+                <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
+                <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
+                <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
+                <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
+                <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
+                <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
+                {(breakdown.penalties || 0) > 0 && (
+                  <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
+                )}
+                <View style={styles.breakdownTotal}>
+                  <Text style={styles.breakdownTotalLabel}>Total</Text>
+                  <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>{totalScore}</Text>
+                </View>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={styles.breakdownTitle}>Score Breakdown</Text>
+            <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
+            <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
+            <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
+            <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
+            <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
+            <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
+            {(breakdown.penalties || 0) > 0 && (
+              <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
+            )}
+            <View style={styles.breakdownTotal}>
+              <Text style={styles.breakdownTotalLabel}>Total</Text>
+              <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>{totalScore}</Text>
+            </View>
+          </>
         )}
-        <View style={styles.breakdownTotal}>
-          <Text style={styles.breakdownTotalLabel}>Total</Text>
-          <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>
-            {totalScore}
-          </Text>
-        </View>
       </View>
 
       <View style={styles.sectionHeader}>
@@ -293,11 +371,21 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       ))}
 
       {profile.ratingHistory.length === 0 && (
-        <View style={styles.emptyHistory}>
-          <Ionicons name="star-outline" size={32} color={Colors.textTertiary} />
+        <TouchableOpacity
+          style={styles.emptyHistory}
+          onPress={() => router.push("/(tabs)/search")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="star-outline" size={32} color={AMBER} />
           <Text style={styles.emptyText}>No ratings yet</Text>
-          <Text style={styles.emptySubtext}>Rate businesses to build your credibility</Text>
-        </View>
+          <Text style={styles.emptySubtext}>
+            Your first rating builds your credibility and shapes the rankings
+          </Text>
+          <View style={styles.emptyCtaRow}>
+            <Text style={styles.emptyCtaText}>Find a place to rate</Text>
+            <Ionicons name="arrow-forward" size={14} color={AMBER} />
+          </View>
+        </TouchableOpacity>
       )}
 
       {/* Saved Places */}
@@ -385,7 +473,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
                     <Text style={[styles.tierName, (isCurrent || isCompleted) && { color: Colors.text }]}>
                       {TIER_DISPLAY_NAMES[t]}
                     </Text>
-                    <Text style={styles.tierWeight}>{TIER_WEIGHTS[t].toFixed(2)}x weight</Text>
+                    <Text style={styles.tierWeight}>{TIER_INFLUENCE_LABELS[t]}</Text>
                   </View>
                   <Text style={styles.tierRange}>
                     {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
@@ -777,6 +865,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
+  lastRatingCard: {
+    backgroundColor: `${BRAND.colors.amber}08`, borderRadius: 14, padding: 16,
+    gap: 6, borderWidth: 1, borderColor: `${BRAND.colors.amber}20`,
+  },
+  lastRatingHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+  },
+  lastRatingTitle: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  lastRatingBizName: {
+    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  lastRatingDetail: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
   prideCard: {
     backgroundColor: `${Colors.green}08`, borderRadius: 14, padding: 16,
     gap: 10, borderWidth: 1, borderColor: `${Colors.green}20`,
@@ -812,6 +916,8 @@ const styles = StyleSheet.create({
     gap: 10, ...Colors.cardShadow,
   },
   breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", marginBottom: 2 },
+  breakdownTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
+  breakdownHint: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 4 },
   breakdownTotal: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingTop: 6, marginTop: 2,
@@ -826,6 +932,8 @@ const styles = StyleSheet.create({
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  emptyCtaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
+  emptyCtaText: { fontSize: 13, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
 
   tierInfoSection: { gap: 10, marginTop: 8 },
   tierList: {
@@ -884,6 +992,22 @@ const styles = StyleSheet.create({
   },
 
   // Credibility Growth Prompt
+  gettingStartedCard: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: `${BRAND.colors.amber}10`, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: `${BRAND.colors.amber}25`,
+    marginHorizontal: 16, marginTop: 16,
+  },
+  gettingStartedIcon: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: `${BRAND.colors.amber}15`,
+    alignItems: "center", justifyContent: "center",
+  },
+  gettingStartedTitle: {
+    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  gettingStartedDesc: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 17,
+  },
   growthPrompt: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: "rgba(196,154,26,0.08)",

@@ -15,7 +15,10 @@ import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, type ApiDish } from "@/lib/api";
 import {
   getCategoryDisplay, getRankDisplay,
+  getRankConfidence, RANK_CONFIDENCE_LABELS,
+  TIER_INFLUENCE_LABELS, TIER_COLORS, type CredibilityTier,
 } from "@/lib/data";
+import { formatReturnRate, formatCompact } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
@@ -152,10 +155,10 @@ export default function BusinessProfileScreen() {
     Haptics.selectionAsync();
     try {
       await Share.share({
-        message: getShareText(business.name, business.avgRating ?? business.weightedScore),
+        message: getShareText(business.name, business.weightedScore),
         url: getShareUrl("business", business.slug),
       });
-      Analytics.shareBusiness(business.slug);
+      Analytics.shareBusiness(business.slug, "share_sheet");
     } catch {}
   };
 
@@ -272,7 +275,7 @@ export default function BusinessProfileScreen() {
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statValue}>
-              {ratings.length > 0 ? `${Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}%` : "--"}
+              {formatReturnRate(ratings.filter(r => r.wouldReturn).length, ratings.length)}
             </Text>
             <Text style={styles.statLabel}>Would Return</Text>
           </View>
@@ -286,6 +289,26 @@ export default function BusinessProfileScreen() {
             </>
           )}
         </View>
+
+        {/* Ranking Confidence Indicator */}
+        {(() => {
+          const confidence = getRankConfidence(business.ratingCount, business.category);
+          if (confidence === "strong") return null;
+          const { label, description } = RANK_CONFIDENCE_LABELS[confidence];
+          const confidenceColor = confidence === "provisional" ? Colors.textTertiary
+            : confidence === "early" ? BRAND.colors.amber : Colors.green;
+          return (
+            <View style={styles.confidenceBadge}>
+              <Ionicons
+                name={confidence === "provisional" ? "hourglass-outline" : "trending-up-outline"}
+                size={14}
+                color={confidenceColor}
+              />
+              <Text style={[styles.confidenceLabel, { color: confidenceColor }]}>{label}</Text>
+              <Text style={styles.confidenceDesc}>{description}</Text>
+            </View>
+          );
+        })()}
 
         {/* Business Badges — CVO owned */}
         {(() => {
@@ -342,7 +365,13 @@ export default function BusinessProfileScreen() {
               <Text style={styles.trustCardTitle}>About This Ranking</Text>
             </View>
             <Text style={styles.trustCardBody}>
-              This score is calculated from {business.ratingCount.toLocaleString()} community ratings, weighted by each rater's credibility tier. Higher-credibility members have more influence, making this ranking resistant to spam and manipulation.
+              {(() => {
+                const conf = getRankConfidence(business.ratingCount, business.category);
+                if (conf === "provisional" || conf === "early") {
+                  return `Based on ${business.ratingCount} rating${business.ratingCount !== 1 ? "s" : ""} so far. This ranking will stabilize as more community members contribute. Each rating is weighted by the rater's credibility.`;
+                }
+                return `Calculated from ${business.ratingCount.toLocaleString()} community ratings, weighted by each rater's credibility. Higher-credibility members have more influence, making this ranking resistant to spam and manipulation.`;
+              })()}
             </Text>
             <View style={styles.trustCardStats}>
               <View style={styles.trustStat}>
@@ -356,7 +385,7 @@ export default function BusinessProfileScreen() {
               {ratings.length > 0 && (
                 <View style={styles.trustStat}>
                   <Text style={styles.trustStatValue}>
-                    {Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}%
+                    {formatReturnRate(ratings.filter(r => r.wouldReturn).length, ratings.length)}
                   </Text>
                   <Text style={styles.trustStatLabel}>Would Return</Text>
                 </View>
@@ -415,6 +444,52 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
+          {/* Your Previous Rating — Sprint 129 */}
+          {(() => {
+            if (!user || !profile) return null;
+            const myRating = ratings.find(r => r.memberId === user.id);
+            if (!myRating) return null;
+            const tier = (profile.credibilityTier || "community") as CredibilityTier;
+            const ratedDate = new Date(myRating.createdAt);
+            const daysAgo = Math.floor((Date.now() - ratedDate.getTime()) / (1000 * 60 * 60 * 24));
+            return (
+              <View style={styles.yourRatingCard}>
+                <View style={styles.yourRatingHeader}>
+                  <Ionicons name="star" size={14} color={BRAND.colors.amber} />
+                  <Text style={styles.yourRatingTitle}>Your Rating</Text>
+                  <Text style={styles.yourRatingDate}>
+                    {daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`}
+                  </Text>
+                </View>
+                <View style={styles.yourRatingScores}>
+                  <View style={styles.yourRatingScoreItem}>
+                    <Text style={styles.yourRatingScoreValue}>{myRating.q1}</Text>
+                    <Text style={styles.yourRatingScoreLabel}>Quality</Text>
+                  </View>
+                  <View style={styles.yourRatingScoreItem}>
+                    <Text style={styles.yourRatingScoreValue}>{myRating.q2}</Text>
+                    <Text style={styles.yourRatingScoreLabel}>Value</Text>
+                  </View>
+                  <View style={styles.yourRatingScoreItem}>
+                    <Text style={styles.yourRatingScoreValue}>{myRating.q3}</Text>
+                    <Text style={styles.yourRatingScoreLabel}>Service</Text>
+                  </View>
+                  <View style={styles.yourRatingScoreItem}>
+                    <Ionicons
+                      name={myRating.wouldReturn ? "checkmark-circle" : "close-circle"}
+                      size={16}
+                      color={myRating.wouldReturn ? Colors.green : Colors.red}
+                    />
+                    <Text style={styles.yourRatingScoreLabel}>Return</Text>
+                  </View>
+                </View>
+                <Text style={styles.yourRatingInfluence}>
+                  {TIER_INFLUENCE_LABELS[tier]} · Score {myRating.rawScore.toFixed(1)}
+                </Text>
+              </View>
+            );
+          })()}
+
           {/* Rate Button — gated: active after 3+ days */}
           {user ? (() => {
             const memberDays = profile?.daysActive ?? 0;
@@ -429,7 +504,9 @@ export default function BusinessProfileScreen() {
                 accessibilityLabel={`Rate ${business.name}`}
               >
                 <Ionicons name="star" size={18} color="#FFFFFF" />
-                <Text style={styles.rateButtonText}>Rate This Place</Text>
+                <Text style={styles.rateButtonText}>
+                  {ratings.some(r => r.memberId === user?.id) ? "Update Your Rating" : "Rate This Place"}
+                </Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.rateGated}>
@@ -673,6 +750,20 @@ const styles = StyleSheet.create({
     width: 1, height: 30, backgroundColor: Colors.border,
   },
 
+  confidenceBadge: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginHorizontal: 16, marginTop: 8,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  confidenceLabel: {
+    fontSize: 12, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
+  },
+  confidenceDesc: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    flex: 1,
+  },
+
   scoreCard: {
     backgroundColor: Colors.surface, borderRadius: 16,
     padding: 20, alignItems: "center", gap: 4,
@@ -760,6 +851,34 @@ const styles = StyleSheet.create({
 
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 
+  yourRatingCard: {
+    backgroundColor: `${BRAND.colors.amber}08`, borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: `${BRAND.colors.amber}20`, gap: 10, marginBottom: 12,
+  },
+  yourRatingHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+  },
+  yourRatingTitle: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1,
+  },
+  yourRatingDate: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  yourRatingScores: {
+    flexDirection: "row", justifyContent: "space-around",
+  },
+  yourRatingScoreItem: {
+    alignItems: "center", gap: 2,
+  },
+  yourRatingScoreValue: {
+    fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
+  },
+  yourRatingScoreLabel: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  yourRatingInfluence: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", textAlign: "center",
+  },
   rateButton: {
     backgroundColor: BRAND.colors.amber, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
