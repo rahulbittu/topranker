@@ -261,6 +261,18 @@ function setupErrorHandler(app: express.Application) {
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
   app.use(perfMonitor);
+
+  // X-Response-Time header — measures request duration (Sprint 118)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = process.hrtime();
+    res.on("finish", () => {
+      const [seconds, nanoseconds] = process.hrtime(start);
+      const durationMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
+      res.setHeader("X-Response-Time", `${durationMs}ms`);
+    });
+    next();
+  });
+
   setupRequestLogging(app);
 
   const server = await registerRoutes(app);
