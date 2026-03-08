@@ -143,12 +143,25 @@ export function categoryToDisplay(apiCategory: string): string {
   return CATEGORY_DISPLAY[apiCategory] || apiCategory;
 }
 
+/**
+ * Resolve a photo URL. If it's a Google Places reference (starts with "places/"),
+ * convert it to a proxy URL. Otherwise return as-is.
+ */
+function resolvePhotoUrl(url: string): string {
+  if (url.startsWith("places/")) {
+    const base = getApiUrl();
+    return `${base}/api/photos/proxy?ref=${encodeURIComponent(url)}&maxwidth=600`;
+  }
+  return url;
+}
+
 export function mapApiBusiness(biz: ApiBusiness) {
-  const photoUrls = biz.photoUrls && biz.photoUrls.length > 0
+  const rawUrls = biz.photoUrls && biz.photoUrls.length > 0
     ? biz.photoUrls
     : biz.photoUrl
     ? [biz.photoUrl]
     : [];
+  const photoUrls = rawUrls.map(resolvePhotoUrl);
 
   return {
     id: biz.id,

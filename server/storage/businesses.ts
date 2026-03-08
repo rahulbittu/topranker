@@ -222,6 +222,56 @@ export async function getBusinessPhotosMap(businessIds: string[]): Promise<Recor
   return map;
 }
 
+export async function insertBusinessPhotos(
+  businessId: string,
+  photos: { photoUrl: string; isHero: boolean; sortOrder: number }[],
+): Promise<void> {
+  if (photos.length === 0) return;
+  await db.insert(businessPhotos).values(
+    photos.map((p) => ({
+      businessId,
+      photoUrl: p.photoUrl,
+      isHero: p.isHero,
+      sortOrder: p.sortOrder,
+    })),
+  );
+}
+
+export async function getBusinessesWithoutPhotos(
+  city?: string,
+  limit: number = 50,
+): Promise<{ id: string; name: string; googlePlaceId: string; city: string }[]> {
+  // Find businesses that have a googlePlaceId but no entries in businessPhotos
+  const rows = await db
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      googlePlaceId: businesses.googlePlaceId,
+      city: businesses.city,
+    })
+    .from(businesses)
+    .leftJoin(businessPhotos, eq(businesses.id, businessPhotos.businessId))
+    .where(
+      and(
+        eq(businesses.isActive, true),
+        sql`${businesses.googlePlaceId} IS NOT NULL`,
+        sql`${businessPhotos.id} IS NULL`,
+        ...(city ? [eq(businesses.city, city)] : []),
+      ),
+    )
+    .limit(limit);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    googlePlaceId: r.googlePlaceId!,
+    city: r.city,
+  }));
+}
+
+export async function deleteBusinessPhotos(businessId: string): Promise<void> {
+  await db.delete(businessPhotos).where(eq(businessPhotos.businessId, businessId));
+}
+
 export async function getRankHistory(
   businessId: string,
   days: number = 30,

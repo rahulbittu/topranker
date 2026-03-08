@@ -37,7 +37,9 @@ import {
   getFlagCount,
   getAdminMemberList,
   getMemberCount,
+  getBusinessesWithoutPhotos,
 } from "./storage";
+import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -272,11 +274,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Business not found" });
       }
 
-      const [{ ratings }, dishList, photos] = await Promise.all([
+      let [{ ratings }, dishList, photos] = await Promise.all([
         getBusinessRatings(business.id, 1, 20),
         getBusinessDishes(business.id, 5),
         getBusinessPhotos(business.id),
       ]);
+
+      // On-demand: if business has a Google Place ID but no photos, fetch them
+      if (photos.length === 0 && business.googlePlaceId) {
+        try {
+          const count = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+          if (count > 0) {
+            photos = await getBusinessPhotos(business.id);
+          }
+        } catch {
+          // Non-fatal — continue with fallback
+        }
+      }
 
       const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
 
@@ -529,6 +543,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { seedCities } = await import("./seed-cities");
       await seedCities();
       return res.json({ data: { message: "Cities seeded successfully" } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Google Places Photo Fetching ────────────────────────────
+  // Admin: fetch photos from Google Places API for businesses missing photos
+  app.post("/api/admin/fetch-photos", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const city = req.body.city as string | undefined;
+      const limit = Math.min(50, parseInt(req.body.limit as string) || 20);
+      const businesses = await getBusinessesWithoutPhotos(city, limit);
+
+      if (businesses.length === 0) {
+        return res.json({ data: { message: "All businesses already have photos", fetched: 0 } });
+      }
+
+      let totalFetched = 0;
+      const results: { name: string; photos: number }[] = [];
+      for (const biz of businesses) {
+        const count = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
+        totalFetched += count;
+        results.push({ name: biz.name, photos: count });
+      }
+
+      return res.json({
+        data: {
+          message: `Fetched photos for ${businesses.length} businesses`,
+          fetched: totalFetched,
+          results,
+        },
+      });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

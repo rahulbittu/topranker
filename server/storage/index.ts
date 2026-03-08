@@ -36,6 +36,9 @@ export {
   recalculateRanks,
   getBusinessPhotos,
   getBusinessPhotosMap,
+  insertBusinessPhotos,
+  getBusinessesWithoutPhotos,
+  deleteBusinessPhotos,
   getRankHistory,
   getBusinessRatings,
 } from "./businesses";
