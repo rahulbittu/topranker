@@ -7,7 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
-import { isServingMockData } from "@/lib/api";
+import { isServingMockData, resetMockDataFlag } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Network connectivity banner.
@@ -18,9 +19,18 @@ export function NetworkBanner() {
   const [isOffline, setIsOffline] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const translateY = useSharedValue(-50);
   const opacity = useSharedValue(0);
   const isMock = isServingMockData();
+  const queryClient = useQueryClient();
+
+  const handleRetry = async () => {
+    setRetrying(true);
+    resetMockDataFlag();
+    await queryClient.invalidateQueries();
+    setRetrying(false);
+  };
 
   useEffect(() => {
     // Check connectivity by hitting our own API health endpoint.
@@ -71,14 +81,14 @@ export function NetworkBanner() {
   }, [isOffline]);
 
   useEffect(() => {
-    if (isOffline || wasOffline) {
+    if (isOffline || wasOffline || isMock) {
       translateY.value = withSpring(0, { damping: 15, stiffness: 150 });
       opacity.value = withTiming(1, { duration: 200 });
     } else {
       translateY.value = withTiming(-50, { duration: 300 });
       opacity.value = withTiming(0, { duration: 200 });
     }
-  }, [isOffline, wasOffline]);
+  }, [isOffline, wasOffline, isMock]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -117,6 +127,17 @@ export function NetworkBanner() {
         color="#FFFFFF"
       />
       <Text style={styles.bannerText}>{bannerMessage}</Text>
+      {isMock && !isOffline && !retrying && (
+        <TouchableOpacity
+          onPress={handleRetry}
+          hitSlop={8}
+          style={styles.retryBannerBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Retry connecting to server"
+        >
+          <Text style={styles.retryBannerText}>Retry</Text>
+        </TouchableOpacity>
+      )}
       {(isMock || isOffline) && (
         <TouchableOpacity
           onPress={() => setDismissed(true)}
@@ -212,6 +233,18 @@ const styles = StyleSheet.create({
   },
   bannerText: {
     fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    fontFamily: "DMSans_600SemiBold",
+  },
+  retryBannerBtn: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  retryBannerText: {
+    fontSize: 11,
     fontWeight: "600",
     color: "#FFFFFF",
     fontFamily: "DMSans_600SemiBold",
