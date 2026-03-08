@@ -4,6 +4,24 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 68 — Profile Extraction + Achievement Badges + Docs Reorganization (March 8, 2026)
+#### Added
+- **Achievement Badges System** — 56 Apple Fitness-style badges (35 user + 21 business)
+  - 4 rarity tiers: Common, Rare, Epic, Legendary with distinct color systems
+  - 6 categories: Milestone, Streak, Explorer, Social, Seasonal, Special
+  - User badges: First Taste through Legendary Judge (rating milestones), On a Roll through Monthly Devotion (streaks), Curious Palate through Texas Tour (exploration), Connector through Community Leader (social)
+  - Business badges: On the Map through Legendary Spot (volume), Top 10 through Number One (ranking), Highly Rated through Perfect Reputation (quality), Trusted Approved, Top Judge's Pick (social proof)
+  - Pure evaluation functions with progress tracking (0-100%)
+- `components/profile/BadgeGrid.tsx` — Apple Fitness-style badge display with progress rings, rarity-colored borders, category sections, compact mode
+- 25 new badge tests (total: 139 across 10 test files)
+
+#### Changed
+- Extracted `TierBadge`, `HistoryRow`, `BreakdownRow`, `SavedRow`, `LoggedOutView` from `profile.tsx` into `components/profile/SubComponents.tsx`
+- Removed 180+ unused styles from profile.tsx
+- `profile.tsx` reduced from 1,056 to 745 LOC (-29%)
+- Reorganized `/docs/` — moved 67 sprint docs into `/docs/sprints/` subdirectory
+- Updated Team Performance Dashboard through Sprint 68
+
 ### Sprint 67 — Rate Page Extraction + API Response Timing + Team Expansion (March 8, 2026)
 #### Changed
 - Extracted `CircleScorePicker`, `CircleScoreLabels`, `ProgressBar`, `StepIndicator`, `DishPill`, `RatingConfirmation` from `rate/[id].tsx` into `components/rate/SubComponents.tsx`

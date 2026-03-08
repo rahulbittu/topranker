@@ -115,6 +115,15 @@ export interface ApiMemberProfile {
     penalties: number;
   };
   ratingHistory: (ApiRating & { businessName: string })[];
+  // Badge context fields (optional — populated when available)
+  currentStreak?: number;
+  referralCount?: number;
+  helpfulVotes?: number;
+  citiesRated?: number;
+  hasRatedAfterMidnight?: boolean;
+  hasRatedBefore7AM?: boolean;
+  hasGivenPerfect5?: boolean;
+  hasGivenScore1?: boolean;
 }
 
 const CATEGORY_DISPLAY: Record<string, string> = {};
@@ -295,6 +304,7 @@ export async function fetchRankHistory(businessId: string, days: number = 30) {
 
 export interface ApiMemberImpact {
   businessesMovedUp: number;
+  businessesMovedToFirst?: number;
   topContributions: { name: string; slug: string; rankChange: number }[];
 }
 
