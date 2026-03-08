@@ -19,6 +19,7 @@ import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
+import { TYPOGRAPHY } from "@/constants/typography";
 import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
 import { getApiUrl } from "@/lib/query-client";
@@ -633,7 +634,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
+  searchInput: { flex: 1, ...TYPOGRAPHY.ui.body, color: Colors.text },
 
   controlsRow: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
@@ -657,7 +658,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
   filterChipActive: { backgroundColor: AMBER, borderColor: AMBER },
-  filterText: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  filterText: { ...TYPOGRAPHY.ui.label, fontWeight: "500", color: Colors.textSecondary },
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
@@ -688,7 +689,7 @@ const styles = StyleSheet.create({
     fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
   trendingMeta: {
-    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textSecondary,
   },
   trendingDelta: {
     flexDirection: "row", alignItems: "center", gap: 2,
@@ -716,7 +717,7 @@ const styles = StyleSheet.create({
   },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
-  resultsCount: { fontSize: 11, color: Colors.textTertiary, paddingBottom: 4, fontFamily: "DMSans_400Regular" },
+  resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
 
   statusPillOpen: {
     backgroundColor: Colors.green,
@@ -832,7 +833,7 @@ const styles = StyleSheet.create({
     fontSize: 13, fontWeight: "800", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
   },
   mapSelectedMeta: {
-    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textSecondary,
   },
   mapSelectedStatusPill: {
     paddingHorizontal: 5, paddingVertical: 1, borderRadius: 99,
@@ -841,7 +842,7 @@ const styles = StyleSheet.create({
     fontSize: 8, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
   },
   mapSelectedCategory: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
   },
 
   priceRow: {

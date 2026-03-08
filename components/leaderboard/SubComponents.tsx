@@ -38,6 +38,9 @@ export const PhotoMosaic = React.memo(function PhotoMosaic({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[s.mosaicFallback, { height }]}
+        accessible={true}
+        accessibilityRole="image"
+        accessibilityLabel={name ? `${name} placeholder image` : "Business placeholder image"}
       >
         {initial ? (
           <Text style={s.mosaicFallbackInitial}>{initial}</Text>
@@ -52,7 +55,7 @@ export const PhotoMosaic = React.memo(function PhotoMosaic({
 
   if (photos.length === 1) {
     return (
-      <SafeImage uri={photos[0]} style={{ width: pct(100), height }} category={category} />
+      <SafeImage uri={photos[0]} style={{ width: pct(100), height }} category={category} accessibilityLabel={name ? `Photo of ${name}` : "Business photo"} />
     );
   }
 
@@ -91,7 +94,7 @@ export const StarRating = React.memo(function StarRating({ score }: { score: num
       />
     );
   }
-  return <View style={s.starRow}>{stars}</View>;
+  return <View style={s.starRow} accessible={true} accessibilityRole="image" accessibilityLabel={`Rating: ${score.toFixed(1)} out of 5 stars`}>{stars}</View>;
 });
 
 // ── PhotoStrip ──────────────────────────────────────────────────
@@ -112,6 +115,9 @@ export const PhotoStrip = React.memo(function PhotoStrip({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[s.photoStripFallback, { height }]}
+        accessible={true}
+        accessibilityRole="image"
+        accessibilityLabel={name ? `${name} placeholder image` : "Business placeholder image"}
       >
         {initial ? (
           <Text style={s.mosaicFallbackInitial}>{initial}</Text>
@@ -146,6 +152,7 @@ export const PhotoStrip = React.memo(function PhotoStrip({
             uri={uri}
             style={{ width: stripWidth, height }}
             category={category}
+            accessibilityLabel={name ? `Photo ${i + 1} of ${name}` : `Business photo ${i + 1}`}
           />
         ))}
       </ScrollView>
@@ -177,6 +184,7 @@ export function HeroCard({ item, categoryLabel }: { item: MappedBusiness; catego
       style={s.heroCard}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
+      accessibilityHint="Double tap to view business details"
     >
       <View style={s.heroPhotoWrap}>
         <PhotoMosaic photos={photos} height={240} category={item.category} name={item.name} />
@@ -260,6 +268,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
       style={s.rankedCard}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${(item.ratingCount ?? 0).toLocaleString()} ratings`}
+      accessibilityHint="Double tap to view business details"
     >
       <View style={s.rankedPhotoStripWrap}>
         <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} name={item.name} />

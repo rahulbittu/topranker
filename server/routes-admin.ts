@@ -221,4 +221,15 @@ export function registerAdminRoutes(app: Express) {
       return res.status(500).json({ error: err.message });
     }
   });
+
+  // ── Revenue Metrics ──────────────────────────────────────
+  app.get("/api/admin/revenue", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const { getRevenueMetrics } = await import("./storage");
+      const metrics = await getRevenueMetrics();
+      return res.json({ data: metrics });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 }

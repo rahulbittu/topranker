@@ -16,13 +16,14 @@ interface SafeImageProps {
   category?: string;
   fallbackText?: string;
   contentFit?: "cover" | "contain" | "fill";
+  accessibilityLabel?: string;
 }
 
 /**
  * Image that falls back to a branded gradient when the source fails to load.
  * Prevents blank white rectangles when photo URLs 404.
  */
-export function SafeImage({ uri, style, category, fallbackText, contentFit = "cover" }: SafeImageProps) {
+export function SafeImage({ uri, style, category, fallbackText, contentFit = "cover", accessibilityLabel }: SafeImageProps) {
   const [failed, setFailed] = useState(false);
 
   if (failed || !uri) {
@@ -34,6 +35,9 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[style as StyleProp<ViewStyle>, fallbackStyles.container]}
+        accessible={!!accessibilityLabel}
+        accessibilityRole="image"
+        accessibilityLabel={accessibilityLabel}
       >
         {initial ? (
           <Text style={fallbackStyles.initial}>{initial}</Text>
@@ -51,6 +55,8 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
       contentFit={contentFit}
       transition={200}
       onError={() => setFailed(true)}
+      accessible={!!accessibilityLabel}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 }

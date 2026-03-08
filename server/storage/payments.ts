@@ -1,7 +1,7 @@
 /**
  * Payments Storage — audit trail for all payment transactions.
  */
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, count, sum } from "drizzle-orm";
 import { payments, type Payment } from "@shared/schema";
 import { db } from "../db";
 
@@ -86,4 +86,59 @@ export async function getBusinessPayments(
     .where(eq(payments.businessId, businessId))
     .orderBy(desc(payments.createdAt))
     .limit(limit);
+}
+
+/**
+ * Aggregated revenue metrics for the admin dashboard.
+ * Counts and sums payments grouped by type and status.
+ */
+export async function getRevenueMetrics() {
+  // Revenue by type (only succeeded payments count as revenue)
+  const byTypeRows = await db
+    .select({
+      type: payments.type,
+      count: count(),
+      revenue: sum(payments.amount),
+    })
+    .from(payments)
+    .where(eq(payments.status, "succeeded"))
+    .groupBy(payments.type);
+
+  // Active subscriptions (succeeded, not cancelled/refunded)
+  const [activeRow] = await db
+    .select({ count: count() })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.status, "succeeded"),
+      ),
+    );
+
+  // Cancelled payments
+  const [cancelledRow] = await db
+    .select({ count: count() })
+    .from(payments)
+    .where(eq(payments.status, "cancelled"));
+
+  // Build the byType map with known payment types
+  const typeMap: Record<string, { count: number; revenue: number }> = {
+    challenger_entry: { count: 0, revenue: 0 },
+    dashboard_pro: { count: 0, revenue: 0 },
+    featured_placement: { count: 0, revenue: 0 },
+  };
+
+  let totalRevenue = 0;
+  for (const row of byTypeRows) {
+    const rev = Number(row.revenue) || 0;
+    const cnt = Number(row.count) || 0;
+    typeMap[row.type] = { count: cnt, revenue: rev };
+    totalRevenue += rev;
+  }
+
+  return {
+    totalRevenue,
+    byType: typeMap,
+    activeSubscriptions: activeRow?.count ?? 0,
+    cancelledPayments: cancelledRow?.count ?? 0,
+  };
 }

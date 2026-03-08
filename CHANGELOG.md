@@ -2,6 +2,78 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 106] - 2026-03-08
+### Added
+- Performance monitoring middleware with admin endpoint (GET /api/admin/perf)
+- Tech Debt Registry (docs/TECH-DEBT.md)
+- Shared test utilities module (tests/helpers/test-utils.ts)
+- Discover tab onboarding tip card
+### Changed
+- Typography migration in profile.tsx (10 styles)
+- Pricing migration in dashboard.tsx and claim.tsx
+- SSE hardened: max 5 connections/IP, 30-minute auto-timeout
+- Cookie consent "Learn more" now links to privacy policy
+
+## [Sprint 105] - 2026-03-08
+### Added
+- Content Security Policy (9 directives) in security headers
+- Rate limiter middleware (100 req/min API, 10 req/min auth)
+- GDPR cookie consent banner for web
+### Changed
+- Banner dismissal persisted via AsyncStorage
+- Frontend pricing migrated to PRICING constants (3 payment entry screens)
+- Typography migration started in leaderboard SubComponents
+
+## [Sprint 104] - 2026-03-08
+### Added
+- OWASP security headers middleware (X-Content-Type-Options, X-Frame-Options, HSTS)
+- Centralized typography system (constants/typography.ts)
+- Centralized pricing constants (shared/pricing.ts)
+- Rankings tab engagement banner
+### Changed
+- Terms of Service updated to 14 sections (real-time, webhooks, cancellation)
+- Privacy Policy updated (SSE data, Resend provider, webhook logging)
+- colors.ts refactored to import from brand.ts (single source of truth)
+
+## [Sprint 103] - 2026-03-08
+### Added
+- Webhook replay: GET /api/admin/webhooks, POST /api/admin/webhooks/:id/replay
+- Extracted processStripeEvent() for reuse from webhook handler and admin replay
+
+## [Sprint 102] - 2026-03-08
+### Added
+- Email service via Resend API (native fetch, zero dependencies)
+- Dev mode console logging fallback when RESEND_API_KEY not set
+
+## [Sprint 101] - 2026-03-08
+### Added
+- Payment cancellation expires featured placements immediately
+- expireFeaturedByPayment() storage function
+
+## [Sprint 100] - 2026-03-08
+### Added
+- Architecture Audit #9: A+ grade, zero critical/high findings
+
+## [Sprint 99] - 2026-03-08
+### Fixed
+- Map IntersectionObserver crash on tab navigation
+- Press animation quality (timing-in, gentle spring-out)
+- Tab bar dot alignment with unified spring config
+- Opening hours made collapsible (today + expand all)
+### Changed
+- Card entry animations with staggered delays
+
+## [Sprint 98] - 2026-03-08
+### Added
+- Optimistic updates on rating submission with rollback
+- googlePlaceId database index
+
+## [Sprint 97] - 2026-03-08
+### Added
+- Server-Sent Events (SSE) for real-time cache invalidation
+- React Query invalidation via SSE event mapping
+- Website URLs for 28 seed businesses
+
 ## [Unreleased]
 
 ### Sprint 90 — Architectural Audit #8 + Payment Route Extraction (March 8, 2026)

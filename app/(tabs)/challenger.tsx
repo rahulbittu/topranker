@@ -23,7 +23,11 @@ import * as Haptics from "expo-haptics";
 import { ShareCardView, useShareCard } from "@/components/ShareCard";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity } from "@/lib/city-context";
+import { TYPOGRAPHY } from "@/constants/typography";
+
+const CHALLENGER_TIP_KEY = "challenger_tip_dismissed";
 
 function VoteBar({ challenger, defender }: { challenger: number; defender: number }) {
   const total = challenger + defender;
@@ -402,6 +406,19 @@ export default function ChallengerScreen() {
     staleTime: 30000,
   });
 
+  const [showChallengerTip, setShowChallengerTip] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(CHALLENGER_TIP_KEY).then((val) => {
+      if (val !== "true") setShowChallengerTip(true);
+    });
+  }, []);
+
+  const dismissChallengerTip = useCallback(() => {
+    setShowChallengerTip(false);
+    AsyncStorage.setItem(CHALLENGER_TIP_KEY, "true");
+  }, []);
+
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
     Haptics.selectionAsync();
@@ -441,6 +458,25 @@ export default function ChallengerScreen() {
             { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
           ]}
         >
+          {showChallengerTip && (
+            <View style={styles.tipCard}>
+              <Ionicons name="trophy-outline" size={20} color={BRAND.colors.amber} style={styles.tipIcon} />
+              <View style={styles.tipTextStack}>
+                <Text style={styles.tipTitle}>Watch businesses compete head-to-head</Text>
+                <Text style={styles.tipSubtext}>Vote for your favorite and help decide the winner</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.tipDismiss}
+                onPress={dismissChallengerTip}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss tip"
+              >
+                <Ionicons name="close" size={16} color={Colors.textTertiary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {challenges.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="flash-outline" size={32} color={Colors.textTertiary} />
@@ -590,9 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   voteLabel: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
   },
   vsContainer: { alignItems: "center", width: 40 },
   vsDivider: { width: 1, height: 24, backgroundColor: Colors.border },
@@ -622,9 +656,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   voteBarPct: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
   },
   voteBarPctLeading: {
     color: Colors.text,
@@ -637,15 +669,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   timerText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_500Medium",
+    ...TYPOGRAPHY.ui.label, color: Colors.textSecondary,
     flex: 1,
   },
   progressText: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
   },
   progressBarOuter: {
     height: 3,
@@ -756,9 +784,7 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_500Medium",
   },
   reviewTime: {
-    fontSize: 10,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
   },
   reviewScore: {
     fontSize: 18,
@@ -792,8 +818,8 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
   },
   winnerStatLabel: {
-    fontSize: 10, color: "rgba(255,255,255,0.5)",
-    fontFamily: "DMSans_400Regular", marginTop: 2,
+    ...TYPOGRAPHY.ui.small, color: "rgba(255,255,255,0.5)",
+    marginTop: 2,
   },
   winnerStatDivider: {
     width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.15)",
@@ -811,5 +837,42 @@ const styles = StyleSheet.create({
   shareImageBtnText: {
     fontSize: 12, fontWeight: "700", color: BRAND.colors.amber,
     fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
+  },
+
+  // Onboarding tip card
+  tipCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    marginHorizontal: 0,
+  },
+  tipIcon: {
+    marginRight: 10,
+    marginTop: 2,
+  },
+  tipTextStack: {
+    flex: 1,
+  },
+  tipTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  tipSubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
+    marginTop: 2,
+  },
+  tipDismiss: {
+    position: "absolute",
+    top: 10,
+    right: 10,
   },
 });

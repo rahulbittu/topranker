@@ -78,6 +78,7 @@ export {
   updatePaymentStatusByStripeId,
   getMemberPayments,
   getBusinessPayments,
+  getRevenueMetrics,
 } from "./payments";
 
 // Webhook Events
