@@ -1,0 +1,20 @@
+⏺ Here's what I found from researching Replit's preview behavior, and what to do next:
+                                                                                                                                                                                                                      
+  What the research revealed:                                                                                                                                                                                         
+  - Replit's preview docs don't document the internal health check mechanism
+  - The preview opens an iframe to the external URL (port 5000 → external port 80)                                                                                                                                    
+  - Common causes of blank preview: wrong port binding, stale .replit, platform-side outages                                                                                                                        
+  - Our server binds to 0.0.0.0:5000 correctly, returns HTTP 200 with no blocking headers
+
+  Diagnostic steps to run on Replit after Sync & Build:
+
+  1. Check the shell logs — Look for [DEV] Serving bootstrap HTML for / (XXXX bytes) when the preview loads. If you don't see this line, the request isn't reaching our handler.
+  2. Test from Replit shell:
+  curl -s localhost:5000/ | head -3
+  2. You should see <!DOCTYPE html> and "(v4)" in the output.
+  3. Test the response headers:
+  curl -sI localhost:5000/
+  3. Should show HTTP/1.1 200, Content-Type: text/html, NO X-Frame-Options, NO Content-Security-Policy.
+  4. Open the preview URL in a new browser tab (right-click preview → "Open in new tab"). If it loads there but not in the preview pane, it's a Replit platform issue.
+  5. Check Replit status: https://status.replit.com — they've had multiple webview outages in 2024-2025.
+  6. Nuclear option from the community: In Replit shell, run kill 1 to fully restart the container, then click Run again.
