@@ -22,6 +22,8 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { apiRequest } from "@/lib/query-client";
 import { Confetti } from "@/components/Confetti";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
 
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
 
@@ -142,6 +144,7 @@ export default function RateScreen() {
   const [selectedDish, setSelectedDish] = useState<string>("");
   const [dishInput, setDishInput] = useState("");
   const [note, setNote] = useState("");
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
 
   const [dishSearchResults, setDishSearchResults] = useState<ApiDish[]>([]);
@@ -648,6 +651,42 @@ export default function RateScreen() {
               </Text>
             </View>
 
+            {/* Photo Upload */}
+            <View style={styles.photoSection}>
+              {photoUri ? (
+                <View style={styles.photoPreview}>
+                  <Image source={{ uri: photoUri }} style={styles.photoImage} contentFit="cover" />
+                  <TouchableOpacity
+                    style={styles.photoRemove}
+                    onPress={() => setPhotoUri(null)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.photoAddBtn}
+                  onPress={async () => {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.8,
+                    });
+                    if (!result.canceled && result.assets[0]) {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setPhotoUri(result.assets[0].uri);
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="camera-outline" size={24} color={Colors.textTertiary} />
+                  <Text style={styles.photoAddText}>Add a photo (optional)</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <View style={styles.summaryCard}>
               <Text style={styles.summaryTitle}>YOUR RATING</Text>
               <View style={styles.summaryGrid}>
@@ -952,6 +991,22 @@ const styles = StyleSheet.create({
   },
   noteCounterWarn: { color: Colors.gold },
   noteCounterMax: { color: Colors.red },
+
+  // Photo upload
+  photoSection: { marginTop: 4 },
+  photoAddBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 12, paddingVertical: 16,
+    borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
+  },
+  photoAddText: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  photoPreview: { borderRadius: 12, overflow: "hidden", position: "relative" },
+  photoImage: { width: "100%", height: 160, borderRadius: 12 },
+  photoRemove: {
+    position: "absolute", top: 8, right: 8,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3, shadowRadius: 2,
+  },
 
   summaryCard: {
     backgroundColor: Colors.surface, borderRadius: 16, padding: 16, gap: 12,
