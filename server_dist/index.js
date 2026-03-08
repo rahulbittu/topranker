@@ -1,5 +1,11 @@
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
 var __esm = (fn, res) => function __init() {
   return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
 };
@@ -25,6 +31,7 @@ __export(schema_exports, {
   insertRatingSchema: () => insertRatingSchema,
   memberBadges: () => memberBadges,
   members: () => members,
+  payments: () => payments,
   qrScans: () => qrScans,
   rankHistory: () => rankHistory,
   ratingFlags: () => ratingFlags,
@@ -46,7 +53,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -322,6 +329,30 @@ var init_schema = __esm({
       reviewedAt: timestamp("reviewed_at"),
       createdAt: timestamp("created_at").notNull().defaultNow()
     });
+    payments = pgTable(
+      "payments",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        memberId: varchar("member_id").notNull().references(() => members.id),
+        businessId: varchar("business_id").references(() => businesses.id),
+        type: text("type").notNull(),
+        // challenger_entry, dashboard_pro, featured_placement
+        amount: integer("amount").notNull(),
+        // in cents
+        currency: text("currency").notNull().default("usd"),
+        stripePaymentIntentId: text("stripe_payment_intent_id"),
+        status: text("status").notNull().default("pending"),
+        // pending, succeeded, failed, refunded
+        metadata: jsonb("metadata"),
+        createdAt: timestamp("created_at").notNull().defaultNow(),
+        updatedAt: timestamp("updated_at")
+      },
+      (table) => [
+        index("idx_payments_member").on(table.memberId),
+        index("idx_payments_business").on(table.businessId),
+        index("idx_payments_status").on(table.status)
+      ]
+    );
     insertMemberSchema = createInsertSchema(members).pick({
       displayName: true,
       username: true,
@@ -1193,17 +1224,50 @@ var init_badges = __esm({
   }
 });
 
+// server/storage/payments.ts
+import { eq as eq8, desc as desc6 } from "drizzle-orm";
+async function createPaymentRecord(params) {
+  const [payment] = await db.insert(payments).values({
+    memberId: params.memberId,
+    businessId: params.businessId || null,
+    type: params.type,
+    amount: params.amount,
+    currency: params.currency || "usd",
+    stripePaymentIntentId: params.stripePaymentIntentId || null,
+    status: params.status,
+    metadata: params.metadata || null
+  }).returning();
+  return payment;
+}
+async function updatePaymentStatus(id, status) {
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq8(payments.id, id)).returning();
+  return updated ?? null;
+}
+async function getMemberPayments(memberId, limit = 20) {
+  return db.select().from(payments).where(eq8(payments.memberId, memberId)).orderBy(desc6(payments.createdAt)).limit(limit);
+}
+async function getBusinessPayments(businessId, limit = 20) {
+  return db.select().from(payments).where(eq8(payments.businessId, businessId)).orderBy(desc6(payments.createdAt)).limit(limit);
+}
+var init_payments = __esm({
+  "server/storage/payments.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
 // server/storage/claims.ts
-import { eq as eq8, and as and7, count as count5, desc as desc6 } from "drizzle-orm";
+import { eq as eq9, and as and8, count as count5, desc as desc7 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
 }
 async function getClaimByMemberAndBusiness(memberId, businessId) {
   const [claim] = await db.select().from(businessClaims).where(
-    and7(
-      eq8(businessClaims.memberId, memberId),
-      eq8(businessClaims.businessId, businessId)
+    and8(
+      eq9(businessClaims.memberId, memberId),
+      eq9(businessClaims.businessId, businessId)
     )
   );
   return claim;
@@ -1218,14 +1282,14 @@ async function getPendingClaims() {
     verificationMethod: businessClaims.verificationMethod,
     status: businessClaims.status,
     submittedAt: businessClaims.submittedAt
-  }).from(businessClaims).leftJoin(businesses, eq8(businessClaims.businessId, businesses.id)).leftJoin(members, eq8(businessClaims.memberId, members.id)).where(eq8(businessClaims.status, "pending")).orderBy(desc6(businessClaims.submittedAt));
+  }).from(businessClaims).leftJoin(businesses, eq9(businessClaims.businessId, businesses.id)).leftJoin(members, eq9(businessClaims.memberId, members.id)).where(eq9(businessClaims.status, "pending")).orderBy(desc7(businessClaims.submittedAt));
 }
 async function reviewClaim(id, status, reviewedBy) {
-  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq8(businessClaims.id, id)).returning();
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(businessClaims.id, id)).returning();
   return updated ?? null;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq8(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq9(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -1237,14 +1301,14 @@ async function getPendingFlags() {
     aiFraudProbability: ratingFlags.aiFraudProbability,
     status: ratingFlags.status,
     createdAt: ratingFlags.createdAt
-  }).from(ratingFlags).leftJoin(members, eq8(ratingFlags.flaggerId, members.id)).where(eq8(ratingFlags.status, "pending")).orderBy(desc6(ratingFlags.createdAt));
+  }).from(ratingFlags).leftJoin(members, eq9(ratingFlags.flaggerId, members.id)).where(eq9(ratingFlags.status, "pending")).orderBy(desc7(ratingFlags.createdAt));
 }
 async function reviewFlag(id, status, reviewedBy) {
-  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq8(ratingFlags.id, id)).returning();
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(ratingFlags.id, id)).returning();
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq8(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq9(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -1261,6 +1325,7 @@ __export(storage_exports, {
   awardBadge: () => awardBadge,
   createCategorySuggestion: () => createCategorySuggestion,
   createMember: () => createMember,
+  createPaymentRecord: () => createPaymentRecord,
   deleteBusinessPhotos: () => deleteBusinessPhotos,
   getActiveChallenges: () => getActiveChallenges,
   getAdminMemberList: () => getAdminMemberList,
@@ -1269,6 +1334,7 @@ __export(storage_exports, {
   getBusinessById: () => getBusinessById,
   getBusinessBySlug: () => getBusinessBySlug,
   getBusinessDishes: () => getBusinessDishes,
+  getBusinessPayments: () => getBusinessPayments,
   getBusinessPhotos: () => getBusinessPhotos,
   getBusinessPhotosMap: () => getBusinessPhotosMap,
   getBusinessRatings: () => getBusinessRatings,
@@ -1288,6 +1354,7 @@ __export(storage_exports, {
   getMemberByUsername: () => getMemberByUsername,
   getMemberCount: () => getMemberCount,
   getMemberImpact: () => getMemberImpact,
+  getMemberPayments: () => getMemberPayments,
   getMemberRatings: () => getMemberRatings,
   getPendingClaims: () => getPendingClaims,
   getPendingFlags: () => getPendingFlags,
@@ -1312,6 +1379,7 @@ __export(storage_exports, {
   submitRating: () => submitRating,
   updateChallengerVotes: () => updateChallengerVotes,
   updateMemberStats: () => updateMemberStats,
+  updatePaymentStatus: () => updatePaymentStatus,
   updatePushToken: () => updatePushToken
 });
 var init_storage = __esm({
@@ -1325,7 +1393,238 @@ var init_storage = __esm({
     init_dishes();
     init_categories();
     init_badges();
+    init_payments();
     init_claims();
+  }
+});
+
+// server/logger.ts
+function shouldLog(level) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
+}
+function formatMessage(level, tag, message, data) {
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  const prefix = `${timestamp2} [${level.toUpperCase()}] [${tag}]`;
+  if (data !== void 0) {
+    return `${prefix} ${message} ${typeof data === "string" ? data : JSON.stringify(data)}`;
+  }
+  return `${prefix} ${message}`;
+}
+function createTaggedLogger(tag) {
+  return {
+    debug(message, data) {
+      if (shouldLog("debug")) console.log(formatMessage("debug", tag, message, data));
+    },
+    info(message, data) {
+      if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
+    },
+    warn(message, data) {
+      if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
+    },
+    error(message, data) {
+      if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
+    }
+  };
+}
+var LEVEL_ORDER, MIN_LEVEL, log;
+var init_logger = __esm({
+  "server/logger.ts"() {
+    "use strict";
+    LEVEL_ORDER = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+    MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
+    log = {
+      /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
+      tag: createTaggedLogger,
+      // Top-level convenience methods (tag: "Server")
+      debug(message, data) {
+        if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
+      },
+      info(message, data) {
+        if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+      },
+      warn(message, data) {
+        if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
+      },
+      error(message, data) {
+        if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
+      }
+    };
+  }
+});
+
+// server/email.ts
+var email_exports = {};
+__export(email_exports, {
+  sendClaimAdminNotification: () => sendClaimAdminNotification,
+  sendClaimConfirmationEmail: () => sendClaimConfirmationEmail,
+  sendEmail: () => sendEmail,
+  sendWelcomeEmail: () => sendWelcomeEmail
+});
+async function sendEmail(payload) {
+  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
+}
+async function sendWelcomeEmail(params) {
+  const { email, displayName, city, username } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <!-- Header -->
+        <tr><td style="background:#0D1B2A;padding:32px 24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:28px;font-weight:900;letter-spacing:-0.5px;">TopRanker</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:13px;">The world's most trustworthy ranking platform</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:22px;font-weight:700;">Welcome, ${firstName}!</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            You've joined the ${city} ranking community as <strong>@${username}</strong>. Here's what to know:
+          </p>
+
+          <!-- Steps -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;margin-bottom:8px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">1.</strong> Explore rankings in ${city} \u2014 see what the community thinks</p>
+            </td></tr>
+            <tr><td style="height:8px;"></td></tr>
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">2.</strong> After 3 days, unlock rating \u2014 your voice shapes the leaderboard</p>
+            </td></tr>
+            <tr><td style="height:8px;"></td></tr>
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">3.</strong> Build credibility \u2014 more ratings = higher vote weight</p>
+            </td></tr>
+          </table>
+
+          <!-- Tier Preview -->
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:24px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your Starting Tier</p>
+            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">New Member</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight \xB7 Rate to earn Regular status</p>
+          </div>
+
+          <!-- CTA -->
+          <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Start Exploring ${city}
+          </a>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">
+            TopRanker \u2014 Trust-weighted rankings for ${city}<br>
+            <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Welcome to TopRanker, ${firstName}!
+
+You've joined the ${city} ranking community as @${username}.
+
+1. Explore rankings in ${city}
+2. After 3 days, unlock rating
+3. Build credibility \u2014 more ratings = higher vote weight
+
+Your starting tier: New Member (0.10x vote weight)
+
+Start exploring: https://topranker.com
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Welcome to TopRanker, ${firstName}! \u{1F3C6}`,
+    html,
+    text: text2
+  });
+}
+async function sendClaimConfirmationEmail(params) {
+  const { email, displayName, businessName } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Received</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we received your claim for <strong>${businessName}</strong>.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Status</p>
+            <p style="margin:0;color:#C49A1A;font-size:16px;font-weight:700;">Pending Review</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">Our team will verify your claim within 24-48 hours.</p>
+          </div>
+          <p style="margin:0;color:#555;font-size:14px;line-height:1.6;">
+            Once approved, you'll get access to your business dashboard with analytics, review responses, and a verified owner badge.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+We received your claim for ${businessName}.
+
+Status: Pending Review
+Our team will verify your claim within 24-48 hours.
+
+Once approved, you'll get access to your business dashboard.
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Claim received: ${businessName}`,
+    html,
+    text: text2
+  });
+}
+async function sendClaimAdminNotification(params) {
+  const adminEmail = "admin@topranker.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `New claim: ${params.businessName} by ${params.claimantName}`,
+    html: `<p>New business claim submitted.</p>
+      <ul>
+        <li><strong>Business:</strong> ${params.businessName}</li>
+        <li><strong>Claimant:</strong> ${params.claimantName} (${params.claimantEmail})</li>
+      </ul>
+      <p>Review at: https://topranker.com/admin</p>`,
+    text: `New claim: ${params.businessName} by ${params.claimantName} (${params.claimantEmail})`
+  });
+}
+var emailLog;
+var init_email = __esm({
+  "server/email.ts"() {
+    "use strict";
+    init_logger();
+    emailLog = log.tag("Email");
   }
 });
 
@@ -1433,6 +1732,95 @@ var init_seed_cities = __esm({
         process.exit(1);
       });
     }
+  }
+});
+
+// server/payments.ts
+var payments_exports = {};
+__export(payments_exports, {
+  createChallengerPayment: () => createChallengerPayment,
+  createDashboardProPayment: () => createDashboardProPayment,
+  createFeaturedPlacementPayment: () => createFeaturedPlacementPayment
+});
+async function createPaymentIntent(params) {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (stripeKey) {
+    try {
+      const stripe = __require("stripe")(stripeKey);
+      const intent = await stripe.paymentIntents.create({
+        amount: params.amount,
+        currency: params.currency || "usd",
+        description: params.description,
+        metadata: params.metadata,
+        receipt_email: params.customerEmail
+      });
+      return {
+        id: intent.id,
+        amount: intent.amount,
+        currency: intent.currency,
+        status: intent.status === "succeeded" ? "succeeded" : "pending",
+        metadata: intent.metadata
+      };
+    } catch (err) {
+      payLog.error("Stripe error:", err.message);
+      throw new Error("Payment processing failed");
+    }
+  }
+  payLog.info(`Mock payment: $${(params.amount / 100).toFixed(2)} | ${params.description} | ${params.customerEmail}`);
+  return {
+    id: `mock_pi_${Date.now()}`,
+    amount: params.amount,
+    currency: params.currency || "usd",
+    status: "succeeded",
+    metadata: params.metadata
+  };
+}
+async function createChallengerPayment(params) {
+  return createPaymentIntent({
+    amount: 9900,
+    // $99.00
+    description: `TopRanker Challenger Entry: ${params.businessName}`,
+    metadata: {
+      type: "challenger_entry",
+      challengerId: params.challengerId,
+      userId: params.userId
+    },
+    customerEmail: params.customerEmail
+  });
+}
+async function createDashboardProPayment(params) {
+  return createPaymentIntent({
+    amount: 4900,
+    // $49.00/mo
+    description: `TopRanker Business Dashboard Pro: ${params.businessName}`,
+    metadata: {
+      type: "dashboard_pro",
+      businessId: params.businessId,
+      userId: params.userId
+    },
+    customerEmail: params.customerEmail
+  });
+}
+async function createFeaturedPlacementPayment(params) {
+  return createPaymentIntent({
+    amount: 19900,
+    // $199.00/week
+    description: `TopRanker Featured Placement: ${params.businessName} in ${params.city}`,
+    metadata: {
+      type: "featured_placement",
+      businessId: params.businessId,
+      city: params.city,
+      userId: params.userId
+    },
+    customerEmail: params.customerEmail
+  });
+}
+var payLog;
+var init_payments2 = __esm({
+  "server/payments.ts"() {
+    "use strict";
+    init_logger();
+    payLog = log.tag("Payments");
   }
 });
 
@@ -2007,8 +2395,8 @@ async function authenticateGoogleUser(idToken) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq9 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq9(members2.id, member.id));
+    const { eq: eq10 } = await import("drizzle-orm");
+    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq10(members2.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -2029,63 +2417,9 @@ async function authenticateGoogleUser(idToken) {
 }
 
 // server/deploy.ts
+init_logger();
 import { exec } from "child_process";
 import * as crypto from "crypto";
-
-// server/logger.ts
-var LEVEL_ORDER = {
-  debug: 0,
-  info: 1,
-  warn: 2,
-  error: 3
-};
-var MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
-function shouldLog(level) {
-  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
-}
-function formatMessage(level, tag, message, data) {
-  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
-  const prefix = `${timestamp2} [${level.toUpperCase()}] [${tag}]`;
-  if (data !== void 0) {
-    return `${prefix} ${message} ${typeof data === "string" ? data : JSON.stringify(data)}`;
-  }
-  return `${prefix} ${message}`;
-}
-function createTaggedLogger(tag) {
-  return {
-    debug(message, data) {
-      if (shouldLog("debug")) console.log(formatMessage("debug", tag, message, data));
-    },
-    info(message, data) {
-      if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
-    },
-    warn(message, data) {
-      if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
-    },
-    error(message, data) {
-      if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
-    }
-  };
-}
-var log = {
-  /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
-  tag: createTaggedLogger,
-  // Top-level convenience methods (tag: "Server")
-  debug(message, data) {
-    if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
-  },
-  info(message, data) {
-    if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
-  },
-  warn(message, data) {
-    if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
-  },
-  error(message, data) {
-    if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
-  }
-};
-
-// server/deploy.ts
 var deployLog = log.tag("Deploy");
 var deployStatus = {
   status: "idle",
@@ -2214,6 +2548,7 @@ function handleDeployStatus(_req, res) {
 }
 
 // server/photos.ts
+init_logger();
 async function handlePhotoProxy(req, res) {
   const ref = req.query.ref;
   if (!ref) {
@@ -2413,95 +2748,8 @@ function handleBadgeShare(req, res) {
   res.send(html);
 }
 
-// server/email.ts
-var emailLog = log.tag("Email");
-async function sendEmail(payload) {
-  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
-}
-async function sendWelcomeEmail(params) {
-  const { email, displayName, city, username } = params;
-  const firstName = displayName.split(" ")[0];
-  const html = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
-<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
-        <!-- Header -->
-        <tr><td style="background:#0D1B2A;padding:32px 24px;text-align:center;">
-          <h1 style="margin:0;color:#C49A1A;font-size:28px;font-weight:900;letter-spacing:-0.5px;">TopRanker</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:13px;">The world's most trustworthy ranking platform</p>
-        </td></tr>
-
-        <!-- Body -->
-        <tr><td style="padding:32px 24px;">
-          <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:22px;font-weight:700;">Welcome, ${firstName}!</h2>
-          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
-            You've joined the ${city} ranking community as <strong>@${username}</strong>. Here's what to know:
-          </p>
-
-          <!-- Steps -->
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;margin-bottom:8px;">
-              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">1.</strong> Explore rankings in ${city} \u2014 see what the community thinks</p>
-            </td></tr>
-            <tr><td style="height:8px;"></td></tr>
-            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
-              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">2.</strong> After 3 days, unlock rating \u2014 your voice shapes the leaderboard</p>
-            </td></tr>
-            <tr><td style="height:8px;"></td></tr>
-            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
-              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">3.</strong> Build credibility \u2014 more ratings = higher vote weight</p>
-            </td></tr>
-          </table>
-
-          <!-- Tier Preview -->
-          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:24px;">
-            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your Starting Tier</p>
-            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">New Member</p>
-            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight \xB7 Rate to earn Regular status</p>
-          </div>
-
-          <!-- CTA -->
-          <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
-            Start Exploring ${city}
-          </a>
-        </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="padding:20px 24px;border-top:1px solid #E8E6E1;text-align:center;">
-          <p style="margin:0;color:#999;font-size:11px;">
-            TopRanker \u2014 Trust-weighted rankings for ${city}<br>
-            <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
-          </p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-  const text2 = `Welcome to TopRanker, ${firstName}!
-
-You've joined the ${city} ranking community as @${username}.
-
-1. Explore rankings in ${city}
-2. After 3 days, unlock rating
-3. Build credibility \u2014 more ratings = higher vote weight
-
-Your starting tier: New Member (0.10x vote weight)
-
-Start exploring: https://topranker.com
-
-\u2014 The TopRanker Team`;
-  await sendEmail({
-    to: email,
-    subject: `Welcome to TopRanker, ${firstName}! \u{1F3C6}`,
-    html,
-    text: text2
-  });
-}
+// server/routes.ts
+init_email();
 
 // shared/admin.ts
 var ADMIN_EMAILS = Object.freeze([
@@ -2517,6 +2765,7 @@ function isAdminEmail(email) {
 init_storage();
 
 // server/google-places.ts
+init_logger();
 var API_BASE = "https://places.googleapis.com/v1";
 async function fetchPlacePhotos(googlePlaceId, limit = 5) {
   const apiKey = config.googleMapsApiKey;
@@ -2714,10 +2963,116 @@ function registerAdminRoutes(app2) {
   });
 }
 
+// server/routes-payments.ts
+init_storage();
+function requireAuth2(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
+function registerPaymentRoutes(app2) {
+  app2.post("/api/payments/challenger", requireAuth2, async (req, res) => {
+    try {
+      const { businessName, slug } = req.body;
+      if (!businessName || !slug) {
+        return res.status(400).json({ error: "businessName and slug are required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createChallengerPayment: createChallengerPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+      const payment = await createChallengerPayment2({
+        challengerId: business.id,
+        businessName,
+        customerEmail: req.user.email || "",
+        userId: req.user.id
+      });
+      await createPaymentRecord({
+        memberId: req.user.id,
+        businessId: business.id,
+        type: "challenger_entry",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata
+      });
+      return res.json({ data: payment });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/payments/dashboard-pro", requireAuth2, async (req, res) => {
+    try {
+      const { slug } = req.body;
+      if (!slug) {
+        return res.status(400).json({ error: "slug is required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createDashboardProPayment: createDashboardProPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+      const payment = await createDashboardProPayment2({
+        businessId: business.id,
+        businessName: business.name,
+        customerEmail: req.user.email || "",
+        userId: req.user.id
+      });
+      await createPaymentRecord({
+        memberId: req.user.id,
+        businessId: business.id,
+        type: "dashboard_pro",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata
+      });
+      return res.json({ data: payment });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/payments/featured", requireAuth2, async (req, res) => {
+    try {
+      const { slug } = req.body;
+      if (!slug) {
+        return res.status(400).json({ error: "slug is required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createFeaturedPlacementPayment: createFeaturedPlacementPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+      const payment = await createFeaturedPlacementPayment2({
+        businessId: business.id,
+        businessName: business.name,
+        city: business.city,
+        customerEmail: req.user.email || "",
+        userId: req.user.id
+      });
+      await createPaymentRecord({
+        memberId: req.user.id,
+        businessId: business.id,
+        type: "featured_placement",
+        amount: payment.amount,
+        stripePaymentIntentId: payment.id,
+        status: payment.status,
+        metadata: payment.metadata
+      });
+      return res.json({ data: payment });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+}
+
 // server/routes.ts
+init_logger();
 init_storage();
 init_schema();
-function requireAuth2(req, res, next) {
+function requireAuth3(req, res, next) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -2942,7 +3297,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/businesses/:slug/claim", requireAuth2, async (req, res) => {
+  app2.post("/api/businesses/:slug/claim", requireAuth3, async (req, res) => {
     try {
       const business = await getBusinessBySlug(req.params.slug);
       if (!business) {
@@ -2959,12 +3314,25 @@ async function registerRoutes(app2) {
       }
       const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
       const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
+      const { sendClaimConfirmationEmail: sendClaimConfirmationEmail2, sendClaimAdminNotification: sendClaimAdminNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+      sendClaimConfirmationEmail2({
+        email: req.user.email || "",
+        displayName: req.user.displayName || "User",
+        businessName: business.name
+      }).catch(() => {
+      });
+      sendClaimAdminNotification2({
+        businessName: business.name,
+        claimantName: req.user.displayName || "Unknown",
+        claimantEmail: req.user.email || ""
+      }).catch(() => {
+      });
       return res.json({ data: { id: claim.id, status: claim.status } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.get("/api/businesses/:slug/dashboard", requireAuth2, async (req, res) => {
+  app2.get("/api/businesses/:slug/dashboard", requireAuth3, async (req, res) => {
     try {
       const business = await getBusinessBySlug(req.params.slug);
       if (!business) {
@@ -3009,6 +3377,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
+  registerPaymentRoutes(app2);
   app2.get("/api/dishes/search", async (req, res) => {
     try {
       const businessId = req.query.business_id;
@@ -3020,7 +3389,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/ratings", requireAuth2, async (req, res) => {
+  app2.post("/api/ratings", requireAuth3, async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -3042,7 +3411,7 @@ async function registerRoutes(app2) {
       return res.status(400).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me", requireAuth2, async (req, res) => {
+  app2.get("/api/members/me", requireAuth3, async (req, res) => {
     try {
       const member = await getMemberById(req.user.id);
       if (!member) return res.status(404).json({ error: "Member not found" });
@@ -3133,7 +3502,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me/impact", requireAuth2, async (req, res) => {
+  app2.get("/api/members/me/impact", requireAuth3, async (req, res) => {
     try {
       const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       const data = await getMemberImpact2(req.user.id);
@@ -3142,7 +3511,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/members/me/push-token", requireAuth2, async (req, res) => {
+  app2.post("/api/members/me/push-token", requireAuth3, async (req, res) => {
     try {
       const { pushToken } = req.body;
       if (!pushToken || typeof pushToken !== "string") {
@@ -3155,7 +3524,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/category-suggestions", requireAuth2, async (req, res) => {
+  app2.post("/api/category-suggestions", requireAuth3, async (req, res) => {
     try {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -3194,7 +3563,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: "Failed to fetch badges" });
     }
   });
-  app2.post("/api/badges/award", requireAuth2, async (req, res) => {
+  app2.post("/api/badges/award", requireAuth3, async (req, res) => {
     try {
       const memberId = req.user.id;
       const { badgeId, badgeFamily } = req.body;
@@ -3208,7 +3577,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: "Failed to award badge" });
     }
   });
-  app2.get("/api/badges/earned", requireAuth2, async (req, res) => {
+  app2.get("/api/badges/earned", requireAuth3, async (req, res) => {
     try {
       const memberId = req.user.id;
       const badgeIds = await getEarnedBadgeIds(memberId);
@@ -3235,6 +3604,7 @@ async function registerRoutes(app2) {
 }
 
 // server/index.ts
+init_logger();
 import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
