@@ -4,6 +4,18 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 69 — Index Extraction (Final N1/N6) + Category Registry Architecture (March 8, 2026)
+#### Changed
+- Extracted `PhotoMosaic`, `StarRating`, `PhotoStrip`, `HeroCard`, `RankedCard` from `index.tsx` into `components/leaderboard/SubComponents.tsx`
+- `index.tsx` reduced from 1,031 to 306 LOC (-70%)
+- **N1/N6 100% COMPLETE** — all 5 files resolved (total: 5,560 → 3,504 LOC, -37%)
+
+#### Added
+- `lib/category-registry.ts` — Extensible category architecture with 24 categories across 4 verticals (food, services, wellness, entertainment)
+- Domain-specific at-a-glance fields per category (e.g., barbers: walkIn, specialties; gyms: equipment, classes)
+- `CategorySuggestion` interface for user-requested categories with admin approval workflow
+- 11 new category registry tests (total: 150 across 11 files)
+
 ### Sprint 68 — Profile Extraction + Achievement Badges + Docs Reorganization (March 8, 2026)
 #### Added
 - **Achievement Badges System** — 56 Apple Fitness-style badges (35 user + 21 business)

@@ -1,324 +1,27 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Animated,
-  TextInput, RefreshControl, useWindowDimensions,
+  ScrollView, Platform,
+  TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
-import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
+import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories } from "@/lib/api";
 import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
-import { usePressAnimation } from "@/hooks/usePressAnimation";
-import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
-import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
 const RANKED_CARD_HEIGHT = 222;
-
-const PhotoMosaic = React.memo(function PhotoMosaic({ photos, height, category, name }: { photos: string[]; height: number; category?: string; name?: string }) {
-  if (photos.length === 0) {
-    const initial = name?.charAt(0)?.toUpperCase() || "";
-    return (
-      <LinearGradient
-        colors={[AMBER, BRAND.colors.amberDark]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.mosaicFallback, { height }]}
-      >
-        {initial ? (
-          <Text style={styles.mosaicFallbackInitial}>{initial}</Text>
-        ) : (
-          <Text style={styles.mosaicFallbackEmoji}>
-            {getCategoryDisplay(category || "").emoji}
-          </Text>
-        )}
-      </LinearGradient>
-    );
-  }
-
-  if (photos.length === 1) {
-    return (
-      <SafeImage uri={photos[0]} style={{ width: "100%" as any, height } as any} category={category} />
-    );
-  }
-
-  if (photos.length === 2) {
-    return (
-      <View style={[styles.mosaicRow, { height }]}>
-        <SafeImage uri={photos[0]} style={[styles.mosaicMainPhoto, { height }] as any} category={category} />
-        <SafeImage uri={photos[1]} style={[styles.mosaicFlex, { height }] as any} category={category} />
-      </View>
-    );
-  }
-
-  return (
-    <View style={[styles.mosaicRow, { height }]}>
-      <SafeImage uri={photos[0]} style={[styles.mosaicMainPhoto, { height }] as any} category={category} />
-      <View style={styles.mosaicSideColumn}>
-        <SafeImage uri={photos[1]} style={styles.mosaicFlex as any} category={category} />
-        <SafeImage uri={photos[2]} style={styles.mosaicFlex as any} category={category} />
-      </View>
-    </View>
-  );
-});
-
-const StarRating = React.memo(function StarRating({ score }: { score: number }) {
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    const filled = score >= i;
-    const halfFilled = !filled && score >= i - 0.5;
-    stars.push(
-      <Ionicons
-        key={i}
-        name={filled ? "star" : halfFilled ? "star-half" : "star-outline"}
-        size={14}
-        color={AMBER}
-      />
-    );
-  }
-  return <View style={styles.starRow}>{stars}</View>;
-});
-
-function HeroCard({ item, categoryLabel }: { item: MappedBusiness; categoryLabel: string }) {
-  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
-  const catDisplay = getCategoryDisplay(item.category);
-  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
-  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
-
-  return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      style={styles.heroCard}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked number 1, score ${item.weightedScore.toFixed(1)}`}
-    >
-      <View style={styles.heroPhotoWrap}>
-        <PhotoMosaic photos={photos} height={240} category={item.category} name={item.name} />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.7)"]}
-          style={styles.heroGradient}
-        />
-        {/* Crown badge */}
-        <View style={styles.heroCrownBadge}>
-          <Text style={styles.heroCrownText}>{"\u{1F451}"} #1 {categoryLabel.toUpperCase()}</Text>
-        </View>
-        {/* OPEN/CLOSED pill top-right */}
-        {item.isOpenNow !== undefined && (
-          <View style={[styles.heroOpenPill, item.isOpenNow ? styles.openPillOpen : styles.openPillClosed]}>
-            <Text style={styles.openPillText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
-          </View>
-        )}
-        {/* Business name bottom-left */}
-        <Text style={styles.heroName} numberOfLines={1}>{item.name}</Text>
-        {/* Score bottom-right */}
-        <Text style={styles.heroScore}>{item.weightedScore.toFixed(1)}</Text>
-      </View>
-      {/* White strip below */}
-      <View style={styles.heroStrip}>
-        <View style={styles.heroStripLeft}>
-          <Text style={styles.heroStripCategory}>
-            {catDisplay.emoji} {catDisplay.label}
-            {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
-            {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
-          </Text>
-          <View style={styles.heroStripRow2}>
-            <StarRating score={item.weightedScore} />
-            <Text style={styles.heroStripRatings}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
-            {(item.ratingCount ?? 0) >= 50 && (
-              <View style={styles.hotBadge}>
-                <Ionicons name="flame" size={10} color="#fff" />
-                <Text style={styles.hotBadgeText}>HOT</Text>
-              </View>
-            )}
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-          accessibilityRole="link"
-          accessibilityLabel={`View ${item.name} profile`}
-        >
-          <Text style={styles.heroStripLink}>{"View Profile \u2192"}</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-    </Animated.View>
-  );
-}
-
-const PhotoStrip = React.memo(function PhotoStrip({ photos, height, category, containerWidth, name }: { photos: string[]; height: number; category?: string; containerWidth: number; name?: string }) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const stripPhotos = photos.slice(0, 3);
-  const stripWidth = containerWidth;
-
-  if (stripPhotos.length === 0) {
-    const initial = name?.charAt(0)?.toUpperCase() || "";
-    return (
-      <LinearGradient
-        colors={[AMBER, BRAND.colors.amberDark]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.photoStripFallback, { height }]}
-      >
-        {initial ? (
-          <Text style={styles.mosaicFallbackInitial}>{initial}</Text>
-        ) : (
-          <Text style={styles.mosaicFallbackEmoji}>
-            {getCategoryDisplay(category || "").emoji}
-          </Text>
-        )}
-      </LinearGradient>
-    );
-  }
-
-  const handleScroll = useCallback((e: any) => {
-    const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / stripWidth);
-    setActiveIndex(idx);
-  }, [stripWidth]);
-
-  return (
-    <View>
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        style={{ height }}
-      >
-        {stripPhotos.map((uri, i) => (
-          <SafeImage
-            key={i}
-            uri={uri}
-            style={{ width: stripWidth, height } as any}
-            category={category}
-          />
-        ))}
-      </ScrollView>
-      {stripPhotos.length > 1 && (
-        <View style={styles.dotRow}>
-          {stripPhotos.map((_, i) => (
-            <View key={i} style={[styles.dot, i === activeIndex && styles.dotActive]} />
-          ))}
-        </View>
-      )}
-    </View>
-  );
-});
-
-const RankedCard = React.memo(function RankedCard({ item }: { item: MappedBusiness }) {
-  const { width: screenWidth } = useWindowDimensions();
-  const cardWidth = Math.min(screenWidth, 600) - CARD_PADDING * 2;
-  const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
-  const catDisplay = getCategoryDisplay(item.category);
-  const rankLabel = getRankDisplay(item.rank);
-  const { isBookmarked, toggleBookmark } = useBookmarks();
-  const saved = isBookmarked(item.id);
-  const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
-  const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(10)).current;
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={{ transform: [{ scale }, { translateY: slideAnim }], opacity: fadeAnim }}>
-    <TouchableOpacity
-      activeOpacity={0.75}
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
-      style={styles.rankedCard}
-      accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}, ${(item.ratingCount ?? 0).toLocaleString()} ratings`}
-    >
-      <View style={styles.rankedPhotoStripWrap}>
-        <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} name={item.name} />
-        {/* Rank badge overlaid top-left */}
-        <View style={[
-          styles.rankBadge,
-          item.rank === 2 && styles.rankBadgeSilver,
-          item.rank === 3 && styles.rankBadgeBronze,
-        ]}>
-          <Text style={styles.rankBadgeText}>{rankLabel}</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.cardBookmarkBtn}
-          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
-        >
-          <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={14} color={saved ? AMBER : "#fff"} />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.rankedInfo}>
-        <View style={styles.rankedRow1}>
-          <Text style={styles.rankedName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.rankedScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
-        </View>
-        <Text style={styles.rankedMeta} numberOfLines={1}>
-          {catDisplay.emoji} {catDisplay.label}
-          {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
-          {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
-        </Text>
-        <View style={styles.rankedRow3}>
-          {(item.ratingCount ?? 0) >= 10 && (
-            <View style={styles.verifiedPill}>
-              <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
-              <Text style={styles.verifiedPillText}>VERIFIED</Text>
-            </View>
-          )}
-          <Text style={styles.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
-          {item.rankDelta !== 0 && (
-            <View style={[styles.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>
-              <Text style={[styles.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
-                {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
-              </Text>
-            </View>
-          )}
-          {item.isOpenNow !== undefined && (
-            <View style={[styles.statusPillSmall, item.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
-              <Text style={styles.statusPillSmallText}>{item.isOpenNow ? "OPEN" : "CLOSED"}</Text>
-            </View>
-          )}
-          {item.isChallenger && (
-            <View style={styles.challengerPill}>
-              <Ionicons name="flash" size={9} color={BRAND.colors.navy} />
-              <Text style={styles.challengerPillText}>IN CHALLENGE</Text>
-            </View>
-          )}
-          {(item.ratingCount ?? 0) >= 20 && (
-            <View style={styles.activityPill}>
-              <Ionicons name="flame" size={9} color={AMBER} />
-              <Text style={styles.activityPillText}>ACTIVE</Text>
-            </View>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-    </Animated.View>
-  );
-});
 
 export default function LeaderboardScreen() {
   const insets = useSafeAreaInsets();
@@ -528,178 +231,63 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   errorIcon: { marginBottom: 12 },
 
-  // Photo Mosaic
-  mosaicFallback: { alignItems: "center", justifyContent: "center" },
-  mosaicFallbackEmoji: { fontSize: 40, color: "rgba(255,255,255,0.5)" },
-  mosaicFallbackInitial: { fontSize: 48, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
-  mosaicFull: { width: "100%" as any },
-  mosaicRow: { flexDirection: "row", gap: 3 },
-  mosaicMainPhoto: { width: "60%" },
-  mosaicFlex: { flex: 1 },
-  mosaicSideColumn: { flex: 1, gap: 3 },
-  starRow: { flexDirection: "row", gap: 1 },
-  heroPhotoWrap: { position: "relative" as const },
-
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    paddingTop: 2,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 20, paddingBottom: 10, paddingTop: 2,
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-    marginTop: 2,
-  },
-  lastUpdated: {
-    fontSize: 9,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-    marginTop: 1,
-    opacity: 0.7,
-  },
-  headerRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
+  headerSubtitle: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 2 },
+  lastUpdated: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 1, opacity: 0.7 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   citySelector: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    ...Colors.cardShadow,
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.surface, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    ...Colors.cardShadow, shadowOpacity: 0.04, shadowRadius: 6,
   },
-  citySelectorText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
+  citySelectorText: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   cityPickerDropdown: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    overflow: "hidden",
+    backgroundColor: Colors.surface, borderRadius: 12,
+    marginHorizontal: 16, marginBottom: 8, borderWidth: 1, borderColor: Colors.border, overflow: "hidden",
   },
   cityPickerItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 14, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  cityPickerItemActive: {
-    backgroundColor: Colors.goldFaint,
-  },
-  cityPickerText: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_500Medium",
-  },
-  cityPickerTextActive: {
-    color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
+  cityPickerItemActive: { backgroundColor: Colors.goldFaint },
+  cityPickerText: { flex: 1, fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  cityPickerTextActive: { color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
   searchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 6,
-    paddingRight: 14,
-    gap: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    flexDirection: "row", alignItems: "center", marginHorizontal: 16,
+    height: 48, borderRadius: 24, backgroundColor: Colors.surface,
+    paddingHorizontal: 6, paddingRight: 14, gap: 10, marginBottom: 8,
+    borderWidth: 1, borderColor: Colors.border,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   searchIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: `${AMBER}12`,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: `${AMBER}12`, alignItems: "center", justifyContent: "center",
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: Colors.text,
-    fontFamily: "DMSans_400Regular",
-  },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
 
   chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 12 },
-  chipsContainer: {
-    paddingHorizontal: 16,
-    gap: 8,
-    flexDirection: "row",
-    paddingVertical: 6,
-  },
+  chipsContainer: { paddingHorizontal: 16, gap: 8, flexDirection: "row", paddingVertical: 6 },
   chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    height: 38,
-    borderRadius: 100,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, height: 38, borderRadius: 100,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
   chipActive: {
-    backgroundColor: AMBER,
-    borderColor: AMBER,
-    shadowColor: AMBER,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: AMBER, borderColor: AMBER,
+    shadowColor: AMBER, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
   },
   chipEmojiCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.04)", alignItems: "center", justifyContent: "center",
   },
-  chipEmojiCircleActive: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  chipEmoji: {
-    fontSize: 13,
-  },
-  chipLabel: {
-    fontSize: 13,
-    fontFamily: "DMSans_600SemiBold",
-    color: Colors.text,
-  },
-  chipLabelActive: {
-    color: "#FFFFFF",
-    fontFamily: "DMSans_700Bold",
-  },
+  chipEmojiCircleActive: { backgroundColor: "rgba(255,255,255,0.2)" },
+  chipEmoji: { fontSize: 13 },
+  chipLabel: { fontSize: 13, fontFamily: "DMSans_600SemiBold", color: Colors.text },
+  chipLabelActive: { color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
 
   list: { paddingHorizontal: CARD_PADDING, gap: 10, paddingTop: 4 },
 
@@ -714,318 +302,5 @@ const styles = StyleSheet.create({
     marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
     backgroundColor: AMBER, borderRadius: 10,
   },
-  retryButtonText: {
-    color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13,
-  },
-
-  // Hero Card (#1)
-  heroCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    overflow: "hidden",
-    marginTop: 0,
-    marginBottom: 4,
-    ...Colors.cardShadow,
-  },
-  heroGradient: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 140,
-  },
-  heroCrownBadge: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 20,
-  },
-  heroCrownText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFD700",
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.5,
-  },
-  heroOpenPill: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 99,
-  },
-  heroName: {
-    position: "absolute",
-    bottom: 12,
-    left: 14,
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "PlayfairDisplay_700Bold",
-    letterSpacing: -0.3,
-    maxWidth: "60%",
-  },
-  heroScore: {
-    position: "absolute",
-    bottom: 12,
-    right: 14,
-    fontSize: 26,
-    fontWeight: "900",
-    color: "#FFD700",
-    fontFamily: "PlayfairDisplay_900Black",
-    letterSpacing: -0.5,
-  },
-  openPillOpen: {
-    backgroundColor: Colors.green,
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  openPillClosed: { backgroundColor: Colors.red },
-  openPillText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "#fff",
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.5,
-  },
-  heroStrip: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  heroStripLeft: { gap: 4, flex: 1 },
-  heroStripRow2: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroStripCategory: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_500Medium",
-  },
-  heroStripRatings: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-  },
-  heroStripLink: {
-    fontSize: 12,
-    color: AMBER,
-    fontFamily: "DMSans_600SemiBold",
-  },
-
-  // Photo Strip (swipeable)
-  photoStripFallback: { alignItems: "center", justifyContent: "center" },
-  dotRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 5,
-    paddingVertical: 6,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: "rgba(0,0,0,0.15)",
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "rgba(255,255,255,0.45)",
-  },
-  dotActive: {
-    backgroundColor: AMBER,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-
-  // Ranked Cards (#2+)
-  rankedCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
-    overflow: "hidden",
-    marginBottom: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-  rankedPhotoStripWrap: {
-    position: "relative" as const,
-  },
-  rankBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: AMBER,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  rankBadgeSilver: { backgroundColor: Colors.silver },
-  rankBadgeBronze: { backgroundColor: Colors.bronze },
-  rankBadgeText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#fff",
-    fontFamily: "PlayfairDisplay_900Black",
-  },
-  cardBookmarkBtn: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rankedInfo: {
-    padding: 12,
-    gap: 4,
-  },
-  rankedRow1: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  rankedName: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
-    flex: 1,
-    marginRight: 8,
-  },
-  rankedMeta: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_500Medium",
-  },
-  rankedRow3: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginTop: 2,
-  },
-  rankedScore: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: AMBER,
-    fontFamily: "PlayfairDisplay_900Black",
-  },
-  rankedRatingCount: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-  },
-  rankedDelta: {
-    fontSize: 11,
-    fontFamily: "DMSans_500Medium",
-  },
-  statusPillSmall: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 99,
-  },
-  statusPillOpen: {
-    backgroundColor: Colors.green,
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statusPillClosed: { backgroundColor: Colors.red },
-  statusPillSmallText: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: "#fff",
-    fontFamily: "DMSans_600SemiBold",
-    letterSpacing: 0.3,
-  },
-  challengerPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 99,
-    backgroundColor: "rgba(13,27,42,0.10)",
-    shadowColor: BRAND.colors.navy,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  challengerPillText: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: BRAND.colors.navy,
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.3,
-  },
-  rankDeltaPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-  },
-  hotBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 99,
-    backgroundColor: Colors.red,
-  },
-  hotBadgeText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: "#fff",
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.3,
-  },
-  verifiedPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 99,
-    backgroundColor: `${Colors.green}15`,
-  },
-  verifiedPillText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: Colors.green,
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.5,
-  },
-  activityPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 99,
-    backgroundColor: `${AMBER}15`,
-  },
-  activityPillText: {
-    fontSize: 8,
-    fontWeight: "700",
-    color: AMBER,
-    fontFamily: "DMSans_700Bold",
-    letterSpacing: 0.3,
-  },
+  retryButtonText: { color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 },
 });
