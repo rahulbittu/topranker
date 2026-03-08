@@ -9,6 +9,7 @@ import { type RefObject } from "react";
 import { type View, Platform } from "react-native";
 import * as Sharing from "expo-sharing";
 import { captureRef } from "react-native-view-shot";
+import { getApiUrl } from "@/lib/query-client";
 
 /**
  * Captures the badge share card view as a PNG and opens the share sheet.
@@ -43,4 +44,19 @@ export async function shareBadgeCard(viewRef: RefObject<View | null>): Promise<b
   } catch {
     return false;
   }
+}
+
+/**
+ * Generate a shareable link URL for a badge with OG meta previews.
+ * @param badgeId — the badge ID
+ * @param username — optional username for attribution
+ * @returns full share URL
+ */
+export function getBadgeShareUrl(badgeId: string, username?: string): string {
+  const baseUrl = getApiUrl();
+  const url = new URL(`/share/badge/${encodeURIComponent(badgeId)}`, baseUrl);
+  if (username) {
+    url.searchParams.set("user", username);
+  }
+  return url.toString();
 }

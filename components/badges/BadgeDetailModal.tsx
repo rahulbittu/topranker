@@ -16,7 +16,8 @@ import {
   type EarnedBadge, RARITY_COLORS, RARITY_LABELS,
 } from "@/lib/badges";
 import { BadgeShareCard } from "@/components/badges/BadgeShareCard";
-import { shareBadgeCard } from "@/lib/badge-sharing";
+import { shareBadgeCard, getBadgeShareUrl } from "@/lib/badge-sharing";
+import * as Clipboard from "expo-clipboard";
 
 const AMBER = BRAND.colors.amber;
 
@@ -44,6 +45,12 @@ export function BadgeDetailModal({ badge, userName, onClose }: BadgeDetailModalP
     if (!success) {
       Alert.alert("Sharing unavailable", "Badge sharing is not available on this device.");
     }
+  };
+
+  const handleCopyLink = async () => {
+    const url = getBadgeShareUrl(badge.badge.id, userName);
+    await Clipboard.setStringAsync(url);
+    Alert.alert("Link Copied", "Badge share link copied to clipboard!");
   };
 
   return (
@@ -92,12 +99,18 @@ export function BadgeDetailModal({ badge, userName, onClose }: BadgeDetailModalP
             </View>
           )}
 
-          {/* Share button (only for earned badges) */}
+          {/* Share buttons (only for earned badges) */}
           {isEarned && (
-            <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
-              <TypedIcon name="share-outline" size={18} color="#FFFFFF" />
-              <Text style={s.shareBtnText}>Share Badge</Text>
-            </TouchableOpacity>
+            <View style={s.shareRow}>
+              <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.8}>
+                <TypedIcon name="share-outline" size={18} color="#FFFFFF" />
+                <Text style={s.shareBtnText}>Share</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.linkBtn} onPress={handleCopyLink} activeOpacity={0.8}>
+                <TypedIcon name="link-outline" size={18} color={AMBER} />
+                <Text style={s.linkBtnText}>Copy Link</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Close button */}
@@ -200,20 +213,39 @@ const s = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "DMSans_600SemiBold",
   },
+  shareRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
   shareBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     backgroundColor: AMBER,
     borderRadius: 12,
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    marginTop: 4,
+    paddingHorizontal: 20,
   },
   shareBtnText: {
     fontSize: 14,
     fontWeight: "700",
     color: "#FFFFFF",
+    fontFamily: "DMSans_700Bold",
+  },
+  linkBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: `${AMBER}15`,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  linkBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: AMBER,
     fontFamily: "DMSans_700Bold",
   },
   closeBtn: {

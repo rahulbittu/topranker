@@ -15,7 +15,7 @@ import type { CredibilityTier } from "@/lib/data";
 
 interface MemberImpact {
   businessesMovedUp: number;
-  businessesMovedToFirst: number;
+  businessesMovedToFirst?: number;
 }
 
 interface UseBadgeContextResult {

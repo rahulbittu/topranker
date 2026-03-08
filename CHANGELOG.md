@@ -4,6 +4,19 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 84 — Badge Share-by-Link + TypeScript Error Fixes (March 8, 2026)
+#### Added
+- `server/badge-share.ts` — Server-rendered badge share page with OG meta for social previews
+- `/share/badge/:badgeId` endpoint serving HTML with OG tags, inline SVG image, cache-control
+- "Copy Link" button in BadgeDetailModal using expo-clipboard
+- `getBadgeShareUrl()` utility for constructing share URLs
+- 11 new tests for share link validation (total: 231 across 20 files)
+
+#### Fixed
+- Fixed `MemberImpact.businessesMovedToFirst` type — made optional to match API interface
+- Fixed `business.lat`/`business.lng` type — converted number to string for LocationCard
+- All pre-existing TypeScript errors eliminated — **zero `tsc --noEmit` errors**
+
 ### Sprint 83 — Admin Claims/Flags API Wiring + Badge Leaderboard (March 8, 2026)
 #### Added
 - `server/storage/claims.ts` — Admin review storage for business claims and rating flags (6 functions)

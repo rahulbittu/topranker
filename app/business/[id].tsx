@@ -446,8 +446,8 @@ export default function BusinessProfileScreen() {
           {business.address && (
             <LocationCard
               address={business.address}
-              lat={business.lat}
-              lng={business.lng}
+              lat={business.lat != null ? String(business.lat) : null}
+              lng={business.lng != null ? String(business.lng) : null}
               onDirections={handleMaps}
             />
           )}

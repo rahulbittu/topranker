@@ -383,8 +383,9 @@
 | 81 | 13 | 4 | ~200 | Mei Lin, James Park |
 | 82 | 8 | 2 | ~80 | James Park, Mei Lin |
 | 83 | 16 | 9 | ~450 | Sage, Priya, Jordan, James Park |
+| 84 | 13 | 8 | ~350 | Marcus, Sage, James Park, Mei Lin |
 
-**Total Story Points: 686** | **Total Sprints: 83** | **Avg Velocity: 8.3 pts/sprint**
+**Total Story Points: 699** | **Total Sprints: 84** | **Avg Velocity: 8.3 pts/sprint**
 
 ---
 
@@ -403,7 +404,8 @@
 | 76 | Seasonal API + admin review endpoint | A+ |
 | 79 | Badge storage module + badge API endpoints | A+ |
 | 83 | Claims/flags storage + routes + logger fix | A+ |
-**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB + badge + admin layers**
+| 84 | Badge share endpoint (server-rendered OG) | A+ |
+**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB + badge + admin + share layers**
 
 ### Jordan — Chief Value Officer
 | Sprint | Contribution | Rating |
@@ -460,7 +462,8 @@
 | 81 | useBadgeContext hook extraction, eliminated duplication | A+ |
 | 82 | as-any audit verification (cast moved to SubComponents) | A |
 | 83 | Logger call fix verification | A |
-**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction), now owns hook patterns + type audit cadence**
+| 84 | Fixed 3 pre-existing TS errors — zero `tsc` errors! | A+ |
+**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction), achieved zero TS errors in Sprint 84**
 
 ### Priya Sharma — RBAC Lead
 | Sprint | Contribution | Rating |
@@ -530,8 +533,9 @@ Tracks each team member's participation per sprint. A check mark means the membe
 | 81 | 5 | Medium |
 | 82 | 6 | High |
 | 83 | 9 | Very High |
+| 84 | 8 | Very High |
 
-**Average team density: 5.9 members/sprint** | **Sprint 83 had highest engagement (9 members)**
+**Average team density: 6.0 members/sprint** | **Sprints 83-84 had highest engagement (8-9 members)**
 
 ---
 

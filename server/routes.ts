@@ -4,6 +4,7 @@ import passport from "passport";
 import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
+import { handleBadgeShare } from "./badge-share";
 import { sendWelcomeEmail } from "./email";
 import { isAdminEmail } from "@shared/admin";
 import { log } from "./logger";
@@ -496,6 +497,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deploy webhook (GitHub push → auto-rebuild)
   app.post("/api/webhook/deploy", handleWebhook);
   app.get("/api/deploy/status", handleDeployStatus);
+
+  // Badge share-by-link — server-rendered OG meta for social previews
+  app.get("/share/badge/:badgeId", handleBadgeShare);
 
   // Admin: seed additional cities (Austin, Houston, San Antonio, Fort Worth)
   app.post("/api/admin/seed-cities", requireAuth, async (req: Request, res: Response) => {
