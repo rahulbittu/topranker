@@ -19,6 +19,7 @@ import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
+import { ShareCardView, useShareCard } from "@/components/ShareCard";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useCity } from "@/lib/city-context";
@@ -204,6 +205,7 @@ const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { b
 
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const { scale, onPressIn, onPressOut } = usePressAnimation();
+  const { cardRef, captureAndShare } = useShareCard();
   const [, setTick] = useState(0);
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
@@ -336,7 +338,34 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
               <ReAnimated.Text entering={FadeInUp.delay(900).duration(400)} style={styles.winnerDefeat}>
                 defeated {loserName}
               </ReAnimated.Text>
+              <ReAnimated.View entering={FadeInUp.delay(1000).duration(400)}>
+                <TouchableOpacity
+                  style={styles.shareImageBtn}
+                  onPress={() => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    captureAndShare();
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share challenge result as image"
+                >
+                  <Ionicons name="image-outline" size={16} color={BRAND.colors.amber} />
+                  <Text style={styles.shareImageBtnText}>Share as Image</Text>
+                </TouchableOpacity>
+              </ReAnimated.View>
             </LinearGradient>
+            {/* Offscreen share card for image capture */}
+            <ShareCardView
+              cardRef={cardRef as any}
+              winnerName={winnerName}
+              loserName={loserName}
+              winPct={winPct}
+              margin={margin}
+              totalDays={totalDays}
+              category={challenge.category}
+              city={challenge.city}
+              isDefenderWin={defenderWins}
+            />
           </ReAnimated.View>
         );
       })()}
@@ -771,5 +800,15 @@ const styles = StyleSheet.create({
   winnerDefeat: {
     fontSize: 12, color: "rgba(255,255,255,0.5)",
     fontFamily: "DMSans_400Regular", fontStyle: "italic",
+  },
+  shareImageBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, marginTop: 14, paddingVertical: 10, paddingHorizontal: 20,
+    borderRadius: 20, borderWidth: 1, borderColor: BRAND.colors.amber,
+    backgroundColor: `${BRAND.colors.amber}15`,
+  },
+  shareImageBtnText: {
+    fontSize: 12, fontWeight: "700", color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
   },
 });
