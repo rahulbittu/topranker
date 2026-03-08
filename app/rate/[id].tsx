@@ -25,99 +25,12 @@ import { Confetti } from "@/components/Confetti";
 import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
-
-const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
+import {
+  CircleScorePicker, CircleScoreLabels, ProgressBar, StepIndicator,
+  DishPill, RatingConfirmation,
+} from "@/components/rate/SubComponents";
 
 type RatingStep = 1 | 2;
-
-function CircleScorePicker({ value, onChange, circleSize }: { value: number; onChange: (v: number) => void; circleSize: number }) {
-  return (
-    <View style={styles.circleRow}>
-      {[1, 2, 3, 4, 5].map(n => {
-        const isActive = value === n;
-        return (
-          <TouchableOpacity
-            key={n}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onChange(n);
-            }}
-            style={[styles.circle, { width: circleSize, height: circleSize, borderRadius: circleSize / 2 }, isActive && styles.circleActive]}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={`Score ${n}, ${SCORE_LABELS[n - 1]}`}
-            accessibilityState={{ selected: isActive }}
-            accessibilityHint="Double tap to select this score"
-          >
-            <Text style={[styles.circleNum, isActive && styles.circleNumActive]}>{n}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
-
-function CircleScoreLabels({ circleSize }: { circleSize: number }) {
-  return (
-    <View style={styles.circleLabelRow}>
-      {SCORE_LABELS.map((label, i) => (
-        <View key={i} style={[styles.circleLabelItem, { width: circleSize }]}>
-          <Text style={styles.circleLabelText}>{label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function ProgressBar({ step, total }: { step: number; total: number }) {
-  return (
-    <View style={styles.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.progressDot,
-            i < step && styles.progressDotComplete,
-            i === step && styles.progressDotCurrent,
-          ]}
-          accessibilityLabel={`Step ${i + 1}${i < step ? ", completed" : i === step ? ", current" : ""}`}
-        />
-      ))}
-    </View>
-  );
-}
-
-function StepIndicator({ step, total }: { step: number; total: number }) {
-  return (
-    <Text style={styles.stepIndicator}>
-      {step + 1} <Text style={styles.stepIndicatorOf}>of</Text> {total}
-    </Text>
-  );
-}
-
-function DishPill({ dish, selected, onPress }: { dish: ApiDish; selected: boolean; onPress: () => void }) {
-  return (
-    <TouchableOpacity
-      style={[styles.dishPill, selected && styles.dishPillSelected]}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-      activeOpacity={0.7}
-    >
-      <Text style={[styles.dishPillText, selected && styles.dishPillTextSelected]}>
-        {dish.name}
-      </Text>
-      {dish.voteCount > 0 && (
-        <View style={[styles.dishVoteBadge, selected && styles.dishVoteBadgeSelected]}>
-          <Text style={[styles.dishVoteCount, selected && styles.dishVoteCountSelected]}>
-            {dish.voteCount}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-}
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
@@ -328,88 +241,23 @@ export default function RateScreen() {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
         <Confetti show={showConfirm} />
-        <View style={styles.confirmInner}>
-          <Animated.View style={[styles.confirmIconWrap, confirmIconStyle]}>
-            <View style={styles.confirmIconCircle}>
-              <Ionicons name="checkmark" size={40} color="#FFFFFF" />
-            </View>
-          </Animated.View>
-
-          <Animated.Text entering={FadeInDown.delay(200).duration(400)} style={styles.confirmTitle}>
-            Rating Submitted
-          </Animated.Text>
-          <Animated.Text entering={FadeInDown.delay(300).duration(400)} style={styles.confirmSub}>
-            Your weighted vote has been counted
-          </Animated.Text>
-
-          <Animated.View entering={FadeInUp.delay(400).duration(500)} style={styles.rankChangeCard}>
-            <Text style={styles.rankChangeTitle}>{business.name}</Text>
-            <Animated.View style={[styles.rankChangeRow, rankStyle]}>
-              <View style={styles.rankBox}>
-                <Text style={styles.rankBoxLabel}>Before</Text>
-                <Text style={styles.rankBoxNum}>#{prevRank}</Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={Colors.textTertiary} />
-              <View style={[styles.rankBox, newRank < prevRank && styles.rankBoxImproved]}>
-                <Text style={styles.rankBoxLabel}>After</Text>
-                <Text style={[styles.rankBoxNum, newRank < prevRank && { color: Colors.green }]}>
-                  #{newRank}
-                </Text>
-              </View>
-            </Animated.View>
-            {newRank < prevRank && (
-              <View style={styles.movedUpBanner}>
-                <Ionicons name="trending-up" size={14} color={Colors.green} />
-                <Text style={styles.movedUpText}>Your rating helped this business move up!</Text>
-              </View>
-            )}
-          </Animated.View>
-
-          <Animated.View entering={FadeInUp.delay(600).duration(500)} style={styles.tierProgressCard}>
-            <View style={styles.tierProgressHeader}>
-              <View style={styles.tierBadgeRow}>
-                <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
-                <Text style={styles.tierBadgeText}>{tierDisplayName}</Text>
-              </View>
-              <Text style={styles.tierScoreText}>{userScore} pts</Text>
-            </View>
-            <View style={styles.tierBarOuter}>
-              <Animated.View style={[styles.tierBarInner, { backgroundColor: tierColor }, tierBarStyle]} />
-            </View>
-            {nextTier && (
-              <Text style={styles.tierNextText}>
-                {TIER_SCORE_RANGES[nextTier].min - userScore} pts to{" "}
-                <Text style={[styles.tierNextHighlight, { color: TIER_COLORS[nextTier] }]}>{TIER_DISPLAY_NAMES[nextTier]}</Text>
-              </Text>
-            )}
-          </Animated.View>
-
-          <Animated.View entering={FadeInUp.delay(700).duration(500)} style={styles.scoreBreakdownCard}>
-            <View style={styles.scoreBreakdownRow}>
-              <Text style={styles.scoreBreakdownLabel}>Raw Score</Text>
-              <Text style={styles.scoreBreakdownVal}>{rawScore.toFixed(2)}</Text>
-            </View>
-            <View style={styles.scoreBreakdownRow}>
-              <Text style={styles.scoreBreakdownLabel}>Your Weight ({tierDisplayName})</Text>
-              <Text style={[styles.scoreBreakdownVal, { color: tierColor }]}>x {voteWeight.toFixed(2)}</Text>
-            </View>
-            <View style={styles.scoreBreakdownDivider} />
-            <View style={styles.scoreBreakdownRow}>
-              <Text style={styles.scoreBreakdownLabelBold}>Weighted Score</Text>
-              <Text style={styles.scoreBreakdownValBold}>{weightedScore.toFixed(2)}</Text>
-            </View>
-          </Animated.View>
-
-          <TouchableOpacity
-            style={[styles.primaryButton, styles.doneButton]}
-            onPress={() => router.back()}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Done, go back to business"
-          >
-            <Text style={styles.primaryButtonText}>Done</Text>
-          </TouchableOpacity>
-        </View>
+        <RatingConfirmation
+          business={business}
+          rawScore={rawScore}
+          weightedScore={weightedScore}
+          voteWeight={voteWeight}
+          prevRank={prevRank}
+          newRank={newRank}
+          userTier={currentTier}
+          userScore={userScore}
+          tierColor={tierColor}
+          tierDisplayName={tierDisplayName}
+          nextTier={nextTier}
+          confirmIconStyle={confirmIconStyle}
+          rankStyle={rankStyle}
+          tierBarStyle={tierBarStyle}
+          onDone={() => router.back()}
+        />
       </View>
     );
   }
@@ -812,39 +660,6 @@ const styles = StyleSheet.create({
     fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
 
-  circleRow: {
-    flexDirection: "row", justifyContent: "center", gap: 12, marginTop: 8,
-  },
-  circle: {
-    backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
-    borderWidth: 2, borderColor: Colors.border,
-  },
-  circleActive: {
-    backgroundColor: Colors.text, borderColor: Colors.text,
-  },
-  circleNum: {
-    fontSize: 20, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-  circleNumActive: { color: "#FFFFFF" },
-
-  circleLabelRow: {
-    flexDirection: "row", justifyContent: "center", gap: 12, marginTop: -4,
-  },
-  circleLabelItem: { alignItems: "center" },
-  circleLabelText: {
-    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    textAlign: "center",
-  },
-
-  selectedBadge: {
-    alignSelf: "center", backgroundColor: Colors.goldFaint,
-    paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20,
-  },
-  selectedBadgeText: {
-    fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold",
-  },
-
   yesNoRow: { flexDirection: "row", gap: 12 },
   yesNoBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
@@ -862,27 +677,6 @@ const styles = StyleSheet.create({
   dishPillsWrap: {
     flexDirection: "row", flexWrap: "wrap", gap: 8,
   },
-  dishPill: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    backgroundColor: Colors.surfaceRaised, paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 20,
-  },
-  dishPillSelected: {
-    backgroundColor: Colors.text,
-  },
-  dishPillText: {
-    fontSize: 14, color: Colors.text, fontFamily: "DMSans_500Medium",
-  },
-  dishPillTextSelected: { color: "#FFFFFF" },
-  dishVoteBadge: {
-    backgroundColor: Colors.border, paddingHorizontal: 6,
-    paddingVertical: 2, borderRadius: 8,
-  },
-  dishVoteBadgeSelected: { backgroundColor: "rgba(255,255,255,0.2)" },
-  dishVoteCount: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_600SemiBold",
-  },
-  dishVoteCountSelected: { color: "#FFFFFF" },
 
   dishInputWrap: { gap: 4 },
   dishInput: {
@@ -1006,99 +800,4 @@ const styles = StyleSheet.create({
     fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium", flex: 1,
   },
 
-  confirmInner: {
-    flex: 1, alignItems: "center", justifyContent: "center",
-    paddingHorizontal: 24, gap: 12,
-  },
-  confirmIconWrap: { marginBottom: 4 },
-  confirmIconCircle: {
-    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.green,
-    alignItems: "center", justifyContent: "center",
-  },
-  confirmTitle: {
-    fontSize: 26, fontWeight: "700" as const, color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, textAlign: "center",
-  },
-  confirmSub: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-    textAlign: "center", marginBottom: 8,
-  },
-  rankChangeCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 16,
-    padding: 16, alignItems: "center", gap: 12,
-    ...Colors.cardShadow,
-  },
-  rankChangeTitle: {
-    fontSize: 15, fontWeight: "600" as const, color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  rankChangeRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  rankBox: {
-    alignItems: "center", gap: 4, width: 72, paddingVertical: 10,
-    borderRadius: 10, backgroundColor: Colors.surfaceRaised,
-  },
-  rankBoxImproved: { backgroundColor: Colors.greenFaint },
-  rankBoxLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  rankBoxNum: {
-    fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
-  },
-  movedUpBanner: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: Colors.greenFaint, paddingHorizontal: 10,
-    paddingVertical: 5, borderRadius: 6,
-  },
-  movedUpText: {
-    fontSize: 11, color: Colors.green, fontFamily: "DMSans_500Medium",
-  },
-
-  tierProgressCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, gap: 8, ...Colors.cardShadow,
-  },
-  tierProgressHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-  },
-  tierBadgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tierBadgeText: {
-    fontSize: 13, color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  tierScoreText: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  tierBarOuter: {
-    height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: "hidden",
-  },
-  tierBarInner: { height: "100%", borderRadius: 2 },
-  tierNextText: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-
-  scoreBreakdownCard: {
-    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
-    padding: 16, gap: 8, ...Colors.cardShadow,
-  },
-  scoreBreakdownRow: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-  },
-  scoreBreakdownLabel: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  scoreBreakdownVal: {
-    fontSize: 15, fontWeight: "600" as const, color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  scoreBreakdownDivider: { height: 1, backgroundColor: Colors.border },
-  scoreBreakdownLabelBold: {
-    fontSize: 14, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "DMSans_700Bold",
-  },
-  scoreBreakdownValBold: {
-    fontSize: 20, fontWeight: "700" as const, color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-  doneButton: { width: "100%", marginTop: 8 },
-  tierNextHighlight: { fontFamily: "DMSans_600SemiBold" },
 });

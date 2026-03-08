@@ -4,6 +4,18 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 67 — Rate Page Extraction + API Response Timing + Team Expansion (March 8, 2026)
+#### Changed
+- Extracted `CircleScorePicker`, `CircleScoreLabels`, `ProgressBar`, `StepIndicator`, `DishPill`, `RatingConfirmation` from `rate/[id].tsx` into `components/rate/SubComponents.tsx`
+- `rate/[id].tsx` reduced from 1,104 to 803 LOC (-27%)
+- Removed ~100 unused styles from rate/[id].tsx StyleSheet
+
+#### Added
+- API response time logging middleware on all `/api/*` routes — logs method, URL, status, duration
+- Requests >200ms tagged `[SLOW]` at warn level via structured logger
+- Senior Management Meeting process: weekly CEO/CTO/VP meeting for backlog prioritization and hiring
+- 5 new hires approved: Senior Frontend Engineer, QA Automation Engineer, Content Moderation Specialist, Legal Counsel, Junior Backend Engineer
+
 ### Sprint 66 — Search Extraction + Rich Favicons (March 8, 2026)
 #### Changed
 - Extracted `DiscoverPhotoStrip`, `BusinessCard`, `MapBusinessCard`, `haversineKm` from `search.tsx` into `components/search/SubComponents.tsx`

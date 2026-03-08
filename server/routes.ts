@@ -75,6 +75,25 @@ setInterval(() => {
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
+  // API response time logging middleware
+  app.use("/api", (req: Request, res: Response, next) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function (this: any, ...args: any) {
+      const duration = Date.now() - start;
+      const method = req.method;
+      const url = req.originalUrl || req.url;
+      const status = res.statusCode;
+      if (duration > 200) {
+        log.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
+      } else {
+        log.info(`${method} ${url} ${status} ${duration}ms`);
+      }
+      return originalEnd.apply(this, args);
+    } as typeof res.end;
+    next();
+  });
+
   // Global API rate limit — 100 req/min per IP (excludes /api/health and /api/auth)
   app.use("/api/leaderboard", apiRateLimit);
   app.use("/api/businesses", apiRateLimit);
