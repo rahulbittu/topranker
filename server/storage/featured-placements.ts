@@ -66,6 +66,20 @@ export async function getBusinessFeaturedStatus(
   return placement ?? null;
 }
 
+export async function expireFeaturedByPayment(paymentId: string): Promise<FeaturedPlacement | null> {
+  const [updated] = await db
+    .update(featuredPlacements)
+    .set({ status: "cancelled" })
+    .where(
+      and(
+        eq(featuredPlacements.paymentId, paymentId),
+        eq(featuredPlacements.status, "active"),
+      ),
+    )
+    .returning();
+  return updated ?? null;
+}
+
 export async function expireOldPlacements(): Promise<number> {
   const now = new Date();
   const result = await db

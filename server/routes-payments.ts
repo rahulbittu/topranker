@@ -3,7 +3,7 @@
  * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
  */
 import type { Express, Request, Response } from "express";
-import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus } from "./storage";
+import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus, expireFeaturedByPayment } from "./storage";
 import { sendPaymentReceiptEmail } from "./email";
 import { broadcast } from "./sse";
 import { log } from "./logger";
@@ -164,6 +164,11 @@ export function registerPaymentRoutes(app: Express) {
         return res.status(403).json({ error: "Not authorized to cancel this payment" });
       }
       const updated = await updatePaymentStatus(paymentId, "cancelled");
+      // If this was a featured placement payment, expire the placement too
+      if (existing.type === "featured_placement") {
+        await expireFeaturedByPayment(paymentId).catch(() => {});
+        broadcast("featured_updated", { cancelled: true });
+      }
       log.info(`Payment ${paymentId} cancelled by ${req.user!.id}`);
       return res.json({ data: { id: updated!.id, status: "cancelled" } });
     } catch (err: any) {

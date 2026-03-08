@@ -92,6 +92,7 @@ export {
   createFeaturedPlacement,
   getActiveFeaturedInCity,
   getBusinessFeaturedStatus,
+  expireFeaturedByPayment,
   expireOldPlacements,
 } from "./featured-placements";
 
