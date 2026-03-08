@@ -15,7 +15,8 @@
     "lint": "npx expo lint",
     "lint:fix": "npx expo lint --fix",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:cities": "tsx server/seed-cities.ts"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",
