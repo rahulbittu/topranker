@@ -6,6 +6,7 @@ import { pool } from "./db";
 import { getMemberByEmail, getMemberById, createMember, getMemberByUsername, getMemberByAuthId } from "./storage";
 import bcrypt from "bcrypt";
 import type { Express, Request } from "express";
+import { config } from "./config";
 
 declare global {
   namespace Express {
@@ -30,15 +31,15 @@ export function setupAuth(app: Express) {
         pool,
         createTableIfMissing: true,
       }),
-      secret: process.env.SESSION_SECRET || "top-ranker-secret-key",
+      secret: config.sessionSecret,
       resave: false,
       saveUninitialized: false,
-      proxy: process.env.NODE_ENV === "production",
+      proxy: config.isProduction,
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
+        secure: config.isProduction,
       },
     }),
   );
@@ -142,7 +143,7 @@ export async function registerMember(data: {
 }
 
 export async function authenticateGoogleUser(idToken: string) {
-  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientId = config.googleClientId;
   if (!googleClientId) {
     throw new Error("Google Sign-In is not configured");
   }

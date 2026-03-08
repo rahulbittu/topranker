@@ -5,6 +5,7 @@ import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
 import { sendWelcomeEmail } from "./email";
+import { isAdminEmail } from "@shared/admin";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -390,9 +391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin: seed additional cities (Austin, Houston, San Antonio, Fort Worth)
   app.post("/api/admin/seed-cities", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Only allow admin users
+      // Only allow admin users — single source of truth in shared/admin.ts
       const email = (req.user as any)?.email;
-      if (!["rahul@topranker.com", "admin@topranker.com", "alex@demo.com"].includes(email)) {
+      if (!isAdminEmail(email)) {
         return res.status(403).json({ error: "Admin access required" });
       }
       const { seedCities } = await import("./seed-cities");

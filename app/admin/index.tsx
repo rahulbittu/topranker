@@ -9,10 +9,9 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { useAuth } from "@/lib/auth-context";
+import { isAdminEmail } from "@/shared/admin";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users";
-
-const ADMIN_EMAILS = ["rahul@topranker.com", "admin@topranker.com", "alex@demo.com"];
 
 function StatCard({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) {
   return (
@@ -69,7 +68,7 @@ export default function AdminScreen() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [queue, setQueue] = useState(MOCK_QUEUE);
 
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
+  const isAdmin = user && isAdminEmail(user.email);
 
   if (!isAdmin) {
     return (

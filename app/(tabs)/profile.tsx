@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { isAdminEmail } from "@/shared/admin";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
   TIER_SCORE_RANGES, formatTimeAgo,
@@ -577,7 +578,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </TouchableOpacity>
 
       {/* Admin Panel — for admins only */}
-      {profile && ["rahul@topranker.com", "admin@topranker.com", "alex@demo.com"].includes(profile.email) && (
+      {profile && isAdminEmail(profile.email) && (
         <TouchableOpacity
           style={styles.adminLink}
           onPress={() => router.push("/admin")}
