@@ -2,6 +2,30 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 108] - 2026-03-08
+### Added
+- E2E test framework: 21 tests covering full API contract (L1 CLOSED)
+- PricingBadge reusable component
+- API versioning (X-API-Version: 1.0.0) and request tracing (X-Request-Id)
+### Changed
+- CORS consolidated into security-headers.ts
+- Hardcoded colors cleaned up (#FFD700, rgba → brand constants)
+- Tech debt registry updated: TD-003, TD-004 resolved
+- Accessibility statement linked from profile legal section
+
+## [Sprint 107] - 2026-03-08
+### Added
+- Security posture document (docs/SECURITY.md)
+- Accessibility statement page (app/legal/accessibility.tsx)
+- Revenue metrics admin endpoint (GET /api/admin/revenue)
+- Challenger tab onboarding tip card
+- Profile tab credibility growth prompt
+### Changed
+- Typography migration complete: search.tsx, challenger.tsx (22 total styles)
+- CHANGELOG.md updated with Sprints 97-106
+- Body size limits: 1MB JSON, 5MB webhooks
+- Accessibility props on SafeImage and SubComponents
+
 ## [Sprint 106] - 2026-03-08
 ### Added
 - Performance monitoring middleware with admin endpoint (GET /api/admin/perf)

@@ -232,4 +232,15 @@ export function registerAdminRoutes(app: Express) {
       return res.status(500).json({ error: err.message });
     }
   });
+
+  app.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const months = Math.min(24, Math.max(1, parseInt(req.query.months as string) || 6));
+      const { getRevenueByMonth } = await import("./storage");
+      const data = await getRevenueByMonth(months);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
 }

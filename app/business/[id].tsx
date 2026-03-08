@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
+import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
   SubScoreBar, DistributionChart, RatingRow, ActionButton,
@@ -558,7 +559,7 @@ const styles = StyleSheet.create({
   content: { gap: 0 },
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
   descriptionText: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.body, color: Colors.textSecondary,
     lineHeight: 20,
   },
 
@@ -653,8 +654,8 @@ const styles = StyleSheet.create({
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
   },
   statLabel: {
-    fontSize: 10, color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular", textTransform: "uppercase", letterSpacing: 0.5,
+    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
+    textTransform: "uppercase", letterSpacing: 0.5,
   },
   statDivider: {
     width: 1, height: 30, backgroundColor: Colors.border,
@@ -669,7 +670,7 @@ const styles = StyleSheet.create({
     fontSize: 48, fontWeight: "900", color: Colors.gold,
     fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1.5,
   },
-  scoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  scoreLabel: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   scoreMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   scoreMetaItem: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   googleRow: { flexDirection: "row", alignItems: "center", gap: 3 },
@@ -733,7 +734,7 @@ const styles = StyleSheet.create({
     paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.border,
   },
   returnRateText: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+    ...TYPOGRAPHY.ui.label, color: Colors.textSecondary,
   },
 
   actionBar: {
@@ -765,7 +766,7 @@ const styles = StyleSheet.create({
     fontSize: 13, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center",
   },
   rateGatedSubtext: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
   },
 
   photoGrid: {
@@ -781,7 +782,7 @@ const styles = StyleSheet.create({
     ...Colors.cardShadow,
   },
   claimTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  claimDesc: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 16 },
+  claimDesc: { ...TYPOGRAPHY.ui.caption, color: Colors.textSecondary, lineHeight: 16 },
   claimBtn: {
     backgroundColor: Colors.surfaceRaised, borderRadius: 10,
     paddingVertical: 10, alignItems: "center",
@@ -793,7 +794,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 5, paddingVertical: 16, marginTop: 4,
   },
-  reportLinkText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  reportLinkText: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   claimLink: {
     flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center",
     paddingVertical: 8,

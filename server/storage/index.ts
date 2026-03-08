@@ -79,6 +79,7 @@ export {
   getMemberPayments,
   getBusinessPayments,
   getRevenueMetrics,
+  getRevenueByMonth,
 } from "./payments";
 
 // Webhook Events

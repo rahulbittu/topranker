@@ -6,6 +6,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { mockRequest, mockResponse, mockNext } from "./helpers/test-utils";
 
 // ── 1. CORS Configuration (security-headers.ts) ─────────────────────────
 
@@ -21,23 +22,12 @@ describe("CORS Configuration", () => {
   });
 
   function buildMocks(method: string, origin?: string) {
-    const headers: Record<string, string> = {};
-    let statusCode: number | undefined;
-    const req = {
+    const req = mockRequest({
       method,
       headers: origin ? { origin } : {},
-    } as any;
-    const res = {
-      setHeader: (k: string, v: string) => {
-        headers[k] = v;
-      },
-      status: (code: number) => {
-        statusCode = code;
-        return { end: () => {} };
-      },
-    } as any;
-    const next = () => {};
-    return { req, res, next, headers, getStatus: () => statusCode };
+    });
+    const res = mockResponse();
+    return { req, res, next: mockNext, headers: res.headers, getStatus: () => res.statusCode };
   }
 
   it("returns 204 for OPTIONS preflight request", () => {
@@ -77,15 +67,9 @@ describe("API Versioning Headers", () => {
   });
 
   function buildMocks() {
-    const headers: Record<string, string> = {};
-    const req = { method: "GET", headers: {} } as any;
-    const res = {
-      setHeader: (k: string, v: string) => {
-        headers[k] = v;
-      },
-    } as any;
-    const next = () => {};
-    return { req, res, next, headers };
+    const req = mockRequest({ method: "GET" });
+    const res = mockResponse();
+    return { req, res, next: mockNext, headers: res.headers };
   }
 
   it("sets X-API-Version header to 1.0.0", () => {

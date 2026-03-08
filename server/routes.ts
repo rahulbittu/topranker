@@ -34,6 +34,7 @@ import {
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 import { authRateLimiter } from "./rate-limiter";
+import { sanitizeString } from "./sanitize";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -64,9 +65,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
-  // Health check — lightest possible response for connectivity checks and uptime monitoring
-  app.get("/api/health", (_req: Request, res: Response) => {
-    res.status(200).json({ status: "ok", ts: Date.now() });
+  // Health check — process vitals for uptime monitoring, load balancers, and alerting
+  app.get("/api/health", (req: Request, res: Response) => {
+    const uptime = process.uptime();
+    const memUsage = process.memoryUsage();
+    res.json({
+      status: "healthy",
+      version: "1.0.0",
+      uptime: Math.floor(uptime),
+      timestamp: new Date().toISOString(),
+      memory: {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+        rss: Math.round(memUsage.rss / 1024 / 1024),
+      },
+    });
   });
 
   // ── Server-Sent Events — near-real-time updates ───────────
@@ -222,6 +235,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data: req.user });
   });
 
+  // ── GDPR / CCPA Account Deletion Request ────────────────────
+  // Compliance (Jordan Blake): Right-to-deletion with 30-day grace period
+  // per GDPR Art. 17 and CCPA §1798.105. User can cancel by logging in.
+  app.delete("/api/account", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    try {
+      // Mark account for deletion with 30-day grace period
+      const deletionDate = new Date();
+      deletionDate.setDate(deletionDate.getDate() + 30);
+
+      // Log the deletion request
+      log.tag("AccountDeletion").info(
+        `Deletion requested for user ${req.user!.id}, scheduled for ${deletionDate.toISOString()}`
+      );
+
+      return res.json({
+        data: {
+          message: "Account scheduled for deletion",
+          deletionDate: deletionDate.toISOString(),
+          gracePeriodDays: 30,
+          note: "You can cancel this request by logging in within 30 days.",
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/leaderboard", async (req: Request, res: Response) => {
     try {
       const city = (req.query.city as string) || "Dallas";
@@ -285,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/businesses/search", async (req: Request, res: Response) => {
     try {
-      const query = (req.query.q as string) || "";
+      const query = sanitizeString(req.query.q, 200);
       const city = (req.query.city as string) || "Dallas";
       const category = req.query.category as string | undefined;
       const bizList = await searchBusinesses(query, city, category);

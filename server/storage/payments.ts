@@ -142,3 +142,29 @@ export async function getRevenueMetrics() {
     cancelledPayments: cancelledRow?.count ?? 0,
   };
 }
+
+/**
+ * Revenue grouped by month for time-series analysis.
+ * Returns the most recent N months of succeeded payment totals.
+ */
+export async function getRevenueByMonth(
+  months = 6,
+): Promise<Array<{ month: string; revenue: number; count: number }>> {
+  const results = await db
+    .select({
+      month: sql<string>`strftime('%Y-%m', ${payments.createdAt})`,
+      revenue: sql<number>`COALESCE(SUM(${payments.amount}), 0)`,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(payments)
+    .where(eq(payments.status, "succeeded"))
+    .groupBy(sql`strftime('%Y-%m', ${payments.createdAt})`)
+    .orderBy(sql`strftime('%Y-%m', ${payments.createdAt}) DESC`)
+    .limit(months);
+
+  return results.map((r) => ({
+    month: String(r.month),
+    revenue: Number(r.revenue),
+    count: Number(r.count),
+  }));
+}

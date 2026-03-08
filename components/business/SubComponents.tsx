@@ -16,6 +16,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TYPOGRAPHY } from "@/constants/typography";
 import { pct as pctDim } from "@/lib/style-helpers";
 import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, type CredibilityTier,
@@ -382,7 +383,7 @@ const s = StyleSheet.create({
   distStar: { width: 16, fontSize: 12, color: Colors.textSecondary, textAlign: "center", fontFamily: "DMSans_400Regular" },
   distBarTrack: { flex: 1, height: 8, borderRadius: 4, backgroundColor: `${Colors.border}60`, overflow: "hidden" },
   distBarFill: { height: 8, borderRadius: 4 },
-  distCount: { width: 24, fontSize: 11, color: Colors.textTertiary, textAlign: "right", fontFamily: "DMSans_400Regular" },
+  distCount: { width: 24, ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, textAlign: "right" },
 
   ratingRow: {
     paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 8,
@@ -400,11 +401,11 @@ const s = StyleSheet.create({
   ratingTierText: { fontSize: 10, fontWeight: "600", fontFamily: "DMSans_600SemiBold" },
   ratingScoreBox: { alignItems: "flex-end", gap: 2 },
   ratingScore: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
-  ratingWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  ratingTime: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  ratingWeight: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary },
+  ratingTime: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary },
   ratingSubScores: { flexDirection: "row", gap: 16, paddingLeft: 42 },
   ratingSubItem: { alignItems: "center", gap: 2 },
-  ratingSubLabel: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  ratingSubLabel: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary },
   ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   ratingComment: {
     fontSize: 13, color: Colors.textSecondary, fontStyle: "italic",
@@ -454,12 +455,12 @@ const s = StyleSheet.create({
     ...Colors.cardShadow,
   },
   rdTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  rdSubtitle: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginBottom: 4 },
+  rdSubtitle: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginBottom: 4 },
   rdRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   rdLabel: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center" },
   rdBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
   rdBarFill: { height: "100%", borderRadius: 2 },
-  rdCount: { width: 20, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
+  rdCount: { width: 20, ...TYPOGRAPHY.ui.small, color: Colors.textTertiary, textAlign: "right" },
 
   rhCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
@@ -474,7 +475,7 @@ const s = StyleSheet.create({
   },
   rhLine: { position: "absolute", top: "50%", left: 0, height: 1, backgroundColor: Colors.border },
   rhLabels: { flexDirection: "row", justifyContent: "space-between" },
-  rhLabel: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  rhLabel: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary },
 
   dishPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
