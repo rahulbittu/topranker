@@ -17,7 +17,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { fetchBusinessBySlug, fetchRankHistory, type ApiDish } from "@/lib/api";
+import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, type ApiDish } from "@/lib/api";
 import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, getCategoryDisplay, getRankDisplay, type CredibilityTier,
 } from "@/lib/data";
@@ -262,6 +262,13 @@ export default function BusinessProfileScreen() {
     queryKey: ["rankHistory", business?.id],
     queryFn: () => fetchRankHistory(business!.id, 30),
     enabled: !!business?.id,
+    staleTime: 60000,
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: fetchMemberProfile,
+    enabled: !!user,
     staleTime: 60000,
   });
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
@@ -638,20 +645,30 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
-          {/* Rate Button */}
-          {user ? (
-            <TouchableOpacity
-              style={styles.rateButton}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: "/rate/[id]", params: { id: business.slug } }); }}
-              activeOpacity={0.85}
-              testID="rate-this-place"
-              accessibilityRole="button"
-              accessibilityLabel={`Rate ${business.name}`}
-            >
-              <Ionicons name="star" size={18} color="#FFFFFF" />
-              <Text style={styles.rateButtonText}>Rate This Place</Text>
-            </TouchableOpacity>
-          ) : (
+          {/* Rate Button — gated per PRD: active after 7+ days */}
+          {user ? (() => {
+            const memberDays = profile?.daysActive ?? 0;
+            const canRate = memberDays >= 7;
+            return canRate ? (
+              <TouchableOpacity
+                style={styles.rateButton}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push({ pathname: "/rate/[id]", params: { id: business.slug } }); }}
+                activeOpacity={0.85}
+                testID="rate-this-place"
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${business.name}`}
+              >
+                <Ionicons name="star" size={18} color="#FFFFFF" />
+                <Text style={styles.rateButtonText}>Rate This Place</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.rateGated}>
+                <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textTertiary} />
+                <Text style={styles.rateGatedText}>Build your reviewer credibility to rate this business.</Text>
+                <Text style={styles.rateGatedSubtext}>{7 - memberDays} more days active to unlock rating.</Text>
+              </View>
+            );
+          })() : (
             <TouchableOpacity
               style={styles.rateButton}
               onPress={() => router.push("/auth/login")}
@@ -1007,6 +1024,16 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   rateButtonText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
+  rateGated: {
+    backgroundColor: Colors.surface, borderRadius: 14, paddingVertical: 14, paddingHorizontal: 16,
+    alignItems: "center", gap: 4, borderWidth: 1, borderColor: Colors.border,
+  },
+  rateGatedText: {
+    fontSize: 13, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center",
+  },
+  rateGatedSubtext: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
 
   hoursCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
