@@ -9,6 +9,7 @@ import { sendPaymentReceiptEmail } from "./email";
 import { broadcast } from "./sse";
 import { log } from "./logger";
 import { sanitizeString, sanitizeSlug } from "./sanitize";
+import { paymentRateLimiter } from "./rate-limiter";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -18,6 +19,9 @@ function requireAuth(req: Request, res: Response, next: Function) {
 }
 
 export function registerPaymentRoutes(app: Express) {
+  // Apply strict rate limiting to all payment routes (20 req/min per IP)
+  app.use("/api/payments", paymentRateLimiter);
+
   app.post("/api/payments/challenger", requireAuth, async (req: Request, res: Response) => {
     try {
       const businessName = sanitizeString(req.body.businessName, 100);

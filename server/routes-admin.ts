@@ -4,6 +4,7 @@
  */
 import type { Express, Request, Response } from "express";
 import { isAdminEmail } from "@shared/admin";
+import { sanitizeString } from "./sanitize";
 import {
   getPendingClaims,
   reviewClaim,
@@ -25,6 +26,7 @@ import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
 import { getAllFlags } from "../lib/feature-flags";
 import { CATEGORY_CONFIDENCE_THRESHOLDS, DEFAULT_THRESHOLDS } from "../lib/data";
+import { adminRateLimiter } from "./rate-limiter";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -41,6 +43,8 @@ function requireAdmin(req: Request, res: Response, next: Function) {
 }
 
 export function registerAdminRoutes(app: Express) {
+  // Apply rate limiting to all admin routes (30 req/min per IP)
+  app.use("/api/admin", adminRateLimiter);
   // ── Category Suggestions ─────────────────────────────────
   app.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
@@ -73,7 +77,7 @@ export function registerAdminRoutes(app: Express) {
   // ── Google Places Photo Fetching ─────────────────────────
   app.post("/api/admin/fetch-photos", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
-      const city = req.body.city as string | undefined;
+      const city = sanitizeString(req.body.city, 100) || undefined;
       const limit = Math.min(50, parseInt(req.body.limit as string) || 20);
       const businesses = await getBusinessesWithoutPhotos(city, limit);
 
@@ -190,7 +194,7 @@ export function registerAdminRoutes(app: Express) {
   // ── Webhook Events ──────────────────────────────────────────
   app.get("/api/admin/webhooks", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     try {
-      const source = (req.query.source as string) || "stripe";
+      const source = sanitizeString(req.query.source, 50) || "stripe";
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
       const events = await getRecentWebhookEvents(source, limit);
       return res.json({ data: events });

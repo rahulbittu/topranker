@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { track } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, ActivityIndicator, RefreshControl, Alert, Switch,
+  Platform, RefreshControl,
 } from "react-native";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -13,7 +13,7 @@ import Colors from "@/constants/colors";
 import { isAdminEmail } from "@/shared/admin";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
-  TIER_SCORE_RANGES, TIER_INFLUENCE_LABELS, formatTimeAgo,
+  TIER_SCORE_RANGES, TIER_INFLUENCE_LABELS,
   type CredibilityTier,
 } from "@/lib/data";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,15 +21,17 @@ import { pct } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
-import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiMemberImpact } from "@/lib/api";
+import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { useBookmarks } from "@/lib/bookmarks-context";
-import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
-import { TypedIcon } from "@/components/TypedIcon";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
+import {
+  TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView,
+  ImpactCard, PaymentHistoryRow, CredibilityJourney,
+  TierRewardsSection, NotificationPreferences, LegalLinksSection,
+} from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
@@ -67,14 +69,10 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   const tier = profile.credibilityTier as CredibilityTier;
   const tierColor = TIER_COLORS[tier];
-  const weight = TIER_WEIGHTS[tier];
   const scoreRange = TIER_SCORE_RANGES[tier];
 
   const nextTierMap: Record<string, CredibilityTier | null> = {
-    community: "city",
-    city: "trusted",
-    trusted: "top",
-    top: null,
+    community: "city", city: "trusted", trusted: "top", top: null,
   };
   const nextTier = nextTierMap[tier];
   const nextRange = nextTier ? TIER_SCORE_RANGES[nextTier] : null;
@@ -85,7 +83,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const breakdown = profile.credibilityBreakdown;
   const totalScore = profile.credibilityScore;
 
-  // Shared badge context — used for both stats count and badge grid
   const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
 
   const saveNotifPref = useCallback(async (key: string, value: boolean) => {
@@ -195,7 +192,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         )}
       </View>
 
-      {/* New User Getting Started — Sprint 128 */}
+      {/* New User Getting Started */}
       {profile.totalRatings === 0 && (
         <TouchableOpacity
           style={styles.gettingStartedCard}
@@ -217,7 +214,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
-      {/* Credibility Growth Prompt — hidden for brand-new users */}
+      {/* Credibility Growth Prompt */}
       {nextTier && profile.totalRatings > 0 && (
         <View style={styles.growthPrompt}>
           <Ionicons name="trending-up" size={18} color={AMBER} />
@@ -254,7 +251,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </Text>
       )}
 
-      {/* Last Rating Consequence — Sprint 127 */}
+      {/* Last Rating Consequence */}
       {impact?.lastRating && (
         <TouchableOpacity
           style={styles.lastRatingCard}
@@ -274,37 +271,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
-      {/* Pride Mechanism — PRD: "Your ratings contributed to X businesses moving up" */}
+      {/* Your Impact */}
       {impact && impact.businessesMovedUp > 0 && (
-        <View style={styles.prideCard}>
-          <View style={styles.prideHeader}>
-            <Ionicons name="trending-up" size={18} color={Colors.green} />
-            <Text style={styles.prideTitle}>Your Impact</Text>
-          </View>
-          <Text style={styles.prideText}>
-            Your ratings contributed to {impact.businessesMovedUp} business{impact.businessesMovedUp !== 1 ? "es" : ""} moving up in the {profile.city} rankings.
-          </Text>
-          {impact.topContributions.length > 0 && (
-            <View style={styles.prideList}>
-              {impact.topContributions.map(c => (
-                <TouchableOpacity
-                  key={c.slug}
-                  style={styles.prideItem}
-                  onPress={() => router.push({ pathname: "/business/[id]", params: { id: c.slug } })}
-                  activeOpacity={0.7}
-                  accessibilityRole="link"
-                  accessibilityLabel={`${c.name}, moved up ${c.rankChange}`}
-                >
-                  <Text style={styles.prideItemName} numberOfLines={1}>{c.name}</Text>
-                  <View style={styles.prideItemDelta}>
-                    <Ionicons name="arrow-up" size={10} color={Colors.green} />
-                    <Text style={styles.prideItemDeltaText}>{c.rankChange}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+        <ImpactCard impact={impact} city={profile.city} />
       )}
 
       <View style={styles.breakdownCard}>
@@ -424,78 +393,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             <Text style={styles.sectionCount}>{paymentHistory.length}</Text>
           </View>
           {paymentHistory.map((p: any) => (
-            <View key={p.id} style={styles.paymentRow}>
-              <View style={styles.paymentIconWrap}>
-                <Ionicons
-                  name={p.type === "challenger_entry" ? "flash" : p.type === "featured_placement" ? "megaphone" : "speedometer"}
-                  size={16}
-                  color={p.status === "succeeded" ? AMBER : p.status === "failed" ? "#E53E3E" : Colors.textTertiary}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.paymentType}>
-                  {p.type === "challenger_entry" ? "Challenger Entry" : p.type === "dashboard_pro" ? "Dashboard Pro" : "Featured Placement"}
-                </Text>
-                <Text style={styles.paymentDate}>
-                  {new Date(p.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                </Text>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={styles.paymentAmount}>${(p.amount / 100).toFixed(2)}</Text>
-                <Text style={[styles.paymentStatus, {
-                  color: p.status === "succeeded" ? Colors.green : p.status === "failed" ? "#E53E3E" : Colors.textTertiary,
-                }]}>
-                  {p.status}
-                </Text>
-              </View>
-            </View>
+            <PaymentHistoryRow key={p.id} p={p} />
           ))}
         </>
       )}
 
-      <View style={styles.tierInfoSection}>
-        <Text style={styles.sectionTitle}>Credibility Journey</Text>
-        <View style={styles.tierList}>
-          {(["community", "city", "trusted", "top"] as CredibilityTier[]).map((t, idx, arr) => {
-            const tierOrder = arr.indexOf(tier);
-            const isCompleted = idx < tierOrder;
-            const isCurrent = t === tier;
-            return (
-              <View key={t}>
-                <View style={[styles.tierRow, isCurrent && styles.tierRowActive]}>
-                  <View style={[
-                    styles.tierDot,
-                    { backgroundColor: isCompleted || isCurrent ? TIER_COLORS[t] : Colors.border },
-                  ]}>
-                    {isCompleted && <Ionicons name="checkmark" size={8} color="#fff" />}
-                  </View>
-                  <View style={styles.tierRowInfo}>
-                    <Text style={[styles.tierName, (isCurrent || isCompleted) && { color: Colors.text }]}>
-                      {TIER_DISPLAY_NAMES[t]}
-                    </Text>
-                    <Text style={styles.tierWeight}>{TIER_INFLUENCE_LABELS[t]}</Text>
-                  </View>
-                  <Text style={styles.tierRange}>
-                    {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
-                  </Text>
-                  {isCurrent && (
-                    <View style={styles.currentBadge}>
-                      <Text style={styles.currentBadgeText}>YOU</Text>
-                    </View>
-                  )}
-                </View>
-                {idx < arr.length - 1 && (
-                  <View style={[styles.tierConnector, {
-                    backgroundColor: isCompleted ? TIER_COLORS[t] : Colors.border,
-                  }]} />
-                )}
-              </View>
-            );
-          })}
-        </View>
-      </View>
+      <CredibilityJourney currentTier={tier} />
 
-      {/* Achievement Badges — Apple Fitness-style, CVO owned */}
+      {/* Achievement Badges */}
       <BadgeGridFull
         badges={badges}
         totalPossible={totalPossible}
@@ -503,49 +408,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         onBadgePress={setSelectedBadge}
       />
 
-      {/* Tier Rewards — What you've unlocked & what's next */}
-      <View style={styles.tierInfoSection}>
-        <Text style={styles.sectionTitle}>Your Rewards</Text>
-        <View style={styles.perksGrid}>
-          {getUnlockedPerks(tier).map((perk) => (
-            <View key={perk.id} style={styles.perkItem}>
-              <View style={styles.perkIconWrap}>
-                <TypedIcon name={perk.icon} size={16} color={AMBER} />
-              </View>
-              <View style={styles.perkInfo}>
-                <Text style={styles.perkTitle}>{perk.title}</Text>
-                <Text style={styles.perkDesc} numberOfLines={1}>{perk.description}</Text>
-              </View>
-              <Ionicons name="checkmark-circle" size={16} color={Colors.green} />
-            </View>
-          ))}
-        </View>
-
-        {/* Next tier preview */}
-        {(() => {
-          const next = getNextTierPerks(tier);
-          if (!next) return null;
-          return (
-            <View style={styles.nextTierPreview}>
-              <Text style={styles.nextTierLabel}>
-                Unlock with {TIER_DISPLAY_NAMES[next.nextTier]}
-              </Text>
-              {next.perks.slice(0, 3).map((perk) => (
-                <View key={perk.id} style={[styles.perkItem, styles.perkItemLocked]}>
-                  <View style={[styles.perkIconWrap, styles.perkIconLocked]}>
-                    <TypedIcon name={perk.icon} size={16} color={Colors.textTertiary} />
-                  </View>
-                  <View style={styles.perkInfo}>
-                    <Text style={[styles.perkTitle, styles.perkTitleLocked]}>{perk.title}</Text>
-                    <Text style={styles.perkDesc} numberOfLines={1}>{perk.description}</Text>
-                  </View>
-                  <Ionicons name="lock-closed" size={14} color={Colors.textTertiary} />
-                </View>
-              ))}
-            </View>
-          );
-        })()}
-      </View>
+      <TierRewardsSection tier={tier} />
 
       {/* Invite Friends */}
       <TouchableOpacity
@@ -560,7 +423,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
       </TouchableOpacity>
 
-      {/* Admin Panel — for admins only */}
+      {/* Admin Panel */}
       {profile && isAdminEmail(profile.email) && (
         <TouchableOpacity
           style={styles.adminLink}
@@ -575,115 +438,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
-      {/* Notification Preferences */}
-      <View style={styles.notifCard}>
-        <View style={styles.notifHeader}>
-          <Ionicons name="notifications-outline" size={16} color={Colors.text} />
-          <Text style={styles.notifHeaderText}>Notifications</Text>
-        </View>
-        <View style={styles.notifRow}>
-          <View style={styles.notifLabelWrap}>
-            <Text style={styles.notifLabel}>Rating updates</Text>
-            <Text style={styles.notifDesc}>When someone rates a business you own</Text>
-          </View>
-          <Switch
-            value={notifRatingUpdates}
-            onValueChange={(v) => saveNotifPref("ratingUpdates", v)}
-            trackColor={{ false: Colors.border, true: AMBER }}
-            thumbColor="#fff"
-          />
-        </View>
-        <View style={styles.notifSep} />
-        <View style={styles.notifRow}>
-          <View style={styles.notifLabelWrap}>
-            <Text style={styles.notifLabel}>Challenge results</Text>
-            <Text style={styles.notifDesc}>Challenger competition updates</Text>
-          </View>
-          <Switch
-            value={notifChallengeResults}
-            onValueChange={(v) => saveNotifPref("challengeResults", v)}
-            trackColor={{ false: Colors.border, true: AMBER }}
-            thumbColor="#fff"
-          />
-        </View>
-        <View style={styles.notifSep} />
-        <View style={styles.notifRow}>
-          <View style={styles.notifLabelWrap}>
-            <Text style={styles.notifLabel}>Weekly digest</Text>
-            <Text style={styles.notifDesc}>Weekly email with top rankings</Text>
-          </View>
-          <Switch
-            value={notifWeeklyDigest}
-            onValueChange={(v) => saveNotifPref("weeklyDigest", v)}
-            trackColor={{ false: Colors.border, true: AMBER }}
-            thumbColor="#fff"
-          />
-        </View>
-      </View>
+      <NotificationPreferences
+        notifRatingUpdates={notifRatingUpdates}
+        notifChallengeResults={notifChallengeResults}
+        notifWeeklyDigest={notifWeeklyDigest}
+        saveNotifPref={saveNotifPref}
+      />
 
-      {/* Legal Links */}
-      <View style={styles.legalLinks}>
-        <TouchableOpacity
-          style={styles.legalLink}
-          onPress={() => router.push("/legal/terms")}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="View Terms of Service"
-        >
-          <Ionicons name="document-text-outline" size={14} color={Colors.textTertiary} />
-          <Text style={styles.legalLinkText}>Terms of Service</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.legalLink}
-          onPress={() => router.push("/legal/privacy")}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="View Privacy Policy"
-        >
-          <Ionicons name="shield-outline" size={14} color={Colors.textTertiary} />
-          <Text style={styles.legalLinkText}>Privacy Policy</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.legalLink}
-          onPress={() => router.push("/legal/accessibility")}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="View Accessibility Statement"
-        >
-          <Ionicons name="accessibility-outline" size={14} color={Colors.textTertiary} />
-          <Text style={styles.legalLinkText}>Accessibility</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Delete Account — App Store requirement */}
-      <TouchableOpacity
-        style={styles.deleteAccountBtn}
-        onPress={() => {
-          Alert.alert(
-            "Delete Account",
-            "This will permanently delete your account and all your ratings within 30 days. This action cannot be undone.",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Delete My Account",
-                style: "destructive",
-                onPress: () => {
-                  Alert.alert("Account Deletion Requested", "Your account will be deleted within 30 days. You will receive an email confirmation.");
-                },
-              },
-            ]
-          );
-        }}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Delete your account"
-      >
-        <Ionicons name="trash-outline" size={14} color={Colors.red} />
-        <Text style={styles.deleteAccountText}>Delete Account</Text>
-      </TouchableOpacity>
+      <LegalLinksSection />
     </ScrollView>
 
     <BadgeDetailModal
@@ -783,25 +545,8 @@ const styles = StyleSheet.create({
     flex: 1, fontSize: 14, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
   },
-  legalLinks: {
-    marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.border,
-    marginHorizontal: 20, gap: 2,
-  },
-  legalLink: {
-    flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10,
-  },
-  legalLinkText: {
-    flex: 1, ...TYPOGRAPHY.ui.body, color: Colors.textSecondary,
-  },
-  deleteAccountBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    marginTop: 24, paddingVertical: 12,
-  },
-  deleteAccountText: {
-    fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium",
-  },
 
-  // ===== Logged In =====
+  // Profile card
   profileCard: {
     backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
     flexDirection: "row", alignItems: "center", gap: 14,
@@ -831,6 +576,8 @@ const styles = StyleSheet.create({
   profileNameLight: { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
   username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   usernameLight: { color: "rgba(255,255,255,0.5)" },
+
+  // Credibility card
   credibilityCard: {
     backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
     gap: 14, ...Colors.cardShadow,
@@ -851,6 +598,7 @@ const styles = StyleSheet.create({
   progressBarFill: { height: "100%", borderRadius: 2 },
   credProgressHint: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginTop: 4 },
 
+  // Stats row
   statsRow: {
     flexDirection: "row", backgroundColor: "rgba(13,27,42,0.9)", borderRadius: 14,
     overflow: "hidden",
@@ -860,57 +608,19 @@ const styles = StyleSheet.create({
   statNum: { fontSize: 24, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
   statLabel: { fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
 
-  joinedText: {
-    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
-    textAlign: "center",
-  },
+  joinedText: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, textAlign: "center" },
 
+  // Last rating
   lastRatingCard: {
     backgroundColor: `${BRAND.colors.amber}08`, borderRadius: 14, padding: 16,
     gap: 6, borderWidth: 1, borderColor: `${BRAND.colors.amber}20`,
   },
-  lastRatingHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-  },
-  lastRatingTitle: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  lastRatingBizName: {
-    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
-  },
-  lastRatingDetail: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  prideCard: {
-    backgroundColor: `${Colors.green}08`, borderRadius: 14, padding: 16,
-    gap: 10, borderWidth: 1, borderColor: `${Colors.green}20`,
-  },
-  prideHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-  },
-  prideTitle: {
-    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  prideText: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18,
-  },
-  prideList: { gap: 6, marginTop: 4 },
-  prideItem: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingVertical: 6, paddingHorizontal: 10,
-    backgroundColor: Colors.surface, borderRadius: 8,
-  },
-  prideItemName: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1, marginRight: 8,
-  },
-  prideItemDelta: {
-    flexDirection: "row", alignItems: "center", gap: 2,
-    backgroundColor: `${Colors.green}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
-  },
-  prideItemDeltaText: {
-    fontSize: 11, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
-  },
+  lastRatingHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
+  lastRatingTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  lastRatingBizName: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  lastRatingDetail: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
 
+  // Breakdown
   breakdownCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
     gap: 10, ...Colors.cardShadow,
@@ -925,73 +635,19 @@ const styles = StyleSheet.create({
   breakdownTotalLabel: { ...TYPOGRAPHY.ui.bodyBold, fontWeight: "700", color: Colors.text },
   breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
 
+  // Section headers
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
+  // Empty states
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   emptyCtaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   emptyCtaText: { fontSize: 13, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
 
-  tierInfoSection: { gap: 10, marginTop: 8 },
-  tierList: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", ...Colors.cardShadow,
-  },
-  tierRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  tierRowActive: { backgroundColor: Colors.goldFaint },
-  tierDot: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  tierConnector: { width: 2, height: 16, marginLeft: 19, borderRadius: 1 },
-  tierRowInfo: { flex: 1, gap: 1 },
-  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  tierRange: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
-  currentBadge: {
-    backgroundColor: Colors.goldFaint,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
-
-  // Tier Perks
-  perksGrid: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", ...Colors.cardShadow,
-  },
-  perkItem: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  perkItemLocked: { opacity: 0.6 },
-  perkIconWrap: {
-    width: 32, height: 32, borderRadius: 8,
-    backgroundColor: Colors.goldFaint,
-    alignItems: "center", justifyContent: "center",
-  },
-  perkIconLocked: { backgroundColor: Colors.surfaceRaised },
-  perkInfo: { flex: 1, gap: 1 },
-  perkTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  perkTitleLocked: { color: Colors.textTertiary },
-  perkDesc: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
-  nextTierPreview: {
-    marginTop: 8, gap: 0,
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", ...Colors.cardShadow,
-  },
-  nextTierLabel: {
-    fontSize: 11, fontWeight: "700", color: Colors.textTertiary,
-    fontFamily: "DMSans_700Bold", letterSpacing: 1,
-    textTransform: "uppercase" as const,
-    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
-  },
-
-  // Credibility Growth Prompt
+  // Getting started / growth prompt
   gettingStartedCard: {
     flexDirection: "row", alignItems: "center", gap: 14,
     backgroundColor: `${BRAND.colors.amber}10`, borderRadius: 14, padding: 16,
@@ -1002,12 +658,8 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, backgroundColor: `${BRAND.colors.amber}15`,
     alignItems: "center", justifyContent: "center",
   },
-  gettingStartedTitle: {
-    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
-  },
-  gettingStartedDesc: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 17,
-  },
+  gettingStartedTitle: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  gettingStartedDesc: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 17 },
   growthPrompt: {
     flexDirection: "row", alignItems: "center", gap: 10,
     backgroundColor: "rgba(196,154,26,0.08)",
@@ -1015,59 +667,5 @@ const styles = StyleSheet.create({
     borderRadius: 10, padding: 14,
     marginHorizontal: 16, marginTop: 12,
   },
-  growthPromptText: {
-    fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium",
-  },
-
-  // Payment History
-  paymentRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 12,
-  },
-  paymentIconWrap: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: "rgba(196,154,26,0.1)",
-    alignItems: "center", justifyContent: "center",
-  },
-  paymentType: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  paymentDate: {
-    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginTop: 2,
-  },
-  paymentAmount: {
-    ...TYPOGRAPHY.ui.bodyBold, fontWeight: "700", color: Colors.text,
-  },
-  paymentStatus: {
-    fontSize: 10, fontFamily: "DMSans_500Medium", marginTop: 2,
-    textTransform: "capitalize" as const,
-  },
-
-  // Notification Preferences
-  notifCard: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 16, marginTop: 16, gap: 0,
-  },
-  notifHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14,
-  },
-  notifHeaderText: {
-    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  notifRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingVertical: 6,
-  },
-  notifLabelWrap: { flex: 1, marginRight: 12 },
-  notifLabel: {
-    fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular",
-  },
-  notifDesc: {
-    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 2,
-  },
-  notifSep: {
-    height: 1, backgroundColor: Colors.border, marginVertical: 4,
-  },
+  growthPromptText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium" },
 });

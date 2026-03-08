@@ -82,10 +82,11 @@ const defaultStore = new MemoryStore();
 export interface RateLimitOptions {
   windowMs: number;      // Time window in milliseconds
   maxRequests: number;   // Max requests per window
+  keyPrefix?: string;    // Prefix to isolate counters between limiters
   store?: RateLimitStore; // Pluggable backend (defaults to in-memory)
 }
 
-const DEFAULT_OPTIONS: Omit<RateLimitOptions, "store"> = {
+const DEFAULT_OPTIONS: Omit<RateLimitOptions, "store" | "keyPrefix"> = {
   windowMs: 60_000,    // 1 minute
   maxRequests: 100,     // 100 requests per minute
 };
@@ -93,12 +94,14 @@ const DEFAULT_OPTIONS: Omit<RateLimitOptions, "store"> = {
 export function rateLimiter(options: Partial<RateLimitOptions> = {}) {
   const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
   const store = options.store || defaultStore;
+  const keyPrefix = options.keyPrefix || "global";
 
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = `${keyPrefix}:${ip}`;
     const now = Date.now();
 
-    store.increment(ip, windowMs).then(({ count, resetAt }) => {
+    store.increment(key, windowMs).then(({ count, resetAt }) => {
       // Set rate limit headers
       res.setHeader("X-RateLimit-Limit", String(maxRequests));
       res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count)));
@@ -122,7 +125,13 @@ export function rateLimiter(options: Partial<RateLimitOptions> = {}) {
 }
 
 /** Stricter rate limit for auth endpoints */
-export const authRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 10 });
+export const authRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 10, keyPrefix: "auth" });
 
 /** Standard API rate limit */
-export const apiRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 100 });
+export const apiRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 100, keyPrefix: "api" });
+
+/** Payment routes — strict limit to prevent abuse (20 req/min per IP) */
+export const paymentRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 20, keyPrefix: "payments" });
+
+/** Admin routes — moderate limit (30 req/min per IP) */
+export const adminRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 30, keyPrefix: "admin" });

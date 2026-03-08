@@ -9,6 +9,7 @@ import { sendWelcomeEmail } from "./email";
 import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
 import { registerBadgeRoutes } from "./routes-badges";
+import { registerExperimentRoutes } from "./routes-experiments";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -393,8 +394,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/leaderboard", async (req: Request, res: Response) => {
     try {
-      const city = (req.query.city as string) || "Dallas";
-      const category = (req.query.category as string) || "restaurant";
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
+      const category = sanitizeString(req.query.category, 50) || "restaurant";
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
 
       const bizList = await getLeaderboard(city, category, limit);
@@ -412,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Active featured businesses for a city — used by FeaturedSection
   app.get("/api/featured", async (req: Request, res: Response) => {
     try {
-      const city = (req.query.city as string) || "Dallas";
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
       const placements = await getActiveFeaturedInCity(city);
       if (placements.length === 0) {
         return res.json({ data: [] });
@@ -444,7 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/leaderboard/categories", async (req: Request, res: Response) => {
     try {
-      const city = (req.query.city as string) || "Dallas";
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
       const data = await getAllCategories(city);
       return res.json({ data });
     } catch (err: any) {
@@ -455,8 +456,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/businesses/search", async (req: Request, res: Response) => {
     try {
       const query = sanitizeString(req.query.q, 200);
-      const city = (req.query.city as string) || "Dallas";
-      const category = req.query.category as string | undefined;
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
+      const category = sanitizeString(req.query.category, 50) || undefined;
       const bizList = await searchBusinesses(query, city, category);
       const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
       const data = bizList.map(b => ({
@@ -720,8 +721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/challengers/active", async (req: Request, res: Response) => {
     try {
-      const city = (req.query.city as string) || "Dallas";
-      const category = req.query.category as string | undefined;
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
+      const category = sanitizeString(req.query.category, 50) || undefined;
       const data = await getActiveChallenges(city, category);
       return res.json({ data });
     } catch (err: any) {
@@ -732,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/trending", async (req: Request, res: Response) => {
     try {
       const { getTrendingBusinesses } = await import("./storage");
-      const city = (req.query.city as string) || "Dallas";
+      const city = sanitizeString(req.query.city, 100) || "Dallas";
       const limit = Math.min(10, Math.max(1, parseInt(req.query.limit as string) || 3));
       const bizList = await getTrendingBusinesses(city, limit);
       const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
@@ -871,6 +872,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Admin Routes (extracted to routes-admin.ts) ─────────────
   registerAdminRoutes(app);
+
+  // ── Experiment Routes (extracted to routes-experiments.ts) ──
+  registerExperimentRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
