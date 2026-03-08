@@ -16,11 +16,20 @@ import { fetchBusinessSearch, fetchTrending } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
+import * as Location from "expo-location";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const AMBER = BRAND.colors.amber;
 const CARD_H_MARGIN = 16;
@@ -33,8 +42,8 @@ const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
   "Fort Worth": { lat: 32.7555, lng: -97.3308 },
 };
 
-type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now";
-const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now"];
+type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now" | "Near Me";
+const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now", "Near Me"];
 
 type ViewMode = "list" | "map";
 
@@ -99,7 +108,7 @@ const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({ photos, heig
   );
 });
 
-const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { item: MappedBusiness; displayRank: number }) {
+const BusinessCard = React.memo(function BusinessCard({ item, displayRank, distanceKm }: { item: MappedBusiness; displayRank: number; distanceKm?: number }) {
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = Math.min(screenWidth, 600) - CARD_H_MARGIN * 2;
   const catDisplay = getCategoryDisplay(item.category);
@@ -153,6 +162,13 @@ const BusinessCard = React.memo(function BusinessCard({ item, displayRank }: { i
               <Text style={styles.cardNeighborhood}>{item.priceRange}</Text>
             </>
           ) : null}
+          {distanceKm != null && (
+            <>
+              <Text style={styles.cardDot}> {"\u00B7"} </Text>
+              <Ionicons name="navigate-outline" size={10} color={AMBER} />
+              <Text style={styles.cardDistance}>{distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)}km`}</Text>
+            </>
+          )}
         </View>
         <View style={styles.cardRow3}>
           <Text style={styles.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
@@ -399,6 +415,8 @@ export default function SearchScreen() {
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"ranked" | "rated" | "trending">("ranked");
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
@@ -419,18 +437,42 @@ export default function SearchScreen() {
 
   const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
+  const requestLocation = useCallback(async () => {
+    if (userLocation) return;
+    setLocationLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      }
+    } catch { /* silently fail */ } finally {
+      setLocationLoading(false);
+    }
+  }, [userLocation]);
+
   const filtered = useMemo(() => {
     let list = allBusinesses;
     if (activeFilter === "Top 10") list = list.filter((b: MappedBusiness) => b.rank <= 10);
     else if (activeFilter === "Challenging") list = list.filter((b: MappedBusiness) => b.isChallenger);
     else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
     else if (activeFilter === "Open Now") list = list.filter((b: MappedBusiness) => b.isOpenNow === true);
+    else if (activeFilter === "Near Me" && userLocation) {
+      list = list.filter((b: MappedBusiness) => b.lat != null && b.lng != null);
+      list = [...list].sort((a: MappedBusiness, b: MappedBusiness) => {
+        const distA = haversineKm(userLocation.lat, userLocation.lng, a.lat!, a.lng!);
+        const distB = haversineKm(userLocation.lat, userLocation.lng, b.lat!, b.lng!);
+        return distA - distB;
+      });
+      if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
+      return list;
+    }
     if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
     if (sortBy === "ranked") return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
     if (sortBy === "rated") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.ratingCount || 0) - (a.ratingCount || 0));
     if (sortBy === "trending") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.rankDelta || 0) - (a.rankDelta || 0));
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
-  }, [allBusinesses, activeFilter, priceFilter, sortBy]);
+  }, [allBusinesses, activeFilter, priceFilter, sortBy, userLocation]);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -507,13 +549,20 @@ export default function SearchScreen() {
           {FILTERS.map(f => (
             <TouchableOpacity
               key={f}
-              onPress={() => { Haptics.selectionAsync(); setActiveFilter(f); }}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setActiveFilter(f);
+                if (f === "Near Me") requestLocation();
+              }}
               style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
               accessibilityRole="button"
               accessibilityLabel={`${f} filter`}
               accessibilityState={{ selected: activeFilter === f }}
             >
-              <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+              {f === "Near Me" && <Ionicons name="navigate-outline" size={12} color={activeFilter === f ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />}
+              <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>
+                {f === "Near Me" && locationLoading ? "Locating..." : f}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -630,7 +679,11 @@ export default function SearchScreen() {
           data={filtered}
           keyExtractor={(item: MappedBusiness) => item.id}
           renderItem={({ item, index }: { item: MappedBusiness; index: number }) => (
-            <BusinessCard item={item} displayRank={index + 1} />
+            <BusinessCard
+              item={item}
+              displayRank={index + 1}
+              distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
+            />
           )}
           contentContainerStyle={[
             styles.resultList,
@@ -860,6 +913,7 @@ const styles = StyleSheet.create({
   cardCategory: { fontSize: 12, color: AMBER, fontWeight: "500", fontFamily: "DMSans_500Medium" },
   cardDot: { fontSize: 12, color: Colors.textTertiary },
   cardNeighborhood: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  cardDistance: { fontSize: 11, color: AMBER, fontFamily: "DMSans_500Medium", marginLeft: 2 },
   cardRow3: {
     flexDirection: "row", alignItems: "center", marginTop: 2, gap: 8,
   },
