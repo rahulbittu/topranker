@@ -392,7 +392,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/seed-cities", requireAuth, async (req: Request, res: Response) => {
     try {
       // Only allow admin users — single source of truth in shared/admin.ts
-      const email = (req.user as any)?.email;
+      const email = req.user?.email;
       if (!isAdminEmail(email)) {
         return res.status(403).json({ error: "Admin access required" });
       }

@@ -150,7 +150,7 @@ export default function RateScreen() {
 
   const [dishSearchResults, setDishSearchResults] = useState<ApiDish[]>([]);
   const [dishSearching, setDishSearching] = useState(false);
-  const dishSearchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const dishSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
