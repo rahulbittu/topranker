@@ -155,39 +155,27 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
   return score;
 }
 
+// Sprint 136 core-loop fix: single window-function UPDATE replaces O(N) loop
 export async function recalculateRanks(
   city: string,
   category: string,
 ): Promise<void> {
-  const allBusinesses = await db
-    .select({
-      id: businesses.id,
-      rankPosition: businesses.rankPosition,
-    })
-    .from(businesses)
-    .where(
-      and(
-        eq(businesses.city, city),
-        eq(businesses.category, category),
-        eq(businesses.isActive, true),
-      ),
-    )
-    .orderBy(desc(businesses.weightedScore));
-
-  for (let i = 0; i < allBusinesses.length; i++) {
-    const oldRank = allBusinesses[i].rankPosition;
-    const newRank = i + 1;
-    const delta = oldRank ? oldRank - newRank : 0;
-
-    await db
-      .update(businesses)
-      .set({
-        rankPosition: newRank,
-        rankDelta: delta,
-        prevRankPosition: oldRank,
-      })
-      .where(eq(businesses.id, allBusinesses[i].id));
-  }
+  await db.execute(sql`
+    UPDATE ${businesses} b
+    SET
+      rank_position = sub.new_rank,
+      rank_delta = COALESCE(b.rank_position, sub.new_rank) - sub.new_rank,
+      prev_rank_position = b.rank_position
+    FROM (
+      SELECT id,
+        ROW_NUMBER() OVER (ORDER BY weighted_score DESC) AS new_rank
+      FROM ${businesses}
+      WHERE city = ${city}
+        AND category = ${category}
+        AND is_active = true
+    ) sub
+    WHERE b.id = sub.id
+  `);
 }
 
 export async function getBusinessPhotos(businessId: string): Promise<string[]> {

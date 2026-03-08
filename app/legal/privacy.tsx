@@ -9,7 +9,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
 const EFFECTIVE_DATE = "March 1, 2026";
-const LAST_UPDATED = "March 8, 2026";
+const LAST_UPDATED = "March 8, 2026"; // Updated: A/B testing disclosure (Section 13)
 
 const SECTIONS = [
   {
@@ -44,7 +44,8 @@ Webhook Event Data: Payment status updates received from payment providers are l
 - Comply with legal obligations
 - Deliver real-time ranking and rating updates via server-sent events
 - Process and replay webhook events for payment accuracy
-- Send transactional emails via Resend (our email delivery provider)`,
+- Send transactional emails via Resend (our email delivery provider)
+- Conduct A/B tests on user interface variations to improve feature design and ranking transparency (see Section 13)`,
   },
   {
     title: "3. Trust Score Data",
@@ -149,6 +150,22 @@ India Grievance Officer: Arjun Mehta, Senior Legal Counsel
 Email: india-privacy@topranker.com
 
 Response time: Within 30 days of receiving your request.`,
+  },
+  {
+    title: "13. A/B Testing & Feature Experiments",
+    body: `We may conduct A/B tests where different users see different versions of a feature (e.g., tooltip styles, display formats, UI layouts). This is used solely to improve the product experience.
+
+How it works:
+- Your user identifier is hashed deterministically to assign you to a test group
+- Assignment is consistent — you always see the same variant for a given experiment
+- We record which variant you were assigned ("experiment exposure") for analysis
+
+What we do NOT do:
+- We do not use A/B testing for pricing, access restrictions, or content gating
+- We do not profile you based on experiment assignments
+- We do not share experiment data with third parties
+
+Under GDPR Article 22, these experiments constitute low-impact UX variations and do not qualify as automated decisions that significantly affect you. You may contact privacy@topranker.com with questions about any active experiments.`,
   },
 ];
 

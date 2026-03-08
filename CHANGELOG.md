@@ -2,6 +2,70 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 136] - 2026-03-08
+### Fixed
+- **Core-loop: Pioneer rate N+1 query** — replaced O(N) loop (201 queries for 200 ratings) with single correlated subquery in `storage/members.ts`
+- **Core-loop: Rank recalculation O(N) loop** — replaced sequential UPDATE per business with single window-function UPDATE in `storage/businesses.ts`
+### Added
+- Architectural Audit #11 (Sprint 135 boundary): 0 CRITICAL, 2 HIGH (file sizes, test coverage gaps), 4 MEDIUM
+- A/B testing disclosure in privacy policy (Section 13) — GDPR Article 22 compliant
+- Tooltip accessibility: `accessible={true}` + `accessibilityLabel` on confidence tooltip views
+- 1323 tests across 62 files (documentation corrected from stale "70")
+### Changed
+- README: test count 70 → 1323, sprint doc paths fixed, admin endpoints added
+- CONTRIBUTING: test count 70 → 1323, sprint doc paths fixed
+- CHANGELOG: backfilled Sprints 127-135
+
+## [Sprint 135] - 2026-03-08
+### Added
+- A/B testing framework (`lib/ab-testing.ts`) with DJB2 hash bucketing, experiment registry, QA overrides, and exposure event deduplication
+- Confidence tooltips on search cards and leaderboard items (tap info icon to see confidence description)
+- Personalized vote weight display on challenger page for logged-in users showing tier influence percentage
+- 34 new tests for A/B testing framework
+
+## [Sprint 134] - 2026-03-08
+### Added
+- GET `/api/admin/confidence-thresholds` read-only admin endpoint
+- 47 new tests covering trust-critical surfaces and admin thresholds
+- TD-013 in TECH-DEBT.md documenting pagination risk for Previous Rating card
+### Fixed
+- False "No internet connection" banner caused by CORS-failing external ping; now uses native `navigator.onLine`
+- Google Maps not loading due to missing CSP entries for `maps.googleapis.com` and `maps.gstatic.com`
+
+## [Sprint 132] - 2026-03-08
+### Changed
+- Replaced hardcoded `>= 10` verified pill on search BusinessCard with category-aware confidence system
+- Green shield icon for established/strong confidence, amber hourglass for early confidence, no indicator for provisional
+### Fixed
+- Trust signal inconsistency: search results now use same confidence thresholds as leaderboard, challenger, and business detail pages
+
+## [Sprint 131] - 2026-03-08
+### Added
+- Rank confidence labels on challenger page fighter cards (provisional/early indicators, hidden for established)
+- "How Voting Works" explainer section on challenger page explaining credibility-tier voting mechanics
+
+## [Sprint 130] - 2026-03-08
+### Added
+- Per-category confidence thresholds (`CATEGORY_CONFIDENCE_THRESHOLDS`) with three tiers: high-volume, standard, niche
+- Optional `category` parameter on `getRankConfidence()` for category-aware calibration
+
+## [Sprint 129] - 2026-03-08
+### Added
+- "Your Rating" card on business detail page showing user's previous Q1/Q2/Q3 scores, would-return, tier badge, and relative date
+### Changed
+- Rate button text changes to "Update Your Rating" when user has an existing rating
+
+## [Sprint 128] - 2026-03-08
+### Added
+- "Rate Your First Place" CTA card for zero-rating users navigating to Discover
+- Collapsible Score Breakdown for users with fewer than 5 ratings
+### Changed
+- Profile layout adapts by user stage: 0 ratings, 1-4 ratings, 5+ ratings
+
+## [Sprint 127] - 2026-03-08
+### Added
+- "Your Last Rating" consequence card on profile page showing business name, score, weight, and relative date
+
 ## [Sprint 126] - 2026-03-08
 ### Changed
 - Rating confirmation: "Rating Submitted" → "Your Rating is Live", removed raw weight display (x0.10), replaced with influence labels

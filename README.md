@@ -35,7 +35,7 @@ npm test
 | Database | PostgreSQL | 13 tables via Drizzle ORM |
 | Auth | Passport.js | Local + Google OAuth strategies |
 | State | React Query | Server state management |
-| Testing | Vitest | 70 tests, <120ms execution |
+| Testing | Vitest | 1323 tests, <1s execution |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system design.
 
@@ -143,6 +143,10 @@ Accounts must be 3+ days old to submit ratings. Prevents drive-by manipulation.
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/api/admin/seed-cities` | Seed multi-city data |
+| GET | `/api/admin/analytics/dashboard` | Analytics dashboard with conversion rates |
+| GET | `/api/admin/confidence-thresholds` | Confidence threshold configuration |
+| GET | `/api/admin/analytics/funnel` | Funnel analytics data |
+| POST | `/api/admin/analytics/flush` | Flush analytics buffer |
 
 ## Testing
 
@@ -151,12 +155,13 @@ npm test              # Run all tests
 npm run test:watch    # Watch mode
 ```
 
-70 tests across 5 files:
+1323 tests across 62 files, including:
 - `credibility.test.ts` — Credibility scoring, tiers, vote weights, temporal decay (24 tests)
 - `tier-perks.test.ts` — Gamification perks engine (15 tests)
 - `admin.test.ts` — Admin email whitelist (8 tests)
 - `config.test.ts` — Environment config validation (7 tests)
 - `auth-validation.test.ts` — Auth input validation, rate gating (16 tests)
+- ...and 57 more test files covering security, analytics, GDPR, notifications, API versioning, and more
 
 ## Brand System
 
@@ -174,7 +179,7 @@ npm run test:watch    # Watch mode
 - [API Reference](docs/API.md) — Endpoint specifications
 - [Contributing](CONTRIBUTING.md) — Development workflow, coding standards
 - [Changelog](CHANGELOG.md) — Version history
-- Sprint docs: `docs/SPRINT-N-*.md` (56 sprints)
+- Sprint docs: `docs/sprints/SPRINT-N-*.md` (135 sprints)
 - Retrospectives: `docs/retros/RETRO-N-*.md`
 - Audits: `docs/audits/ARCH-AUDIT-N.md` (every 5 sprints)
 - Process: `docs/process/BACKLOG-REFINEMENT.md`

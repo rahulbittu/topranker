@@ -360,7 +360,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         {showConfTooltip && (() => {
           const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
           return (
-            <View style={s.confTooltip} accessibilityRole="alert" accessibilityLiveRegion="polite">
+            <View style={s.confTooltip} accessible={true} accessibilityRole="alert" accessibilityLiveRegion="polite" accessibilityLabel={RANK_CONFIDENCE_LABELS[confidence].description}>
               <Text style={s.confTooltipText}>{RANK_CONFIDENCE_LABELS[confidence].description}</Text>
             </View>
           );

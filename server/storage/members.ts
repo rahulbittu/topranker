@@ -147,31 +147,28 @@ export async function recalculateCredibilityScore(memberId: string): Promise<{
     varianceBonus = Math.min(stddev * 60, 150);
   }
 
-  const allMemberRatings = await db
-    .select({
-      businessId: ratings.businessId,
-      createdAt: ratings.createdAt,
-    })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+  // Pioneer rate: single query replaces N+1 loop (Sprint 136 core-loop fix)
+  const [pioneerResult] = await db.execute(sql`
+    SELECT
+      COUNT(*) AS total_ratings,
+      COUNT(*) FILTER (WHERE prior_count < 10) AS early_ratings
+    FROM (
+      SELECT r1.id,
+        (SELECT COUNT(*) FROM ${ratings} r2
+         WHERE r2.business_id = r1.business_id
+           AND r2.member_id != ${memberId}
+           AND r2.created_at < r1.created_at
+           AND r2.is_flagged = false) AS prior_count
+      FROM ${ratings} r1
+      WHERE r1.member_id = ${memberId}
+        AND r1.is_flagged = false
+    ) sub
+  `);
+  const totalMemberRatings = Number(pioneerResult?.total_ratings ?? 0);
+  const earlyReviewCount = Number(pioneerResult?.early_ratings ?? 0);
 
-  let earlyReviewCount = 0;
-  for (const r of allMemberRatings) {
-    const [countBefore] = await db
-      .select({ count: count() })
-      .from(ratings)
-      .where(
-        and(
-          eq(ratings.businessId, r.businessId),
-          ne(ratings.memberId, memberId),
-          sql`${ratings.createdAt} < ${r.createdAt}`,
-        ),
-      );
-    if (countBefore.count < 10) earlyReviewCount++;
-  }
-
-  const pioneerRate = allMemberRatings.length > 0
-    ? earlyReviewCount / allMemberRatings.length
+  const pioneerRate = totalMemberRatings > 0
+    ? earlyReviewCount / totalMemberRatings
     : 0;
   const helpfulness = Math.round(pioneerRate * 100);
 

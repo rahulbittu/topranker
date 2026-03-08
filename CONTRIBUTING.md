@@ -21,7 +21,7 @@
 
 ### Pull Request Requirements
 - Description of changes with "why" context
-- Test results (all 70+ tests passing)
+- Test results (all tests passing)
 - TypeScript clean (zero new errors)
 - At least one reviewer approval
 
@@ -68,7 +68,7 @@ Import from `constants/brand.ts` — never hardcode color values.
 
 ### Running Tests
 ```bash
-npm test              # Run all tests (currently 70, <120ms)
+npm test              # Run all tests (currently 1323 across 62 files, <1s)
 npm run test:watch    # Watch mode for development
 ```
 
@@ -82,7 +82,7 @@ npm run test:watch    # Watch mode for development
 ## Documentation Requirements
 
 ### Every Sprint Produces
-1. `docs/SPRINT-N-*.md` — Sprint doc with team discussions, changes, performance ratings
+1. `docs/sprints/SPRINT-N-*.md` — Sprint doc with team discussions, changes, performance ratings
 2. `docs/retros/RETRO-N-*.md` — Retrospective with actions and morale score
 
 ### Every Sprint Item Has
