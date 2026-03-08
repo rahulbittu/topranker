@@ -2,6 +2,41 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 114] - 2026-03-08
+### Added
+- createThemedStyles + useThemedStyles utilities for dark mode migration
+- WebSocket vs SSE evaluation document (decision: keep SSE)
+- SLT + Architecture backlog meeting doc for Sprint 115
+- Tab screen containers now theme-aware via useThemeColors hook
+### Changed
+- All 4 tab screens use useThemeColors for dynamic container backgrounds
+- CHANGELOG updated through Sprint 113
+- 720+ tests across 46+ files
+
+## [Sprint 113] - 2026-03-08
+### Added
+- ThemeProvider context with system/light/dark detection + AsyncStorage persistence
+- darkColors normalized to match Colors shape (key parity verified in tests)
+- Settings appearance toggle (System/Light/Dark)
+- useTheme and useThemeColors hooks
+### Changed
+- Dark-colors.ts now exports both DARK_COLORS (backwards compat) and darkColors (normalized)
+- Root layout wraps CityProvider in ThemeProvider
+- TECH-DEBT.md updated through Sprint 112
+- 720 tests across 46 files
+
+## [Sprint 112] - 2026-03-08
+### Added
+- GDPR data export endpoint (GET /api/account/export) — Art. 20 data portability
+- RateLimitStore interface with MemoryStore default and RedisStore stub
+- Analytics flush handler (setFlushHandler) for periodic persistence
+- analytics_events table schema in shared/schema.ts
+### Changed
+- Rate limiter refactored to pluggable store pattern (async increment)
+- Sprint 105 rate limiter tests updated for async pattern
+- TECH-DEBT.md: TD-001 architecturally resolved, 3 new resolved items
+- 693 tests across 45 files
+
 ## [Sprint 111] - 2026-03-08
 ### Added
 - ErrorBoundary integration: all 4 tab screens wrapped for graceful crash recovery

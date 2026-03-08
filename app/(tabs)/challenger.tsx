@@ -28,6 +28,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useThemeColors } from "@/lib/theme-context";
 
 const CHALLENGER_TIP_KEY = "challenger_tip_dismissed";
 
@@ -398,6 +399,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 }
 
 export default function ChallengerScreen() {
+  const themeColors = useThemeColors();
   const insets = useSafeAreaInsets();
   const { city } = useCity();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
@@ -433,7 +435,7 @@ export default function ChallengerScreen() {
 
   return (
     <ErrorBoundary>
-    <View style={[styles.container, { paddingTop: topPad }]}>
+    <View style={[styles.container, { paddingTop: topPad, backgroundColor: themeColors.background }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Live Challenges</Text>
       </View>
