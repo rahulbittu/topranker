@@ -1,6 +1,7 @@
 /**
- * Rate Limiter Middleware — Sprint 105
- * In-memory sliding window rate limiter per IP.
+ * Rate Limiter Middleware — Sprint 105 / Refactored Sprint 110
+ * Pluggable-store sliding window rate limiter per IP.
+ * Default: in-memory store. Redis-ready via RateLimitStore interface.
  * Owner: Amir Patel (Architecture)
  */
 import type { Request, Response, NextFunction } from "express";
@@ -8,60 +9,115 @@ import { log } from "./logger";
 
 const rlLog = log.tag("RateLimiter");
 
+// ---------------------------------------------------------------------------
+// Store interface — implement this for Redis, DynamoDB, etc.
+// ---------------------------------------------------------------------------
+
 interface WindowEntry {
   count: number;
   resetAt: number;
 }
 
-const windows = new Map<string, WindowEntry>();
-
-// Clean up expired entries every 60s
-setInterval(() => {
-  const now = Date.now();
-  Array.from(windows.entries()).forEach(([key, entry]) => {
-    if (now > entry.resetAt) windows.delete(key);
-  });
-}, 60_000);
-
-export interface RateLimitOptions {
-  windowMs: number;   // Time window in milliseconds
-  maxRequests: number; // Max requests per window
+export interface RateLimitStore {
+  increment(key: string, windowMs: number): Promise<{ count: number; resetAt: number }>;
+  cleanup?(): void;
 }
 
-const DEFAULT_OPTIONS: RateLimitOptions = {
-  windowMs: 60_000,   // 1 minute
-  maxRequests: 100,    // 100 requests per minute
+// ---------------------------------------------------------------------------
+// In-memory store (default)
+// ---------------------------------------------------------------------------
+
+class MemoryStore implements RateLimitStore {
+  private windows = new Map<string, WindowEntry>();
+  private cleanupTimer: ReturnType<typeof setInterval>;
+
+  constructor() {
+    this.cleanupTimer = setInterval(() => {
+      const now = Date.now();
+      for (const [key, entry] of this.windows) {
+        if (now > entry.resetAt) this.windows.delete(key);
+      }
+    }, 60_000);
+  }
+
+  async increment(key: string, windowMs: number) {
+    const now = Date.now();
+    let entry = this.windows.get(key);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + windowMs };
+      this.windows.set(key, entry);
+    }
+    entry.count++;
+    return { count: entry.count, resetAt: entry.resetAt };
+  }
+
+  cleanup() {
+    clearInterval(this.cleanupTimer);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Redis store — uncomment when Redis is available (Sprint 114)
+// ---------------------------------------------------------------------------
+// export class RedisStore implements RateLimitStore {
+//   constructor(private redisClient: any) {}
+//   async increment(key: string, windowMs: number) {
+//     // Use INCR + EXPIRE for atomic sliding window
+//     // const count = await this.redisClient.incr(`rl:${key}`);
+//     // if (count === 1) await this.redisClient.pexpire(`rl:${key}`, windowMs);
+//     // return { count, resetAt: Date.now() + windowMs };
+//   }
+// }
+
+// ---------------------------------------------------------------------------
+// Shared default store (single instance across all limiters unless overridden)
+// ---------------------------------------------------------------------------
+
+const defaultStore = new MemoryStore();
+
+// ---------------------------------------------------------------------------
+// Options & factory
+// ---------------------------------------------------------------------------
+
+export interface RateLimitOptions {
+  windowMs: number;      // Time window in milliseconds
+  maxRequests: number;   // Max requests per window
+  store?: RateLimitStore; // Pluggable backend (defaults to in-memory)
+}
+
+const DEFAULT_OPTIONS: Omit<RateLimitOptions, "store"> = {
+  windowMs: 60_000,    // 1 minute
+  maxRequests: 100,     // 100 requests per minute
 };
 
 export function rateLimiter(options: Partial<RateLimitOptions> = {}) {
   const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
+  const store = options.store || defaultStore;
 
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const now = Date.now();
 
-    let entry = windows.get(ip);
-    if (!entry || now > entry.resetAt) {
-      entry = { count: 0, resetAt: now + windowMs };
-      windows.set(ip, entry);
-    }
+    store.increment(ip, windowMs).then(({ count, resetAt }) => {
+      // Set rate limit headers
+      res.setHeader("X-RateLimit-Limit", String(maxRequests));
+      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count)));
+      res.setHeader("X-RateLimit-Reset", String(Math.ceil(resetAt / 1000)));
 
-    entry.count++;
+      if (count > maxRequests) {
+        rlLog.warn(`Rate limit exceeded for ${ip}: ${count}/${maxRequests}`);
+        return res.status(429).json({
+          error: "Too many requests. Please try again later.",
+          retryAfter: Math.ceil((resetAt - now) / 1000),
+        });
+      }
 
-    // Set rate limit headers
-    res.setHeader("X-RateLimit-Limit", String(maxRequests));
-    res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
-    res.setHeader("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1000)));
-
-    if (entry.count > maxRequests) {
-      rlLog.warn(`Rate limit exceeded for ${ip}: ${entry.count}/${maxRequests}`);
-      return res.status(429).json({
-        error: "Too many requests. Please try again later.",
-        retryAfter: Math.ceil((entry.resetAt - now) / 1000),
-      });
-    }
-
-    next();
+      next();
+    }).catch((err: unknown) => {
+      // If store fails, allow request through (fail-open) but log
+      rlLog.warn(`Rate limit store error: ${err}`);
+      next();
+    });
   };
 }
 

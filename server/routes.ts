@@ -30,6 +30,9 @@ import {
   getBusinessPhotosMap,
   getMemberPayments,
   getActiveFeaturedInCity,
+  getMemberImpact,
+  getSeasonalRatingCounts,
+  getMemberBadges,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
@@ -239,6 +242,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ data: null });
     }
     return res.json({ data: req.user });
+  });
+
+  // ── GDPR / CCPA Data Export (Portability) ───────────────────
+  // Compliance (Jordan Blake): Right-to-data-portability per GDPR Art. 20
+  // Returns all user data in machine-readable JSON format
+  app.get("/api/account/export", async (req: Request, res: Response) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    try {
+      const userId = req.user!.id;
+      const [profile, ratings, impact, seasonal, badges] = await Promise.all([
+        getMemberById(userId),
+        getMemberRatings(userId, 1, 10000),
+        getMemberImpact(userId),
+        getSeasonalRatingCounts(userId),
+        getMemberBadges(userId),
+      ]);
+
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        format: "GDPR Art. 20 compliant",
+        profile: profile ? {
+          displayName: profile.displayName,
+          username: profile.username,
+          email: profile.email,
+          city: profile.city,
+          credibilityScore: profile.credibilityScore,
+          credibilityTier: profile.credibilityTier,
+          totalRatings: profile.totalRatings,
+          joinedAt: profile.joinedAt,
+          lastActive: profile.lastActive,
+        } : null,
+        ratings: ratings || [],
+        impact: impact || null,
+        seasonalActivity: seasonal || [],
+        badges: badges || [],
+      };
+
+      res.setHeader("Content-Disposition", `attachment; filename="topranker-data-export-${userId}.json"`);
+      return res.json({ data: exportData });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
   });
 
   // ── GDPR / CCPA Account Deletion Request ────────────────────

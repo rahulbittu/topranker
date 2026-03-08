@@ -460,6 +460,26 @@ export const featuredPlacements = pgTable(
 
 export type FeaturedPlacement = typeof featuredPlacements.$inferSelect;
 
+export const analyticsEvents = pgTable(
+  "analytics_events",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    event: text("event").notNull(),
+    userId: varchar("user_id").references(() => members.id),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_analytics_event").on(table.event),
+    index("idx_analytics_user").on(table.userId),
+    index("idx_analytics_created").on(table.createdAt),
+  ],
+);
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+
 export const insertMemberSchema = createInsertSchema(members).pick({
   displayName: true,
   username: true,

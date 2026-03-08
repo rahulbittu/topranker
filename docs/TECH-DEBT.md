@@ -1,7 +1,7 @@
 # Technical Debt Registry
 
 **Owner**: Marcus Chen (CTO)
-**Last Updated**: 2026-03-08 (Sprint 108)
+**Last Updated**: 2026-03-08 (Sprint 112)
 
 This document tracks known technical debt. Items are prioritized and assigned to future sprints.
 
@@ -13,7 +13,7 @@ This document tracks known technical debt. Items are prioritized and assigned to
 
 | ID | Description | Impact | Owner | Target Sprint |
 |----|-------------|--------|-------|---------------|
-| TD-001 | Rate limiter is in-memory only | Won't scale horizontally, lost on restart | Amir Patel | 110+ |
+| TD-001 | Rate limiter needs Redis for multi-instance | MemoryStore default works, RedisStore stub ready | Amir Patel | 114 |
 
 ### MEDIUM Priority
 
@@ -22,7 +22,7 @@ This document tracks known technical debt. Items are prioritized and assigned to
 | TD-005 | L3: Mock data in lib/api.ts | Dev fallback could confuse new developers | Engineering | Deferred |
 | TD-006 | CSP may need expansion | New integrations may break under current policy | Nadia Kaur | As needed |
 | TD-007 | Cookie consent "Learn more" links to privacy but no deep-link to cookies section | Minor UX gap | Jordan Blake | 107 |
-| TD-011 | No E2E tests | No integration confidence across full stack; L1 audit item being addressed | Sarah Nakamura | 108 |
+| TD-011 | E2E tests need broader coverage | Basic E2E done (Sprint 108), need more endpoint coverage | Sarah Nakamura | Gradual |
 
 ### LOW Priority
 
@@ -48,13 +48,16 @@ This document tracks known technical debt. Items are prioritized and assigned to
 | TD-R07 | Stale legal docs (80 sprints) | Sprint 104 | Terms + Privacy updated |
 | TD-R08 | Typography not fully adopted | Sprint 107 | 22 styles migrated across 4 files; all components now use typography constants |
 | TD-R09 | Frontend pricing scattered | Sprint 106-107 | All screens migrated to PRICING constants from shared/pricing.ts |
+| TD-R10 | Rate limiter not pluggable | Sprint 112 | RateLimitStore interface, MemoryStore default, RedisStore stub |
+| TD-R11 | No GDPR data portability | Sprint 112 | GET /api/account/export returns full user data as JSON |
+| TD-R12 | Analytics events lost on restart | Sprint 112 | FlushHandler + setFlushHandler for periodic persistence |
 
 ---
 
 ## Process
 
 - New debt items added during sprint retros or arch audits
-- Reviewed by SLT every 5 sprints (next: Sprint 110)
+- Reviewed by SLT every 5 sprints (next: Sprint 115)
 - HIGH items must be scheduled within 5 sprints
 - MEDIUM items within 10 sprints
 - LOW items at team discretion

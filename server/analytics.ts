@@ -67,3 +67,35 @@ export function getRecentEvents(limit = 50): FunnelEntry[] {
 export function clearAnalytics() {
   buffer.length = 0;
 }
+
+/** Flush buffer to persistent storage (call periodically) */
+export type FlushHandler = (entries: FunnelEntry[]) => Promise<void>;
+
+let flushHandler: FlushHandler | null = null;
+let flushInterval: ReturnType<typeof setInterval> | null = null;
+
+/** Register a handler to persist analytics events */
+export function setFlushHandler(handler: FlushHandler, intervalMs = 30_000) {
+  flushHandler = handler;
+  if (flushInterval) clearInterval(flushInterval);
+  flushInterval = setInterval(async () => {
+    if (buffer.length === 0 || !flushHandler) return;
+    const batch = buffer.splice(0, buffer.length);
+    try {
+      await flushHandler(batch);
+      analyticsLog.info(`Flushed ${batch.length} analytics events`);
+    } catch (err) {
+      // On failure, put events back
+      buffer.unshift(...batch);
+      analyticsLog.error(`Flush failed, ${batch.length} events re-queued`);
+    }
+  }, intervalMs);
+}
+
+/** Stop periodic flushing */
+export function stopFlush() {
+  if (flushInterval) {
+    clearInterval(flushInterval);
+    flushInterval = null;
+  }
+}

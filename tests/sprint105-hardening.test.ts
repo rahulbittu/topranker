@@ -120,40 +120,37 @@ describe("rateLimiter middleware", () => {
     expect(typeof mw).toBe("function");
   });
 
-  it("default options are 60s window and 100 max requests", () => {
+  it("default options are 60s window and 100 max requests", async () => {
     const { headers, res, req, next } = makeMocks();
     const mw = rateLimiter();
     mw(req, res, next);
+    await new Promise((r) => setTimeout(r, 0)); // allow microtask to settle
     expect(headers["X-RateLimit-Limit"]).toBe("100");
   });
 
-  it("sets rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)", () => {
+  it("sets rate limit headers (X-RateLimit-Limit, X-RateLimit-Remaining)", async () => {
     const { headers, res, req, next } = makeMocks();
     const mw = rateLimiter();
     mw(req, res, next);
+    await new Promise((r) => setTimeout(r, 0));
     expect(headers["X-RateLimit-Limit"]).toBeDefined();
     expect(headers["X-RateLimit-Remaining"]).toBeDefined();
     expect(headers["X-RateLimit-Reset"]).toBeDefined();
   });
 
-  it("exceeding limit returns 429", () => {
-    // authRateLimiter has maxRequests=10, so 11 calls should trigger 429
+  it("exceeding limit returns 429", async () => {
     const { res, req, next, getStatusCode, getJsonBody } = makeMocks();
-    // Use a unique IP to avoid cross-test pollution
     req.ip = "10.0.0.99";
     const mw = rateLimiter({ maxRequests: 10 });
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 11; i++) {
       mw(req, res, next);
+      await new Promise((r) => setTimeout(r, 0));
     }
-    // 11th call should be rate-limited
-    mw(req, res, next);
     expect(getStatusCode()).toBe(429);
     expect(getJsonBody()).toHaveProperty("error");
   });
 
-  it("authRateLimiter has maxRequests of 10", () => {
-    // authRateLimiter is created with maxRequests: 10
-    // We verify by calling it once and checking the header
+  it("authRateLimiter has maxRequests of 10", async () => {
     const headers: Record<string, string> = {};
     const res = {
       setHeader: (k: string, v: string) => { headers[k] = v; },
@@ -162,6 +159,7 @@ describe("rateLimiter middleware", () => {
     const req = { ip: "10.0.0.200", socket: { remoteAddress: "10.0.0.200" } } as any;
     const next = vi.fn();
     authRateLimiter(req, res, next);
+    await new Promise((r) => setTimeout(r, 0));
     expect(headers["X-RateLimit-Limit"]).toBe("10");
   });
 });
