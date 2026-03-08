@@ -230,6 +230,11 @@ function getMockData(path: string): unknown | null {
   return null;
 }
 
+/** Track whether mock data has been served in this session */
+let _servingMockData = false;
+export function isServingMockData(): boolean { return _servingMockData; }
+export function resetMockDataFlag(): void { _servingMockData = false; }
+
 async function apiFetch<T>(path: string): Promise<T> {
   const baseUrl = getApiUrl();
   const url = new URL(path, baseUrl);
@@ -247,12 +252,14 @@ async function apiFetch<T>(path: string): Promise<T> {
       throw new Error(`${res.status}: ${message}`);
     }
     const json = await res.json();
+    _servingMockData = false;
     return json.data;
   } catch (err) {
     // Fallback to mock data when backend is unreachable
     const mock = getMockData(path);
     if (mock !== null) {
-      console.log(`[MockData] Serving mock for: ${path}`);
+      console.warn(`[MockData] Backend unreachable — serving demo data for: ${path}`);
+      _servingMockData = true;
       return mock as T;
     }
     throw err;

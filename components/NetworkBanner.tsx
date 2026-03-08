@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
 } from "react-native-reanimated";
@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
+import { isServingMockData } from "@/lib/api";
 
 /**
  * Network connectivity banner.
@@ -16,17 +17,22 @@ import { TypedIcon } from "@/components/TypedIcon";
 export function NetworkBanner() {
   const [isOffline, setIsOffline] = useState(false);
   const [wasOffline, setWasOffline] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const translateY = useSharedValue(-50);
   const opacity = useSharedValue(0);
+  const isMock = isServingMockData();
 
   useEffect(() => {
-    // Check network status using the actual API server, not a hardcoded domain.
-    // Falls back to Google's generate_204 endpoint if no API host is configured.
+    // Check connectivity by hitting our own API health endpoint.
+    // Only mark offline on actual network errors (TypeError), not HTTP errors or CORS.
     const check = async () => {
       try {
+        if (Platform.OS === "web" && typeof navigator !== "undefined" && !navigator.onLine) {
+          setIsOffline(true);
+          return;
+        }
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 5000);
-        // Use a well-known endpoint that always returns 204 — avoids reliance on our own /api/health
         await fetch("https://clients3.google.com/generate_204", {
           method: "HEAD",
           mode: "no-cors",
@@ -39,13 +45,28 @@ export function NetworkBanner() {
           setTimeout(() => setWasOffline(false), 3000);
         }
         setIsOffline(false);
-      } catch {
-        setIsOffline(true);
+      } catch (err) {
+        // Only mark offline for actual network failures, not CORS or abort
+        if (err instanceof TypeError && !String(err).includes("abort")) {
+          setIsOffline(true);
+        }
       }
     };
 
     check();
     const interval = setInterval(check, 15000);
+
+    // Also listen for online/offline events on web
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const goOnline = () => {
+        if (isOffline) { setWasOffline(true); setTimeout(() => setWasOffline(false), 3000); }
+        setIsOffline(false);
+      };
+      const goOffline = () => setIsOffline(true);
+      window.addEventListener("online", goOnline);
+      window.addEventListener("offline", goOffline);
+      return () => { clearInterval(interval); window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
+    }
     return () => clearInterval(interval);
   }, [isOffline]);
 
@@ -64,28 +85,48 @@ export function NetworkBanner() {
     opacity: opacity.value,
   }));
 
-  if (!isOffline && !wasOffline) return null;
+  // Reset dismiss when state changes
+  useEffect(() => {
+    if (!isOffline && !isMock) setDismissed(false);
+  }, [isOffline, isMock]);
+
+  const showBanner = !dismissed && (isOffline || wasOffline || isMock);
+  if (!showBanner) return null;
+
+  const bannerMessage = wasOffline && !isOffline
+    ? "Back online"
+    : isOffline
+    ? "No internet connection"
+    : isMock
+    ? "Demo mode — backend not connected"
+    : "";
 
   return (
     <Animated.View
       style={[
         styles.banner,
-        wasOffline && !isOffline ? styles.bannerOnline : styles.bannerOffline,
+        wasOffline && !isOffline ? styles.bannerOnline : isMock && !isOffline ? styles.bannerMock : styles.bannerOffline,
         animatedStyle,
       ]}
       accessibilityRole="alert"
-      accessibilityLabel={isOffline ? "You are offline. Some features may be limited." : "Back online."}
+      accessibilityLabel={bannerMessage}
     >
       <Ionicons
-        name={isOffline ? "cloud-offline-outline" : "checkmark-circle-outline"}
+        name={wasOffline && !isOffline ? "checkmark-circle-outline" : isMock ? "flask-outline" : "cloud-offline-outline"}
         size={14}
         color="#FFFFFF"
       />
-      <Text style={styles.bannerText}>
-        {isOffline
-          ? "You're offline — viewing cached data"
-          : "Back online"}
-      </Text>
+      <Text style={styles.bannerText}>{bannerMessage}</Text>
+      {(isMock || isOffline) && (
+        <TouchableOpacity
+          onPress={() => setDismissed(true)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss banner"
+        >
+          <Ionicons name="close" size={14} color="rgba(255,255,255,0.6)" />
+        </TouchableOpacity>
+      )}
     </Animated.View>
   );
 }
@@ -162,6 +203,9 @@ const styles = StyleSheet.create({
   },
   bannerOffline: {
     backgroundColor: BRAND.colors.navy,
+  },
+  bannerMock: {
+    backgroundColor: "#6B7280",
   },
   bannerOnline: {
     backgroundColor: "#4CAF50",
