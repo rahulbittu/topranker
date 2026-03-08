@@ -1,10 +1,14 @@
 /**
  * Email service for TopRanker
- * Currently logs emails to console. Swap in Resend/SendGrid/SES when ready.
+ * Uses Resend API via fetch when RESEND_API_KEY is set.
+ * Falls back to console logging in development.
  */
 import { log } from "./logger";
 
 const emailLog = log.tag("Email");
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const FROM_ADDRESS = process.env.EMAIL_FROM || "TopRanker <noreply@topranker.com>";
 
 export interface EmailPayload {
   to: string;
@@ -14,8 +18,36 @@ export interface EmailPayload {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
-  // TODO: Replace with Resend/SendGrid when API key is configured
-  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
+  if (!RESEND_API_KEY) {
+    emailLog.info(`[DEV] To: ${payload.to} | Subject: ${payload.subject}`);
+    return;
+  }
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: FROM_ADDRESS,
+        to: [payload.to],
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
+    } else {
+      emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
+    }
+  } catch (err: any) {
+    emailLog.error(`Email send failed: ${err.message}`);
+  }
 }
 
 export async function sendWelcomeEmail(params: {
