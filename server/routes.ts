@@ -23,6 +23,10 @@ import {
   getAllCategories,
   getBusinessPhotos,
   getBusinessPhotosMap,
+  getMemberBadges,
+  getMemberBadgeCount,
+  awardBadge,
+  getEarnedBadgeIds,
 } from "./storage";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 
@@ -499,6 +503,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({ data: { message: "Cities seeded successfully" } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Badge Persistence Endpoints ──────────────────────────────
+
+  // GET /api/members/:id/badges — list earned badge IDs for a member
+  app.get("/api/members/:id/badges", async (req: Request, res: Response) => {
+    try {
+      const memberId = req.params.id as string;
+      const badges = await getMemberBadges(memberId);
+      return res.json({ data: badges });
+    } catch (err: any) {
+      log("error", "routes", `Failed to fetch member badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+
+  // POST /api/badges/award — award a badge to the authenticated user
+  app.post("/api/badges/award", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const memberId = req.user!.id;
+      const { badgeId, badgeFamily } = req.body;
+      if (!badgeId || !badgeFamily) {
+        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
+      }
+      const result = await awardBadge(memberId, badgeId, badgeFamily);
+      return res.json({ data: result, awarded: result !== null });
+    } catch (err: any) {
+      log("error", "routes", `Failed to award badge: ${err.message}`);
+      return res.status(500).json({ error: "Failed to award badge" });
+    }
+  });
+
+  // GET /api/badges/earned — get earned badge IDs for authenticated user
+  app.get("/api/badges/earned", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const memberId = req.user!.id;
+      const badgeIds = await getEarnedBadgeIds(memberId);
+      const badgeCount = badgeIds.length;
+      return res.json({ data: { badgeIds, badgeCount } });
+    } catch (err: any) {
+      log("error", "routes", `Failed to fetch earned badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch earned badges" });
     }
   });
 

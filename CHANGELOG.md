@@ -4,6 +4,15 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 79 — Server-Side Badge Persistence + Badge API (March 8, 2026)
+#### Added
+- `server/storage/badges.ts` — CRUD for member_badges table (5 functions: getMemberBadges, getMemberBadgeCount, awardBadge, hasBadge, getEarnedBadgeIds)
+- GET `/api/members/:id/badges` — list earned badges for any member
+- POST `/api/badges/award` — persist earned badge for authenticated user
+- GET `/api/badges/earned` — get earned badge IDs for authenticated user
+- `awardBadgeApi()` and `fetchEarnedBadges()` API client functions
+- 8 new badge persistence tests (total: 197 across 16 files)
+
 ### Sprint 78 — Badge Detail Modal + Admin Category Review UI (March 8, 2026)
 #### Added
 - `components/badges/BadgeDetailModal.tsx` — Full badge detail view with progress bar, share button, rarity display
