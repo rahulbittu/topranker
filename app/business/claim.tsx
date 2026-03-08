@@ -10,6 +10,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import * as Haptics from "expo-haptics";
 
 export default function ClaimBusinessScreen() {
@@ -51,15 +52,35 @@ export default function ClaimBusinessScreen() {
     );
   }
 
-  const handleSubmit = () => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
     if (!role.trim()) {
       Alert.alert("Required", "Please enter your role at this business.");
       return;
     }
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    // TODO: POST /api/business/claim when backend is ready
-    console.log("[Claim]", { slug, role: role.trim(), phone: phone.trim(), userId: user.id });
-    setSubmitted(true);
+    if (!slug) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/businesses/${slug}/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ role: role.trim(), phone: phone.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        Alert.alert("Error", json.error || "Failed to submit claim");
+        setSubmitting(false);
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setSubmitted(true);
+    } catch {
+      Alert.alert("Error", "Network error — please try again");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

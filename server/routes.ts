@@ -6,7 +6,7 @@ import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
 import { handleBadgeShare } from "./badge-share";
 import { sendWelcomeEmail } from "./email";
-import { isAdminEmail } from "@shared/admin";
+import { registerAdminRoutes } from "./routes-admin";
 import { log } from "./logger";
 import {
   getLeaderboard,
@@ -29,15 +29,6 @@ import {
   awardBadge,
   getEarnedBadgeIds,
   getBadgeLeaderboard,
-  getPendingClaims,
-  reviewClaim,
-  getClaimCount,
-  getPendingFlags,
-  reviewFlag,
-  getFlagCount,
-  getAdminMemberList,
-  getMemberCount,
-  getBusinessesWithoutPhotos,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
@@ -311,6 +302,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Business Claims ────────────────────────────────────────
+  app.post("/api/businesses/:slug/claim", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const business = await getBusinessBySlug(req.params.slug as string);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { role, phone } = req.body;
+      if (!role || typeof role !== "string" || role.trim().length === 0) {
+        return res.status(400).json({ error: "Role is required" });
+      }
+
+      // Check for existing claim
+      const { getClaimByMemberAndBusiness, submitClaim } = await import("./storage");
+      const existing = await getClaimByMemberAndBusiness(req.user!.id, business.id);
+      if (existing) {
+        return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
+      }
+
+      const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
+      const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
+      return res.json({ data: { id: claim.id, status: claim.status } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Business Dashboard Analytics ─────────────────────────
+  app.get("/api/businesses/:slug/dashboard", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const business = await getBusinessBySlug(req.params.slug as string);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+
+      const { getRankHistory, getBusinessDishes } = await import("./storage");
+      const [{ ratings, total }, rankHistory, dishes] = await Promise.all([
+        getBusinessRatings(business.id, 1, 10),
+        getRankHistory(business.id, 49), // 7 weeks
+        getBusinessDishes(business.id, 5),
+      ]);
+
+      // Compute aggregates
+      const totalRatings = business.totalRatings || 0;
+      const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
+      const rankPosition = business.rankPosition || 0;
+      const rankDelta = business.rankDelta || 0;
+
+      // Would-return percentage from ratings that have wouldReturn field
+      const returners = ratings.filter((r: any) => r.wouldReturn === true).length;
+      const returnTotal = ratings.filter((r: any) => r.wouldReturn !== null && r.wouldReturn !== undefined).length;
+      const wouldReturnPct = returnTotal > 0 ? Math.round((returners / returnTotal) * 100) : 0;
+
+      // Top dish
+      const topDish = dishes.length > 0 ? dishes[0] : null;
+
+      // Rating trend from rank history
+      const ratingTrend = rankHistory.map((h: any) => h.score);
+
+      return res.json({
+        data: {
+          totalRatings,
+          avgScore,
+          rankPosition,
+          rankDelta,
+          wouldReturnPct,
+          topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+          ratingTrend,
+          recentRatings: ratings.map((r: any) => ({
+            id: r.id,
+            user: r.memberName || "Anonymous",
+            score: parseFloat(r.rawScore),
+            tier: r.memberTier || "community",
+            note: r.note,
+            date: r.createdAt,
+          })),
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   app.get("/api/dishes/search", async (req: Request, res: Response) => {
     try {
       const businessId = req.query.business_id as string;
@@ -500,28 +574,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Review category suggestion (approve/reject)
-  app.patch("/api/admin/category-suggestions/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const email = req.user?.email;
-      if (!isAdminEmail(email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { status } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-      }
-      const { reviewSuggestion } = await import("./storage");
-      const updated = await reviewSuggestion(req.params.id as string, status, req.user!.id);
-      if (!updated) {
-        return res.status(404).json({ error: "Suggestion not found" });
-      }
-      return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
   // Photo proxy for Google Places photos
   app.get("/api/photos/proxy", handlePhotoProxy);
 
@@ -531,57 +583,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Badge share-by-link — server-rendered OG meta for social previews
   app.get("/share/badge/:badgeId", handleBadgeShare);
-
-  // Admin: seed additional cities (Austin, Houston, San Antonio, Fort Worth)
-  app.post("/api/admin/seed-cities", requireAuth, async (req: Request, res: Response) => {
-    try {
-      // Only allow admin users — single source of truth in shared/admin.ts
-      const email = req.user?.email;
-      if (!isAdminEmail(email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { seedCities } = await import("./seed-cities");
-      await seedCities();
-      return res.json({ data: { message: "Cities seeded successfully" } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // ── Google Places Photo Fetching ────────────────────────────
-  // Admin: fetch photos from Google Places API for businesses missing photos
-  app.post("/api/admin/fetch-photos", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const city = req.body.city as string | undefined;
-      const limit = Math.min(50, parseInt(req.body.limit as string) || 20);
-      const businesses = await getBusinessesWithoutPhotos(city, limit);
-
-      if (businesses.length === 0) {
-        return res.json({ data: { message: "All businesses already have photos", fetched: 0 } });
-      }
-
-      let totalFetched = 0;
-      const results: { name: string; photos: number }[] = [];
-      for (const biz of businesses) {
-        const count = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
-        totalFetched += count;
-        results.push({ name: biz.name, photos: count });
-      }
-
-      return res.json({
-        data: {
-          message: `Fetched photos for ${businesses.length} businesses`,
-          fetched: totalFetched,
-          results,
-        },
-      });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
 
   // ── Badge Persistence Endpoints ──────────────────────────────
 
@@ -638,124 +639,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ── Admin Claims & Flags ──────────────────────────────────────
-
-  // GET /api/admin/claims — pending business claims
-  app.get("/api/admin/claims", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const data = await getPendingClaims();
-      return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // PATCH /api/admin/claims/:id — approve or reject a claim
-  app.patch("/api/admin/claims/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { status } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-      }
-      const updated = await reviewClaim(req.params.id as string, status, req.user!.id);
-      if (!updated) return res.status(404).json({ error: "Claim not found" });
-      return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET /api/admin/claims/count — pending claim count
-  app.get("/api/admin/claims/count", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const count = await getClaimCount();
-      return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET /api/admin/flags — pending rating flags
-  app.get("/api/admin/flags", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const data = await getPendingFlags();
-      return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // PATCH /api/admin/flags/:id — confirm or dismiss a flag
-  app.patch("/api/admin/flags/:id", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { status } = req.body;
-      if (!["confirmed", "dismissed"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
-      }
-      const updated = await reviewFlag(req.params.id as string, status, req.user!.id);
-      if (!updated) return res.status(404).json({ error: "Flag not found" });
-      return res.json({ data: updated });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET /api/admin/flags/count — pending flag count
-  app.get("/api/admin/flags/count", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const count = await getFlagCount();
-      return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // ── Admin Members ──────────────────────────────────────────
-
-  // GET /api/admin/members — list all members for admin
-  app.get("/api/admin/members", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
-      const data = await getAdminMemberList(limit);
-      return res.json({ data });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-
-  // GET /api/admin/members/count — total member count
-  app.get("/api/admin/members/count", requireAuth, async (req: Request, res: Response) => {
-    try {
-      if (!isAdminEmail(req.user?.email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const count = await getMemberCount();
-      return res.json({ data: { count } });
-    } catch (err: any) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  // ── Admin Routes (extracted to routes-admin.ts) ─────────────
+  registerAdminRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

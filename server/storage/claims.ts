@@ -11,6 +11,34 @@ import { db } from "../db";
 
 // ── Business Claims ──────────────────────────────────────────────
 
+export async function submitClaim(
+  businessId: string,
+  memberId: string,
+  verificationMethod: string,
+): Promise<BusinessClaim> {
+  const [claim] = await db
+    .insert(businessClaims)
+    .values({ businessId, memberId, verificationMethod })
+    .returning();
+  return claim;
+}
+
+export async function getClaimByMemberAndBusiness(
+  memberId: string,
+  businessId: string,
+): Promise<BusinessClaim | undefined> {
+  const [claim] = await db
+    .select()
+    .from(businessClaims)
+    .where(
+      and(
+        eq(businessClaims.memberId, memberId),
+        eq(businessClaims.businessId, businessId),
+      ),
+    );
+  return claim;
+}
+
 export async function getPendingClaims() {
   return db
     .select({

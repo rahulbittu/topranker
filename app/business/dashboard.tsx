@@ -11,29 +11,32 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
+import { getApiUrl } from "@/lib/query-client";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
-// Mock analytics data
-const MOCK_ANALYTICS = {
-  totalRatings: 87,
-  avgScore: 4.2,
-  rankPosition: 3,
-  rankDelta: 1,
-  weeklyViews: 342,
-  weeklyViewsDelta: 12,
-  wouldReturnPct: 89,
-  topDish: "Brisket Plate",
-  topDishVotes: 34,
-  ratingTrend: [3.8, 3.9, 4.0, 4.1, 4.0, 4.2, 4.2],
-  weekLabels: ["W1", "W2", "W3", "W4", "W5", "W6", "W7"],
-  recentRatings: [
-    { id: "1", user: "Sarah M.", score: 4.5, tier: "trusted", note: "Best brisket in Dallas, hands down.", date: "2h ago" },
-    { id: "2", user: "Mike R.", score: 3.8, tier: "city", note: "Good food, wait was a bit long.", date: "5h ago" },
-    { id: "3", user: "Jessica L.", score: 5.0, tier: "top", note: "Perfect experience every single time.", date: "1d ago" },
-    { id: "4", user: "David K.", score: 4.0, tier: "community", note: null, date: "2d ago" },
-  ],
-};
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
+interface DashboardData {
+  totalRatings: number;
+  avgScore: number;
+  rankPosition: number;
+  rankDelta: number;
+  wouldReturnPct: number;
+  topDish: { name: string; votes: number } | null;
+  ratingTrend: number[];
+  recentRatings: { id: string; user: string; score: number; tier: string; note: string | null; date: string }[];
+}
 
 function StatCard({ label, value, delta, icon, color, delay }: {
   label: string; value: string; delta?: number; icon: string; color: string; delay: number;
@@ -82,15 +85,15 @@ function MiniChart({ data, color }: { data: number[]; color: string }) {
         })}
       </View>
       <View style={styles.chartLabels}>
-        {MOCK_ANALYTICS.weekLabels.map((l, i) => (
-          <Text key={i} style={[styles.chartLabel, { width: barW + 4 }]}>{l}</Text>
+        {data.map((_, i) => (
+          <Text key={i} style={[styles.chartLabel, { width: barW + 4 }]}>W{i + 1}</Text>
         ))}
       </View>
     </View>
   );
 }
 
-function ReviewCard({ rating, delay }: { rating: typeof MOCK_ANALYTICS.recentRatings[0]; delay: number }) {
+function ReviewCard({ rating, delay }: { rating: DashboardData["recentRatings"][0]; delay: number }) {
   const tierColors: Record<string, string> = {
     community: "#94A3B8", city: "#3B82F6", trusted: "#8B5CF6", top: "#F59E0B",
   };
@@ -112,7 +115,7 @@ function ReviewCard({ rating, delay }: { rating: typeof MOCK_ANALYTICS.recentRat
         </View>
         <View style={styles.reviewScoreWrap}>
           <Text style={styles.reviewScore}>{rating.score.toFixed(1)}</Text>
-          <Text style={styles.reviewDate}>{rating.date}</Text>
+          <Text style={styles.reviewDate}>{timeAgo(rating.date)}</Text>
         </View>
       </View>
       {rating.note && <Text style={styles.reviewNote}>"{rating.note}"</Text>}
@@ -137,7 +140,29 @@ export default function BusinessDashboardScreen() {
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "insights">("overview");
 
-  const a = MOCK_ANALYTICS;
+  const { data: dashData, isLoading } = useQuery<DashboardData>({
+    queryKey: ["dashboard", slug],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/businesses/${slug}/dashboard`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load dashboard");
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!slug,
+  });
+
+  const a = dashData || {
+    totalRatings: 0,
+    avgScore: 0,
+    rankPosition: 0,
+    rankDelta: 0,
+    wouldReturnPct: 0,
+    topDish: null,
+    ratingTrend: [],
+    recentRatings: [],
+  };
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -183,26 +208,25 @@ export default function BusinessDashboardScreen() {
               <StatCard label="Total Ratings" value={String(a.totalRatings)} icon="star-outline" color={BRAND.colors.amber} delay={100} />
               <StatCard label="Avg Score" value={a.avgScore.toFixed(1)} icon="analytics-outline" color="#6366F1" delay={200} />
               <StatCard label="Rank" value={`#${a.rankPosition}`} delta={a.rankDelta} icon="trophy-outline" color={Colors.green} delay={300} />
-              <StatCard label="Weekly Views" value={String(a.weeklyViews)} delta={a.weeklyViewsDelta} icon="eye-outline" color="#3B82F6" delay={400} />
+              <StatCard label="Would Return" value={`${a.wouldReturnPct}%`} icon="thumbs-up-outline" color="#3B82F6" delay={400} />
             </View>
 
-            <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Rating Trend (7 weeks)</Text>
-              <MiniChart data={a.ratingTrend} color={BRAND.colors.amber} />
-            </Animated.View>
+            {a.ratingTrend.length > 1 && (
+              <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Score Trend ({a.ratingTrend.length} snapshots)</Text>
+                <MiniChart data={a.ratingTrend} color={BRAND.colors.amber} />
+              </Animated.View>
+            )}
 
-            <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.highlightRow}>
-              <View style={styles.highlightCard}>
-                <Ionicons name="thumbs-up" size={20} color={Colors.green} />
-                <Text style={styles.highlightValue}>{a.wouldReturnPct}%</Text>
-                <Text style={styles.highlightLabel}>Would Return</Text>
-              </View>
-              <View style={styles.highlightCard}>
-                <Ionicons name="restaurant-outline" size={20} color={BRAND.colors.amber} />
-                <Text style={styles.highlightValue}>{a.topDish}</Text>
-                <Text style={styles.highlightLabel}>{a.topDishVotes} votes</Text>
-              </View>
-            </Animated.View>
+            {a.topDish && (
+              <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.highlightRow}>
+                <View style={styles.highlightCard}>
+                  <Ionicons name="restaurant-outline" size={20} color={BRAND.colors.amber} />
+                  <Text style={styles.highlightValue}>{a.topDish.name}</Text>
+                  <Text style={styles.highlightLabel}>{a.topDish.votes} votes</Text>
+                </View>
+              </Animated.View>
+            )}
 
             <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.proCard}>
               <View style={styles.proCardInner}>
@@ -228,35 +252,50 @@ export default function BusinessDashboardScreen() {
 
         {activeTab === "insights" && (
           <>
-            <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.insightCard}>
-              <Ionicons name="trending-up" size={20} color={Colors.green} />
-              <View style={styles.insightInfo}>
-                <Text style={styles.insightTitle}>Ranking is climbing</Text>
-                <Text style={styles.insightDesc}>You moved up 1 position this week. Your average score increased from 4.0 to 4.2.</Text>
-              </View>
-            </Animated.View>
+            {a.rankDelta > 0 && (
+              <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.insightCard}>
+                <Ionicons name="trending-up" size={20} color={Colors.green} />
+                <View style={styles.insightInfo}>
+                  <Text style={styles.insightTitle}>Ranking is climbing</Text>
+                  <Text style={styles.insightDesc}>You moved up {a.rankDelta} position{a.rankDelta > 1 ? "s" : ""} recently. Current average: {a.avgScore.toFixed(1)}.</Text>
+                </View>
+              </Animated.View>
+            )}
+            {a.rankDelta < 0 && (
+              <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.insightCard}>
+                <Ionicons name="trending-down" size={20} color={Colors.red} />
+                <View style={styles.insightInfo}>
+                  <Text style={styles.insightTitle}>Ranking slipped</Text>
+                  <Text style={styles.insightDesc}>You dropped {Math.abs(a.rankDelta)} position{Math.abs(a.rankDelta) > 1 ? "s" : ""}. Focus on consistent quality to bounce back.</Text>
+                </View>
+              </Animated.View>
+            )}
 
-            <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.insightCard}>
-              <Ionicons name="people" size={20} color="#6366F1" />
-              <View style={styles.insightInfo}>
-                <Text style={styles.insightTitle}>Trusted reviewers love you</Text>
-                <Text style={styles.insightDesc}>89% of Trusted and Top tier reviewers would return. Their weighted votes are driving your rank up.</Text>
-              </View>
-            </Animated.View>
+            {a.wouldReturnPct > 0 && (
+              <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.insightCard}>
+                <Ionicons name="people" size={20} color="#6366F1" />
+                <View style={styles.insightInfo}>
+                  <Text style={styles.insightTitle}>{a.wouldReturnPct >= 80 ? "Customers love coming back" : "Room to improve loyalty"}</Text>
+                  <Text style={styles.insightDesc}>{a.wouldReturnPct}% of reviewers say they would return. {a.wouldReturnPct >= 80 ? "Their weighted votes are driving your rank up." : "Focus on consistency to improve retention."}</Text>
+                </View>
+              </Animated.View>
+            )}
 
-            <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.insightCard}>
-              <Ionicons name="restaurant" size={20} color={BRAND.colors.amber} />
-              <View style={styles.insightInfo}>
-                <Text style={styles.insightTitle}>Brisket Plate is your star</Text>
-                <Text style={styles.insightDesc}>34 dish votes for Brisket Plate — 2x more than any other item. Consider featuring it prominently.</Text>
-              </View>
-            </Animated.View>
+            {a.topDish && (
+              <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.insightCard}>
+                <Ionicons name="restaurant" size={20} color={BRAND.colors.amber} />
+                <View style={styles.insightInfo}>
+                  <Text style={styles.insightTitle}>{a.topDish.name} is your star</Text>
+                  <Text style={styles.insightDesc}>{a.topDish.votes} dish vote{a.topDish.votes !== 1 ? "s" : ""} for {a.topDish.name}. Consider featuring it prominently.</Text>
+                </View>
+              </Animated.View>
+            )}
 
             <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.insightCard}>
-              <Ionicons name="time" size={20} color={Colors.red} />
+              <Ionicons name="stats-chart" size={20} color="#3B82F6" />
               <View style={styles.insightInfo}>
-                <Text style={styles.insightTitle}>Wait times mentioned</Text>
-                <Text style={styles.insightDesc}>3 recent reviews mention long wait times. Consider addressing peak hour capacity.</Text>
+                <Text style={styles.insightTitle}>Rating summary</Text>
+                <Text style={styles.insightDesc}>{a.totalRatings} total ratings with a {a.avgScore.toFixed(1)} average. Currently ranked #{a.rankPosition}.</Text>
               </View>
             </Animated.View>
           </>

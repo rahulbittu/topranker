@@ -72,6 +72,8 @@ export {
 
 // Claims & Flags
 export {
+  submitClaim,
+  getClaimByMemberAndBusiness,
   getPendingClaims,
   reviewClaim,
   getClaimCount,
