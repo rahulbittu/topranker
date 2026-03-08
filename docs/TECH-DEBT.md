@@ -1,7 +1,7 @@
 # Technical Debt Registry
 
 **Owner**: Marcus Chen (CTO)
-**Last Updated**: 2026-03-08 (Sprint 106)
+**Last Updated**: 2026-03-08 (Sprint 108)
 
 This document tracks known technical debt. Items are prioritized and assigned to future sprints.
 
@@ -14,25 +14,24 @@ This document tracks known technical debt. Items are prioritized and assigned to
 | ID | Description | Impact | Owner | Target Sprint |
 |----|-------------|--------|-------|---------------|
 | TD-001 | Rate limiter is in-memory only | Won't scale horizontally, lost on restart | Amir Patel | 110+ |
-| TD-002 | L1: No E2E tests | No integration confidence across full stack | Sarah Nakamura | 108 |
-| TD-003 | Typography not fully adopted | Inconsistent fonts possible in unmigrated components | Leo Hernandez | 106-108 |
 
 ### MEDIUM Priority
 
 | ID | Description | Impact | Owner | Target Sprint |
 |----|-------------|--------|-------|---------------|
-| TD-004 | Frontend pricing not fully migrated | dashboard.tsx, claim.tsx still have hardcoded amounts | Rachel Wei | 106 |
 | TD-005 | L3: Mock data in lib/api.ts | Dev fallback could confuse new developers | Engineering | Deferred |
 | TD-006 | CSP may need expansion | New integrations may break under current policy | Nadia Kaur | As needed |
 | TD-007 | Cookie consent "Learn more" links to privacy but no deep-link to cookies section | Minor UX gap | Jordan Blake | 107 |
+| TD-011 | No E2E tests | No integration confidence across full stack; L1 audit item being addressed | Sarah Nakamura | 108 |
 
 ### LOW Priority
 
 | ID | Description | Impact | Owner | Target Sprint |
 |----|-------------|--------|-------|---------------|
-| TD-008 | Inline rgba values in _layout.tsx | Should use BRAND.colors.amberGlow | Leo Hernandez | 107 |
-| TD-009 | #FFD700 in SubComponents.tsx | Should use BRAND.colors.gold | Leo Hernandez | 107 |
+| TD-008 | Inline rgba values in _layout.tsx | Should use BRAND.colors.amberGlow | Leo Hernandez | 108 |
+| TD-009 | #FFD700 in SubComponents.tsx | Should use BRAND.colors.gold | Leo Hernandez | 108 |
 | TD-010 | Banner dismissal not synced across devices | AsyncStorage is local-only | Jasmine Taylor | Future |
+| TD-012 | Test files use inline mocks instead of test-utils | Inconsistent test patterns, harder maintenance | Engineering | Gradual |
 
 ---
 
@@ -47,6 +46,8 @@ This document tracks known technical debt. Items are prioritized and assigned to
 | TD-R05 | Scattered pricing values | Sprint 104-105 | shared/pricing.ts + migration |
 | TD-R06 | No typography system | Sprint 104-105 | constants/typography.ts + migration started |
 | TD-R07 | Stale legal docs (80 sprints) | Sprint 104 | Terms + Privacy updated |
+| TD-R08 | Typography not fully adopted | Sprint 107 | 22 styles migrated across 4 files; all components now use typography constants |
+| TD-R09 | Frontend pricing scattered | Sprint 106-107 | All screens migrated to PRICING constants from shared/pricing.ts |
 
 ---
 

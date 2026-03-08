@@ -1,11 +1,85 @@
 /**
  * Security Headers Middleware — Sprint 104
- * Adds OWASP-recommended security headers to all responses.
+ * Adds OWASP-recommended security headers + CORS to all responses.
  * Owner: Nadia Kaur (Cybersecurity)
  */
 import type { Request, Response, NextFunction } from "express";
 
+/**
+ * Builds the set of allowed CORS origins from environment + hardcoded production domains.
+ * Cached at module level so we don't re-parse env vars on every request.
+ */
+function buildAllowedOrigins(): Set<string> {
+  const origins = new Set<string>();
+
+  // Production origins
+  origins.add("https://topranker.com");
+  origins.add("https://www.topranker.com");
+
+  // Configurable origins via CORS_ORIGINS env (comma-separated)
+  const envOrigins = process.env.CORS_ORIGINS;
+  if (envOrigins) {
+    envOrigins.split(",").forEach((o) => {
+      const trimmed = o.trim();
+      if (trimmed) origins.add(trimmed);
+    });
+  }
+
+  // Replit-specific origins
+  const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
+  if (replitDevDomain) {
+    origins.add(`https://${replitDevDomain}`);
+  }
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (replitDomains) {
+    replitDomains.split(",").forEach((d) => {
+      const trimmed = d.trim();
+      if (trimmed) origins.add(`https://${trimmed}`);
+    });
+  }
+
+  return origins;
+}
+
+const allowedOrigins = buildAllowedOrigins();
+
+/** Returns true for http://localhost:* and http://127.0.0.1:* during development */
+function isLocalhostOrigin(origin: string): boolean {
+  return (
+    origin.startsWith("http://localhost:") ||
+    origin.startsWith("http://127.0.0.1:")
+  );
+}
+
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  // ── CORS ──────────────────────────────────────────────────────────
+  const origin = req.headers.origin as string | undefined;
+  const wildcardAllowed = allowedOrigins.has("*");
+
+  if (
+    origin &&
+    (wildcardAllowed || allowedOrigins.has(origin) || isLocalhostOrigin(origin))
+  ) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    // Cache preflight for 24 hours
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
+
+  // Handle preflight — return early with 204 No Content
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  // ── Security Headers ──────────────────────────────────────────────
   // Prevent MIME-type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
 
@@ -45,6 +119,13 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       "max-age=31536000; includeSubDomains; preload"
     );
   }
+
+  // API versioning header
+  res.setHeader("X-API-Version", "1.0.0");
+
+  // Request ID for tracing
+  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  res.setHeader("X-Request-Id", requestId);
 
   next();
 }

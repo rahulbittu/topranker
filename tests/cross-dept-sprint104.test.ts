@@ -138,7 +138,7 @@ import { securityHeaders } from "../server/security-headers";
 
 describe("Security Headers Middleware — Sprint 104", () => {
   function makeMocks() {
-    const req = {} as any;
+    const req = { headers: {}, method: "GET" } as any;
     const headers: Record<string, string> = {};
     const res = {
       setHeader: (k: string, v: string) => {

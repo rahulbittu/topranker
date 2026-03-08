@@ -168,6 +168,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         )}
       </View>
 
+      {/* Credibility Growth Prompt */}
+      {nextTier && (
+        <View style={styles.growthPrompt}>
+          <Ionicons name="trending-up" size={18} color={AMBER} />
+          <Text style={styles.growthPromptText}>Keep rating to unlock your next tier</Text>
+        </View>
+      )}
+
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statNum}>{profile.totalRatings.toLocaleString()}</Text>
@@ -475,6 +483,17 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         >
           <Ionicons name="shield-outline" size={14} color={Colors.textTertiary} />
           <Text style={styles.legalLinkText}>Privacy Policy</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.legalLink}
+          onPress={() => router.push("/legal/accessibility")}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="View Accessibility Statement"
+        >
+          <Ionicons name="accessibility-outline" size={14} color={Colors.textTertiary} />
+          <Text style={styles.legalLinkText}>Accessibility</Text>
           <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
         </TouchableOpacity>
       </View>
@@ -789,6 +808,18 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold", letterSpacing: 1,
     textTransform: "uppercase" as const,
     paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
+  },
+
+  // Credibility Growth Prompt
+  growthPrompt: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(196,154,26,0.08)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
+    borderRadius: 10, padding: 14,
+    marginHorizontal: 16, marginTop: 12,
+  },
+  growthPromptText: {
+    fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium",
   },
 
   // Payment History

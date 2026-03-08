@@ -372,7 +372,7 @@ const s = StyleSheet.create({
     position: "absolute", top: 12, left: 12,
     backgroundColor: "rgba(0,0,0,0.7)", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20,
   },
-  heroCrownText: { fontSize: 11, fontWeight: "700", color: "#FFD700", fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
+  heroCrownText: { fontSize: 11, fontWeight: "700", color: BRAND.colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
   heroOpenPill: { position: "absolute", top: 12, right: 12, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 99 },
   heroName: {
     position: "absolute", bottom: 12, left: 14,
@@ -381,7 +381,7 @@ const s = StyleSheet.create({
   },
   heroScore: {
     position: "absolute", bottom: 12, right: 14,
-    fontSize: 26, fontWeight: "900", color: "#FFD700", fontFamily: "PlayfairDisplay_900Black", letterSpacing: -0.5,
+    fontSize: 26, fontWeight: "900", color: BRAND.colors.gold, fontFamily: "PlayfairDisplay_900Black", letterSpacing: -0.5,
   },
   openPillOpen: {
     backgroundColor: Colors.green,

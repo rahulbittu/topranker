@@ -53,7 +53,7 @@ describe("securityHeaders middleware", () => {
   function makeMocks() {
     const headers: Record<string, string> = {};
     const res = { setHeader: (k: string, v: string) => { headers[k] = v; } } as any;
-    const req = {} as any;
+    const req = { headers: {}, method: "GET" } as any;
     const next = vi.fn();
     return { headers, res, req, next };
   }

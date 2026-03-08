@@ -76,7 +76,7 @@ const tabStyles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(196,154,26,0.15)",
+    backgroundColor: Colors.brand.amberGlow,
     // Soft amber glow shadow
     shadowColor: AMBER,
     shadowOffset: { width: 0, height: 0 },
