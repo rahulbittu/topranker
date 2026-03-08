@@ -1,0 +1,15 @@
+ Pushed. Now run Sync & Build on Replit, then restart the Project workflow. Here's what changed:                                                                                                                     
+                                                                                                                                                                                                                      
+  Replit Preview Fix v3:                                                                                                                                                                                              
+                                                                                                                                                                                                                      
+  1. .replit TOML fixed — Metadata sections now come after task sections (was misordered for "Start Backend"). Removed the deprecated "Start App" workflow hop that added unnecessary indirection.                    
+  2. Dual bundle URL fallback — Bootstrap HTML first tries /index.bundle?platform=web&dev=true&hot=true (standard Metro URL). If that fails, falls back to the full Expo Router entry bundle URL. If both fail, shows
+  "Waiting for bundler..." and auto-reloads after 5s.
+  3. Self-sufficient loading page — The HTML shows a branded "TOP RANKER / Loading app..." screen with visible text content, even before any JS loads. This ensures Replit's preview detects rendered content.
+  4. Security headers early-return in dev — No CSP, no X-Frame-Options, cache-busting headers. Already pushed in previous commit.
+
+  If the preview still spins after these changes, the remaining suspects would be:
+  - Replit's preview health check mechanism (may need / to return specific headers or body patterns)
+  - The server_dist/index.js (compiled build) being stale — run npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=server_dist on Replit to rebuild
+  - Metro on port 8081 not being reachable from Express's proxy
+

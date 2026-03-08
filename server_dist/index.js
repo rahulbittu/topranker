@@ -5029,7 +5029,59 @@ function configureExpoAndLanding(app2) {
         }
       }
     });
-    const webIndexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta httpEquiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" /><title>${appName}</title><style id="expo-reset">html,body{height:100%;margin:0;padding:0}body{overflow:hidden;background:#0a0e1a}#root{display:flex;height:100%;flex:1}#_loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0e1a;z-index:9999;flex-direction:column;gap:16px}#_loading .sp{width:36px;height:36px;border:3px solid #1a2040;border-top-color:#B8860B;border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}#_loading p{color:#B8860B;font-family:-apple-system,system-ui,sans-serif;font-size:15px;letter-spacing:2px;font-weight:600}</style></head><body><div id="_loading"><div class="sp"></div><p>TOP RANKER</p></div><div id="root"></div><script>window.__REMOVE_LOADING=function(){var el=document.getElementById('_loading');if(el)el.remove()};setTimeout(window.__REMOVE_LOADING,20000);var s=document.createElement('script');s.src='/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&transform.reactCompiler=true&unstable_transformProfile=hermes-stable';document.body.appendChild(s)</script></body></html>`;
+    const webIndexHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
+<title>${appName}</title>
+<style>
+html,body{height:100%;margin:0;padding:0}
+body{background:#0a0e1a;overflow:hidden}
+#root{display:flex;height:100%;flex:1}
+#_loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0e1a;z-index:9999;flex-direction:column;gap:16px}
+#_loading .sp{width:36px;height:36px;border:3px solid #1a2040;border-top-color:#B8860B;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+#_loading p{color:#B8860B;font-family:-apple-system,system-ui,sans-serif;font-size:15px;letter-spacing:2px;font-weight:600}
+#_loading small{color:#8890a8;font-family:-apple-system,system-ui,sans-serif;font-size:11px}
+</style>
+</head>
+<body>
+<div id="_loading">
+  <div class="sp"></div>
+  <p>TOP RANKER</p>
+  <small>Loading app...</small>
+</div>
+<div id="root"></div>
+<script>
+// Remove loading overlay when app renders or after timeout
+window.__REMOVE_LOADING = function() {
+  var el = document.getElementById('_loading');
+  if (el) el.remove();
+};
+setTimeout(window.__REMOVE_LOADING, 30000);
+
+// Load Metro bundle dynamically (doesn't block load event)
+var s = document.createElement('script');
+s.src = '/index.bundle?platform=web&dev=true&hot=true';
+s.onerror = function() {
+  // If simple URL fails, try Expo Router entry point
+  var s2 = document.createElement('script');
+  s2.src = '/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&transform.reactCompiler=true&unstable_transformProfile=hermes-stable';
+  s2.onerror = function() {
+    var el = document.getElementById('_loading');
+    if (el) {
+      var sm = el.querySelector('small');
+      if (sm) sm.textContent = 'Waiting for bundler...';
+    }
+    setTimeout(function() { location.reload(); }, 5000);
+  };
+  document.body.appendChild(s2);
+};
+document.body.appendChild(s);
+</script>
+</body>
+</html>`;
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
         return next();
