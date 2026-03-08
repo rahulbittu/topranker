@@ -289,9 +289,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
     >
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Log out">
-          <Ionicons name="log-out-outline" size={18} color={Colors.textTertiary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+          <TouchableOpacity onPress={() => router.push("/settings")} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Open settings">
+            <Ionicons name="settings-outline" size={18} color={Colors.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Log out">
+            <Ionicons name="log-out-outline" size={18} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <LinearGradient
