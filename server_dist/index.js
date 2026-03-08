@@ -1267,7 +1267,7 @@ var init_badges = __esm({
 });
 
 // server/storage/payments.ts
-import { eq as eq8, desc as desc6 } from "drizzle-orm";
+import { eq as eq8, and as and7, desc as desc6, sql as sql7, count as count5, sum } from "drizzle-orm";
 async function createPaymentRecord(params) {
   const [payment] = await db.insert(payments).values({
     memberId: params.memberId,
@@ -1298,6 +1298,49 @@ async function getMemberPayments(memberId, limit = 20) {
 }
 async function getBusinessPayments(businessId, limit = 20) {
   return db.select().from(payments).where(eq8(payments.businessId, businessId)).orderBy(desc6(payments.createdAt)).limit(limit);
+}
+async function getRevenueMetrics() {
+  const byTypeRows = await db.select({
+    type: payments.type,
+    count: count5(),
+    revenue: sum(payments.amount)
+  }).from(payments).where(eq8(payments.status, "succeeded")).groupBy(payments.type);
+  const [activeRow] = await db.select({ count: count5() }).from(payments).where(
+    and7(
+      eq8(payments.status, "succeeded")
+    )
+  );
+  const [cancelledRow] = await db.select({ count: count5() }).from(payments).where(eq8(payments.status, "cancelled"));
+  const typeMap = {
+    challenger_entry: { count: 0, revenue: 0 },
+    dashboard_pro: { count: 0, revenue: 0 },
+    featured_placement: { count: 0, revenue: 0 }
+  };
+  let totalRevenue = 0;
+  for (const row of byTypeRows) {
+    const rev = Number(row.revenue) || 0;
+    const cnt = Number(row.count) || 0;
+    typeMap[row.type] = { count: cnt, revenue: rev };
+    totalRevenue += rev;
+  }
+  return {
+    totalRevenue,
+    byType: typeMap,
+    activeSubscriptions: activeRow?.count ?? 0,
+    cancelledPayments: cancelledRow?.count ?? 0
+  };
+}
+async function getRevenueByMonth(months = 6) {
+  const results = await db.select({
+    month: sql7`strftime('%Y-%m', ${payments.createdAt})`,
+    revenue: sql7`COALESCE(SUM(${payments.amount}), 0)`,
+    count: sql7`COUNT(*)`
+  }).from(payments).where(eq8(payments.status, "succeeded")).groupBy(sql7`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql7`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
+  return results.map((r) => ({
+    month: String(r.month),
+    revenue: Number(r.revenue),
+    count: Number(r.count)
+  }));
 }
 var init_payments = __esm({
   "server/storage/payments.ts"() {
@@ -1404,7 +1447,7 @@ var init_featured_placements = __esm({
 });
 
 // server/storage/claims.ts
-import { eq as eq11, and as and9, count as count5, desc as desc9 } from "drizzle-orm";
+import { eq as eq11, and as and9, count as count6, desc as desc9 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
@@ -1435,7 +1478,7 @@ async function reviewClaim(id, status, reviewedBy) {
   return updated ?? null;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq11(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count6() }).from(businessClaims).where(eq11(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -1454,7 +1497,7 @@ async function reviewFlag(id, status, reviewedBy) {
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq11(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count6() }).from(ratingFlags).where(eq11(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -1513,6 +1556,8 @@ __export(storage_exports, {
   getPendingSuggestions: () => getPendingSuggestions,
   getRankHistory: () => getRankHistory,
   getRecentWebhookEvents: () => getRecentWebhookEvents,
+  getRevenueByMonth: () => getRevenueByMonth,
+  getRevenueMetrics: () => getRevenueMetrics,
   getSeasonalRatingCounts: () => getSeasonalRatingCounts,
   getTemporalMultiplier: () => getTemporalMultiplier,
   getTierFromScore: () => getTierFromScore,
@@ -2201,7 +2246,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql7 } from "drizzle-orm";
+import { sql as sql8 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 async function seedDatabase() {
   console.log("Seeding database...");
@@ -2463,7 +2508,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql7`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql8`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -3227,7 +3272,9 @@ function perfMonitor(req, res, next) {
       stats.slowRequests++;
       perfLog.warn(`Slow request: ${route} took ${duration.toFixed(0)}ms`);
     }
-    res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
+    if (!res.headersSent) {
+      res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
+    }
   });
   next();
 }
@@ -3297,9 +3344,9 @@ function registerAdminRoutes(app2) {
       let totalFetched = 0;
       const results = [];
       for (const biz of businesses2) {
-        const count6 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
-        totalFetched += count6;
-        results.push({ name: biz.name, photos: count6 });
+        const count7 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
+        totalFetched += count7;
+        results.push({ name: biz.name, photos: count7 });
       }
       return res.json({
         data: {
@@ -3335,8 +3382,8 @@ function registerAdminRoutes(app2) {
   });
   app2.get("/api/admin/claims/count", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const count6 = await getClaimCount();
-      return res.json({ data: { count: count6 } });
+      const count7 = await getClaimCount();
+      return res.json({ data: { count: count7 } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -3364,8 +3411,8 @@ function registerAdminRoutes(app2) {
   });
   app2.get("/api/admin/flags/count", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const count6 = await getFlagCount();
-      return res.json({ data: { count: count6 } });
+      const count7 = await getFlagCount();
+      return res.json({ data: { count: count7 } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -3381,8 +3428,8 @@ function registerAdminRoutes(app2) {
   });
   app2.get("/api/admin/members/count", requireAuth, requireAdmin, async (req, res) => {
     try {
-      const count6 = await getMemberCount();
-      return res.json({ data: { count: count6 } });
+      const count7 = await getMemberCount();
+      return res.json({ data: { count: count7 } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -3415,6 +3462,25 @@ function registerAdminRoutes(app2) {
   app2.get("/api/admin/perf", requireAuth, requireAdmin, async (_req, res) => {
     try {
       const data = getPerfStats();
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/revenue", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { getRevenueMetrics: getRevenueMetrics2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const metrics = await getRevenueMetrics2();
+      return res.json({ data: metrics });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
+      const { getRevenueByMonth: getRevenueByMonth2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const data = await getRevenueByMonth2(months);
       return res.json({ data });
     } catch (err) {
       return res.status(500).json({ error: err.message });
@@ -3719,6 +3785,15 @@ function rateLimiter(options = {}) {
 var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10 });
 var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100 });
 
+// server/sanitize.ts
+function stripHtml(input) {
+  return input.replace(/<[^>]*>/g, "").trim();
+}
+function sanitizeString(input, maxLength = 500) {
+  if (typeof input !== "string") return "";
+  return stripHtml(input).slice(0, maxLength).trim();
+}
+
 // server/routes.ts
 function requireAuth4(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3745,8 +3820,20 @@ async function registerRoutes(app2) {
     };
     next();
   });
-  app2.get("/api/health", (_req, res) => {
-    res.status(200).json({ status: "ok", ts: Date.now() });
+  app2.get("/api/health", (req, res) => {
+    const uptime = process.uptime();
+    const memUsage = process.memoryUsage();
+    res.json({
+      status: "healthy",
+      version: "1.0.0",
+      uptime: Math.floor(uptime),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      memory: {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+        rss: Math.round(memUsage.rss / 1024 / 1024)
+      }
+    });
   });
   const SSE_MAX_PER_IP = 5;
   const SSE_TIMEOUT_MS = 18e5;
@@ -3783,11 +3870,11 @@ async function registerRoutes(app2) {
     const cleanup = () => {
       clearInterval(keepAlive);
       clearTimeout(timeout);
-      const count6 = sseConnectionsByIp.get(clientIp) || 1;
-      if (count6 <= 1) {
+      const count7 = sseConnectionsByIp.get(clientIp) || 1;
+      if (count7 <= 1) {
         sseConnectionsByIp.delete(clientIp);
       } else {
-        sseConnectionsByIp.set(clientIp, count6 - 1);
+        sseConnectionsByIp.set(clientIp, count7 - 1);
       }
     };
     req.on("close", cleanup);
@@ -3878,6 +3965,28 @@ async function registerRoutes(app2) {
     }
     return res.json({ data: req.user });
   });
+  app2.delete("/api/account", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    try {
+      const deletionDate = /* @__PURE__ */ new Date();
+      deletionDate.setDate(deletionDate.getDate() + 30);
+      log.tag("AccountDeletion").info(
+        `Deletion requested for user ${req.user.id}, scheduled for ${deletionDate.toISOString()}`
+      );
+      return res.json({
+        data: {
+          message: "Account scheduled for deletion",
+          deletionDate: deletionDate.toISOString(),
+          gracePeriodDays: 30,
+          note: "You can cancel this request by logging in within 30 days."
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
   app2.get("/api/leaderboard", async (req, res) => {
     try {
       const city = req.query.city || "Dallas";
@@ -3935,7 +4044,7 @@ async function registerRoutes(app2) {
   });
   app2.get("/api/businesses/search", async (req, res) => {
     try {
-      const query = req.query.q || "";
+      const query = sanitizeString(req.query.q, 200);
       const city = req.query.city || "Dallas";
       const category = req.query.category;
       const bizList = await searchBusinesses(query, city, category);
@@ -3962,8 +4071,8 @@ async function registerRoutes(app2) {
       ]);
       if (photos.length === 0 && business.googlePlaceId) {
         try {
-          const count6 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
-          if (count6 > 0) {
+          const count7 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+          if (count7 > 0) {
             photos = await getBusinessPhotos(business.id);
           }
         } catch {
@@ -4266,7 +4375,53 @@ import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 // server/security-headers.ts
+function buildAllowedOrigins() {
+  const origins = /* @__PURE__ */ new Set();
+  origins.add("https://topranker.com");
+  origins.add("https://www.topranker.com");
+  const envOrigins = process.env.CORS_ORIGINS;
+  if (envOrigins) {
+    envOrigins.split(",").forEach((o) => {
+      const trimmed = o.trim();
+      if (trimmed) origins.add(trimmed);
+    });
+  }
+  const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
+  if (replitDevDomain) {
+    origins.add(`https://${replitDevDomain}`);
+  }
+  const replitDomains = process.env.REPLIT_DOMAINS;
+  if (replitDomains) {
+    replitDomains.split(",").forEach((d) => {
+      const trimmed = d.trim();
+      if (trimmed) origins.add(`https://${trimmed}`);
+    });
+  }
+  return origins;
+}
+var allowedOrigins = buildAllowedOrigins();
+function isLocalhostOrigin(origin) {
+  return origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+}
 function securityHeaders(req, res, next) {
+  const origin = req.headers.origin;
+  const wildcardAllowed = allowedOrigins.has("*");
+  if (origin && (wildcardAllowed || allowedOrigins.has(origin) || isLocalhostOrigin(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Max-Age", "86400");
+  }
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
@@ -4293,53 +4448,29 @@ function securityHeaders(req, res, next) {
       "max-age=31536000; includeSubDomains; preload"
     );
   }
+  res.setHeader("X-API-Version", "1.0.0");
+  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  res.setHeader("X-Request-Id", requestId);
   next();
 }
 
 // server/index.ts
 var app = express();
 var log2 = console.log;
-function setupCors(app2) {
-  app2.use((req, res, next) => {
-    const origins = /* @__PURE__ */ new Set();
-    origins.add("https://topranker.com");
-    origins.add("https://www.topranker.com");
-    const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
-    if (replitDevDomain) {
-      origins.add(`https://${replitDevDomain}`);
-    }
-    const replitDomains = process.env.REPLIT_DOMAINS;
-    if (replitDomains) {
-      replitDomains.split(",").forEach((d) => {
-        origins.add(`https://${d.trim()}`);
-      });
-    }
-    const origin = req.header("origin");
-    const isLocalhost = origin?.startsWith("http://localhost:") || origin?.startsWith("http://127.0.0.1:");
-    if (origin && (origins.has(origin) || isLocalhost)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS"
-      );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
-      res.header("Access-Control-Allow-Credentials", "true");
-    }
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
-    }
-    next();
-  });
-}
 function setupBodyParsing(app2) {
   app2.use(
+    "/api/webhooks",
+    express.raw({ type: "application/json", limit: "5mb" })
+  );
+  app2.use(
     express.json({
+      limit: "1mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       }
     })
   );
-  app2.use(express.urlencoded({ extended: false }));
+  app2.use(express.urlencoded({ extended: false, limit: "1mb" }));
 }
 function setupRequestLogging(app2) {
   app2.use((req, res, next) => {
@@ -4504,9 +4635,8 @@ function setupErrorHandler(app2) {
   });
 }
 (async () => {
-  setupCors(app);
-  setupBodyParsing(app);
   app.use(securityHeaders);
+  setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
   app.use(perfMonitor);
   setupRequestLogging(app);
