@@ -58,7 +58,7 @@ const experiments: ExperimentRegistry = {
   confidence_tooltip: {
     id: "confidence_tooltip",
     description: "Show info icon tooltip on confidence badge vs no tooltip",
-    active: false,
+    active: true,
     variants: [
       { id: "control", weight: 50 },
       { id: "treatment", weight: 50 },

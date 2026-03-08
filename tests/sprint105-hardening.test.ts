@@ -58,30 +58,30 @@ describe("securityHeaders middleware", () => {
     return { headers, res, req, next };
   }
 
-  it("sets Content-Security-Policy header", () => {
+  it("calls next() in dev mode", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Content-Security-Policy"]).toBeDefined();
     expect(next).toHaveBeenCalled();
   });
 
-  it("CSP includes default-src 'self'", () => {
+  it("sets cache-busting headers in dev mode", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Content-Security-Policy"]).toContain("default-src 'self'");
+    expect(headers["Cache-Control"]).toContain("no-store");
   });
 
-  it("CSP frame-ancestors is '*' in dev (allows Replit iframe)", () => {
+  it("skips CSP entirely in dev mode (early return)", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Content-Security-Policy"]).toContain("frame-ancestors *");
+    // Dev mode early-returns with minimal headers — no CSP at all
+    // This allows Replit iframe, Metro HMR, and all dev tooling
+    expect(headers["Content-Security-Policy"]).toBeUndefined();
   });
 
-  it("CSP connect-src is wildcard in dev (allows Metro HMR)", () => {
+  it("sets X-Content-Type-Options in dev mode", () => {
     const { headers, res, req, next } = makeMocks();
     securityHeaders(req, res, next);
-    const csp = headers["Content-Security-Policy"];
-    expect(csp).toContain("connect-src *");
+    expect(headers["X-Content-Type-Options"]).toBe("nosniff");
   });
 });
 

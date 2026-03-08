@@ -52,8 +52,36 @@ function isLocalhostOrigin(origin: string): boolean {
 }
 
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
+  const isDev = process.env.NODE_ENV !== "production";
+
   // ── CORS ──────────────────────────────────────────────────────────
   const origin = req.headers.origin as string | undefined;
+
+  if (isDev) {
+    // In dev: allow all origins for CORS (Replit preview, localhost, etc.)
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, expo-platform");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Max-Age", "86400");
+    }
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    // Minimal headers in dev — NO X-Frame-Options, NO CSP frame-ancestors
+    // so Replit iframe preview works
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("X-API-Version", "1.0.0");
+    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    res.setHeader("X-Request-Id", requestId);
+    return next();
+  }
+
+  // ── Production-only below ─────────────────────────────────────────
   const wildcardAllowed = allowedOrigins.has("*");
 
   if (
@@ -70,69 +98,48 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       "Content-Type, Authorization"
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    // Cache preflight for 24 hours
     res.setHeader("Access-Control-Max-Age", "86400");
   }
 
-  // Handle preflight — return early with 204 No Content
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // ── Security Headers ──────────────────────────────────────────────
-  const isProduction = process.env.NODE_ENV === "production";
-
   // Prevent MIME-type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
 
-  // Prevent clickjacking — in production only.
-  // In dev/Replit, the app is displayed in an iframe preview pane.
-  if (isProduction) {
-    res.setHeader("X-Frame-Options", "DENY");
-  }
+  // Prevent clickjacking — production only
+  res.setHeader("X-Frame-Options", "DENY");
 
   // XSS protection (legacy browsers)
   res.setHeader("X-XSS-Protection", "1; mode=block");
-
-  // Referrer policy — send origin only for cross-origin
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-
-  // Permissions policy — disable unused browser features
   res.setHeader(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(self), payment=(self)"
   );
 
   // Content Security Policy — restrict resource loading origins
-  // In dev: allow frame-ancestors for Replit preview iframe + ws: for HMR
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    isProduction
-      ? "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com"
-      : "connect-src *",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com",
     "frame-src 'self' https://accounts.google.com",
-    isProduction ? "frame-ancestors 'none'" : "frame-ancestors *",
+    "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
   ].join("; ");
   res.setHeader("Content-Security-Policy", csp);
 
-  // HSTS — enforce HTTPS (1 year, include subdomains)
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
-    );
-  }
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
 
-  // API versioning header
   res.setHeader("X-API-Version", "1.0.0");
-
-  // Request ID for tracing
   const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   res.setHeader("X-Request-Id", requestId);
 

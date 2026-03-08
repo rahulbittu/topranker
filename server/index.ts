@@ -189,65 +189,23 @@ function configureExpoAndLanding(app: express.Application) {
       ws: true,
       logger: undefined,
       on: {
-        error: (_err, proxyReq, res) => {
+        error: (_err, req, res) => {
           if (res && "writeHead" in res && !res.headersSent) {
-            const httpRes = res as Response;
-            // Only return HTML loading page for browser page requests (Accept: text/html).
-            // For JS/CSS/asset requests, return 503 with correct content type to avoid
-            // MIME type mismatch errors that break the app.
-            const accept = (proxyReq as any)?.headers?.accept || "";
-            if (typeof accept === "string" && accept.includes("text/html")) {
-              httpRes.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            const httpReq = req as Request;
+            const acceptsHtml = httpReq.headers?.accept?.includes("text/html");
+            if (acceptsHtml) {
+              (res as Response).status(200).type("html").send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
             } else {
-              httpRes.status(503).set("Retry-After", "3").send("");
+              (res as Response).status(503).set("Retry-After", "3").send("Metro bundler starting...");
             }
           }
         },
       },
     });
 
-    // Serve root path directly so Replit preview gets instant HTTP 200.
-    // ALWAYS use the bootstrap page in dev — never serve dist/index.html here.
-    // dist/index.html uses <script defer> for a ~3.5MB bundle which blocks the
-    // browser load event. Replit's preview waits for load, so it spins forever.
-    // The bootstrap page uses createElement('script') which doesn't block load.
-    app.get("/", (req: Request, res: Response, next: NextFunction) => {
-      const platform = req.header("expo-platform");
-      if (platform && (platform === "ios" || platform === "android")) {
-        return next();
-      }
-
-      res.setHeader("Content-Type", "text/html; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      res.status(200).send(`<!DOCTYPE html>
-<html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${appName}</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0e1a;font-family:-apple-system,system-ui,sans-serif}
-#loading{color:#c8a951;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center;flex-direction:column;gap:16px}
-.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-h1{font-size:24px;font-weight:700;letter-spacing:2px}
-p{font-size:13px;color:#8890a8}
-</style>
-</head><body>
-<div id="loading"><div class="spinner"></div><h1>TOP RANKER</h1><p>Loading...</p></div>
-<div id="root"></div>
-<script>
-// Dynamically load Metro bundle — doesn't block load event
-(function(){
-  var s=document.createElement('script');
-  s.src='/index.bundle?platform=web&dev=true&hot=true';
-  s.async=true;
-  s.onerror=function(){setTimeout(function(){location.reload()},3000)};
-  document.body.appendChild(s);
-})();
-</script>
-</body></html>`);
-    });
+    // Bootstrap HTML for dev mode — uses createElement('script') so it doesn't
+    // block the browser load event (critical for Replit preview to clear its spinner).
+    const webIndexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta httpEquiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" /><title>${appName}</title><style id="expo-reset">html,body{height:100%;margin:0;padding:0}body{overflow:hidden;background:#0a0e1a}#root{display:flex;height:100%;flex:1}#_loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0e1a;z-index:9999;flex-direction:column;gap:16px}#_loading .sp{width:36px;height:36px;border:3px solid #1a2040;border-top-color:#B8860B;border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}#_loading p{color:#B8860B;font-family:-apple-system,system-ui,sans-serif;font-size:15px;letter-spacing:2px;font-weight:600}</style></head><body><div id="_loading"><div class="sp"></div><p>TOP RANKER</p></div><div id="root"></div><script>window.__REMOVE_LOADING=function(){var el=document.getElementById('_loading');if(el)el.remove()};setTimeout(window.__REMOVE_LOADING,20000);var s=document.createElement('script');s.src='/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&transform.reactCompiler=true&unstable_transformProfile=hermes-stable';document.body.appendChild(s)</script></body></html>`;
 
     app.use((req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith("/api")) {
@@ -257,6 +215,10 @@ p{font-size:13px;color:#8890a8}
       const platform = req.header("expo-platform");
       if (platform && (platform === "ios" || platform === "android")) {
         return next();
+      }
+
+      if (req.path === "/" || req.path === "/index.html") {
+        return res.status(200).type("html").send(webIndexHtml);
       }
 
       return metroProxy(req, res, next);

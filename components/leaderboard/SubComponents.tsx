@@ -311,7 +311,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
                     <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
                     <Text style={s.verifiedPillText}>VERIFIED</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show confidence explanation">
                     <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
@@ -325,7 +325,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
                     {RANK_CONFIDENCE_LABELS[confidence].label.toUpperCase()}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show confidence explanation">
                   <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
                 </TouchableOpacity>
               </View>
@@ -360,7 +360,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         {showConfTooltip && (() => {
           const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
           return (
-            <View style={s.confTooltip}>
+            <View style={s.confTooltip} accessibilityRole="alert" accessibilityLiveRegion="polite">
               <Text style={s.confTooltipText}>{RANK_CONFIDENCE_LABELS[confidence].description}</Text>
             </View>
           );

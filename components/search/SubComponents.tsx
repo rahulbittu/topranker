@@ -19,6 +19,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { useExperiment } from "@/lib/use-experiment";
 
 const AMBER = BRAND.colors.amber;
 
@@ -97,6 +98,7 @@ export const BusinessCard = React.memo(function BusinessCard({
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
   const [showConfTooltip, setShowConfTooltip] = useState(false);
+  const { isTreatment: showTooltipIcon } = useExperiment("confidence_tooltip");
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -161,7 +163,7 @@ export const BusinessCard = React.memo(function BusinessCard({
                   <View style={s.verifiedPill}>
                     <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
                   </View>
-                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show confidence explanation">
                     <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
@@ -173,7 +175,7 @@ export const BusinessCard = React.memo(function BusinessCard({
                   <View style={[s.verifiedPill, { backgroundColor: `${AMBER}15` }]}>
                     <Ionicons name="hourglass-outline" size={8} color={AMBER} />
                   </View>
-                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Show confidence explanation">
                     <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
                   </TouchableOpacity>
                 </View>
@@ -201,7 +203,7 @@ export const BusinessCard = React.memo(function BusinessCard({
         {showConfTooltip && (() => {
           const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
           return (
-            <View style={s.confTooltip}>
+            <View style={s.confTooltip} accessibilityRole="alert" accessibilityLiveRegion="polite">
               <Text style={s.confTooltipText}>{RANK_CONFIDENCE_LABELS[conf].description}</Text>
             </View>
           );

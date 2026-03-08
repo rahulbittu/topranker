@@ -155,25 +155,25 @@ describe("Security Headers Middleware — Sprint 104", () => {
     expect(headers["X-Content-Type-Options"]).toBe("nosniff");
   });
 
-  it('omits X-Frame-Options in dev (allows iframe preview)', () => {
+  it('omits X-Frame-Options in dev (allows Replit iframe preview)', () => {
     const { req, res, headers, next } = makeMocks();
     securityHeaders(req, res, next);
-    // In non-production, X-Frame-Options is not set to allow Replit iframe preview
+    // In dev mode, security headers early-return without X-Frame-Options
+    // so Replit's preview iframe can embed the page
     expect(headers["X-Frame-Options"]).toBeUndefined();
   });
 
-  it('sets Referrer-Policy to "strict-origin-when-cross-origin"', () => {
+  it('skips Referrer-Policy in dev mode (early return)', () => {
     const { req, res, headers, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Referrer-Policy"]).toBe(
-      "strict-origin-when-cross-origin",
-    );
+    // Dev mode returns early with minimal headers
+    expect(headers["Referrer-Policy"]).toBeUndefined();
   });
 
-  it('Permissions-Policy includes "camera=()"', () => {
+  it('skips Permissions-Policy in dev mode (early return)', () => {
     const { req, res, headers, next } = makeMocks();
     securityHeaders(req, res, next);
-    expect(headers["Permissions-Policy"]).toContain("camera=()");
+    expect(headers["Permissions-Policy"]).toBeUndefined();
   });
 
   it("sets HSTS only in production", () => {

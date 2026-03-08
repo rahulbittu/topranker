@@ -694,10 +694,25 @@ async function getMemberImpact(memberId) {
       eq(ratings.isFlagged, false)
     )
   ).groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
+  const lastRatingRows = await db.select({
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    ratedAt: ratings.createdAt
+  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(desc(ratings.createdAt)).limit(1);
+  const lastRating = lastRatingRows.length > 0 ? {
+    businessName: lastRatingRows[0].businessName,
+    businessSlug: lastRatingRows[0].businessSlug,
+    rawScore: lastRatingRows[0].rawScore,
+    weight: lastRatingRows[0].weight,
+    ratedAt: lastRatingRows[0].ratedAt.toISOString()
+  } : null;
   const movedUp = memberRatings.filter((r) => r.rankDelta > 0);
   return {
     businessesMovedUp: movedUp.length,
-    topContributions: movedUp.sort((a, b) => b.rankDelta - a.rankDelta).slice(0, 5).map((r) => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta }))
+    topContributions: movedUp.sort((a, b) => b.rankDelta - a.rankDelta).slice(0, 5).map((r) => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta })),
+    lastRating
   };
 }
 var init_members = __esm({
@@ -3374,6 +3389,22 @@ function getAllFlags() {
   return Array.from(flagStore.values());
 }
 
+// lib/data.ts
+var CATEGORY_CONFIDENCE_THRESHOLDS = {
+  fast_food: { provisional: 3, early: 8, established: 20 },
+  casual_dining: { provisional: 3, early: 8, established: 20 },
+  buffet: { provisional: 3, early: 8, established: 20 },
+  restaurant: { provisional: 3, early: 10, established: 25 },
+  cafe: { provisional: 3, early: 10, established: 25 },
+  brunch: { provisional: 3, early: 10, established: 25 },
+  bar: { provisional: 3, early: 10, established: 25 },
+  fine_dining: { provisional: 5, early: 15, established: 35 },
+  brewery: { provisional: 5, early: 12, established: 30 },
+  dessert_bar: { provisional: 3, early: 12, established: 30 },
+  food_hall: { provisional: 5, early: 12, established: 30 }
+};
+var DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
+
 // server/routes-admin.ts
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3640,6 +3671,18 @@ function registerAdminRoutes(app2) {
           activeConnections: 0,
           featureFlags: flags,
           generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      return res.json({
+        data: {
+          thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
+          defaults: DEFAULT_THRESHOLDS
         }
       });
     } catch (err) {
@@ -4767,7 +4810,28 @@ function isLocalhostOrigin(origin) {
   return origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
 }
 function securityHeaders(req, res, next) {
+  const isDev = process.env.NODE_ENV !== "production";
   const origin = req.headers.origin;
+  if (isDev) {
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, expo-platform");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Max-Age", "86400");
+    }
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("X-API-Version", "1.0.0");
+    const requestId2 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    res.setHeader("X-Request-Id", requestId2);
+    return next();
+  }
   const wildcardAllowed = allowedOrigins.has("*");
   if (origin && (wildcardAllowed || allowedOrigins.has(origin) || isLocalhostOrigin(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -4795,23 +4859,21 @@ function securityHeaders(req, res, next) {
   );
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://maps.googleapis.com https://maps.gstatic.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
+    "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com",
     "frame-src 'self' https://accounts.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
   ].join("; ");
   res.setHeader("Content-Security-Policy", csp);
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
-    );
-  }
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
   res.setHeader("X-API-Version", "1.0.0");
   const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   res.setHeader("X-Request-Id", requestId);
@@ -4950,13 +5012,20 @@ function configureExpoAndLanding(app2) {
       ws: true,
       logger: void 0,
       on: {
-        error: (_err, _req, res) => {
+        error: (_err, req, res) => {
           if (res && "writeHead" in res && !res.headersSent) {
-            res.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            const httpReq = req;
+            const acceptsHtml = httpReq.headers?.accept?.includes("text/html");
+            if (acceptsHtml) {
+              res.status(200).type("html").send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+            } else {
+              res.status(503).set("Retry-After", "3").send("Metro bundler starting...");
+            }
           }
         }
       }
     });
+    const webIndexHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta httpEquiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" /><title>${appName}</title><style id="expo-reset">html,body{height:100%;margin:0;padding:0}body{overflow:hidden;background:#0a0e1a}#root{display:flex;height:100%;flex:1}#_loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#0a0e1a;z-index:9999;flex-direction:column;gap:16px}#_loading .sp{width:36px;height:36px;border:3px solid #1a2040;border-top-color:#B8860B;border-radius:50%;animation:sp .8s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}#_loading p{color:#B8860B;font-family:-apple-system,system-ui,sans-serif;font-size:15px;letter-spacing:2px;font-weight:600}</style></head><body><div id="_loading"><div class="sp"></div><p>TOP RANKER</p></div><div id="root"></div><script>window.__REMOVE_LOADING=function(){var el=document.getElementById('_loading');if(el)el.remove()};setTimeout(window.__REMOVE_LOADING,20000);var s=document.createElement('script');s.src='/node_modules/expo-router/entry.bundle?platform=web&dev=true&hot=false&lazy=true&transform.engine=hermes&transform.routerRoot=app&transform.reactCompiler=true&unstable_transformProfile=hermes-stable';document.body.appendChild(s)</script></body></html>`;
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
         return next();
@@ -4964,6 +5033,9 @@ function configureExpoAndLanding(app2) {
       const platform = req.header("expo-platform");
       if (platform && (platform === "ios" || platform === "android")) {
         return next();
+      }
+      if (req.path === "/" || req.path === "/index.html") {
+        return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
     });
