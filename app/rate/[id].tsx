@@ -22,6 +22,7 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { apiRequest } from "@/lib/query-client";
 import { Confetti } from "@/components/Confetti";
+import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 
@@ -246,6 +247,8 @@ export default function RateScreen() {
       qc.invalidateQueries({ queryKey: ["profile"] });
       qc.invalidateQueries({ queryKey: ["challengers"] });
       setShowConfirm(true);
+      hapticRatingSuccess();
+      setTimeout(() => hapticConfetti(), 300);
     },
     onError: (err: Error) => {
       const msg = err.message || "";

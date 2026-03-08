@@ -33,6 +33,7 @@ import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
 import { registerForPushNotifications } from "@/lib/notifications";
+import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -48,6 +49,10 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const containerScale = useSharedValue(1);
 
   useEffect(() => {
+    // Crown haptic on drop
+    setTimeout(() => hapticSplashCrown(), 100);
+    setTimeout(() => hapticSplashLogo(), 300);
+
     // Crown drops in with bounce
     crownScale.value = withDelay(100, withSequence(
       withSpring(1.2, { damping: 6, stiffness: 150 }),
