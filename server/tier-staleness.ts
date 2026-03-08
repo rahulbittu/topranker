@@ -44,6 +44,79 @@ export function checkAndRefreshTier(storedTier: string, currentScore: number): s
 }
 
 // ---------------------------------------------------------------------------
+// Tier Semantics Contract — machine-readable registry of all tier-reading paths
+// ---------------------------------------------------------------------------
+
+/**
+ * Tier Semantics Contract.
+ * FRESH: recomputed before response. SNAPSHOT: read from DB (historical/aggregate).
+ *
+ * FRESH paths (checkAndRefreshTier required):
+ *   - POST /api/ratings (recalculateCredibilityScore)
+ *   - GET /api/members/me (recalculateCredibilityScore)
+ *   - GET /api/members/:username (checkAndRefreshTier)
+ *   - GET /api/account/export (checkAndRefreshTier)
+ *   - GET /api/admin/members (checkAndRefreshTier)
+ *   - passport.deserializeUser (checkAndRefreshTier)
+ *
+ * SNAPSHOT paths (acceptable — historical/aggregate):
+ *   - getBusinessRatings (tier at time of rating)
+ *   - getBadgeLeaderboard (display-only, batch-corrected)
+ */
+export const TIER_SEMANTICS = {
+  fresh: [
+    {
+      path: "POST /api/ratings",
+      mechanism: "recalculateCredibilityScore + checkAndRefreshTier",
+      file: "server/routes.ts",
+      reason: "Rating submission changes score; response must reflect new tier immediately",
+    },
+    {
+      path: "GET /api/members/me",
+      mechanism: "recalculateCredibilityScore + checkAndRefreshTier",
+      file: "server/routes.ts",
+      reason: "Profile page is the primary place users see their tier; must be authoritative",
+    },
+    {
+      path: "GET /api/members/:username",
+      mechanism: "checkAndRefreshTier",
+      file: "server/routes.ts",
+      reason: "Public profiles must show correct tier to avoid trust confusion",
+    },
+    {
+      path: "GET /api/account/export",
+      mechanism: "checkAndRefreshTier",
+      file: "server/routes.ts",
+      reason: "GDPR Art. 20 requires accurate data export",
+    },
+    {
+      path: "GET /api/admin/members",
+      mechanism: "checkAndRefreshTier",
+      file: "server/routes-admin.ts",
+      reason: "Admins need accurate tier for moderation decisions",
+    },
+    {
+      path: "passport.deserializeUser",
+      mechanism: "checkAndRefreshTier",
+      file: "server/auth.ts",
+      reason: "Session user object feeds req.user.credibilityTier used by all authenticated endpoints",
+    },
+  ],
+  snapshot: [
+    {
+      path: "getBusinessRatings",
+      file: "server/storage/businesses.ts",
+      reason: "Historical ratings display — tier at time of rating is the correct value",
+    },
+    {
+      path: "getBadgeLeaderboard",
+      file: "server/storage/badges.ts",
+      reason: "Display-only leaderboard; tier is cosmetic context, batch-corrected by refreshStaleTiers",
+    },
+  ],
+} as const;
+
+// ---------------------------------------------------------------------------
 // DB-dependent functions — require live database connection
 // ---------------------------------------------------------------------------
 

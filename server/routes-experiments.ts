@@ -16,6 +16,9 @@ import { apiRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { log } from "./logger";
 import { hashString } from "@shared/hash";
+import { trackExposure, getExposureStats, getOutcomeStats } from "./experiment-tracker";
+import { isAdminEmail } from "@shared/admin";
+import { requireAuth } from "./middleware";
 
 // Re-export for any consumers that imported hashString from this module
 export { hashString };
@@ -158,6 +161,10 @@ export function registerExperimentRoutes(app: Express): void {
 
       const { variant, isDefault } = assignVariant(String(userId), experimentId);
 
+      // Sprint 142: Track exposure for measurement
+      const context = (req.query.context as string) || "api";
+      trackExposure(String(userId), experimentId, variant, context);
+
       expLog.info(`Assigned ${experimentId}=${variant} for user ${userId}`);
 
       return res.json({
@@ -165,6 +172,48 @@ export function registerExperimentRoutes(app: Express): void {
           experimentId,
           variant,
           isDefault,
+        },
+      });
+  }));
+
+  /**
+   * GET /api/admin/experiments/metrics?experimentId=X
+   * Admin-only — returns exposure + outcome stats for an experiment.
+   * Sprint 142: Experiment measurement infrastructure.
+   */
+  app.get("/api/admin/experiments/metrics", requireAuth, wrapAsync((req: Request, res: Response) => {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const experimentId = req.query.experimentId as string;
+
+      if (!experimentId) {
+        // Return stats for all active experiments
+        const allStats = Object.values(experiments)
+          .filter((exp) => exp.active)
+          .map((exp) => ({
+            experimentId: exp.id,
+            description: exp.description,
+            exposure: getExposureStats(exp.id),
+            outcomes: getOutcomeStats(exp.id),
+          }));
+
+        return res.json({ data: allStats });
+      }
+
+      const experiment = experiments[experimentId];
+      if (!experiment) {
+        return res.status(404).json({ error: `Experiment '${experimentId}' not found` });
+      }
+
+      return res.json({
+        data: {
+          experimentId: experiment.id,
+          description: experiment.description,
+          active: experiment.active,
+          exposure: getExposureStats(experimentId),
+          outcomes: getOutcomeStats(experimentId),
         },
       });
   }));

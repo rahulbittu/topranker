@@ -40,6 +40,7 @@ import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/sche
 import { authRateLimiter } from "./rate-limiter";
 import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
+import { getUserExperiments, trackOutcome } from "./experiment-tracker";
 import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
@@ -598,6 +599,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
       trackEvent("first_rating", memberId);
+
+      // Sprint 142: Track rating as outcome for any active experiments the user is in
+      const userExperiments = getUserExperiments(String(memberId));
+      for (const expId of userExperiments) {
+        trackOutcome(String(memberId), expId, "rated", parsed.data.score);
+      }
+
       return res.status(201).json({ data: result });
     } catch (err: any) {
       if (err.message.includes("3+ days")) {
