@@ -585,11 +585,11 @@ const styles = StyleSheet.create({
   avatarImage: { width: "100%", height: "100%", borderRadius: 28 },
   avatarInitial: { fontSize: 24, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
   foundingBadge: {
-    backgroundColor: "rgba(255,215,0,0.2)", borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: "rgba(255,215,0,0.4)",
+    backgroundColor: `${Colors.gold}20`, borderRadius: 4,
+    paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: `${Colors.gold}40`,
   },
   foundingBadgeText: {
-    fontSize: 8, fontWeight: "700", color: "#FFD700",
+    fontSize: 8, fontWeight: "700", color: Colors.gold,
     fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
   },
   badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },

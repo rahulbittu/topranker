@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,
   },
   rowHighlight: {
-    backgroundColor: "#FFFBF0",
+    backgroundColor: Colors.goldFaint,
     borderWidth: 1, borderColor: `${AMBER}30`,
   },
   rankCol: { width: 32, alignItems: "center" },
