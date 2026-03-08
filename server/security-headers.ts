@@ -69,6 +69,9 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
       return res.status(204).end();
     }
     res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
     res.setHeader("X-API-Version", "1.0.0");
     const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     res.setHeader("X-Request-Id", requestId);

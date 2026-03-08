@@ -4810,7 +4810,25 @@ function isLocalhostOrigin(origin) {
   return origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
 }
 function securityHeaders(req, res, next) {
+  const isDev = process.env.NODE_ENV !== "production";
   const origin = req.headers.origin;
+  if (isDev) {
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, expo-platform");
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Max-Age", "86400");
+    }
+    if (req.method === "OPTIONS") {
+      return res.status(204).end();
+    }
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("X-API-Version", "1.0.0");
+    const requestId2 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    res.setHeader("X-Request-Id", requestId2);
+    return next();
+  }
   const wildcardAllowed = allowedOrigins.has("*");
   if (origin && (wildcardAllowed || allowedOrigins.has(origin) || isLocalhostOrigin(origin))) {
     res.setHeader("Access-Control-Allow-Origin", origin);
@@ -4849,12 +4867,10 @@ function securityHeaders(req, res, next) {
     "form-action 'self'"
   ].join("; ");
   res.setHeader("Content-Security-Policy", csp);
-  if (process.env.NODE_ENV === "production") {
-    res.setHeader(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
-    );
-  }
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains; preload"
+  );
   res.setHeader("X-API-Version", "1.0.0");
   const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   res.setHeader("X-Request-Id", requestId);
