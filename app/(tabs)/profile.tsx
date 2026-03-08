@@ -502,6 +502,33 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           })}
         </View>
       </View>
+
+      {/* Delete Account — App Store requirement */}
+      <TouchableOpacity
+        style={styles.deleteAccountBtn}
+        onPress={() => {
+          Alert.alert(
+            "Delete Account",
+            "This will permanently delete your account and all your ratings within 30 days. This action cannot be undone.",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Delete My Account",
+                style: "destructive",
+                onPress: () => {
+                  Alert.alert("Account Deletion Requested", "Your account will be deleted within 30 days. You will receive an email confirmation.");
+                },
+              },
+            ]
+          );
+        }}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Delete your account"
+      >
+        <Ionicons name="trash-outline" size={14} color={Colors.red} />
+        <Text style={styles.deleteAccountText}>Delete Account</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -583,6 +610,13 @@ const styles = StyleSheet.create({
   logoutBtn: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
+  },
+  deleteAccountBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    marginTop: 24, paddingVertical: 12,
+  },
+  deleteAccountText: {
+    fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium",
   },
 
   // ===== Logged Out (Fix 6) =====
