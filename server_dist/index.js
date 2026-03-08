@@ -414,7 +414,7 @@ var init_helpers = __esm({
 });
 
 // server/storage/members.ts
-import { eq, and, ne, sql as sql2, count } from "drizzle-orm";
+import { eq, and, ne, sql as sql2, count, desc } from "drizzle-orm";
 async function getMemberById(id) {
   const [member] = await db.select().from(members).where(eq(members.id, id));
   return member;
@@ -430,6 +430,25 @@ async function getMemberByEmail(email) {
 async function getMemberByAuthId(authId) {
   const [member] = await db.select().from(members).where(eq(members.authId, authId));
   return member;
+}
+async function getAdminMemberList(limit = 50) {
+  return db.select({
+    id: members.id,
+    displayName: members.displayName,
+    username: members.username,
+    email: members.email,
+    city: members.city,
+    credibilityTier: members.credibilityTier,
+    credibilityScore: members.credibilityScore,
+    totalRatings: members.totalRatings,
+    isBanned: members.isBanned,
+    isFoundingMember: members.isFoundingMember,
+    joinedAt: members.joinedAt
+  }).from(members).orderBy(desc(members.joinedAt)).limit(limit);
+}
+async function getMemberCount() {
+  const [result] = await db.select({ cnt: count() }).from(members);
+  return Number(result?.cnt ?? 0);
 }
 async function createMember(data) {
   const [member] = await db.insert(members).values(data).returning();
@@ -571,6 +590,9 @@ async function getSeasonalRatingCounts(memberId) {
   }
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
 }
+async function updatePushToken(memberId, pushToken) {
+  await db.update(members).set({ pushToken }).where(eq(members.id, memberId));
+}
 async function getMemberImpact(memberId) {
   const memberRatings = await db.select({
     businessId: ratings.businessId,
@@ -599,7 +621,7 @@ var init_members = __esm({
 });
 
 // server/storage/businesses.ts
-import { eq as eq2, and as and2, desc, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
+import { eq as eq2, and as and2, desc as desc2, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
 async function getLeaderboard(city, category, limit = 50) {
   return db.select().from(businesses).where(
     and2(
@@ -616,7 +638,7 @@ async function getTrendingBusinesses(city, limit = 3) {
       eq2(businesses.isActive, true),
       sql3`${businesses.rankDelta} > 0`
     )
-  ).orderBy(desc(businesses.rankDelta)).limit(limit);
+  ).orderBy(desc2(businesses.rankDelta)).limit(limit);
 }
 async function getBusinessBySlug(slug) {
   const [business] = await db.select().from(businesses).where(eq2(businesses.slug, slug));
@@ -636,7 +658,7 @@ async function searchBusinesses(query, city, category, limit = 20) {
       query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})` : void 0,
       ...category ? [eq2(businesses.category, category)] : []
     )
-  ).orderBy(desc(businesses.weightedScore)).limit(limit);
+  ).orderBy(desc2(businesses.weightedScore)).limit(limit);
 }
 async function getAllCategories(city) {
   const rows = await db.select({
@@ -695,7 +717,7 @@ async function recalculateRanks(city, category) {
       eq2(businesses.category, category),
       eq2(businesses.isActive, true)
     )
-  ).orderBy(desc(businesses.weightedScore));
+  ).orderBy(desc2(businesses.weightedScore));
   for (let i = 0; i < allBusinesses.length; i++) {
     const oldRank = allBusinesses[i].rankPosition;
     const newRank = i + 1;
@@ -726,6 +748,41 @@ async function getBusinessPhotosMap(businessIds) {
     }
   }
   return map;
+}
+async function insertBusinessPhotos(businessId, photos) {
+  if (photos.length === 0) return;
+  await db.insert(businessPhotos).values(
+    photos.map((p) => ({
+      businessId,
+      photoUrl: p.photoUrl,
+      isHero: p.isHero,
+      sortOrder: p.sortOrder
+    }))
+  );
+}
+async function getBusinessesWithoutPhotos(city, limit = 50) {
+  const rows = await db.select({
+    id: businesses.id,
+    name: businesses.name,
+    googlePlaceId: businesses.googlePlaceId,
+    city: businesses.city
+  }).from(businesses).leftJoin(businessPhotos, eq2(businesses.id, businessPhotos.businessId)).where(
+    and2(
+      eq2(businesses.isActive, true),
+      sql3`${businesses.googlePlaceId} IS NOT NULL`,
+      sql3`${businessPhotos.id} IS NULL`,
+      ...city ? [eq2(businesses.city, city)] : []
+    )
+  ).limit(limit);
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    googlePlaceId: r.googlePlaceId,
+    city: r.city
+  }));
+}
+async function deleteBusinessPhotos(businessId) {
+  await db.delete(businessPhotos).where(eq2(businessPhotos.businessId, businessId));
 }
 async function getRankHistory(businessId, days = 30) {
   const cutoff = /* @__PURE__ */ new Date();
@@ -1020,9 +1077,9 @@ var init_ratings = __esm({
 });
 
 // server/storage/dishes.ts
-import { eq as eq5, and as and5, desc as desc2, sql as sql6 } from "drizzle-orm";
+import { eq as eq5, and as and5, desc as desc3, sql as sql6 } from "drizzle-orm";
 async function getBusinessDishes(businessId, limit = 5) {
-  return db.select().from(dishes).where(and5(eq5(dishes.businessId, businessId), eq5(dishes.isActive, true))).orderBy(desc2(dishes.voteCount)).limit(limit);
+  return db.select().from(dishes).where(and5(eq5(dishes.businessId, businessId), eq5(dishes.isActive, true))).orderBy(desc3(dishes.voteCount)).limit(limit);
 }
 async function searchDishes(businessId, query) {
   const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
@@ -1035,7 +1092,7 @@ async function searchDishes(businessId, query) {
       eq5(dishes.isActive, true),
       sql6`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
     )
-  ).orderBy(desc2(dishes.voteCount)).limit(5);
+  ).orderBy(desc3(dishes.voteCount)).limit(5);
   if (results.length < 3) {
     const containsResults = await db.select().from(dishes).where(
       and5(
@@ -1043,7 +1100,7 @@ async function searchDishes(businessId, query) {
         eq5(dishes.isActive, true),
         sql6`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
       )
-    ).orderBy(desc2(dishes.voteCount)).limit(5);
+    ).orderBy(desc3(dishes.voteCount)).limit(5);
     const existingIds = new Set(results.map((r) => r.id));
     for (const r of containsResults) {
       if (!existingIds.has(r.id)) {
@@ -1062,7 +1119,7 @@ var init_dishes = __esm({
 });
 
 // server/storage/categories.ts
-import { eq as eq6, desc as desc3 } from "drizzle-orm";
+import { eq as eq6, desc as desc4 } from "drizzle-orm";
 async function getDbCategories(activeOnly = true) {
   if (activeOnly) {
     return db.select().from(categories).where(eq6(categories.isActive, true));
@@ -1079,7 +1136,7 @@ async function createCategorySuggestion(data) {
   return suggestion;
 }
 async function getPendingSuggestions() {
-  return db.select().from(categorySuggestions).where(eq6(categorySuggestions.status, "pending")).orderBy(desc3(categorySuggestions.voteCount));
+  return db.select().from(categorySuggestions).where(eq6(categorySuggestions.status, "pending")).orderBy(desc4(categorySuggestions.voteCount));
 }
 async function reviewSuggestion(id, status, reviewedBy) {
   const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq6(categorySuggestions.id, id)).returning();
@@ -1094,7 +1151,7 @@ var init_categories = __esm({
 });
 
 // server/storage/badges.ts
-import { eq as eq7, and as and6, count as count4 } from "drizzle-orm";
+import { eq as eq7, and as and6, count as count4, desc as desc5 } from "drizzle-orm";
 async function getMemberBadges(memberId) {
   return db.select().from(memberBadges).where(eq7(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
 }
@@ -1118,8 +1175,80 @@ async function getEarnedBadgeIds(memberId) {
   const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq7(memberBadges.memberId, memberId));
   return rows.map((r) => r.badgeId);
 }
+async function getBadgeLeaderboard(limit = 20) {
+  return db.select({
+    memberId: memberBadges.memberId,
+    displayName: members.displayName,
+    username: members.username,
+    avatarUrl: members.avatarUrl,
+    credibilityTier: members.credibilityTier,
+    badgeCount: count4(memberBadges.id)
+  }).from(memberBadges).innerJoin(members, eq7(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc5(count4(memberBadges.id))).limit(limit);
+}
 var init_badges = __esm({
   "server/storage/badges.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/claims.ts
+import { eq as eq8, and as and7, count as count5, desc as desc6 } from "drizzle-orm";
+async function submitClaim(businessId, memberId, verificationMethod) {
+  const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
+  return claim;
+}
+async function getClaimByMemberAndBusiness(memberId, businessId) {
+  const [claim] = await db.select().from(businessClaims).where(
+    and7(
+      eq8(businessClaims.memberId, memberId),
+      eq8(businessClaims.businessId, businessId)
+    )
+  );
+  return claim;
+}
+async function getPendingClaims() {
+  return db.select({
+    id: businessClaims.id,
+    businessId: businessClaims.businessId,
+    businessName: businesses.name,
+    memberId: businessClaims.memberId,
+    memberName: members.displayName,
+    verificationMethod: businessClaims.verificationMethod,
+    status: businessClaims.status,
+    submittedAt: businessClaims.submittedAt
+  }).from(businessClaims).leftJoin(businesses, eq8(businessClaims.businessId, businesses.id)).leftJoin(members, eq8(businessClaims.memberId, members.id)).where(eq8(businessClaims.status, "pending")).orderBy(desc6(businessClaims.submittedAt));
+}
+async function reviewClaim(id, status, reviewedBy) {
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq8(businessClaims.id, id)).returning();
+  return updated ?? null;
+}
+async function getClaimCount() {
+  const [result] = await db.select({ cnt: count5() }).from(businessClaims).where(eq8(businessClaims.status, "pending"));
+  return Number(result?.cnt ?? 0);
+}
+async function getPendingFlags() {
+  return db.select({
+    id: ratingFlags.id,
+    ratingId: ratingFlags.ratingId,
+    flaggerName: members.displayName,
+    explanation: ratingFlags.explanation,
+    aiFraudProbability: ratingFlags.aiFraudProbability,
+    status: ratingFlags.status,
+    createdAt: ratingFlags.createdAt
+  }).from(ratingFlags).leftJoin(members, eq8(ratingFlags.flaggerId, members.id)).where(eq8(ratingFlags.status, "pending")).orderBy(desc6(ratingFlags.createdAt));
+}
+async function reviewFlag(id, status, reviewedBy) {
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq8(ratingFlags.id, id)).returning();
+  return updated ?? null;
+}
+async function getFlagCount() {
+  const [result] = await db.select({ cnt: count5() }).from(ratingFlags).where(eq8(ratingFlags.status, "pending"));
+  return Number(result?.cnt ?? 0);
+}
+var init_claims = __esm({
+  "server/storage/claims.ts"() {
     "use strict";
     init_schema();
     init_db();
@@ -1132,17 +1261,24 @@ __export(storage_exports, {
   awardBadge: () => awardBadge,
   createCategorySuggestion: () => createCategorySuggestion,
   createMember: () => createMember,
+  deleteBusinessPhotos: () => deleteBusinessPhotos,
   getActiveChallenges: () => getActiveChallenges,
+  getAdminMemberList: () => getAdminMemberList,
   getAllCategories: () => getAllCategories,
+  getBadgeLeaderboard: () => getBadgeLeaderboard,
   getBusinessById: () => getBusinessById,
   getBusinessBySlug: () => getBusinessBySlug,
   getBusinessDishes: () => getBusinessDishes,
   getBusinessPhotos: () => getBusinessPhotos,
   getBusinessPhotosMap: () => getBusinessPhotosMap,
   getBusinessRatings: () => getBusinessRatings,
+  getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
+  getClaimByMemberAndBusiness: () => getClaimByMemberAndBusiness,
+  getClaimCount: () => getClaimCount,
   getCredibilityTier: () => getCredibilityTier,
   getDbCategories: () => getDbCategories,
   getEarnedBadgeIds: () => getEarnedBadgeIds,
+  getFlagCount: () => getFlagCount,
   getLeaderboard: () => getLeaderboard,
   getMemberBadgeCount: () => getMemberBadgeCount,
   getMemberBadges: () => getMemberBadges,
@@ -1150,8 +1286,11 @@ __export(storage_exports, {
   getMemberByEmail: () => getMemberByEmail,
   getMemberById: () => getMemberById,
   getMemberByUsername: () => getMemberByUsername,
+  getMemberCount: () => getMemberCount,
   getMemberImpact: () => getMemberImpact,
   getMemberRatings: () => getMemberRatings,
+  getPendingClaims: () => getPendingClaims,
+  getPendingFlags: () => getPendingFlags,
   getPendingSuggestions: () => getPendingSuggestions,
   getRankHistory: () => getRankHistory,
   getSeasonalRatingCounts: () => getSeasonalRatingCounts,
@@ -1160,15 +1299,20 @@ __export(storage_exports, {
   getTrendingBusinesses: () => getTrendingBusinesses,
   getVoteWeight: () => getVoteWeight,
   hasBadge: () => hasBadge,
+  insertBusinessPhotos: () => insertBusinessPhotos,
   recalculateBusinessScore: () => recalculateBusinessScore,
   recalculateCredibilityScore: () => recalculateCredibilityScore,
   recalculateRanks: () => recalculateRanks,
+  reviewClaim: () => reviewClaim,
+  reviewFlag: () => reviewFlag,
   reviewSuggestion: () => reviewSuggestion,
   searchBusinesses: () => searchBusinesses,
   searchDishes: () => searchDishes,
+  submitClaim: () => submitClaim,
   submitRating: () => submitRating,
   updateChallengerVotes: () => updateChallengerVotes,
-  updateMemberStats: () => updateMemberStats
+  updateMemberStats: () => updateMemberStats,
+  updatePushToken: () => updatePushToken
 });
 var init_storage = __esm({
   "server/storage/index.ts"() {
@@ -1181,6 +1325,7 @@ var init_storage = __esm({
     init_dishes();
     init_categories();
     init_badges();
+    init_claims();
   }
 });
 
@@ -1862,8 +2007,8 @@ async function authenticateGoogleUser(idToken) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq8 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq8(members2.id, member.id));
+    const { eq: eq9 } = await import("drizzle-orm");
+    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq9(members2.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -2120,6 +2265,154 @@ async function handlePhotoProxy(req, res) {
   }
 }
 
+// server/badge-share.ts
+var BADGE_META = {
+  // User Milestone Badges
+  "first-taste": { name: "First Taste", description: "Submit your very first rating", rarity: "common", color: "#FFD700", icon: "star" },
+  "getting-started": { name: "Getting Started", description: "Rate 5 businesses", rarity: "common", color: "#FF6B35", icon: "flame" },
+  "ten-strong": { name: "Ten Strong", description: "Rate 10 businesses", rarity: "common", color: "#4CAF50", icon: "ribbon" },
+  "quarter-century": { name: "Quarter Century", description: "Rate 25 businesses", rarity: "rare", color: "#2196F3", icon: "medal" },
+  "half-century": { name: "Half Century", description: "Rate 50 businesses", rarity: "rare", color: "#7C4DFF", icon: "trophy" },
+  "centurion": { name: "Centurion", description: "Rate 100 businesses", rarity: "epic", color: "#9C27B0", icon: "shield-checkmark" },
+  "rating-machine": { name: "Rating Machine", description: "Rate 250 businesses", rarity: "epic", color: "#E040FB", icon: "flash" },
+  "legendary-judge": { name: "Legendary Judge", description: "Rate 500 businesses", rarity: "legendary", color: "#C49A1A", icon: "diamond" },
+  // User Streak Badges
+  "three-day-streak": { name: "On a Roll", description: "Rate on 3 consecutive days", rarity: "common", color: "#FF7043", icon: "flame-outline" },
+  "week-warrior": { name: "Week Warrior", description: "Rate on 7 consecutive days", rarity: "rare", color: "#FF5722", icon: "flame" },
+  "two-week-streak": { name: "Unstoppable", description: "Rate on 14 consecutive days", rarity: "epic", color: "#FF3D00", icon: "bonfire" },
+  "monthly-devotion": { name: "Monthly Devotion", description: "Rate on 30 consecutive days", rarity: "legendary", color: "#DD2C00", icon: "infinite" },
+  // User Explorer Badges
+  "curious-palate": { name: "Curious Palate", description: "Rate in 3 different categories", rarity: "common", color: "#26A69A", icon: "compass" },
+  "category-hopper": { name: "Category Hopper", description: "Rate in 5 different categories", rarity: "rare", color: "#00897B", icon: "map" },
+  "master-explorer": { name: "Master Explorer", description: "Rate in 10 different categories", rarity: "epic", color: "#006064", icon: "earth" },
+  "city-hopper": { name: "City Hopper", description: "Rate businesses in 2 different cities", rarity: "rare", color: "#5C6BC0", icon: "airplane" },
+  "texas-tour": { name: "Texas Tour", description: "Rate businesses in 4 Texas cities", rarity: "legendary", color: "#C49A1A", icon: "flag" },
+  "night-owl": { name: "Night Owl", description: "Submit a rating after midnight", rarity: "rare", color: "#3F51B5", icon: "moon" },
+  "early-bird": { name: "Early Bird", description: "Submit a rating before 7 AM", rarity: "rare", color: "#FFC107", icon: "sunny" },
+  // User Social Badges
+  "first-referral": { name: "Connector", description: "Invite a friend who creates an account", rarity: "rare", color: "#29B6F6", icon: "people" },
+  "squad-builder": { name: "Squad Builder", description: "Invite 5 friends who join TopRanker", rarity: "epic", color: "#0288D1", icon: "people-circle" },
+  "community-leader": { name: "Community Leader", description: "Invite 25 friends who join TopRanker", rarity: "legendary", color: "#C49A1A", icon: "megaphone" },
+  "helpful-voice": { name: "Helpful Voice", description: "5 of your ratings marked as helpful", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
+  "influencer": { name: "Influencer", description: "25 of your ratings marked as helpful", rarity: "epic", color: "#43A047", icon: "hand-left" },
+  // User Tier Badges
+  "tier-city": { name: "City Regular", description: "Reach the Regular tier (100+ credibility)", rarity: "rare", color: "#6B6B6B", icon: "star" },
+  "tier-trusted": { name: "Trusted Judge", description: "Reach the Trusted tier (300+ credibility)", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },
+  "tier-top": { name: "Top Judge", description: "Reach the Top Judge tier (600+ credibility)", rarity: "legendary", color: "#C49A1A", icon: "trophy" },
+  // User Special Badges
+  "founding-member": { name: "Founding Member", description: "Joined TopRanker in its first year", rarity: "legendary", color: "#C49A1A", icon: "sparkles" },
+  "perfect-score": { name: "Perfect 5", description: "Give a perfect 5.0 rating", rarity: "common", color: "#E91E63", icon: "heart" },
+  "tough-critic": { name: "Tough Critic", description: "Give a rating of 1.0", rarity: "rare", color: "#F44336", icon: "alert-circle" },
+  "impact-maker": { name: "Impact Maker", description: "Your rating moves a business up in rankings", rarity: "rare", color: "#4CAF50", icon: "trending-up" },
+  "king-maker": { name: "King Maker", description: "Your rating moves a business to #1", rarity: "legendary", color: "#C49A1A", icon: "podium" },
+  // User Seasonal Badges
+  "spring-explorer": { name: "Spring Explorer", description: "Rate 5 businesses in March, April, or May", rarity: "rare", color: "#66BB6A", icon: "flower" },
+  "summer-heat": { name: "Summer Heat", description: "Rate 5 businesses in June, July, or August", rarity: "rare", color: "#FF9800", icon: "sunny" },
+  "fall-harvest": { name: "Fall Harvest", description: "Rate 5 businesses in September, October, or November", rarity: "rare", color: "#BF360C", icon: "leaf" },
+  "winter-chill": { name: "Winter Chill", description: "Rate 5 businesses in December, January, or February", rarity: "rare", color: "#42A5F5", icon: "snow" },
+  "year-round": { name: "Year-Round Rater", description: "Earn all 4 seasonal badges", rarity: "legendary", color: "#C49A1A", icon: "earth" },
+  // Business Milestone Badges
+  "biz-first-rating": { name: "On the Map", description: "Receive the first rating", rarity: "common", color: "#4CAF50", icon: "location" },
+  "biz-10-ratings": { name: "Getting Noticed", description: "Receive 10 ratings", rarity: "common", color: "#42A5F5", icon: "eye" },
+  "biz-25-ratings": { name: "Local Favorite", description: "Receive 25 ratings", rarity: "rare", color: "#EF5350", icon: "heart-circle" },
+  "biz-50-ratings": { name: "Community Choice", description: "Receive 50 ratings", rarity: "rare", color: "#AB47BC", icon: "people" },
+  "biz-100-ratings": { name: "City Icon", description: "Receive 100 ratings", rarity: "epic", color: "#C49A1A", icon: "star" },
+  "biz-250-ratings": { name: "Legendary Spot", description: "Receive 250 ratings", rarity: "legendary", color: "#C49A1A", icon: "diamond" },
+  "biz-top-10": { name: "Top 10", description: "Reach top 10 in your city's category", rarity: "rare", color: "#7C4DFF", icon: "trending-up" },
+  "biz-top-3": { name: "Podium Finish", description: "Reach top 3 in your city's category", rarity: "epic", color: "#C49A1A", icon: "podium" },
+  "biz-number-one": { name: "Number One", description: "Reach #1 in your city's category", rarity: "legendary", color: "#FFD700", icon: "trophy" },
+  "biz-high-rated": { name: "Highly Rated", description: "Maintain an average score above 4.0", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
+  "biz-exceptional": { name: "Exceptional", description: "Maintain an average score above 4.5", rarity: "epic", color: "#FFC107", icon: "sparkles" },
+  "biz-perfect-rep": { name: "Perfect Reputation", description: "Average score of 4.8+ with 25+ ratings", rarity: "legendary", color: "#C49A1A", icon: "ribbon" },
+  "biz-steady-climber": { name: "Steady Climber", description: "Improve ranking for 3 consecutive weeks", rarity: "rare", color: "#26A69A", icon: "arrow-up-circle" },
+  "biz-unstoppable-rise": { name: "Unstoppable Rise", description: "Improve ranking for 8 consecutive weeks", rarity: "epic", color: "#FF7043", icon: "rocket" },
+  "biz-trusted-approved": { name: "Trusted Approved", description: "Receive 5+ ratings from Trusted tier judges", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },
+  "biz-top-judge-pick": { name: "Top Judge's Pick", description: "Rated 4.0+ by 3 Top Judge tier members", rarity: "legendary", color: "#C49A1A", icon: "medal" },
+  "biz-challenger-winner": { name: "Challenger Champion", description: "Win a challenger battle", rarity: "epic", color: "#FF6F00", icon: "flash" },
+  "biz-new-entry": { name: "New Entry", description: "Just added to TopRanker", rarity: "common", color: "#29B6F6", icon: "sparkles" },
+  "biz-verified": { name: "Verified Business", description: "Business ownership verified by TopRanker", rarity: "rare", color: "#2196F3", icon: "checkmark-circle" }
+};
+var RARITY_COLORS = {
+  common: "#8E8E93",
+  rare: "#2196F3",
+  epic: "#9C27B0",
+  legendary: "#C49A1A"
+};
+function generateBadgeHtml(badgeId, username) {
+  const badge = BADGE_META[badgeId];
+  const title = badge ? `${badge.name} \u2014 TopRanker Badge` : "TopRanker Badge";
+  const description = badge ? `${username ? `@${username} earned` : "Earned"} "${badge.name}" \u2014 ${badge.description}` : "Check out this TopRanker achievement badge!";
+  const rarityColor = badge ? RARITY_COLORS[badge.rarity] || "#C49A1A" : "#C49A1A";
+  const svgImage = badge ? `
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+      <rect width="1200" height="630" fill="#0D1B2A"/>
+      <rect x="40" y="40" width="1120" height="550" rx="24" fill="#1A2D44"/>
+      <circle cx="600" cy="240" r="80" fill="none" stroke="${rarityColor}" stroke-width="6"/>
+      <text x="600" y="256" text-anchor="middle" fill="${rarityColor}" font-size="64">${badge.icon === "star" ? "\u2605" : badge.icon === "flame" ? "\u{1F525}" : badge.icon === "trophy" ? "\u{1F3C6}" : badge.icon === "diamond" ? "\u{1F48E}" : badge.icon === "map" ? "\u{1F5FA}" : badge.icon === "moon" ? "\u{1F319}" : "\u2B50"}</text>
+      <text x="600" y="380" text-anchor="middle" fill="#FFFFFF" font-size="36" font-weight="bold">${badge.name}</text>
+      <text x="600" y="420" text-anchor="middle" fill="#8E8E93" font-size="20">${badge.description}</text>
+      <rect x="520" y="445" width="160" height="28" rx="14" fill="${rarityColor}22"/>
+      <text x="600" y="465" text-anchor="middle" fill="${rarityColor}" font-size="14" font-weight="bold">${badge.rarity.toUpperCase()}</text>
+      ${username ? `<text x="600" y="520" text-anchor="middle" fill="#C49A1A" font-size="18">@${username}</text>` : ""}
+      <text x="600" y="560" text-anchor="middle" fill="#636366" font-size="14">TopRanker \u2014 Where your rankings matter.</text>
+    </svg>
+  `.trim() : "";
+  const ogImageDataUri = badge ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgImage)}` : "";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${title}</title>
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:type" content="website">
+  ${ogImageDataUri ? `<meta property="og:image" content="${ogImageDataUri}">` : ""}
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0D1B2A; color: #fff; font-family: -apple-system, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: #1A2D44; border-radius: 24px; padding: 48px; text-align: center; max-width: 400px; }
+    .badge-ring { width: 120px; height: 120px; border-radius: 60px; border: 4px solid ${rarityColor}; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; font-size: 48px; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .desc { color: #8E8E93; font-size: 16px; margin-bottom: 16px; }
+    .rarity { display: inline-block; background: ${rarityColor}22; color: ${rarityColor}; font-size: 12px; font-weight: 800; padding: 4px 16px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .user { color: #C49A1A; margin-top: 16px; font-size: 16px; }
+    .tagline { color: #636366; font-size: 13px; margin-top: 24px; }
+    .cta { display: inline-block; margin-top: 20px; background: #C49A1A; color: #0D1B2A; padding: 12px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    ${badge ? `
+      <div class="badge-ring">${badge.icon === "star" ? "\u2605" : badge.icon === "flame" ? "\u{1F525}" : badge.icon === "trophy" ? "\u{1F3C6}" : badge.icon === "diamond" ? "\u{1F48E}" : badge.icon === "map" ? "\u{1F5FA}" : badge.icon === "moon" ? "\u{1F319}" : "\u2B50"}</div>
+      <h1>${badge.name}</h1>
+      <p class="desc">${badge.description}</p>
+      <span class="rarity">${badge.rarity}</span>
+      ${username ? `<p class="user">Earned by @${username}</p>` : ""}
+    ` : `
+      <h1>Badge Not Found</h1>
+      <p class="desc">This badge doesn't exist or the link is invalid.</p>
+    `}
+    <p class="tagline">TopRanker \u2014 Where your rankings matter.</p>
+    <a href="/" class="cta">Open TopRanker</a>
+  </div>
+</body>
+</html>`;
+}
+function handleBadgeShare(req, res) {
+  const badgeId = req.params.badgeId;
+  const username = req.query.user || null;
+  const html = generateBadgeHtml(badgeId, username);
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.send(html);
+}
+
 // server/email.ts
 var emailLog = log.tag("Email");
 async function sendEmail(payload) {
@@ -2167,8 +2460,8 @@ async function sendWelcomeEmail(params) {
           <!-- Tier Preview -->
           <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:24px;">
             <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your Starting Tier</p>
-            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">Community Member</p>
-            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight \xB7 Rate to earn City Reviewer status</p>
+            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">New Member</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight \xB7 Rate to earn Regular status</p>
           </div>
 
           <!-- CTA -->
@@ -2197,7 +2490,7 @@ You've joined the ${city} ranking community as @${username}.
 2. After 3 days, unlock rating
 3. Build credibility \u2014 more ratings = higher vote weight
 
-Your starting tier: Community Member (0.10x vote weight)
+Your starting tier: New Member (0.10x vote weight)
 
 Start exploring: https://topranker.com
 
@@ -2220,10 +2513,211 @@ function isAdminEmail(email) {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
+// server/routes-admin.ts
+init_storage();
+
+// server/google-places.ts
+var API_BASE = "https://places.googleapis.com/v1";
+async function fetchPlacePhotos(googlePlaceId, limit = 5) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) {
+    log.tag("GooglePlaces").warn("No API key configured \u2014 skipping photo fetch");
+    return [];
+  }
+  const url = `${API_BASE}/places/${googlePlaceId}?fields=photos&key=${apiKey}`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      log.tag("GooglePlaces").error(
+        `Place details failed for ${googlePlaceId}: ${response.status} \u2014 ${body.slice(0, 200)}`
+      );
+      return [];
+    }
+    const data = await response.json();
+    if (!data.photos || data.photos.length === 0) {
+      log.tag("GooglePlaces").info(`No photos found for ${googlePlaceId}`);
+      return [];
+    }
+    return data.photos.slice(0, limit).map((p) => p.name);
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      log.tag("GooglePlaces").error(`Timeout fetching photos for ${googlePlaceId}`);
+    } else {
+      log.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
+    }
+    return [];
+  }
+}
+async function fetchAndStorePhotos(businessId, googlePlaceId) {
+  const photoRefs = await fetchPlacePhotos(googlePlaceId, 5);
+  if (photoRefs.length === 0) return 0;
+  const { insertBusinessPhotos: insertBusinessPhotos2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+  await insertBusinessPhotos2(
+    businessId,
+    photoRefs.map((ref, i) => ({
+      photoUrl: ref,
+      isHero: i === 0,
+      sortOrder: i
+    }))
+  );
+  log.tag("GooglePlaces").info(
+    `Stored ${photoRefs.length} photos for business ${businessId} (place: ${googlePlaceId})`
+  );
+  return photoRefs.length;
+}
+
+// server/routes-admin.ts
+function requireAuth(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
+function requireAdmin(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminRoutes(app2) {
+  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+      }
+      const { reviewSuggestion: reviewSuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const updated = await reviewSuggestion2(req.params.id, status, req.user.id);
+      if (!updated) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+      return res.json({ data: updated });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
+      await seedCities2();
+      return res.json({ data: { message: "Cities seeded successfully" } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const city = req.body.city;
+      const limit = Math.min(50, parseInt(req.body.limit) || 20);
+      const businesses2 = await getBusinessesWithoutPhotos(city, limit);
+      if (businesses2.length === 0) {
+        return res.json({ data: { message: "All businesses already have photos", fetched: 0 } });
+      }
+      let totalFetched = 0;
+      const results = [];
+      for (const biz of businesses2) {
+        const count6 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
+        totalFetched += count6;
+        results.push({ name: biz.name, photos: count6 });
+      }
+      return res.json({
+        data: {
+          message: `Fetched photos for ${businesses2.length} businesses`,
+          fetched: totalFetched,
+          results
+        }
+      });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/claims", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const data = await getPendingClaims();
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+      }
+      const updated = await reviewClaim(req.params.id, status, req.user.id);
+      if (!updated) return res.status(404).json({ error: "Claim not found" });
+      return res.json({ data: updated });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/claims/count", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const count6 = await getClaimCount();
+      return res.json({ data: { count: count6 } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/flags", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const data = await getPendingFlags();
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!["confirmed", "dismissed"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
+      }
+      const updated = await reviewFlag(req.params.id, status, req.user.id);
+      if (!updated) return res.status(404).json({ error: "Flag not found" });
+      return res.json({ data: updated });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/flags/count", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const count6 = await getFlagCount();
+      return res.json({ data: { count: count6 } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/members", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+      const data = await getAdminMemberList(limit);
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/admin/members/count", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const count6 = await getMemberCount();
+      return res.json({ data: { count: count6 } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+}
+
 // server/routes.ts
 init_storage();
 init_schema();
-function requireAuth(req, res, next) {
+function requireAuth2(req, res, next) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
@@ -2418,13 +2912,22 @@ async function registerRoutes(app2) {
       if (!business) {
         return res.status(404).json({ error: "Business not found" });
       }
-      const [{ ratings: ratings2 }, dishList, photos] = await Promise.all([
+      let [{ ratings: ratings3 }, dishList, photos] = await Promise.all([
         getBusinessRatings(business.id, 1, 20),
         getBusinessDishes(business.id, 5),
         getBusinessPhotos(business.id)
       ]);
+      if (photos.length === 0 && business.googlePlaceId) {
+        try {
+          const count6 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+          if (count6 > 0) {
+            photos = await getBusinessPhotos(business.id);
+          }
+        } catch {
+        }
+      }
       const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
-      return res.json({ data: { ...business, photoUrls, recentRatings: ratings2, dishes: dishList } });
+      return res.json({ data: { ...business, photoUrls, recentRatings: ratings3, dishes: dishList } });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -2435,6 +2938,73 @@ async function registerRoutes(app2) {
       const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page) || 20));
       const data = await getBusinessRatings(req.params.id, page, perPage);
       return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/businesses/:slug/claim", requireAuth2, async (req, res) => {
+    try {
+      const business = await getBusinessBySlug(req.params.slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { role, phone } = req.body;
+      if (!role || typeof role !== "string" || role.trim().length === 0) {
+        return res.status(400).json({ error: "Role is required" });
+      }
+      const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const existing = await getClaimByMemberAndBusiness2(req.user.id, business.id);
+      if (existing) {
+        return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
+      }
+      const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
+      const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
+      return res.json({ data: { id: claim.id, status: claim.status } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/businesses/:slug/dashboard", requireAuth2, async (req, res) => {
+    try {
+      const business = await getBusinessBySlug(req.params.slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { getRankHistory: getRankHistory2, getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const [{ ratings: ratings3, total }, rankHistory2, dishes2] = await Promise.all([
+        getBusinessRatings(business.id, 1, 10),
+        getRankHistory2(business.id, 49),
+        // 7 weeks
+        getBusinessDishes2(business.id, 5)
+      ]);
+      const totalRatings = business.totalRatings || 0;
+      const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
+      const rankPosition = business.rankPosition || 0;
+      const rankDelta = business.rankDelta || 0;
+      const returners = ratings3.filter((r) => r.wouldReturn === true).length;
+      const returnTotal = ratings3.filter((r) => r.wouldReturn !== null && r.wouldReturn !== void 0).length;
+      const wouldReturnPct = returnTotal > 0 ? Math.round(returners / returnTotal * 100) : 0;
+      const topDish = dishes2.length > 0 ? dishes2[0] : null;
+      const ratingTrend = rankHistory2.map((h) => h.score);
+      return res.json({
+        data: {
+          totalRatings,
+          avgScore,
+          rankPosition,
+          rankDelta,
+          wouldReturnPct,
+          topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+          ratingTrend,
+          recentRatings: ratings3.map((r) => ({
+            id: r.id,
+            user: r.memberName || "Anonymous",
+            score: parseFloat(r.rawScore),
+            tier: r.memberTier || "community",
+            note: r.note,
+            date: r.createdAt
+          }))
+        }
+      });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -2450,7 +3020,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/ratings", requireAuth, async (req, res) => {
+  app2.post("/api/ratings", requireAuth2, async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2472,12 +3042,12 @@ async function registerRoutes(app2) {
       return res.status(400).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me", requireAuth, async (req, res) => {
+  app2.get("/api/members/me", requireAuth2, async (req, res) => {
     try {
       const member = await getMemberById(req.user.id);
       if (!member) return res.status(404).json({ error: "Member not found" });
       const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
-      const { ratings: ratings2, total } = await getMemberRatings(member.id);
+      const { ratings: ratings3, total } = await getMemberRatings(member.id);
       const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       const seasonal = await getSeasonalRatingCounts2(member.id);
       const daysActive = Math.floor(
@@ -2501,7 +3071,7 @@ async function registerRoutes(app2) {
           daysActive,
           ratingVariance: parseFloat(member.ratingVariance),
           credibilityBreakdown: breakdown,
-          ratingHistory: ratings2,
+          ratingHistory: ratings3,
           ...seasonal
         }
       });
@@ -2563,7 +3133,7 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.get("/api/members/me/impact", requireAuth, async (req, res) => {
+  app2.get("/api/members/me/impact", requireAuth2, async (req, res) => {
     try {
       const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       const data = await getMemberImpact2(req.user.id);
@@ -2572,7 +3142,20 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.post("/api/category-suggestions", requireAuth, async (req, res) => {
+  app2.post("/api/members/me/push-token", requireAuth2, async (req, res) => {
+    try {
+      const { pushToken } = req.body;
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(400).json({ error: "pushToken is required" });
+      }
+      const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      await updatePushToken2(req.user.id, pushToken);
+      return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/category-suggestions", requireAuth2, async (req, res) => {
     try {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -2597,53 +3180,21 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
-  app2.patch("/api/admin/category-suggestions/:id", requireAuth, async (req, res) => {
-    try {
-      const email = req.user?.email;
-      if (!isAdminEmail(email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { status } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-      }
-      const { reviewSuggestion: reviewSuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const updated = await reviewSuggestion2(req.params.id, status, req.user.id);
-      if (!updated) {
-        return res.status(404).json({ error: "Suggestion not found" });
-      }
-      return res.json({ data: updated });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
   app2.get("/api/photos/proxy", handlePhotoProxy);
   app2.post("/api/webhook/deploy", handleWebhook);
   app2.get("/api/deploy/status", handleDeployStatus);
-  app2.post("/api/admin/seed-cities", requireAuth, async (req, res) => {
-    try {
-      const email = req.user?.email;
-      if (!isAdminEmail(email)) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
-      const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
-      await seedCities2();
-      return res.json({ data: { message: "Cities seeded successfully" } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  app2.get("/share/badge/:badgeId", handleBadgeShare);
   app2.get("/api/members/:id/badges", async (req, res) => {
     try {
       const memberId = req.params.id;
       const badges = await getMemberBadges(memberId);
       return res.json({ data: badges });
     } catch (err) {
-      log("error", "routes", `Failed to fetch member badges: ${err.message}`);
+      log.error(`Failed to fetch member badges: ${err.message}`);
       return res.status(500).json({ error: "Failed to fetch badges" });
     }
   });
-  app2.post("/api/badges/award", requireAuth, async (req, res) => {
+  app2.post("/api/badges/award", requireAuth2, async (req, res) => {
     try {
       const memberId = req.user.id;
       const { badgeId, badgeFamily } = req.body;
@@ -2653,21 +3204,32 @@ async function registerRoutes(app2) {
       const result = await awardBadge(memberId, badgeId, badgeFamily);
       return res.json({ data: result, awarded: result !== null });
     } catch (err) {
-      log("error", "routes", `Failed to award badge: ${err.message}`);
+      log.error(`Failed to award badge: ${err.message}`);
       return res.status(500).json({ error: "Failed to award badge" });
     }
   });
-  app2.get("/api/badges/earned", requireAuth, async (req, res) => {
+  app2.get("/api/badges/earned", requireAuth2, async (req, res) => {
     try {
       const memberId = req.user.id;
       const badgeIds = await getEarnedBadgeIds(memberId);
       const badgeCount = badgeIds.length;
       return res.json({ data: { badgeIds, badgeCount } });
     } catch (err) {
-      log("error", "routes", `Failed to fetch earned badges: ${err.message}`);
+      log.error(`Failed to fetch earned badges: ${err.message}`);
       return res.status(500).json({ error: "Failed to fetch earned badges" });
     }
   });
+  app2.get("/api/badges/leaderboard", async (req, res) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+      const data = await getBadgeLeaderboard(limit);
+      return res.json({ data });
+    } catch (err) {
+      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
+    }
+  });
+  registerAdminRoutes(app2);
   const httpServer = createServer(app2);
   return httpServer;
 }
