@@ -518,6 +518,19 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </View>
 
+      {/* Invite Friends */}
+      <TouchableOpacity
+        style={styles.adminLink}
+        onPress={() => router.push("/referral")}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Invite friends"
+      >
+        <Ionicons name="people-outline" size={14} color={BRAND.colors.amber} />
+        <Text style={styles.adminLinkText}>Invite Friends</Text>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+      </TouchableOpacity>
+
       {/* Admin Panel — for admins only */}
       {profile && ["rahul@topranker.com", "admin@topranker.com", "alex@demo.com"].includes(profile.email) && (
         <TouchableOpacity

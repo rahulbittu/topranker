@@ -167,6 +167,7 @@ function RootLayoutNav() {
       <Stack.Screen name="admin/index" options={{ headerShown: false }} />
       <Stack.Screen name="rate/[id]" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="saved" options={{ headerShown: false }} />
+      <Stack.Screen name="referral" options={{ headerShown: false }} />
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade" }} />
       <Stack.Screen name="auth/login" options={{ headerShown: false, presentation: "modal" }} />
