@@ -335,14 +335,27 @@ export async function submitCategorySuggestion(data: {
   return res.json();
 }
 
+export interface CategorySuggestionItem {
+  id: string;
+  name: string;
+  description: string;
+  vertical: string;
+  voteCount: number;
+  status: string;
+  createdAt: string;
+}
+
 export async function fetchCategorySuggestions() {
-  return apiFetch<Array<{
-    id: string;
-    name: string;
-    description: string;
-    vertical: string;
-    voteCount: number;
-    status: string;
-    createdAt: string;
-  }>>("/api/category-suggestions");
+  return apiFetch<CategorySuggestionItem[]>("/api/category-suggestions");
+}
+
+export async function reviewCategorySuggestion(id: string, status: "approved" | "rejected") {
+  const res = await fetch(`${getApiUrl()}/api/admin/category-suggestions/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Review failed: ${res.status}`);
+  return res.json();
 }

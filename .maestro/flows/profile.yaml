@@ -1,0 +1,11 @@
+# Flow: Profile tab navigation
+# Verifies the profile tab loads correctly
+# Owner: Carlos Ruiz (QA Lead)
+
+appId: com.topranker.app
+name: Profile Flow
+---
+- launchApp
+- tapOn: "Profile"
+- assertVisible:
+    id: "profile-tab"

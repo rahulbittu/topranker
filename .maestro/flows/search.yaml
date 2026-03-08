@@ -1,0 +1,12 @@
+# Flow: Search for a business
+# Verifies search input and results
+# Owner: Carlos Ruiz (QA Lead)
+
+appId: com.topranker.app
+name: Search Flow
+---
+- launchApp
+- tapOn: "Search"
+- tapOn: "Find the best of what you want..."
+- inputText: "BBQ"
+- assertVisible: "BBQ"

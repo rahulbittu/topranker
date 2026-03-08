@@ -9,10 +9,15 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
 import { isAdminEmail } from "@/shared/admin";
+import {
+  fetchCategorySuggestions, reviewCategorySuggestion,
+  type CategorySuggestionItem,
+} from "@/lib/api";
 
-type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users";
+type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
 
 function StatCard({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) {
   return (
@@ -53,6 +58,59 @@ function QueueItem({ title, subtitle, type, onApprove, onReject }: {
   );
 }
 
+const VERTICAL_COLORS: Record<string, string> = {
+  food: "#FF6B35",
+  services: "#2196F3",
+  wellness: "#4CAF50",
+  entertainment: "#9C27B0",
+  retail: "#FF9800",
+};
+
+function SuggestionCard({
+  item, onApprove, onReject, isPending,
+}: {
+  item: CategorySuggestionItem;
+  onApprove: () => void;
+  onReject: () => void;
+  isPending: boolean;
+}) {
+  const vertColor = VERTICAL_COLORS[item.vertical] || Colors.textTertiary;
+  return (
+    <View style={styles.suggestionCard}>
+      <View style={styles.suggestionHeader}>
+        <View style={[styles.verticalBadge, { backgroundColor: `${vertColor}15` }]}>
+          <Text style={[styles.verticalText, { color: vertColor }]}>
+            {item.vertical.toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.suggestionVotes}>{item.voteCount} vote{item.voteCount !== 1 ? "s" : ""}</Text>
+      </View>
+      <Text style={styles.suggestionName}>{item.name}</Text>
+      <Text style={styles.suggestionDesc}>{item.description}</Text>
+      <View style={styles.suggestionActions}>
+        <TouchableOpacity
+          style={[styles.suggestionApproveBtn, isPending && { opacity: 0.5 }]}
+          onPress={onApprove}
+          disabled={isPending}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+          <Text style={styles.suggestionApproveBtnText}>Approve</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.suggestionRejectBtn, isPending && { opacity: 0.5 }]}
+          onPress={onReject}
+          disabled={isPending}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="close" size={14} color={Colors.red} />
+          <Text style={styles.suggestionRejectBtnText}>Reject</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // Mock admin data
 const MOCK_QUEUE = [
   { id: "1", title: "Pecan Lodge", subtitle: "Claim by John Smith (Owner)", type: "claim" },
@@ -68,6 +126,21 @@ export default function AdminScreen() {
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [queue, setQueue] = useState(MOCK_QUEUE);
+  const queryClient = useQueryClient();
+
+  const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery({
+    queryKey: ["admin-category-suggestions"],
+    queryFn: fetchCategorySuggestions,
+    enabled: !!isAdmin,
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "approved" | "rejected" }) =>
+      reviewCategorySuggestion(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-category-suggestions"] });
+    },
+  });
 
   const isAdmin = user && isAdminEmail(user.email);
 
@@ -121,6 +194,7 @@ export default function AdminScreen() {
           ["flags", "flag-outline", "Flags"],
           ["challengers", "flash-outline", "Challengers"],
           ["users", "people-outline", "Users"],
+          ["suggestions", "bulb-outline", "Suggestions"],
         ] as const).map(([key, icon, label]) => (
           <TouchableOpacity
             key={key}
@@ -154,7 +228,32 @@ export default function AdminScreen() {
           </>
         )}
 
-        {queue.filter(q => {
+        {activeTab === "suggestions" && (
+          <>
+            <Text style={styles.sectionTitle}>Category Suggestions</Text>
+            {suggestionsLoading && (
+              <Text style={styles.emptySub}>Loading suggestions...</Text>
+            )}
+            {!suggestionsLoading && suggestions.filter(s => s.status === "pending").length === 0 && (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={48} color={Colors.green} />
+                <Text style={styles.emptyTitle}>No Pending Suggestions</Text>
+                <Text style={styles.emptySub}>All category suggestions have been reviewed</Text>
+              </View>
+            )}
+            {suggestions.filter(s => s.status === "pending").map(item => (
+              <SuggestionCard
+                key={item.id}
+                item={item}
+                onApprove={() => reviewMutation.mutate({ id: item.id, status: "approved" })}
+                onReject={() => reviewMutation.mutate({ id: item.id, status: "rejected" })}
+                isPending={reviewMutation.isPending}
+              />
+            ))}
+          </>
+        )}
+
+        {activeTab !== "suggestions" && queue.filter(q => {
           if (activeTab === "overview") return true;
           if (activeTab === "claims") return q.type === "claim";
           if (activeTab === "flags") return q.type === "flag";
@@ -278,4 +377,44 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   backBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
+
+  // Suggestion card styles
+  suggestionCard: {
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 16, gap: 8,
+  },
+  suggestionHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+  },
+  verticalBadge: {
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  verticalText: {
+    fontSize: 9, fontWeight: "800", fontFamily: "DMSans_800ExtraBold", letterSpacing: 0.5,
+  },
+  suggestionVotes: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  suggestionName: {
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  suggestionDesc: {
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18,
+  },
+  suggestionActions: {
+    flexDirection: "row", gap: 10, marginTop: 4,
+  },
+  suggestionApproveBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.green, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8,
+  },
+  suggestionApproveBtnText: {
+    fontSize: 12, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold",
+  },
+  suggestionRejectBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(239,68,68,0.1)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8,
+  },
+  suggestionRejectBtnText: {
+    fontSize: 12, fontWeight: "700", color: Colors.red, fontFamily: "DMSans_700Bold",
+  },
 });

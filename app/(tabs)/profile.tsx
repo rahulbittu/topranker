@@ -27,6 +27,8 @@ import { evaluateUserBadges, getUserBadgeCount, type UserBadgeContext } from "@/
 import { TypedIcon } from "@/components/TypedIcon";
 import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
+import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
+import { type EarnedBadge } from "@/lib/badges";
 
 const AMBER = BRAND.colors.amber;
 
@@ -35,6 +37,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { logout } = useAuth();
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
+  const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
 
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
@@ -70,6 +73,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   }, [refetch]);
 
   return (
+    <>
     <ScrollView
       style={[styles.container, { paddingTop: topPad }]}
       contentContainerStyle={[
@@ -343,6 +347,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             badges={badges}
             totalPossible={getUserBadgeCount()}
             title="Achievement Badges"
+            onBadgePress={setSelectedBadge}
           />
         );
       })()}
@@ -472,6 +477,13 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.deleteAccountText}>Delete Account</Text>
       </TouchableOpacity>
     </ScrollView>
+
+    <BadgeDetailModal
+      badge={selectedBadge}
+      userName={profile.displayName || profile.username || "TopRanker"}
+      onClose={() => setSelectedBadge(null)}
+    />
+  </>
   );
 }
 

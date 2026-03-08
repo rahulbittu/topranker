@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { TypedIcon } from "@/components/TypedIcon";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { pct as pctDim } from "@/lib/style-helpers";
 import {
   type EarnedBadge, type BadgeCategory,
   RARITY_COLORS, RARITY_LABELS,
@@ -43,7 +44,7 @@ export function BadgeSummary({
         <View style={s.summaryInfo}>
           <Text style={s.summaryLabel}>{label}</Text>
           <View style={s.summaryBarBg}>
-            <View style={[s.summaryBarFill, { width: `${pct}%` as any }]} />
+            <View style={[s.summaryBarFill, { width: pctDim(pct) }]} />
           </View>
           <Text style={s.summaryPct}>{pct}% complete</Text>
         </View>
@@ -58,7 +59,7 @@ export function BadgeSummary({
             <View style={s.nextBadgeInfo}>
               <Text style={s.nextBadgeName}>{next.badge.name}</Text>
               <View style={s.nextBadgeProgressBg}>
-                <View style={[s.nextBadgeProgressFill, { width: `${next.progress}%` as any, backgroundColor: next.badge.color }]} />
+                <View style={[s.nextBadgeProgressFill, { width: pctDim(next.progress), backgroundColor: next.badge.color }]} />
               </View>
             </View>
             <Text style={[s.nextBadgePct, { color: next.badge.color }]}>{Math.round(next.progress)}%</Text>
@@ -70,14 +71,17 @@ export function BadgeSummary({
 }
 
 // ── Single Badge Item ───────────────────────────────────────────
-export function BadgeItem({ item, compact }: { item: EarnedBadge; compact?: boolean }) {
+export function BadgeItem({ item, compact, onPress }: { item: EarnedBadge; compact?: boolean; onPress?: () => void }) {
   const isEarned = item.earnedAt > 0;
   const rarity = RARITY_COLORS[item.badge.rarity];
   const size = compact ? 44 : 56;
   const iconSize = compact ? 18 : 22;
 
+  const Wrapper = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
+
   return (
-    <View style={[s.badgeItem, compact && s.badgeItemCompact]}>
+    <Wrapper {...wrapperProps} style={[s.badgeItem, compact && s.badgeItemCompact]}>
       <View style={[
         s.badgeRing,
         {
@@ -122,7 +126,7 @@ export function BadgeItem({ item, compact }: { item: EarnedBadge; compact?: bool
       {!compact && !isEarned && item.progress > 0 && (
         <Text style={s.badgeProgress}>{Math.round(item.progress)}%</Text>
       )}
-    </View>
+    </Wrapper>
   );
 }
 
@@ -139,9 +143,11 @@ const CATEGORY_LABELS: Record<BadgeCategory, { label: string; icon: string }> = 
 export function BadgeCategorySection({
   category,
   badges,
+  onBadgePress,
 }: {
   category: BadgeCategory;
   badges: EarnedBadge[];
+  onBadgePress?: (badge: EarnedBadge) => void;
 }) {
   const catBadges = badges.filter(b => b.badge.category === category);
   if (catBadges.length === 0) return null;
@@ -158,7 +164,11 @@ export function BadgeCategorySection({
       </View>
       <View style={s.badgeGrid}>
         {catBadges.map(item => (
-          <BadgeItem key={item.badge.id} item={item} />
+          <BadgeItem
+            key={item.badge.id}
+            item={item}
+            onPress={onBadgePress ? () => onBadgePress(item) : undefined}
+          />
         ))}
       </View>
     </View>
@@ -170,18 +180,20 @@ export function BadgeGridFull({
   badges,
   totalPossible,
   title,
+  onBadgePress,
 }: {
   badges: EarnedBadge[];
   totalPossible: number;
   title: string;
+  onBadgePress?: (badge: EarnedBadge) => void;
 }) {
-  const categories: BadgeCategory[] = ["milestone", "streak", "explorer", "social", "special"];
+  const categories: BadgeCategory[] = ["milestone", "streak", "explorer", "social", "seasonal", "special"];
 
   return (
     <View style={s.fullGrid}>
       <BadgeSummary badges={badges} totalPossible={totalPossible} label={title} />
       {categories.map(cat => (
-        <BadgeCategorySection key={cat} category={cat} badges={badges} />
+        <BadgeCategorySection key={cat} category={cat} badges={badges} onBadgePress={onBadgePress} />
       ))}
     </View>
   );

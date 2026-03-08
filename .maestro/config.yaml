@@ -1,0 +1,8 @@
+# TopRanker Maestro E2E Configuration
+# Owner: Carlos Ruiz (QA Lead)
+#
+# Maestro was selected over Detox for Expo Go compatibility
+# (see docs/evaluations/E2E-FRAMEWORK-EVAL.md)
+
+appId: com.topranker.app
+name: TopRanker E2E
