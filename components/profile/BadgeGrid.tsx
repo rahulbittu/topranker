@@ -71,14 +71,17 @@ export function BadgeSummary({
 }
 
 // ── Single Badge Item ───────────────────────────────────────────
-export function BadgeItem({ item, compact }: { item: EarnedBadge; compact?: boolean }) {
+export function BadgeItem({ item, compact, onPress }: { item: EarnedBadge; compact?: boolean; onPress?: () => void }) {
   const isEarned = item.earnedAt > 0;
   const rarity = RARITY_COLORS[item.badge.rarity];
   const size = compact ? 44 : 56;
   const iconSize = compact ? 18 : 22;
 
+  const Wrapper = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { onPress, activeOpacity: 0.7 } : {};
+
   return (
-    <View style={[s.badgeItem, compact && s.badgeItemCompact]}>
+    <Wrapper {...wrapperProps} style={[s.badgeItem, compact && s.badgeItemCompact]}>
       <View style={[
         s.badgeRing,
         {
@@ -123,7 +126,7 @@ export function BadgeItem({ item, compact }: { item: EarnedBadge; compact?: bool
       {!compact && !isEarned && item.progress > 0 && (
         <Text style={s.badgeProgress}>{Math.round(item.progress)}%</Text>
       )}
-    </View>
+    </Wrapper>
   );
 }
 
@@ -140,9 +143,11 @@ const CATEGORY_LABELS: Record<BadgeCategory, { label: string; icon: string }> = 
 export function BadgeCategorySection({
   category,
   badges,
+  onBadgePress,
 }: {
   category: BadgeCategory;
   badges: EarnedBadge[];
+  onBadgePress?: (badge: EarnedBadge) => void;
 }) {
   const catBadges = badges.filter(b => b.badge.category === category);
   if (catBadges.length === 0) return null;
@@ -159,7 +164,11 @@ export function BadgeCategorySection({
       </View>
       <View style={s.badgeGrid}>
         {catBadges.map(item => (
-          <BadgeItem key={item.badge.id} item={item} />
+          <BadgeItem
+            key={item.badge.id}
+            item={item}
+            onPress={onBadgePress ? () => onBadgePress(item) : undefined}
+          />
         ))}
       </View>
     </View>
@@ -171,18 +180,20 @@ export function BadgeGridFull({
   badges,
   totalPossible,
   title,
+  onBadgePress,
 }: {
   badges: EarnedBadge[];
   totalPossible: number;
   title: string;
+  onBadgePress?: (badge: EarnedBadge) => void;
 }) {
-  const categories: BadgeCategory[] = ["milestone", "streak", "explorer", "social", "special"];
+  const categories: BadgeCategory[] = ["milestone", "streak", "explorer", "social", "seasonal", "special"];
 
   return (
     <View style={s.fullGrid}>
       <BadgeSummary badges={badges} totalPossible={totalPossible} label={title} />
       {categories.map(cat => (
-        <BadgeCategorySection key={cat} category={cat} badges={badges} />
+        <BadgeCategorySection key={cat} category={cat} badges={badges} onBadgePress={onBadgePress} />
       ))}
     </View>
   );

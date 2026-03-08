@@ -4,6 +4,20 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 78 — Badge Detail Modal + Admin Category Review UI (March 8, 2026)
+#### Added
+- `components/badges/BadgeDetailModal.tsx` — Full badge detail view with progress bar, share button, rarity display
+- Admin "Suggestions" tab in admin panel — fetch, display, approve/reject category suggestions
+- `reviewCategorySuggestion()` API client function for admin PATCH endpoint
+- `CategorySuggestionItem` exported type for reuse
+- 7 new tests for admin category review + badge detail (total: 189 across 15 files)
+
+#### Changed
+- `BadgeItem` now accepts `onPress` prop — tappable badges in profile grid
+- `BadgeGridFull` and `BadgeCategorySection` forward `onBadgePress` handler
+- Profile page integrates `BadgeDetailModal` with `selectedBadge` state
+- Added "seasonal" to `BadgeGridFull` category list (was missing)
+
 ### Sprint 77 — Badge Sharing + Streak Toast Triggers + Maestro E2E (March 8, 2026)
 #### Added
 - `lib/badge-sharing.ts` — `shareBadgeCard()` utility using react-native-view-shot + expo-sharing
