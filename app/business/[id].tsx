@@ -645,10 +645,10 @@ export default function BusinessProfileScreen() {
             </View>
           )}
 
-          {/* Rate Button — gated per PRD: active after 7+ days */}
+          {/* Rate Button — gated: active after 3+ days */}
           {user ? (() => {
             const memberDays = profile?.daysActive ?? 0;
-            const canRate = memberDays >= 7;
+            const canRate = memberDays >= 3;
             return canRate ? (
               <TouchableOpacity
                 style={styles.rateButton}
@@ -665,7 +665,7 @@ export default function BusinessProfileScreen() {
               <View style={styles.rateGated}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textTertiary} />
                 <Text style={styles.rateGatedText}>Build your reviewer credibility to rate this business.</Text>
-                <Text style={styles.rateGatedSubtext}>{7 - memberDays} more days active to unlock rating.</Text>
+                <Text style={styles.rateGatedSubtext}>{3 - memberDays} more days active to unlock rating.</Text>
               </View>
             );
           })() : (
