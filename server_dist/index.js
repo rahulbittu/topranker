@@ -14,10 +14,13 @@ __export(schema_exports, {
   businessClaims: () => businessClaims,
   businessPhotos: () => businessPhotos,
   businesses: () => businesses,
+  categories: () => categories,
+  categorySuggestions: () => categorySuggestions,
   challengers: () => challengers,
   credibilityPenalties: () => credibilityPenalties,
   dishVotes: () => dishVotes,
   dishes: () => dishes,
+  insertCategorySuggestionSchema: () => insertCategorySuggestionSchema,
   insertMemberSchema: () => insertMemberSchema,
   insertRatingSchema: () => insertRatingSchema,
   memberBadges: () => memberBadges,
@@ -43,7 +46,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, insertMemberSchema, insertRatingSchema;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -296,6 +299,29 @@ var init_schema = __esm({
       severity: text("severity").notNull(),
       appliedAt: timestamp("applied_at").notNull().defaultNow()
     });
+    categories = pgTable("categories", {
+      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+      slug: text("slug").unique().notNull(),
+      label: text("label").notNull(),
+      emoji: text("emoji").notNull(),
+      vertical: text("vertical").notNull(),
+      atAGlanceFields: jsonb("at_a_glance_fields").notNull().default(sql`'[]'::jsonb`),
+      scoringHints: jsonb("scoring_hints").notNull().default(sql`'[]'::jsonb`),
+      isActive: boolean("is_active").notNull().default(false),
+      createdAt: timestamp("created_at").notNull().defaultNow()
+    });
+    categorySuggestions = pgTable("category_suggestions", {
+      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+      name: text("name").notNull(),
+      description: text("description").notNull(),
+      vertical: text("vertical").notNull(),
+      suggestedBy: varchar("suggested_by").notNull().references(() => members.id),
+      status: text("status").notNull().default("pending"),
+      voteCount: integer("vote_count").notNull().default(1),
+      reviewedBy: varchar("reviewed_by").references(() => members.id),
+      reviewedAt: timestamp("reviewed_at"),
+      createdAt: timestamp("created_at").notNull().defaultNow()
+    });
     insertMemberSchema = createInsertSchema(members).pick({
       displayName: true,
       username: true,
@@ -323,6 +349,11 @@ var init_schema = __esm({
       noNotableDish: z.boolean().optional(),
       qrScanId: z.string().optional()
     });
+    insertCategorySuggestionSchema = z.object({
+      name: z.string().min(2).max(50),
+      description: z.string().min(10).max(200),
+      vertical: z.enum(["food", "services", "wellness", "entertainment", "retail"])
+    });
   }
 });
 
@@ -349,39 +380,18 @@ var init_db = __esm({
   }
 });
 
-// server/storage.ts
-var storage_exports = {};
-__export(storage_exports, {
-  createMember: () => createMember,
-  getActiveChallenges: () => getActiveChallenges,
-  getAllCategories: () => getAllCategories,
-  getBusinessById: () => getBusinessById,
-  getBusinessBySlug: () => getBusinessBySlug,
-  getBusinessDishes: () => getBusinessDishes,
-  getBusinessPhotos: () => getBusinessPhotos,
-  getBusinessPhotosMap: () => getBusinessPhotosMap,
-  getBusinessRatings: () => getBusinessRatings,
-  getLeaderboard: () => getLeaderboard,
-  getMemberByAuthId: () => getMemberByAuthId,
-  getMemberByEmail: () => getMemberByEmail,
-  getMemberById: () => getMemberById,
-  getMemberByUsername: () => getMemberByUsername,
-  getMemberRatings: () => getMemberRatings,
-  recalculateBusinessScore: () => recalculateBusinessScore,
-  recalculateCredibilityScore: () => recalculateCredibilityScore,
-  recalculateRanks: () => recalculateRanks,
-  searchBusinesses: () => searchBusinesses,
-  searchDishes: () => searchDishes,
-  submitRating: () => submitRating,
-  updateChallengerVotes: () => updateChallengerVotes,
-  updateMemberStats: () => updateMemberStats
-});
-import { eq, and, desc, asc, sql as sql2, count, ne, gte } from "drizzle-orm";
+// server/storage/helpers.ts
 function getVoteWeight(credibilityScore) {
   if (credibilityScore >= 600) return 1;
   if (credibilityScore >= 300) return 0.7;
   if (credibilityScore >= 100) return 0.35;
   return 0.1;
+}
+function getCredibilityTier(score) {
+  if (score >= 600) return "top";
+  if (score >= 300) return "trusted";
+  if (score >= 100) return "city";
+  return "community";
 }
 function getTierFromScore(score, totalRatings, totalCategories, daysActive, ratingVariance, activeFlagCount) {
   if (score >= 600 && totalRatings >= 80 && totalCategories >= 4 && daysActive >= 90 && ratingVariance >= 1 && activeFlagCount === 0) return "top";
@@ -396,6 +406,15 @@ function getTemporalMultiplier(ratingAgeDays) {
   if (ratingAgeDays <= 365) return 0.45;
   return 0.25;
 }
+var init_helpers = __esm({
+  "server/storage/helpers.ts"() {
+    "use strict";
+    init_db();
+  }
+});
+
+// server/storage/members.ts
+import { eq, and, ne, sql as sql2, count } from "drizzle-orm";
 async function getMemberById(id) {
   const [member] = await db.select().from(members).where(eq(members.id, id));
   return member;
@@ -415,360 +434,6 @@ async function getMemberByAuthId(authId) {
 async function createMember(data) {
   const [member] = await db.insert(members).values(data).returning();
   return member;
-}
-async function getLeaderboard(city, category, limit = 50) {
-  return db.select().from(businesses).where(
-    and(
-      eq(businesses.city, city),
-      eq(businesses.category, category),
-      eq(businesses.isActive, true)
-    )
-  ).orderBy(asc(businesses.rankPosition)).limit(limit);
-}
-async function getBusinessBySlug(slug) {
-  const [business] = await db.select().from(businesses).where(eq(businesses.slug, slug));
-  return business;
-}
-async function getBusinessById(id) {
-  const [business] = await db.select().from(businesses).where(eq(businesses.id, id));
-  return business;
-}
-async function getBusinessRatings(businessId, page = 1, perPage = 20) {
-  const offset = (page - 1) * perPage;
-  const ratingsResult = await db.select({
-    id: ratings.id,
-    memberId: ratings.memberId,
-    businessId: ratings.businessId,
-    q1Score: ratings.q1Score,
-    q2Score: ratings.q2Score,
-    q3Score: ratings.q3Score,
-    wouldReturn: ratings.wouldReturn,
-    note: ratings.note,
-    rawScore: ratings.rawScore,
-    weight: ratings.weight,
-    weightedScore: ratings.weightedScore,
-    isFlagged: ratings.isFlagged,
-    autoFlagged: ratings.autoFlagged,
-    flagReason: ratings.flagReason,
-    flagProbability: ratings.flagProbability,
-    source: ratings.source,
-    createdAt: ratings.createdAt,
-    memberName: members.displayName,
-    memberTier: members.credibilityTier,
-    memberAvatarUrl: members.avatarUrl
-  }).from(ratings).innerJoin(members, eq(ratings.memberId, members.id)).where(and(eq(ratings.businessId, businessId), eq(ratings.isFlagged, false))).orderBy(desc(ratings.createdAt)).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count() }).from(ratings).where(and(eq(ratings.businessId, businessId), eq(ratings.isFlagged, false)));
-  return { ratings: ratingsResult, total: totalResult.count };
-}
-async function getMemberRatings(memberId, page = 1, perPage = 20) {
-  const offset = (page - 1) * perPage;
-  const ratingsResult = await db.select({
-    id: ratings.id,
-    memberId: ratings.memberId,
-    businessId: ratings.businessId,
-    q1Score: ratings.q1Score,
-    q2Score: ratings.q2Score,
-    q3Score: ratings.q3Score,
-    wouldReturn: ratings.wouldReturn,
-    note: ratings.note,
-    rawScore: ratings.rawScore,
-    weight: ratings.weight,
-    weightedScore: ratings.weightedScore,
-    isFlagged: ratings.isFlagged,
-    autoFlagged: ratings.autoFlagged,
-    flagReason: ratings.flagReason,
-    flagProbability: ratings.flagProbability,
-    source: ratings.source,
-    createdAt: ratings.createdAt,
-    businessName: businesses.name,
-    businessSlug: businesses.slug
-  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(desc(ratings.createdAt)).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count() }).from(ratings).where(eq(ratings.memberId, memberId));
-  return { ratings: ratingsResult, total: totalResult.count };
-}
-async function getActiveChallenges(city, category) {
-  const challengerRows = await db.select().from(challengers).where(
-    and(
-      eq(challengers.status, "active"),
-      eq(challengers.city, city),
-      ...category ? [eq(challengers.category, category)] : []
-    )
-  );
-  if (challengerRows.length === 0) return [];
-  const bizIds = /* @__PURE__ */ new Set();
-  for (const c of challengerRows) {
-    bizIds.add(c.challengerId);
-    bizIds.add(c.defenderId);
-  }
-  const bizIdArr = Array.from(bizIds);
-  const bizRows = await db.select().from(businesses).where(sql2`${businesses.id} = ANY(ARRAY[${sql2.join(bizIdArr.map((id) => sql2`${id}`), sql2`,`)}]::text[])`);
-  const bizMap = new Map(bizRows.map((b) => [b.id, b]));
-  return challengerRows.map((c) => ({
-    ...c,
-    challengerBusiness: bizMap.get(c.challengerId),
-    defenderBusiness: bizMap.get(c.defenderId)
-  }));
-}
-async function getBusinessDishes(businessId, limit = 5) {
-  return db.select().from(dishes).where(and(eq(dishes.businessId, businessId), eq(dishes.isActive, true))).orderBy(desc(dishes.voteCount)).limit(limit);
-}
-async function searchDishes(businessId, query) {
-  const normalized = query.toLowerCase().trim();
-  if (normalized.length < 2) {
-    return getBusinessDishes(businessId, 5);
-  }
-  let results = await db.select().from(dishes).where(
-    and(
-      eq(dishes.businessId, businessId),
-      eq(dishes.isActive, true),
-      sql2`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
-    )
-  ).orderBy(desc(dishes.voteCount)).limit(5);
-  if (results.length < 3) {
-    const containsResults = await db.select().from(dishes).where(
-      and(
-        eq(dishes.businessId, businessId),
-        eq(dishes.isActive, true),
-        sql2`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
-      )
-    ).orderBy(desc(dishes.voteCount)).limit(5);
-    const existingIds = new Set(results.map((r) => r.id));
-    for (const r of containsResults) {
-      if (!existingIds.has(r.id)) {
-        results.push(r);
-      }
-    }
-  }
-  return results.slice(0, 5);
-}
-async function detectAnomalies(member, business, rawScore) {
-  const flags = [];
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
-  const [recentCount] = await db.select({ count: count() }).from(ratings).where(
-    and(
-      eq(ratings.memberId, member.id),
-      gte(ratings.createdAt, oneHourAgo)
-    )
-  );
-  if (recentCount.count > 5) flags.push("burst_velocity");
-  if (member.totalRatings >= 10) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq(ratings.memberId, member.id));
-    const fiveStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) >= 4.8).length;
-    if (fiveStarCount / memberRatings.length > 0.9) flags.push("perfect_score_pattern");
-  }
-  if (rawScore <= 1.5 && member.totalRatings >= 5) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq(ratings.memberId, member.id));
-    const oneStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) <= 1.5).length;
-    if (oneStarCount / memberRatings.length > 0.6) flags.push("one_star_bomber");
-  }
-  if (member.totalRatings >= 8 && member.distinctBusinesses <= 2) {
-    flags.push("single_business_fixation");
-  }
-  const accountAgeDays = Math.floor(
-    (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
-  );
-  if (accountAgeDays < 7 && member.totalRatings > 15) {
-    flags.push("new_account_high_volume");
-  }
-  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  const [newAcctRatings] = await db.select({ count: count() }).from(ratings).innerJoin(members, eq(ratings.memberId, members.id)).where(
-    and(
-      eq(ratings.businessId, business.id),
-      gte(ratings.createdAt, oneDayAgo),
-      gte(members.joinedAt, thirtyDaysAgo)
-    )
-  );
-  if (newAcctRatings.count > 10) {
-    flags.push("coordinated_new_account_burst");
-  }
-  return flags;
-}
-async function submitRating(memberId, data) {
-  const member = await getMemberById(memberId);
-  if (!member) throw new Error("Member not found");
-  if (member.isBanned) throw new Error("Account suspended");
-  const business = await getBusinessById(data.businessId);
-  if (!business) throw new Error("Business not found");
-  const daysActive = Math.floor(
-    (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
-  );
-  if (daysActive < 7) throw new Error("Account must be 7+ days old to rate");
-  const today = /* @__PURE__ */ new Date();
-  today.setHours(0, 0, 0, 0);
-  const [existingToday] = await db.select({ count: count() }).from(ratings).where(
-    and(
-      eq(ratings.memberId, memberId),
-      eq(ratings.businessId, data.businessId),
-      gte(ratings.createdAt, today)
-    )
-  );
-  if (existingToday.count > 0) throw new Error("Already rated today. Come back tomorrow.");
-  const rawScore = (data.q1Score + data.q2Score + data.q3Score) / 3;
-  const anomalyFlags = await detectAnomalies(member, business, rawScore);
-  const autoFlagged = anomalyFlags.length > 0;
-  const weight = getVoteWeight(member.credibilityScore);
-  const weighted = rawScore * weight;
-  const source = data.qrScanId ? "qr_scan" : "app";
-  const [rating] = await db.insert(ratings).values({
-    memberId,
-    businessId: data.businessId,
-    q1Score: data.q1Score,
-    q2Score: data.q2Score,
-    q3Score: data.q3Score,
-    wouldReturn: data.wouldReturn,
-    note: data.note || null,
-    rawScore: rawScore.toFixed(2),
-    weight: weight.toFixed(4),
-    weightedScore: weighted.toFixed(4),
-    autoFlagged,
-    flagReason: autoFlagged ? anomalyFlags.join(",") : null,
-    source
-  }).returning();
-  let dishCreated = false;
-  if (data.dishId) {
-    await db.insert(dishVotes).values({
-      ratingId: rating.id,
-      dishId: data.dishId,
-      memberId,
-      businessId: data.businessId
-    });
-    await db.update(dishes).set({ voteCount: sql2`${dishes.voteCount} + 1` }).where(eq(dishes.id, data.dishId));
-  } else if (data.newDishName) {
-    const normalized = data.newDishName.toLowerCase().trim();
-    const words = normalized.split(/\s+/);
-    if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
-      const existing = await db.select().from(dishes).where(
-        and(
-          eq(dishes.businessId, data.businessId),
-          eq(dishes.nameNormalized, normalized)
-        )
-      );
-      let dishId;
-      if (existing.length > 0) {
-        dishId = existing[0].id;
-        await db.update(dishes).set({ voteCount: sql2`${dishes.voteCount} + 1` }).where(eq(dishes.id, dishId));
-      } else {
-        const [newDish] = await db.insert(dishes).values({
-          businessId: data.businessId,
-          name: data.newDishName.trim(),
-          nameNormalized: normalized,
-          suggestedBy: "community",
-          voteCount: 1
-        }).returning();
-        dishId = newDish.id;
-        dishCreated = true;
-      }
-      await db.insert(dishVotes).values({
-        ratingId: rating.id,
-        dishId,
-        memberId,
-        businessId: data.businessId
-      });
-    }
-  } else if (data.noNotableDish) {
-    await db.insert(dishVotes).values({
-      ratingId: rating.id,
-      dishId: null,
-      memberId,
-      businessId: data.businessId,
-      noNotableDish: true
-    });
-  }
-  await updateMemberStats(memberId);
-  const { score: newScore, tier: newTier } = await recalculateCredibilityScore(memberId);
-  const oldTier = member.credibilityTier;
-  const tierUpgraded = newTier !== oldTier;
-  const prevRank = business.rankPosition;
-  await recalculateBusinessScore(data.businessId);
-  await recalculateRanks(business.city, business.category);
-  await updateChallengerVotes(data.businessId, weighted);
-  if (data.qrScanId) {
-    const { qrScans: qrScans2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    await db.update(qrScans2).set({ converted: true }).where(eq(qrScans2.id, data.qrScanId));
-  }
-  const updatedBusiness = await getBusinessById(data.businessId);
-  const newRank = updatedBusiness?.rankPosition ?? null;
-  const rankChanged = prevRank !== newRank;
-  let rankDirection = "same";
-  if (prevRank && newRank) {
-    if (newRank < prevRank) rankDirection = "up";
-    else if (newRank > prevRank) rankDirection = "down";
-  }
-  return {
-    rating,
-    newRank,
-    prevRank: prevRank ?? null,
-    rankChanged,
-    rankDirection,
-    newCredibilityScore: newScore,
-    tierUpgraded,
-    newTier,
-    dishCreated
-  };
-}
-async function recalculateBusinessScore(businessId) {
-  const allRatings = await db.select({
-    rawScore: ratings.rawScore,
-    weight: ratings.weight,
-    createdAt: ratings.createdAt,
-    isFlagged: ratings.isFlagged,
-    autoFlagged: ratings.autoFlagged
-  }).from(ratings).where(
-    and(
-      eq(ratings.businessId, businessId),
-      eq(ratings.isFlagged, false),
-      eq(ratings.autoFlagged, false)
-    )
-  );
-  if (allRatings.length === 0) {
-    await db.update(businesses).set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: /* @__PURE__ */ new Date() }).where(eq(businesses.id, businessId));
-    return 0;
-  }
-  let totalWeightedScore = 0;
-  let totalEffectiveWeight = 0;
-  let rawSum = 0;
-  for (const r of allRatings) {
-    const ageDays = Math.floor(
-      (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
-    );
-    const temporal = getTemporalMultiplier(ageDays);
-    const effectiveWeight = parseFloat(r.weight) * temporal;
-    totalWeightedScore += parseFloat(r.rawScore) * effectiveWeight;
-    totalEffectiveWeight += effectiveWeight;
-    rawSum += parseFloat(r.rawScore);
-  }
-  const score = totalEffectiveWeight > 0 ? Math.round(totalWeightedScore / totalEffectiveWeight * 1e3) / 1e3 : 0;
-  const rawAvg = rawSum / allRatings.length;
-  await db.update(businesses).set({
-    weightedScore: score.toFixed(3),
-    rawAvgScore: rawAvg.toFixed(2),
-    totalRatings: allRatings.length,
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq(businesses.id, businessId));
-  return score;
-}
-async function recalculateRanks(city, category) {
-  const allBusinesses = await db.select({
-    id: businesses.id,
-    rankPosition: businesses.rankPosition
-  }).from(businesses).where(
-    and(
-      eq(businesses.city, city),
-      eq(businesses.category, category),
-      eq(businesses.isActive, true)
-    )
-  ).orderBy(desc(businesses.weightedScore));
-  for (let i = 0; i < allBusinesses.length; i++) {
-    const oldRank = allBusinesses[i].rankPosition;
-    const newRank = i + 1;
-    const delta = oldRank ? oldRank - newRank : 0;
-    await db.update(businesses).set({
-      rankPosition: newRank,
-      rankDelta: delta,
-      prevRankPosition: oldRank
-    }).where(eq(businesses.id, allBusinesses[i].id));
-  }
 }
 async function updateMemberStats(memberId) {
   const [ratingCount] = await db.select({ count: count() }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
@@ -860,47 +525,190 @@ async function recalculateCredibilityScore(memberId) {
     }
   };
 }
-async function updateChallengerVotes(businessId, weightedScore) {
-  const asChallenger = await db.select().from(challengers).where(
-    and(eq(challengers.challengerId, businessId), eq(challengers.status, "active"))
-  );
-  for (const c of asChallenger) {
-    const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
-    await db.update(challengers).set({
-      challengerWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql2`${challengers.totalVotes} + 1`
-    }).where(eq(challengers.id, c.id));
+async function getMemberRatings(memberId, page = 1, perPage = 20) {
+  const offset = (page - 1) * perPage;
+  const ratingsResult = await db.select({
+    id: ratings.id,
+    memberId: ratings.memberId,
+    businessId: ratings.businessId,
+    q1Score: ratings.q1Score,
+    q2Score: ratings.q2Score,
+    q3Score: ratings.q3Score,
+    wouldReturn: ratings.wouldReturn,
+    note: ratings.note,
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    weightedScore: ratings.weightedScore,
+    isFlagged: ratings.isFlagged,
+    autoFlagged: ratings.autoFlagged,
+    flagReason: ratings.flagReason,
+    flagProbability: ratings.flagProbability,
+    source: ratings.source,
+    createdAt: ratings.createdAt,
+    businessName: businesses.name,
+    businessSlug: businesses.slug
+  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(sql2`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count() }).from(ratings).where(eq(ratings.memberId, memberId));
+  return { ratings: ratingsResult, total: totalResult.count };
+}
+async function getSeasonalRatingCounts(memberId) {
+  const result = await db.select({
+    month: sql2`EXTRACT(MONTH FROM ${ratings.createdAt})::int`,
+    cnt: count()
+  }).from(ratings).where(
+    and(
+      eq(ratings.memberId, memberId),
+      eq(ratings.isFlagged, false)
+    )
+  ).groupBy(sql2`EXTRACT(MONTH FROM ${ratings.createdAt})`);
+  let spring = 0, summer = 0, fall = 0, winter = 0;
+  for (const row of result) {
+    const c = Number(row.cnt);
+    if ([3, 4, 5].includes(row.month)) spring += c;
+    else if ([6, 7, 8].includes(row.month)) summer += c;
+    else if ([9, 10, 11].includes(row.month)) fall += c;
+    else winter += c;
   }
-  const asDefender = await db.select().from(challengers).where(
-    and(eq(challengers.defenderId, businessId), eq(challengers.status, "active"))
-  );
-  for (const c of asDefender) {
-    const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
-    await db.update(challengers).set({
-      defenderWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql2`${challengers.totalVotes} + 1`
-    }).where(eq(challengers.id, c.id));
+  return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
+}
+async function getMemberImpact(memberId) {
+  const memberRatings = await db.select({
+    businessId: ratings.businessId,
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    rankDelta: businesses.rankDelta
+  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(
+    and(
+      eq(ratings.memberId, memberId),
+      eq(ratings.isFlagged, false)
+    )
+  ).groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
+  const movedUp = memberRatings.filter((r) => r.rankDelta > 0);
+  return {
+    businessesMovedUp: movedUp.length,
+    topContributions: movedUp.sort((a, b) => b.rankDelta - a.rankDelta).slice(0, 5).map((r) => ({ name: r.businessName, slug: r.businessSlug, rankChange: r.rankDelta }))
+  };
+}
+var init_members = __esm({
+  "server/storage/members.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    init_helpers();
   }
+});
+
+// server/storage/businesses.ts
+import { eq as eq2, and as and2, desc, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
+async function getLeaderboard(city, category, limit = 50) {
+  return db.select().from(businesses).where(
+    and2(
+      eq2(businesses.city, city),
+      eq2(businesses.category, category),
+      eq2(businesses.isActive, true)
+    )
+  ).orderBy(asc(businesses.rankPosition)).limit(limit);
+}
+async function getTrendingBusinesses(city, limit = 3) {
+  return db.select().from(businesses).where(
+    and2(
+      eq2(businesses.city, city),
+      eq2(businesses.isActive, true),
+      sql3`${businesses.rankDelta} > 0`
+    )
+  ).orderBy(desc(businesses.rankDelta)).limit(limit);
+}
+async function getBusinessBySlug(slug) {
+  const [business] = await db.select().from(businesses).where(eq2(businesses.slug, slug));
+  return business;
+}
+async function getBusinessById(id) {
+  const [business] = await db.select().from(businesses).where(eq2(businesses.id, id));
+  return business;
 }
 async function searchBusinesses(query, city, category, limit = 20) {
-  const q = "%" + query.toLowerCase() + "%";
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
   return db.select().from(businesses).where(
-    and(
-      eq(businesses.city, city),
-      eq(businesses.isActive, true),
-      query ? sql2`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})` : void 0,
-      ...category ? [eq(businesses.category, category)] : []
+    and2(
+      eq2(businesses.city, city),
+      eq2(businesses.isActive, true),
+      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})` : void 0,
+      ...category ? [eq2(businesses.category, category)] : []
     )
   ).orderBy(desc(businesses.weightedScore)).limit(limit);
 }
 async function getAllCategories(city) {
   const rows = await db.select({
     category: businesses.category
-  }).from(businesses).where(and(eq(businesses.city, city), eq(businesses.isActive, true))).groupBy(businesses.category);
+  }).from(businesses).where(and2(eq2(businesses.city, city), eq2(businesses.isActive, true))).groupBy(businesses.category);
   return rows.map((r) => r.category);
 }
+async function recalculateBusinessScore(businessId) {
+  const allRatings = await db.select({
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    createdAt: ratings.createdAt,
+    isFlagged: ratings.isFlagged,
+    autoFlagged: ratings.autoFlagged
+  }).from(ratings).where(
+    and2(
+      eq2(ratings.businessId, businessId),
+      eq2(ratings.isFlagged, false),
+      eq2(ratings.autoFlagged, false)
+    )
+  );
+  if (allRatings.length === 0) {
+    await db.update(businesses).set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(businesses.id, businessId));
+    return 0;
+  }
+  let totalWeightedScore = 0;
+  let totalEffectiveWeight = 0;
+  let rawSum = 0;
+  for (const r of allRatings) {
+    const ageDays = Math.floor(
+      (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
+    );
+    const temporal = getTemporalMultiplier(ageDays);
+    const effectiveWeight = parseFloat(r.weight) * temporal;
+    totalWeightedScore += parseFloat(r.rawScore) * effectiveWeight;
+    totalEffectiveWeight += effectiveWeight;
+    rawSum += parseFloat(r.rawScore);
+  }
+  const score = totalEffectiveWeight > 0 ? Math.round(totalWeightedScore / totalEffectiveWeight * 1e3) / 1e3 : 0;
+  const rawAvg = rawSum / allRatings.length;
+  await db.update(businesses).set({
+    weightedScore: score.toFixed(3),
+    rawAvgScore: rawAvg.toFixed(2),
+    totalRatings: allRatings.length,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq2(businesses.id, businessId));
+  return score;
+}
+async function recalculateRanks(city, category) {
+  const allBusinesses = await db.select({
+    id: businesses.id,
+    rankPosition: businesses.rankPosition
+  }).from(businesses).where(
+    and2(
+      eq2(businesses.city, city),
+      eq2(businesses.category, category),
+      eq2(businesses.isActive, true)
+    )
+  ).orderBy(desc(businesses.weightedScore));
+  for (let i = 0; i < allBusinesses.length; i++) {
+    const oldRank = allBusinesses[i].rankPosition;
+    const newRank = i + 1;
+    const delta = oldRank ? oldRank - newRank : 0;
+    await db.update(businesses).set({
+      rankPosition: newRank,
+      rankDelta: delta,
+      prevRankPosition: oldRank
+    }).where(eq2(businesses.id, allBusinesses[i].id));
+  }
+}
 async function getBusinessPhotos(businessId) {
-  const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
+  const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq2(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
   return rows.map((r) => r.photoUrl);
 }
 async function getBusinessPhotosMap(businessIds) {
@@ -909,7 +717,7 @@ async function getBusinessPhotosMap(businessIds) {
     businessId: businessPhotos.businessId,
     photoUrl: businessPhotos.photoUrl,
     sortOrder: businessPhotos.sortOrder
-  }).from(businessPhotos).where(sql2`${businessPhotos.businessId} = ANY(ARRAY[${sql2.join(businessIds.map((id) => sql2`${id}`), sql2`,`)}]::text[])`).orderBy(asc(businessPhotos.sortOrder));
+  }).from(businessPhotos).where(sql3`${businessPhotos.businessId} = ANY(ARRAY[${sql3.join(businessIds.map((id) => sql3`${id}`), sql3`,`)}]::text[])`).orderBy(asc(businessPhotos.sortOrder));
   const map = {};
   for (const row of rows) {
     if (!map[row.businessId]) map[row.businessId] = [];
@@ -919,11 +727,567 @@ async function getBusinessPhotosMap(businessIds) {
   }
   return map;
 }
-var init_storage = __esm({
-  "server/storage.ts"() {
+async function getRankHistory(businessId, days = 30) {
+  const cutoff = /* @__PURE__ */ new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  const rows = await db.select({
+    date: rankHistory.snapshotDate,
+    rank: rankHistory.rankPosition,
+    score: rankHistory.weightedScore
+  }).from(rankHistory).where(
+    and2(
+      eq2(rankHistory.businessId, businessId),
+      gte2(rankHistory.snapshotDate, cutoff.toISOString().split("T")[0])
+    )
+  ).orderBy(asc(rankHistory.snapshotDate));
+  return rows.map((r) => ({
+    date: r.date,
+    rank: r.rank,
+    score: parseFloat(r.score)
+  }));
+}
+async function getBusinessRatings(businessId, page = 1, perPage = 20) {
+  const offset = (page - 1) * perPage;
+  const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const ratingsResult = await db.select({
+    id: ratings.id,
+    memberId: ratings.memberId,
+    businessId: ratings.businessId,
+    q1Score: ratings.q1Score,
+    q2Score: ratings.q2Score,
+    q3Score: ratings.q3Score,
+    wouldReturn: ratings.wouldReturn,
+    note: ratings.note,
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    weightedScore: ratings.weightedScore,
+    isFlagged: ratings.isFlagged,
+    autoFlagged: ratings.autoFlagged,
+    flagReason: ratings.flagReason,
+    flagProbability: ratings.flagProbability,
+    source: ratings.source,
+    createdAt: ratings.createdAt,
+    memberName: members2.displayName,
+    memberTier: members2.credibilityTier,
+    memberAvatarUrl: members2.avatarUrl
+  }).from(ratings).innerJoin(members2, eq2(ratings.memberId, members2.id)).where(and2(eq2(ratings.businessId, businessId), eq2(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and2(eq2(ratings.businessId, businessId), eq2(ratings.isFlagged, false)));
+  return { ratings: ratingsResult, total: totalResult.count };
+}
+var init_businesses = __esm({
+  "server/storage/businesses.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    init_helpers();
+  }
+});
+
+// server/storage/challengers.ts
+import { eq as eq3, and as and3, sql as sql4 } from "drizzle-orm";
+async function getActiveChallenges(city, category) {
+  const challengerRows = await db.select().from(challengers).where(
+    and3(
+      eq3(challengers.status, "active"),
+      eq3(challengers.city, city),
+      ...category ? [eq3(challengers.category, category)] : []
+    )
+  );
+  if (challengerRows.length === 0) return [];
+  const bizIds = /* @__PURE__ */ new Set();
+  for (const c of challengerRows) {
+    bizIds.add(c.challengerId);
+    bizIds.add(c.defenderId);
+  }
+  const bizIdArr = Array.from(bizIds);
+  const bizRows = await db.select().from(businesses).where(sql4`${businesses.id} = ANY(ARRAY[${sql4.join(bizIdArr.map((id) => sql4`${id}`), sql4`,`)}]::text[])`);
+  const bizMap = new Map(bizRows.map((b) => [b.id, b]));
+  return challengerRows.map((c) => ({
+    ...c,
+    challengerBusiness: bizMap.get(c.challengerId),
+    defenderBusiness: bizMap.get(c.defenderId)
+  }));
+}
+async function updateChallengerVotes(businessId, weightedScore) {
+  const asChallenger = await db.select().from(challengers).where(
+    and3(eq3(challengers.challengerId, businessId), eq3(challengers.status, "active"))
+  );
+  for (const c of asChallenger) {
+    const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
+    await db.update(challengers).set({
+      challengerWeightedVotes: newVotes.toFixed(3),
+      totalVotes: sql4`${challengers.totalVotes} + 1`
+    }).where(eq3(challengers.id, c.id));
+  }
+  const asDefender = await db.select().from(challengers).where(
+    and3(eq3(challengers.defenderId, businessId), eq3(challengers.status, "active"))
+  );
+  for (const c of asDefender) {
+    const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
+    await db.update(challengers).set({
+      defenderWeightedVotes: newVotes.toFixed(3),
+      totalVotes: sql4`${challengers.totalVotes} + 1`
+    }).where(eq3(challengers.id, c.id));
+  }
+}
+var init_challengers = __esm({
+  "server/storage/challengers.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/ratings.ts
+import { eq as eq4, and as and4, sql as sql5, count as count3, gte as gte3 } from "drizzle-orm";
+async function detectAnomalies(member, business, rawScore) {
+  const flags = [];
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
+  const [recentCount] = await db.select({ count: count3() }).from(ratings).where(
+    and4(
+      eq4(ratings.memberId, member.id),
+      gte3(ratings.createdAt, oneHourAgo)
+    )
+  );
+  if (recentCount.count > 5) flags.push("burst_velocity");
+  if (member.totalRatings >= 10) {
+    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq4(ratings.memberId, member.id));
+    const fiveStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) >= 4.8).length;
+    if (fiveStarCount / memberRatings.length > 0.9) flags.push("perfect_score_pattern");
+  }
+  if (rawScore <= 1.5 && member.totalRatings >= 5) {
+    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq4(ratings.memberId, member.id));
+    const oneStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) <= 1.5).length;
+    if (oneStarCount / memberRatings.length > 0.6) flags.push("one_star_bomber");
+  }
+  if (member.totalRatings >= 8 && member.distinctBusinesses <= 2) {
+    flags.push("single_business_fixation");
+  }
+  const accountAgeDays = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
+  );
+  if (accountAgeDays < 7 && member.totalRatings > 15) {
+    flags.push("new_account_high_volume");
+  }
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
+  const [newAcctRatings] = await db.select({ count: count3() }).from(ratings).innerJoin(members, eq4(ratings.memberId, members.id)).where(
+    and4(
+      eq4(ratings.businessId, business.id),
+      gte3(ratings.createdAt, oneDayAgo),
+      gte3(members.joinedAt, thirtyDaysAgo)
+    )
+  );
+  if (newAcctRatings.count > 10) {
+    flags.push("coordinated_new_account_burst");
+  }
+  return flags;
+}
+async function submitRating(memberId, data) {
+  const member = await getMemberById(memberId);
+  if (!member) throw new Error("Member not found");
+  if (member.isBanned) throw new Error("Account suspended");
+  const business = await getBusinessById(data.businessId);
+  if (!business) throw new Error("Business not found");
+  const daysActive = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
+  );
+  if (daysActive < 3) throw new Error("Account must be 3+ days old to rate");
+  const today = /* @__PURE__ */ new Date();
+  today.setHours(0, 0, 0, 0);
+  const [existingToday] = await db.select({ count: count3() }).from(ratings).where(
+    and4(
+      eq4(ratings.memberId, memberId),
+      eq4(ratings.businessId, data.businessId),
+      gte3(ratings.createdAt, today)
+    )
+  );
+  if (existingToday.count > 0) throw new Error("Already rated today. Come back tomorrow.");
+  const rawScore = (data.q1Score + data.q2Score + data.q3Score) / 3;
+  const anomalyFlags = await detectAnomalies(member, business, rawScore);
+  const autoFlagged = anomalyFlags.length > 0;
+  const weight = getVoteWeight(member.credibilityScore);
+  const weighted = rawScore * weight;
+  const source = data.qrScanId ? "qr_scan" : "app";
+  const [rating] = await db.insert(ratings).values({
+    memberId,
+    businessId: data.businessId,
+    q1Score: data.q1Score,
+    q2Score: data.q2Score,
+    q3Score: data.q3Score,
+    wouldReturn: data.wouldReturn,
+    note: data.note || null,
+    rawScore: rawScore.toFixed(2),
+    weight: weight.toFixed(4),
+    weightedScore: weighted.toFixed(4),
+    autoFlagged,
+    flagReason: autoFlagged ? anomalyFlags.join(",") : null,
+    source
+  }).returning();
+  let dishCreated = false;
+  if (data.dishId) {
+    await db.insert(dishVotes).values({
+      ratingId: rating.id,
+      dishId: data.dishId,
+      memberId,
+      businessId: data.businessId
+    });
+    await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq4(dishes.id, data.dishId));
+  } else if (data.newDishName) {
+    const normalized = data.newDishName.toLowerCase().trim();
+    const words = normalized.split(/\s+/);
+    if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
+      const existing = await db.select().from(dishes).where(
+        and4(
+          eq4(dishes.businessId, data.businessId),
+          eq4(dishes.nameNormalized, normalized)
+        )
+      );
+      let dishId;
+      if (existing.length > 0) {
+        dishId = existing[0].id;
+        await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq4(dishes.id, dishId));
+      } else {
+        const [newDish] = await db.insert(dishes).values({
+          businessId: data.businessId,
+          name: data.newDishName.trim(),
+          nameNormalized: normalized,
+          suggestedBy: "community",
+          voteCount: 1
+        }).returning();
+        dishId = newDish.id;
+        dishCreated = true;
+      }
+      await db.insert(dishVotes).values({
+        ratingId: rating.id,
+        dishId,
+        memberId,
+        businessId: data.businessId
+      });
+    }
+  } else if (data.noNotableDish) {
+    await db.insert(dishVotes).values({
+      ratingId: rating.id,
+      dishId: null,
+      memberId,
+      businessId: data.businessId,
+      noNotableDish: true
+    });
+  }
+  await updateMemberStats(memberId);
+  const { score: newScore, tier: newTier } = await recalculateCredibilityScore(memberId);
+  const oldTier = member.credibilityTier;
+  const tierUpgraded = newTier !== oldTier;
+  const prevRank = business.rankPosition;
+  await recalculateBusinessScore(data.businessId);
+  await recalculateRanks(business.city, business.category);
+  await updateChallengerVotes(data.businessId, weighted);
+  if (data.qrScanId) {
+    const { qrScans: qrScans2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    await db.update(qrScans2).set({ converted: true }).where(eq4(qrScans2.id, data.qrScanId));
+  }
+  const updatedBusiness = await getBusinessById(data.businessId);
+  const newRank = updatedBusiness?.rankPosition ?? null;
+  const rankChanged = prevRank !== newRank;
+  let rankDirection = "same";
+  if (prevRank && newRank) {
+    if (newRank < prevRank) rankDirection = "up";
+    else if (newRank > prevRank) rankDirection = "down";
+  }
+  return {
+    rating,
+    newRank,
+    prevRank: prevRank ?? null,
+    rankChanged,
+    rankDirection,
+    newCredibilityScore: newScore,
+    tierUpgraded,
+    newTier,
+    dishCreated
+  };
+}
+var init_ratings = __esm({
+  "server/storage/ratings.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    init_helpers();
+    init_members();
+    init_businesses();
+    init_members();
+    init_challengers();
+  }
+});
+
+// server/storage/dishes.ts
+import { eq as eq5, and as and5, desc as desc2, sql as sql6 } from "drizzle-orm";
+async function getBusinessDishes(businessId, limit = 5) {
+  return db.select().from(dishes).where(and5(eq5(dishes.businessId, businessId), eq5(dishes.isActive, true))).orderBy(desc2(dishes.voteCount)).limit(limit);
+}
+async function searchDishes(businessId, query) {
+  const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
+  if (normalized.length < 2) {
+    return getBusinessDishes(businessId, 5);
+  }
+  let results = await db.select().from(dishes).where(
+    and5(
+      eq5(dishes.businessId, businessId),
+      eq5(dishes.isActive, true),
+      sql6`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
+    )
+  ).orderBy(desc2(dishes.voteCount)).limit(5);
+  if (results.length < 3) {
+    const containsResults = await db.select().from(dishes).where(
+      and5(
+        eq5(dishes.businessId, businessId),
+        eq5(dishes.isActive, true),
+        sql6`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
+      )
+    ).orderBy(desc2(dishes.voteCount)).limit(5);
+    const existingIds = new Set(results.map((r) => r.id));
+    for (const r of containsResults) {
+      if (!existingIds.has(r.id)) {
+        results.push(r);
+      }
+    }
+  }
+  return results.slice(0, 5);
+}
+var init_dishes = __esm({
+  "server/storage/dishes.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/categories.ts
+import { eq as eq6, desc as desc3 } from "drizzle-orm";
+async function getDbCategories(activeOnly = true) {
+  if (activeOnly) {
+    return db.select().from(categories).where(eq6(categories.isActive, true));
+  }
+  return db.select().from(categories);
+}
+async function createCategorySuggestion(data) {
+  const [suggestion] = await db.insert(categorySuggestions).values({
+    name: data.name,
+    description: data.description,
+    vertical: data.vertical,
+    suggestedBy: data.suggestedBy
+  }).returning();
+  return suggestion;
+}
+async function getPendingSuggestions() {
+  return db.select().from(categorySuggestions).where(eq6(categorySuggestions.status, "pending")).orderBy(desc3(categorySuggestions.voteCount));
+}
+async function reviewSuggestion(id, status, reviewedBy) {
+  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq6(categorySuggestions.id, id)).returning();
+  return updated;
+}
+var init_categories = __esm({
+  "server/storage/categories.ts"() {
     "use strict";
     init_db();
     init_schema();
+  }
+});
+
+// server/storage/badges.ts
+import { eq as eq7, and as and6, count as count4 } from "drizzle-orm";
+async function getMemberBadges(memberId) {
+  return db.select().from(memberBadges).where(eq7(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
+}
+async function getMemberBadgeCount(memberId) {
+  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(eq7(memberBadges.memberId, memberId));
+  return Number(result?.cnt ?? 0);
+}
+async function awardBadge(memberId, badgeId, badgeFamily) {
+  try {
+    const [badge] = await db.insert(memberBadges).values({ memberId, badgeId, badgeFamily }).onConflictDoNothing().returning();
+    return badge ?? null;
+  } catch {
+    return null;
+  }
+}
+async function hasBadge(memberId, badgeId) {
+  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(and6(eq7(memberBadges.memberId, memberId), eq7(memberBadges.badgeId, badgeId)));
+  return Number(result?.cnt ?? 0) > 0;
+}
+async function getEarnedBadgeIds(memberId) {
+  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq7(memberBadges.memberId, memberId));
+  return rows.map((r) => r.badgeId);
+}
+var init_badges = __esm({
+  "server/storage/badges.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/index.ts
+var storage_exports = {};
+__export(storage_exports, {
+  awardBadge: () => awardBadge,
+  createCategorySuggestion: () => createCategorySuggestion,
+  createMember: () => createMember,
+  getActiveChallenges: () => getActiveChallenges,
+  getAllCategories: () => getAllCategories,
+  getBusinessById: () => getBusinessById,
+  getBusinessBySlug: () => getBusinessBySlug,
+  getBusinessDishes: () => getBusinessDishes,
+  getBusinessPhotos: () => getBusinessPhotos,
+  getBusinessPhotosMap: () => getBusinessPhotosMap,
+  getBusinessRatings: () => getBusinessRatings,
+  getCredibilityTier: () => getCredibilityTier,
+  getDbCategories: () => getDbCategories,
+  getEarnedBadgeIds: () => getEarnedBadgeIds,
+  getLeaderboard: () => getLeaderboard,
+  getMemberBadgeCount: () => getMemberBadgeCount,
+  getMemberBadges: () => getMemberBadges,
+  getMemberByAuthId: () => getMemberByAuthId,
+  getMemberByEmail: () => getMemberByEmail,
+  getMemberById: () => getMemberById,
+  getMemberByUsername: () => getMemberByUsername,
+  getMemberImpact: () => getMemberImpact,
+  getMemberRatings: () => getMemberRatings,
+  getPendingSuggestions: () => getPendingSuggestions,
+  getRankHistory: () => getRankHistory,
+  getSeasonalRatingCounts: () => getSeasonalRatingCounts,
+  getTemporalMultiplier: () => getTemporalMultiplier,
+  getTierFromScore: () => getTierFromScore,
+  getTrendingBusinesses: () => getTrendingBusinesses,
+  getVoteWeight: () => getVoteWeight,
+  hasBadge: () => hasBadge,
+  recalculateBusinessScore: () => recalculateBusinessScore,
+  recalculateCredibilityScore: () => recalculateCredibilityScore,
+  recalculateRanks: () => recalculateRanks,
+  reviewSuggestion: () => reviewSuggestion,
+  searchBusinesses: () => searchBusinesses,
+  searchDishes: () => searchDishes,
+  submitRating: () => submitRating,
+  updateChallengerVotes: () => updateChallengerVotes,
+  updateMemberStats: () => updateMemberStats
+});
+var init_storage = __esm({
+  "server/storage/index.ts"() {
+    "use strict";
+    init_helpers();
+    init_members();
+    init_businesses();
+    init_ratings();
+    init_challengers();
+    init_dishes();
+    init_categories();
+    init_badges();
+  }
+});
+
+// server/seed-cities.ts
+var seed_cities_exports = {};
+__export(seed_cities_exports, {
+  seedCities: () => seedCities
+});
+async function seedCities() {
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 4 cities...`);
+  let seeded = 0;
+  for (const biz of ALL_CITY_BUSINESSES) {
+    try {
+      await db.insert(businesses).values({
+        name: biz.name,
+        slug: biz.slug,
+        category: biz.category,
+        city: biz.city,
+        neighborhood: biz.neighborhood,
+        address: biz.address,
+        phone: biz.phone,
+        lat: biz.lat,
+        lng: biz.lng,
+        weightedScore: biz.weightedScore,
+        rawAvgScore: biz.rawAvgScore,
+        rankPosition: biz.rankPosition,
+        rankDelta: biz.rankDelta,
+        totalRatings: biz.totalRatings,
+        description: biz.description,
+        priceRange: biz.priceRange,
+        isOpenNow: biz.isOpenNow,
+        photoUrl: biz.photoUrl || null,
+        isActive: true,
+        dataSource: "admin"
+      });
+      seeded++;
+    } catch (err) {
+      if (err.message?.includes("unique") || err.message?.includes("duplicate")) {
+        console.log(`  Skipping ${biz.name} (already exists)`);
+      } else {
+        console.error(`  Failed to seed ${biz.name}:`, err.message);
+      }
+    }
+  }
+  console.log(`
+Seeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7)");
+}
+var AUSTIN_BUSINESSES, HOUSTON_BUSINESSES, SAN_ANTONIO_BUSINESSES, FORT_WORTH_BUSINESSES, ALL_CITY_BUSINESSES, isDirectRun;
+var init_seed_cities = __esm({
+  "server/seed-cities.ts"() {
+    "use strict";
+    init_db();
+    init_schema();
+    AUSTIN_BUSINESSES = [
+      { name: "Franklin Barbecue", slug: "franklin-barbecue-austin", city: "Austin", neighborhood: "East Austin", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "The most famous BBQ in Texas. Worth the 4-hour wait.", priceRange: "$$", phone: "(512) 653-1187", address: "900 E 11th St, Austin, TX", lat: "30.2701", lng: "-97.7267", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Uchi", slug: "uchi-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "James Beard-winning Japanese farmhouse dining.", priceRange: "$$$$", phone: "(512) 916-4808", address: "801 S Lamar Blvd, Austin, TX", lat: "30.2561", lng: "-97.7628", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop" },
+      { name: "Torchy's Tacos", slug: "torchys-tacos-austin", city: "Austin", neighborhood: "South Congress", category: "street_food", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Damn good tacos. The Trailer Park is legendary.", priceRange: "$", phone: "(512) 366-0537", address: "1311 S 1st St, Austin, TX", lat: "30.2502", lng: "-97.7540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Salt Lick BBQ", slug: "salt-lick-bbq-austin", city: "Austin", neighborhood: "Driftwood", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 1, totalRatings: 389, description: "Open-pit BBQ in the Hill Country since 1967.", priceRange: "$$", phone: "(512) 858-4959", address: "18300 FM 1826, Driftwood, TX", lat: "30.1561", lng: "-97.9410", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Ramen Tatsu-Ya", slug: "ramen-tatsu-ya-austin", city: "Austin", neighborhood: "North Loop", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Austin's best ramen. No compromise.", priceRange: "$$", phone: "(512) 893-5561", address: "8557 Research Blvd, Austin, TX", lat: "30.3561", lng: "-97.7310", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
+      { name: "Odd Duck", slug: "odd-duck-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Farm-to-table seasonal small plates.", priceRange: "$$$", phone: "(512) 433-6521", address: "1201 S Lamar Blvd, Austin, TX", lat: "30.2501", lng: "-97.7630", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "Jo's Coffee", slug: "jos-coffee-austin", city: "Austin", neighborhood: "South Congress", category: "cafe", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "I Love You So Much wall. Iconic SoCo coffee.", priceRange: "$", phone: "(512) 444-3800", address: "1300 S Congress Ave, Austin, TX", lat: "30.2490", lng: "-97.7491", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+      { name: "Rainey Street Bar District", slug: "rainey-street-austin", city: "Austin", neighborhood: "Rainey Street", category: "bar", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Historic bungalows turned into Austin's hottest bar street.", priceRange: "$$", phone: "(512) 555-0001", address: "Rainey Street, Austin, TX", lat: "30.2580", lng: "-97.7380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-austin", city: "Austin", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.200", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Texas institution. Honey butter chicken biscuit.", priceRange: "$", phone: "(512) 555-0002", address: "Multiple locations, Austin, TX", lat: "30.2672", lng: "-97.7431", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Quack's 43rd St Bakery", slug: "quacks-bakery-austin", city: "Austin", neighborhood: "Hyde Park", category: "bakery", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Neighborhood bakery with legendary carrot cake.", priceRange: "$", phone: "(512) 453-3399", address: "411 E 43rd St, Austin, TX", lat: "30.3051", lng: "-97.7230", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    HOUSTON_BUSINESSES = [
+      { name: "Killen's Barbecue", slug: "killens-bbq-houston", city: "Houston", neighborhood: "Pearland", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "Pitmaster Ronnie Killen's award-winning BBQ.", priceRange: "$$", phone: "(281) 485-2272", address: "3613 E Broadway St, Pearland, TX", lat: "29.5633", lng: "-95.2763", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Pappas Bros. Steakhouse", slug: "pappas-bros-houston", city: "Houston", neighborhood: "Galleria", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Houston's finest steakhouse. USDA Prime aged beef.", priceRange: "$$$$", phone: "(713) 780-7352", address: "5839 Westheimer Rd, Houston, TX", lat: "29.7372", lng: "-95.4888", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Crawfish & Noodles", slug: "crawfish-noodles-houston", city: "Houston", neighborhood: "Chinatown", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 1, totalRatings: 378, description: "Vietnamese-Cajun fusion that started a revolution.", priceRange: "$$", phone: "(281) 988-8098", address: "11360 Bellaire Blvd, Houston, TX", lat: "29.7045", lng: "-95.5358", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
+      { name: "Tacos Tierra Caliente", slug: "tacos-tierra-caliente-houston", city: "Houston", neighborhood: "Montrose", category: "street_food", weightedScore: "4.600", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Late-night taco truck with the best al pastor in Houston.", priceRange: "$", phone: "(713) 555-0003", address: "1220 Westheimer Rd, Houston, TX", lat: "29.7414", lng: "-95.3917", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Buc-ee's", slug: "buc-ees-houston", city: "Houston", neighborhood: "Baytown", category: "fast_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Texas-sized gas station with legendary BBQ and beaver nuggets.", priceRange: "$", phone: "(979) 238-6390", address: "4500 I-10 East, Baytown, TX", lat: "29.7827", lng: "-94.9594", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Blacksmith Coffee", slug: "blacksmith-coffee-houston", city: "Houston", neighborhood: "Montrose", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Third-wave coffee in a beautiful Montrose space.", priceRange: "$$", phone: "(713) 555-0004", address: "1018 Westheimer Rd, Houston, TX", lat: "29.7413", lng: "-95.3870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Julep", slug: "julep-houston", city: "Houston", neighborhood: "Washington Ave", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Southern cocktail bar with craft juleps and live music.", priceRange: "$$$", phone: "(713) 869-4383", address: "1919 Washington Ave, Houston, TX", lat: "29.7643", lng: "-95.3842", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Common Bond Bakery", slug: "common-bond-houston", city: "Houston", neighborhood: "Montrose", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "European-inspired bakery and cafe.", priceRange: "$$", phone: "(713) 529-3535", address: "1706 Westheimer Rd, Houston, TX", lat: "29.7434", lng: "-95.3977", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    SAN_ANTONIO_BUSINESSES = [
+      { name: "2M Smokehouse", slug: "2m-smokehouse-san-antonio", city: "San Antonio", neighborhood: "South Side", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "Tex-Mex meets BBQ. The brisket enchiladas are legendary.", priceRange: "$$", phone: "(210) 885-9352", address: "2731 S WW White Rd, San Antonio, TX", lat: "29.3921", lng: "-98.4347", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Mi Tierra Cafe", slug: "mi-tierra-san-antonio", city: "San Antonio", neighborhood: "Market Square", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "Open 24 hours since 1941. The Riverwalk institution.", priceRange: "$$", phone: "(210) 225-1262", address: "218 Produce Row, San Antonio, TX", lat: "29.4246", lng: "-98.4969", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Garcia's Mexican Food", slug: "garcias-san-antonio", city: "San Antonio", neighborhood: "West Side", category: "street_food", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "No-frills Tex-Mex. The puffy tacos are life-changing.", priceRange: "$", phone: "(210) 735-4525", address: "842 Fredericksburg Rd, San Antonio, TX", lat: "29.4521", lng: "-98.5121", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
+      { name: "Estate Coffee", slug: "estate-coffee-san-antonio", city: "San Antonio", neighborhood: "Southtown", category: "cafe", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 178, description: "Specialty coffee in the heart of Southtown arts district.", priceRange: "$$", phone: "(210) 555-0005", address: "1320 S Alamo St, San Antonio, TX", lat: "29.4150", lng: "-98.4901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-san-antonio", city: "San Antonio", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "Born right here in San Antonio. The HQ city.", priceRange: "$", phone: "(210) 555-0006", address: "Multiple locations, San Antonio, TX", lat: "29.4241", lng: "-98.4936", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "The Esquire Tavern", slug: "esquire-tavern-san-antonio", city: "San Antonio", neighborhood: "Riverwalk", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "The longest bar in Texas, right on the Riverwalk.", priceRange: "$$", phone: "(210) 222-2521", address: "155 E Commerce St, San Antonio, TX", lat: "29.4234", lng: "-98.4876", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Bird Bakery", slug: "bird-bakery-san-antonio", city: "San Antonio", neighborhood: "Alamo Heights", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Cupcakes and cookies by Elizabeth Chambers.", priceRange: "$$", phone: "(210) 804-2473", address: "5912 Broadway, San Antonio, TX", lat: "29.4633", lng: "-98.4623", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" }
+    ];
+    FORT_WORTH_BUSINESSES = [
+      { name: "Heim Barbecue", slug: "heim-bbq-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "restaurant", weightedScore: "4.700", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Bacon burnt ends put Heim on the map. Texas Monthly Top 50.", priceRange: "$$", phone: "(817) 882-6970", address: "1109 W Magnolia Ave, Fort Worth, TX", lat: "32.7185", lng: "-97.3448", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Joe T. Garcia's", slug: "joe-t-garcias-fort-worth", city: "Fort Worth", neighborhood: "Northside", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "The legendary patio. Enchiladas and fajitas only.", priceRange: "$$", phone: "(817) 626-4356", address: "2201 N Commerce St, Fort Worth, TX", lat: "32.7665", lng: "-97.3292", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Salsa Limon", slug: "salsa-limon-fort-worth", city: "Fort Worth", neighborhood: "Near South", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Mexican street food truck turned brick-and-mortar.", priceRange: "$", phone: "(817) 927-4328", address: "4200 S Freeway, Fort Worth, TX", lat: "32.7100", lng: "-97.3232", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Avoca Coffee", slug: "avoca-coffee-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "cafe", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Fort Worth's premier specialty coffee roaster.", priceRange: "$$", phone: "(817) 677-6741", address: "1311 W Magnolia Ave, Fort Worth, TX", lat: "32.7180", lng: "-97.3465", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-fort-worth", city: "Fort Worth", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Texas institution. Always there at 2am.", priceRange: "$", phone: "(817) 555-0007", address: "Multiple locations, Fort Worth, TX", lat: "32.7555", lng: "-97.3308", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "The Usual", slug: "the-usual-fort-worth", city: "Fort Worth", neighborhood: "Sundance Square", category: "bar", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Craft cocktail bar in Sundance Square.", priceRange: "$$$", phone: "(817) 810-0114", address: "310 Houston St, Fort Worth, TX", lat: "32.7548", lng: "-97.3313", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Swiss Pastry Shop", slug: "swiss-pastry-fort-worth", city: "Fort Worth", neighborhood: "Camp Bowie", category: "bakery", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Fort Worth's oldest bakery. Since 1950.", priceRange: "$", phone: "(817) 732-5661", address: "3936 W Vickery Blvd, Fort Worth, TX", lat: "32.7370", lng: "-97.3698", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    ALL_CITY_BUSINESSES = [
+      ...AUSTIN_BUSINESSES,
+      ...HOUSTON_BUSINESSES,
+      ...SAN_ANTONIO_BUSINESSES,
+      ...FORT_WORTH_BUSINESSES
+    ];
+    isDirectRun = process.argv[1]?.includes("seed-cities");
+    if (isDirectRun) {
+      seedCities().then(() => process.exit(0)).catch((err) => {
+        console.error("Seed failed:", err);
+        process.exit(1);
+      });
+    }
   }
 });
 
@@ -932,7 +1296,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql3 } from "drizzle-orm";
+import { sql as sql7 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 async function seedDatabase() {
   console.log("Seeding database...");
@@ -1193,7 +1557,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql3`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql7`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -1332,6 +1696,45 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcrypt";
+
+// server/config.ts
+function required(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}. Server cannot start.`);
+  }
+  return value;
+}
+function optional(name, fallback) {
+  return process.env[name] || fallback;
+}
+var config = {
+  // Database (required)
+  databaseUrl: required("DATABASE_URL"),
+  // Session (required — no fallback, C1 audit finding)
+  sessionSecret: required("SESSION_SECRET"),
+  // Server
+  port: parseInt(optional("PORT", "5000"), 10),
+  nodeEnv: optional("NODE_ENV", "development"),
+  isProduction: process.env.NODE_ENV === "production",
+  // Google OAuth (optional — feature disabled if not set)
+  googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+  // Stripe (optional — mock payments if not set)
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || null,
+  // GitHub deploy webhook (optional)
+  githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || null,
+  // Push notifications (optional)
+  ntfyTopic: optional("NTFY_TOPIC", "topranker-deploy"),
+  // Google Maps (optional)
+  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
+  // Email (optional — console fallback if not set)
+  resendApiKey: process.env.RESEND_API_KEY || null,
+  // Replit (optional — for CORS)
+  replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
+  replitDomains: process.env.REPLIT_DOMAINS || null
+};
+
+// server/auth.ts
 function setupAuth(app2) {
   const PgStore = connectPgSimple(session);
   app2.use(
@@ -1340,15 +1743,15 @@ function setupAuth(app2) {
         pool,
         createTableIfMissing: true
       }),
-      secret: process.env.SESSION_SECRET || "top-ranker-secret-key",
+      secret: config.sessionSecret,
       resave: false,
       saveUninitialized: false,
-      proxy: process.env.NODE_ENV === "production",
+      proxy: config.isProduction,
       cookie: {
         maxAge: 30 * 24 * 60 * 60 * 1e3,
         httpOnly: true,
         sameSite: "lax",
-        secure: process.env.NODE_ENV === "production"
+        secure: config.isProduction
       }
     })
   );
@@ -1435,7 +1838,7 @@ async function registerMember(data) {
   });
 }
 async function authenticateGoogleUser(idToken) {
-  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientId = config.googleClientId;
   if (!googleClientId) {
     throw new Error("Google Sign-In is not configured");
   }
@@ -1459,8 +1862,8 @@ async function authenticateGoogleUser(idToken) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq2 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq2(members2.id, member.id));
+    const { eq: eq8 } = await import("drizzle-orm");
+    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq8(members2.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -1480,6 +1883,343 @@ async function authenticateGoogleUser(idToken) {
   });
 }
 
+// server/deploy.ts
+import { exec } from "child_process";
+import * as crypto from "crypto";
+
+// server/logger.ts
+var LEVEL_ORDER = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3
+};
+var MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
+function shouldLog(level) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
+}
+function formatMessage(level, tag, message, data) {
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  const prefix = `${timestamp2} [${level.toUpperCase()}] [${tag}]`;
+  if (data !== void 0) {
+    return `${prefix} ${message} ${typeof data === "string" ? data : JSON.stringify(data)}`;
+  }
+  return `${prefix} ${message}`;
+}
+function createTaggedLogger(tag) {
+  return {
+    debug(message, data) {
+      if (shouldLog("debug")) console.log(formatMessage("debug", tag, message, data));
+    },
+    info(message, data) {
+      if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
+    },
+    warn(message, data) {
+      if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
+    },
+    error(message, data) {
+      if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
+    }
+  };
+}
+var log = {
+  /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
+  tag: createTaggedLogger,
+  // Top-level convenience methods (tag: "Server")
+  debug(message, data) {
+    if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
+  },
+  info(message, data) {
+    if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+  },
+  warn(message, data) {
+    if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
+  },
+  error(message, data) {
+    if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
+  }
+};
+
+// server/deploy.ts
+var deployLog = log.tag("Deploy");
+var deployStatus = {
+  status: "idle",
+  startedAt: null,
+  completedAt: null,
+  commit: null,
+  error: null,
+  log: []
+};
+function verifySignature(req) {
+  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  if (!secret) return true;
+  const signature = req.header("x-hub-signature-256");
+  if (!signature) return false;
+  const body = req.rawBody;
+  const hmac = crypto.createHmac("sha256", secret);
+  hmac.update(body);
+  const expected = `sha256=${hmac.digest("hex")}`;
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+function runCommand(cmd, cwd) {
+  return new Promise((resolve2, reject) => {
+    exec(cmd, { cwd, timeout: 3e5 }, (error, stdout, stderr) => {
+      const output = (stdout || "") + (stderr || "");
+      if (error) {
+        reject(new Error(`${cmd} failed: ${output}`));
+      } else {
+        resolve2(output.trim());
+      }
+    });
+  });
+}
+async function runDeploy() {
+  const cwd = process.cwd();
+  deployStatus = {
+    status: "deploying",
+    startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    completedAt: null,
+    commit: null,
+    error: null,
+    log: []
+  };
+  const addLog = (msg) => {
+    deployLog.info(msg);
+    deployStatus.log.push(`${(/* @__PURE__ */ new Date()).toISOString()} ${msg}`);
+  };
+  try {
+    addLog("Pulling latest from GitHub...");
+    await runCommand("cp .replit .replit.bak 2>/dev/null || true", cwd);
+    await runCommand("git checkout -- .replit 2>/dev/null || true", cwd);
+    await runCommand("git pull origin main --ff-only", cwd);
+    await runCommand("cp .replit.bak .replit 2>/dev/null || true", cwd);
+    await runCommand("rm -f .replit.bak", cwd);
+    addLog("Git pull complete.");
+    const commit = await runCommand("git rev-parse --short HEAD", cwd);
+    deployStatus.commit = commit;
+    addLog(`Now at commit: ${commit}`);
+    addLog("Installing dependencies...");
+    await runCommand(
+      "npm install --legacy-peer-deps 2>/dev/null || npm install",
+      cwd
+    );
+    addLog("Dependencies installed.");
+    addLog("Building Expo static bundle...");
+    await runCommand("npm run expo:static:build", cwd);
+    addLog("Expo build complete.");
+    addLog("Building server...");
+    await runCommand("npm run server:build", cwd);
+    addLog("Server build complete.");
+    deployStatus.status = "success";
+    deployStatus.completedAt = (/* @__PURE__ */ new Date()).toISOString();
+    addLog("Deploy successful!");
+    sendNotification(
+      `TopRanker deployed! Commit: ${commit}`,
+      "Build successful - refresh to see changes."
+    );
+  } catch (err) {
+    deployStatus.status = "failed";
+    deployStatus.completedAt = (/* @__PURE__ */ new Date()).toISOString();
+    deployStatus.error = err.message;
+    addLog(`Deploy FAILED: ${err.message}`);
+    sendNotification(
+      "TopRanker deploy FAILED",
+      err.message.slice(0, 200)
+    );
+  }
+}
+function sendNotification(title, message) {
+  const topic = process.env.NTFY_TOPIC || "topranker-deploy";
+  const url = `https://ntfy.sh/${topic}`;
+  fetch(url, {
+    method: "POST",
+    headers: { Title: title },
+    body: message
+  }).catch((err) => {
+    deployLog.warn(`Notification failed: ${err.message}`);
+  });
+}
+function handleWebhook(req, res) {
+  if (!verifySignature(req)) {
+    return res.status(403).json({ error: "Invalid signature" });
+  }
+  const event = req.header("x-github-event");
+  const payload = req.body;
+  if (event === "ping") {
+    return res.json({ message: "pong" });
+  }
+  if (event !== "push") {
+    return res.json({ message: `Ignored event: ${event}` });
+  }
+  const branch = payload?.ref;
+  if (branch !== "refs/heads/main") {
+    return res.json({ message: `Ignored branch: ${branch}` });
+  }
+  if (deployStatus.status === "deploying") {
+    return res.status(409).json({ message: "Deploy already in progress" });
+  }
+  runDeploy();
+  res.json({
+    message: "Deploy started",
+    commit: payload?.head_commit?.id?.slice(0, 7) || "unknown"
+  });
+}
+function handleDeployStatus(_req, res) {
+  res.json(deployStatus);
+}
+
+// server/photos.ts
+async function handlePhotoProxy(req, res) {
+  const ref = req.query.ref;
+  if (!ref) {
+    return res.status(400).json({ error: "Missing ref parameter" });
+  }
+  if (!ref.startsWith("places/")) {
+    return res.status(400).json({ error: "Invalid photo reference" });
+  }
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+  if (!apiKey) {
+    return res.status(503).json({ error: "Maps API key not configured" });
+  }
+  const maxWidth = parseInt(req.query.maxwidth) || 600;
+  const maxHeight = parseInt(req.query.maxheight) || 400;
+  const url = `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=${maxWidth}&maxHeightPx=${maxHeight}&key=${apiKey}`;
+  try {
+    const upstream = await fetch(url, {
+      redirect: "follow",
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!upstream.ok) {
+      const legacyUrl = `https://maps.googleapis.com/maps/api/place/photo?photoreference=${encodeURIComponent(ref)}&maxwidth=${maxWidth}&key=${apiKey}`;
+      const legacyRes = await fetch(legacyUrl, {
+        redirect: "follow",
+        signal: AbortSignal.timeout(1e4)
+      });
+      if (!legacyRes.ok) {
+        return res.status(upstream.status).json({
+          error: `Google Places photo fetch failed: ${upstream.status}`
+        });
+      }
+      const contentType2 = legacyRes.headers.get("content-type") || "image/jpeg";
+      res.setHeader("Content-Type", contentType2);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      const buffer2 = Buffer.from(await legacyRes.arrayBuffer());
+      return res.send(buffer2);
+    }
+    const contentType = upstream.headers.get("content-type") || "image/jpeg";
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    const buffer = Buffer.from(await upstream.arrayBuffer());
+    res.send(buffer);
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      return res.status(504).json({ error: "Photo fetch timed out" });
+    }
+    log.tag("PhotoProxy").error("Error:", err.message);
+    return res.status(502).json({ error: "Failed to fetch photo" });
+  }
+}
+
+// server/email.ts
+var emailLog = log.tag("Email");
+async function sendEmail(payload) {
+  emailLog.info(`To: ${payload.to} | Subject: ${payload.subject}`);
+}
+async function sendWelcomeEmail(params) {
+  const { email, displayName, city, username } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <!-- Header -->
+        <tr><td style="background:#0D1B2A;padding:32px 24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:28px;font-weight:900;letter-spacing:-0.5px;">TopRanker</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:13px;">The world's most trustworthy ranking platform</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:22px;font-weight:700;">Welcome, ${firstName}!</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            You've joined the ${city} ranking community as <strong>@${username}</strong>. Here's what to know:
+          </p>
+
+          <!-- Steps -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;margin-bottom:8px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">1.</strong> Explore rankings in ${city} \u2014 see what the community thinks</p>
+            </td></tr>
+            <tr><td style="height:8px;"></td></tr>
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">2.</strong> After 3 days, unlock rating \u2014 your voice shapes the leaderboard</p>
+            </td></tr>
+            <tr><td style="height:8px;"></td></tr>
+            <tr><td style="padding:12px 16px;background:#F7F6F3;border-radius:10px;">
+              <p style="margin:0;color:#0D1B2A;font-size:14px;"><strong style="color:#C49A1A;">3.</strong> Build credibility \u2014 more ratings = higher vote weight</p>
+            </td></tr>
+          </table>
+
+          <!-- Tier Preview -->
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:24px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your Starting Tier</p>
+            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">Community Member</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight \xB7 Rate to earn City Reviewer status</p>
+          </div>
+
+          <!-- CTA -->
+          <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Start Exploring ${city}
+          </a>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="padding:20px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">
+            TopRanker \u2014 Trust-weighted rankings for ${city}<br>
+            <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Welcome to TopRanker, ${firstName}!
+
+You've joined the ${city} ranking community as @${username}.
+
+1. Explore rankings in ${city}
+2. After 3 days, unlock rating
+3. Build credibility \u2014 more ratings = higher vote weight
+
+Your starting tier: Community Member (0.10x vote weight)
+
+Start exploring: https://topranker.com
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Welcome to TopRanker, ${firstName}! \u{1F3C6}`,
+    html,
+    text: text2
+  });
+}
+
+// shared/admin.ts
+var ADMIN_EMAILS = Object.freeze([
+  "rahul@topranker.com",
+  "admin@topranker.com"
+]);
+function isAdminEmail(email) {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
 // server/routes.ts
 init_storage();
 init_schema();
@@ -1489,29 +2229,65 @@ function requireAuth(req, res, next) {
   }
   next();
 }
-var authAttempts = /* @__PURE__ */ new Map();
-function authRateLimit(req, res, next) {
-  const ip = req.ip || req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  const entry = authAttempts.get(ip);
-  if (entry && entry.resetAt > now) {
-    if (entry.count >= 10) {
-      return res.status(429).json({ error: "Too many attempts. Please try again later." });
+var rateLimitBuckets = /* @__PURE__ */ new Map();
+function createRateLimiter(name, maxRequests, windowMs) {
+  const bucket = /* @__PURE__ */ new Map();
+  rateLimitBuckets.set(name, bucket);
+  return function rateLimit(req, res, next) {
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const entry = bucket.get(ip);
+    if (entry && entry.resetAt > now) {
+      if (entry.count >= maxRequests) {
+        return res.status(429).json({ error: "Too many requests. Please try again later." });
+      }
+      entry.count++;
+    } else {
+      bucket.set(ip, { count: 1, resetAt: now + windowMs });
     }
-    entry.count++;
-  } else {
-    authAttempts.set(ip, { count: 1, resetAt: now + 6e4 });
-  }
-  next();
+    next();
+  };
 }
+var authRateLimit = createRateLimiter("auth", 10, 6e4);
+var apiRateLimit = createRateLimiter("api", 100, 6e4);
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of authAttempts) {
-    if (entry.resetAt <= now) authAttempts.delete(ip);
+  for (const [, bucket] of rateLimitBuckets) {
+    for (const [ip, entry] of bucket) {
+      if (entry.resetAt <= now) bucket.delete(ip);
+    }
   }
 }, 3e5);
 async function registerRoutes(app2) {
   setupAuth(app2);
+  app2.use("/api", (req, res, next) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      const duration = Date.now() - start;
+      const method = req.method;
+      const url = req.originalUrl || req.url;
+      const status = res.statusCode;
+      if (duration > 200) {
+        log.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
+      } else {
+        log.info(`${method} ${url} ${status} ${duration}ms`);
+      }
+      return originalEnd.apply(this, args);
+    };
+    next();
+  });
+  app2.use("/api/leaderboard", apiRateLimit);
+  app2.use("/api/businesses", apiRateLimit);
+  app2.use("/api/dishes", apiRateLimit);
+  app2.use("/api/challengers", apiRateLimit);
+  app2.use("/api/trending", apiRateLimit);
+  app2.use("/api/members", apiRateLimit);
+  app2.use("/api/ratings", apiRateLimit);
+  app2.use("/api/photos", apiRateLimit);
+  app2.get("/api/health", (_req, res) => {
+    res.status(200).json({ status: "ok", ts: Date.now() });
+  });
   app2.post("/api/auth/signup", authRateLimit, async (req, res) => {
     try {
       const { displayName, username, email, password, city } = req.body;
@@ -1522,6 +2298,12 @@ async function registerRoutes(app2) {
         return res.status(400).json({ error: "Password must be at least 6 characters" });
       }
       const member = await registerMember({ displayName, username, email, password, city });
+      sendWelcomeEmail({
+        email: member.email,
+        displayName: member.displayName,
+        city: member.city,
+        username: member.username
+      }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
       req.login(
         {
           id: member.id,
@@ -1678,7 +2460,7 @@ async function registerRoutes(app2) {
       const result = await submitRating(memberId, parsed.data);
       return res.status(201).json({ data: result });
     } catch (err) {
-      if (err.message.includes("7+ days")) {
+      if (err.message.includes("3+ days")) {
         return res.status(403).json({ error: err.message });
       }
       if (err.message.includes("Already rated")) {
@@ -1696,6 +2478,8 @@ async function registerRoutes(app2) {
       if (!member) return res.status(404).json({ error: "Member not found" });
       const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
       const { ratings: ratings2, total } = await getMemberRatings(member.id);
+      const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const seasonal = await getSeasonalRatingCounts2(member.id);
       const daysActive = Math.floor(
         (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
       );
@@ -1717,7 +2501,8 @@ async function registerRoutes(app2) {
           daysActive,
           ratingVariance: parseFloat(member.ratingVariance),
           credibilityBreakdown: breakdown,
-          ratingHistory: ratings2
+          ratingHistory: ratings2,
+          ...seasonal
         }
       });
     } catch (err) {
@@ -1752,6 +2537,137 @@ async function registerRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
+  app2.get("/api/trending", async (req, res) => {
+    try {
+      const { getTrendingBusinesses: getTrendingBusinesses2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const city = req.query.city || "Dallas";
+      const limit = Math.min(10, Math.max(1, parseInt(req.query.limit) || 3));
+      const bizList = await getTrendingBusinesses2(city, limit);
+      const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+      const data = bizList.map((b) => ({
+        ...b,
+        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+      }));
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/businesses/:id/rank-history", async (req, res) => {
+    try {
+      const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
+      const data = await getRankHistory2(req.params.id, days);
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/members/me/impact", requireAuth, async (req, res) => {
+    try {
+      const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const data = await getMemberImpact2(req.user.id);
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.post("/api/category-suggestions", requireAuth, async (req, res) => {
+    try {
+      const parsed = insertCategorySuggestionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const { createCategorySuggestion: createCategorySuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const suggestion = await createCategorySuggestion2({
+        ...parsed.data,
+        suggestedBy: req.user.id
+      });
+      return res.status(201).json({ data: suggestion });
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+  app2.get("/api/category-suggestions", async (req, res) => {
+    try {
+      const { getPendingSuggestions: getPendingSuggestions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const data = await getPendingSuggestions2();
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.patch("/api/admin/category-suggestions/:id", requireAuth, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!isAdminEmail(email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+      }
+      const { reviewSuggestion: reviewSuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const updated = await reviewSuggestion2(req.params.id, status, req.user.id);
+      if (!updated) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+      return res.json({ data: updated });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/photos/proxy", handlePhotoProxy);
+  app2.post("/api/webhook/deploy", handleWebhook);
+  app2.get("/api/deploy/status", handleDeployStatus);
+  app2.post("/api/admin/seed-cities", requireAuth, async (req, res) => {
+    try {
+      const email = req.user?.email;
+      if (!isAdminEmail(email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
+      await seedCities2();
+      return res.json({ data: { message: "Cities seeded successfully" } });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/members/:id/badges", async (req, res) => {
+    try {
+      const memberId = req.params.id;
+      const badges = await getMemberBadges(memberId);
+      return res.json({ data: badges });
+    } catch (err) {
+      log("error", "routes", `Failed to fetch member badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  });
+  app2.post("/api/badges/award", requireAuth, async (req, res) => {
+    try {
+      const memberId = req.user.id;
+      const { badgeId, badgeFamily } = req.body;
+      if (!badgeId || !badgeFamily) {
+        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
+      }
+      const result = await awardBadge(memberId, badgeId, badgeFamily);
+      return res.json({ data: result, awarded: result !== null });
+    } catch (err) {
+      log("error", "routes", `Failed to award badge: ${err.message}`);
+      return res.status(500).json({ error: "Failed to award badge" });
+    }
+  });
+  app2.get("/api/badges/earned", requireAuth, async (req, res) => {
+    try {
+      const memberId = req.user.id;
+      const badgeIds = await getEarnedBadgeIds(memberId);
+      const badgeCount = badgeIds.length;
+      return res.json({ data: { badgeIds, badgeCount } });
+    } catch (err) {
+      log("error", "routes", `Failed to fetch earned badges: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch earned badges" });
+    }
+  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -1761,15 +2677,19 @@ import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 var app = express();
-var log = console.log;
+var log2 = console.log;
 function setupCors(app2) {
   app2.use((req, res, next) => {
     const origins = /* @__PURE__ */ new Set();
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
+    origins.add("https://topranker.com");
+    origins.add("https://www.topranker.com");
+    const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
+    if (replitDevDomain) {
+      origins.add(`https://${replitDevDomain}`);
     }
-    if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
+    const replitDomains = process.env.REPLIT_DOMAINS;
+    if (replitDomains) {
+      replitDomains.split(",").forEach((d) => {
         origins.add(`https://${d.trim()}`);
       });
     }
@@ -1820,7 +2740,7 @@ function setupRequestLogging(app2) {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
-      log(logLine);
+      log2(logLine);
     });
     next();
   });
@@ -1851,6 +2771,24 @@ function serveExpoManifest(platform, res) {
   const manifest = fs.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
+function serveLandingPage({
+  req,
+  res,
+  landingPageTemplate,
+  appName
+}) {
+  const forwardedProto = req.header("x-forwarded-proto");
+  const protocol = forwardedProto || req.protocol || "https";
+  const forwardedHost = req.header("x-forwarded-host");
+  const host = forwardedHost || req.get("host");
+  const baseUrl = `${protocol}://${host}`;
+  const expsUrl = `${host}`;
+  log2(`baseUrl`, baseUrl);
+  log2(`expsUrl`, expsUrl);
+  const html = landingPageTemplate.replace(/BASE_URL_PLACEHOLDER/g, baseUrl).replace(/EXPS_URL_PLACEHOLDER/g, expsUrl).replace(/APP_NAME_PLACEHOLDER/g, appName);
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.status(200).send(html);
+}
 function configureExpoAndLanding(app2) {
   const templatePath = path.resolve(
     process.cwd(),
@@ -1860,7 +2798,11 @@ function configureExpoAndLanding(app2) {
   );
   const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
-  log("Serving static Expo files with dynamic manifest routing");
+  const isProduction = process.env.NODE_ENV === "production";
+  log2("Serving static Expo files with dynamic manifest routing");
+  app2.get("/_health", (_req, res) => {
+    res.status(200).send("ok");
+  });
   app2.use((req, res, next) => {
     if (req.path.startsWith("/api")) {
       return next();
@@ -1876,38 +2818,64 @@ function configureExpoAndLanding(app2) {
   });
   app2.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app2.use(express.static(path.resolve(process.cwd(), "static-build")));
-  const metroProxy = createProxyMiddleware({
-    target: "http://localhost:8081",
-    changeOrigin: true,
-    ws: true,
-    logger: void 0,
-    on: {
-      error: (_err, _req, res) => {
-        if (res && "writeHead" in res && !res.headersSent) {
-          res.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+  const distPath = path.resolve(process.cwd(), "dist");
+  const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
+  if (hasDistBuild) {
+    app2.use(express.static(distPath, {
+      maxAge: isProduction ? "1d" : 0,
+      index: false
+    }));
+    log2(`Serving static web build from ${distPath}`);
+  }
+  if (!isProduction) {
+    const metroProxy = createProxyMiddleware({
+      target: "http://localhost:8081",
+      changeOrigin: true,
+      ws: true,
+      logger: void 0,
+      on: {
+        error: (_err, _req, res) => {
+          if (res && "writeHead" in res && !res.headersSent) {
+            res.status(503).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${appName}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0e1a;color:#c8a951;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;text-align:center}.c{padding:20px}.spinner{width:40px;height:40px;border:3px solid #1a2040;border-top-color:#c8a951;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}h1{font-size:20px;margin-bottom:8px}p{font-size:14px;color:#8890a8}</style></head><body><div class="c"><div class="spinner"></div><h1>${appName}</h1><p>Loading app...</p></div><script>setTimeout(()=>location.reload(),3000)</script></body></html>`);
+          }
         }
       }
-    }
-  });
-  app2.use((req, res, next) => {
-    if (req.path.startsWith("/api")) {
-      return next();
-    }
-    const platform = req.header("expo-platform");
-    if (platform && (platform === "ios" || platform === "android")) {
-      return next();
-    }
-    return metroProxy(req, res, next);
-  });
-  log("Expo routing: Checking expo-platform header on / and /manifest");
-  log("Metro proxy: Forwarding web requests to localhost:8081");
+    });
+    app2.use((req, res, next) => {
+      if (req.path.startsWith("/api")) {
+        return next();
+      }
+      const platform = req.header("expo-platform");
+      if (platform && (platform === "ios" || platform === "android")) {
+        return next();
+      }
+      return metroProxy(req, res, next);
+    });
+    log2("Expo routing: Checking expo-platform header on / and /manifest");
+    log2("Metro proxy: Forwarding web requests to localhost:8081");
+  } else {
+    app2.use((req, res, next) => {
+      if (req.path.startsWith("/api")) {
+        return next();
+      }
+      const platform = req.header("expo-platform");
+      if (platform && (platform === "ios" || platform === "android")) {
+        return next();
+      }
+      if (hasDistBuild) {
+        return res.sendFile(path.join(distPath, "index.html"));
+      }
+      return serveLandingPage({ req, res, landingPageTemplate, appName });
+    });
+    log2("Production mode: Serving static dist build (no Metro proxy)");
+  }
 }
 function setupErrorHandler(app2) {
   app2.use((err, _req, res, next) => {
     const error = err;
     const status = error.status || error.statusCode || 500;
     const message = error.message || "Internal Server Error";
-    console.error("Internal Server Error:", err);
+    log.error("Internal Server Error:", err);
     if (res.headersSent) {
       return next(err);
     }
@@ -1921,7 +2889,7 @@ function setupErrorHandler(app2) {
   const server = await registerRoutes(app);
   configureExpoAndLanding(app);
   const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
-  seedDatabase2().catch((err) => console.error("Seed error:", err));
+  seedDatabase2().catch((err) => log.error("Seed error:", err));
   setupErrorHandler(app);
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
@@ -1931,7 +2899,7 @@ function setupErrorHandler(app2) {
       reusePort: true
     },
     () => {
-      log(`express server serving on port ${port}`);
+      log2(`express server serving on port ${port}`);
     }
   );
 })();
