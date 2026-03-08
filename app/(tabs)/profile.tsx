@@ -22,6 +22,7 @@ import { AppLogo } from "@/components/Logo";
 import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
 import { useBookmarks, type BookmarkEntry } from "@/lib/bookmarks-context";
+import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 
 const AMBER = BRAND.colors.amber;
 
@@ -518,6 +519,50 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </View>
 
+      {/* Tier Rewards — What you've unlocked & what's next */}
+      <View style={styles.tierInfoSection}>
+        <Text style={styles.sectionTitle}>Your Rewards</Text>
+        <View style={styles.perksGrid}>
+          {getUnlockedPerks(tier).map((perk) => (
+            <View key={perk.id} style={styles.perkItem}>
+              <View style={styles.perkIconWrap}>
+                <Ionicons name={perk.icon as any} size={16} color={AMBER} />
+              </View>
+              <View style={styles.perkInfo}>
+                <Text style={styles.perkTitle}>{perk.title}</Text>
+                <Text style={styles.perkDesc} numberOfLines={1}>{perk.description}</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={16} color={Colors.green} />
+            </View>
+          ))}
+        </View>
+
+        {/* Next tier preview */}
+        {(() => {
+          const next = getNextTierPerks(tier);
+          if (!next) return null;
+          return (
+            <View style={styles.nextTierPreview}>
+              <Text style={styles.nextTierLabel}>
+                Unlock with {TIER_DISPLAY_NAMES[next.nextTier]}
+              </Text>
+              {next.perks.slice(0, 3).map((perk) => (
+                <View key={perk.id} style={[styles.perkItem, styles.perkItemLocked]}>
+                  <View style={[styles.perkIconWrap, styles.perkIconLocked]}>
+                    <Ionicons name={perk.icon as any} size={16} color={Colors.textTertiary} />
+                  </View>
+                  <View style={styles.perkInfo}>
+                    <Text style={[styles.perkTitle, styles.perkTitleLocked]}>{perk.title}</Text>
+                    <Text style={styles.perkDesc} numberOfLines={1}>{perk.description}</Text>
+                  </View>
+                  <Ionicons name="lock-closed" size={14} color={Colors.textTertiary} />
+                </View>
+              ))}
+            </View>
+          );
+        })()}
+      </View>
+
       {/* Invite Friends */}
       <TouchableOpacity
         style={styles.adminLink}
@@ -974,4 +1019,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
   currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
+
+  // Tier Perks
+  perksGrid: {
+    backgroundColor: Colors.surface, borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
+  },
+  perkItem: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  perkItemLocked: { opacity: 0.6 },
+  perkIconWrap: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: Colors.goldFaint,
+    alignItems: "center", justifyContent: "center",
+  },
+  perkIconLocked: { backgroundColor: Colors.surfaceRaised },
+  perkInfo: { flex: 1, gap: 1 },
+  perkTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  perkTitleLocked: { color: Colors.textTertiary },
+  perkDesc: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  nextTierPreview: {
+    marginTop: 8, gap: 0,
+    backgroundColor: Colors.surface, borderRadius: 14,
+    overflow: "hidden", ...Colors.cardShadow,
+  },
+  nextTierLabel: {
+    fontSize: 11, fontWeight: "700", color: Colors.textTertiary,
+    fontFamily: "DMSans_700Bold", letterSpacing: 1,
+    textTransform: "uppercase" as const,
+    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
+  },
 });
