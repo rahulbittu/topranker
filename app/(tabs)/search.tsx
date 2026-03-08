@@ -397,6 +397,7 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<"ranked" | "rated" | "trending">("ranked");
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
 
   useEffect(() => {
@@ -425,8 +426,11 @@ export default function SearchScreen() {
     else if (activeFilter === "Trending") list = list.filter((b: MappedBusiness) => b.rankDelta > 0);
     else if (activeFilter === "Open Now") list = list.filter((b: MappedBusiness) => b.isOpenNow === true);
     if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
+    if (sortBy === "ranked") return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
+    if (sortBy === "rated") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.ratingCount || 0) - (a.ratingCount || 0));
+    if (sortBy === "trending") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.rankDelta || 0) - (a.rankDelta || 0));
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
-  }, [allBusinesses, activeFilter, priceFilter]);
+  }, [allBusinesses, activeFilter, priceFilter, sortBy]);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -528,6 +532,22 @@ export default function SearchScreen() {
             accessibilityState={{ selected: priceFilter === p }}
           >
             <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* Sort By */}
+      <View style={styles.sortRow}>
+        <Text style={styles.sortLabel}>Sort:</Text>
+        {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
+          <TouchableOpacity
+            key={key}
+            onPress={() => { Haptics.selectionAsync(); setSortBy(key as any); }}
+            style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sortBy === key }}
+          >
+            <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -1035,6 +1055,26 @@ const styles = StyleSheet.create({
   },
   priceChipTextActive: {
     color: "#fff",
+  },
+  sortRow: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 16, gap: 6, paddingBottom: 10,
+  },
+  sortLabel: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
+  },
+  sortChip: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  sortChipActive: {
+    backgroundColor: BRAND.colors.navy, borderColor: BRAND.colors.navy,
+  },
+  sortChipText: {
+    fontSize: 11, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+  },
+  sortChipTextActive: {
+    color: "#fff", fontWeight: "600",
   },
   verifiedPill: {
     paddingHorizontal: 3,
