@@ -75,9 +75,9 @@ constants/
 
 | Tier | Key | Weight | Color | Score Range |
 |------|-----|--------|-------|-------------|
-| Community Member | community | 0.10x | #556677 | 10–99 |
-| City Judge | city | 0.35x | #4A7FBB | 100–299 |
-| Trusted Judge | trusted | 0.70x | #7B4EA8 | 300–599 |
+| New Member | community | 0.10x | #8E8E93 | 10–99 |
+| Regular | city | 0.35x | #6B6B6B | 100–299 |
+| Trusted | trusted | 0.70x | #C49A1A | 300–599 |
 | Top Judge | top | 1.00x | #C9973A | 600–1000 |
 
 ## Credibility Formula

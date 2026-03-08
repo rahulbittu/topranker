@@ -72,8 +72,8 @@ export async function sendDay3Email(params: DripEmailParams) {
     <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Your voice is unlocked! 🎉</h2>
     <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, you've earned the right to rate businesses on TopRanker. Your ratings start at 0.10x weight — the more you rate, the more your voice matters.</p>
     <div style="background:#F7F6F3;border-radius:10px;padding:14px;margin:16px 0;">
-      <p style="margin:0;color:#0D1B2A;font-size:13px;"><strong style="color:#C49A1A;">Your tier:</strong> Community Member (0.10x)</p>
-      <p style="margin:4px 0 0;color:#888;font-size:12px;">Rate 5+ businesses to reach City Reviewer (0.35x)</p>
+      <p style="margin:0;color:#0D1B2A;font-size:13px;"><strong style="color:#C49A1A;">Your tier:</strong> New Member (0.10x)</p>
+      <p style="margin:4px 0 0;color:#888;font-size:12px;">Rate 10+ businesses to reach Regular (0.35x)</p>
     </div>
     <a href="https://topranker.com" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
   </td></tr>

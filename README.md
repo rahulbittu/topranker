@@ -78,7 +78,7 @@ docs/                   # Sprint docs, retros, audits
 ## Core Systems
 
 ### Credibility Scoring
-Members earn credibility through consistent, high-quality ratings. Score determines tier (Community -> City -> Trusted -> Top Judge) which determines vote weight (0.5x to 2.0x). See `lib/data.ts`.
+Members earn credibility through consistent, high-quality ratings. Score determines tier (New Member -> Regular -> Trusted -> Top Judge) which determines vote weight (0.10x to 1.00x). See `lib/data.ts`.
 
 ### Rating Flow
 2-screen flow: Screen 1 captures 3 scores (food, service, vibe) + would-return. Screen 2 captures optional dish vote, note, and photo. Ratings include temporal decay — recent ratings weight more.

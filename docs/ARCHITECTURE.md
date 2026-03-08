@@ -134,10 +134,10 @@ members 1--* credibility_penalties
 ### Tiers
 | Tier | Score Range | Vote Weight | Requirements |
 |------|------------|-------------|--------------|
-| Community | 0-99 | 0.5x | Default tier |
-| City | 100-199 | 1.0x | 10+ ratings, 30+ days, score 100+ |
-| Trusted | 200-349 | 1.5x | 25+ ratings, 60+ days, score 200+, <3 flags |
-| Top Judge | 350+ | 2.0x | 50+ ratings, 90+ days, score 350+, <2 flags |
+| New Member | 10-99 | 0.10x | Default tier |
+| Regular | 100-299 | 0.35x | 10+ ratings, 2+ categories, 14+ days active |
+| Trusted | 300-599 | 0.70x | 35+ ratings, 3+ categories, 45+ days, variance 0.8+ |
+| Top Judge | 600-1000 | 1.00x | 80+ ratings, 4+ categories, 90+ days, variance 1.0+, zero flags |
 
 ### Score Calculation
 ```
@@ -150,9 +150,10 @@ credibilityScore = (ratingsGiven * 3) + (daysActive * 0.5) + (dishVotes * 1)
 ### Temporal Decay
 Ratings lose influence over time:
 - 0-30 days: 1.0x multiplier
-- 30-90 days: Linear decay to 0.7x
-- 90-180 days: Linear decay to 0.4x
-- 180+ days: Fixed at 0.3x
+- 30-90 days: 0.85x
+- 90-180 days: 0.65x
+- 180-365 days: 0.45x
+- 365+ days: 0.25x
 
 ## Data Flow
 

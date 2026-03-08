@@ -66,8 +66,8 @@ export async function sendWelcomeEmail(params: {
           <!-- Tier Preview -->
           <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:24px;">
             <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Your Starting Tier</p>
-            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">Community Member</p>
-            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight · Rate to earn City Reviewer status</p>
+            <p style="margin:0;color:#0D1B2A;font-size:16px;font-weight:700;">New Member</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">0.10x vote weight · Rate to earn Regular status</p>
           </div>
 
           <!-- CTA -->
@@ -97,7 +97,7 @@ You've joined the ${city} ranking community as @${username}.
 2. After 3 days, unlock rating
 3. Build credibility — more ratings = higher vote weight
 
-Your starting tier: Community Member (0.10x vote weight)
+Your starting tier: New Member (0.10x vote weight)
 
 Start exploring: https://topranker.com
 
