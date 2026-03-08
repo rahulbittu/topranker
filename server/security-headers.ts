@@ -101,11 +101,12 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   // Content Security Policy — restrict resource loading origins
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://accounts.google.com https://oauth2.googleapis.com",
+    "frame-src 'self' https://accounts.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
