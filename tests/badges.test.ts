@@ -31,6 +31,10 @@ const baseUserCtx: UserBadgeContext = {
   hasGivenScore1: false,
   businessesMovedUp: 0,
   businessesMovedToFirst: 0,
+  springRatings: 0,
+  summerRatings: 0,
+  fallRatings: 0,
+  winterRatings: 0,
 };
 
 const baseBizCtx: BusinessBadgeContext = {
@@ -135,6 +139,34 @@ describe("User Badge Evaluation", () => {
     const result = evaluateUserBadges({ ...baseUserCtx, referralCount: 5 });
     const squad = result.find(b => b.badge.id === "squad-builder");
     expect(squad?.earnedAt).toBeGreaterThan(0);
+  });
+
+  it("should earn seasonal badges for spring ratings", () => {
+    const result = evaluateUserBadges({ ...baseUserCtx, springRatings: 5 });
+    const spring = result.find(b => b.badge.id === "spring-explorer");
+    expect(spring?.earnedAt).toBeGreaterThan(0);
+  });
+
+  it("should show seasonal progress for partial completion", () => {
+    const result = evaluateUserBadges({ ...baseUserCtx, summerRatings: 3 });
+    const summer = result.find(b => b.badge.id === "summer-heat");
+    expect(summer?.earnedAt).toBe(0);
+    expect(summer?.progress).toBe(60);
+  });
+
+  it("should earn year-round badge only when all seasons complete", () => {
+    const partial = evaluateUserBadges({
+      ...baseUserCtx, springRatings: 5, summerRatings: 5, fallRatings: 5, winterRatings: 0,
+    });
+    const yearRound = partial.find(b => b.badge.id === "year-round");
+    expect(yearRound?.earnedAt).toBe(0);
+    expect(yearRound?.progress).toBe(75);
+
+    const full = evaluateUserBadges({
+      ...baseUserCtx, springRatings: 5, summerRatings: 5, fallRatings: 5, winterRatings: 5,
+    });
+    const yearRoundFull = full.find(b => b.badge.id === "year-round");
+    expect(yearRoundFull?.earnedAt).toBeGreaterThan(0);
   });
 
   it("should cap progress at 100", () => {

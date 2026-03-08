@@ -4,6 +4,18 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 75 — Architectural Audit #5 + Seasonal Badges + Dashboard (March 8, 2026)
+#### Added
+- 5 seasonal badges: Spring Explorer, Summer Heat, Fall Harvest, Winter Chill, Year-Round Rater
+- Seasonal badge evaluation with progress tracking and meta-badge (Year-Round = all 4 seasons)
+- Architectural Audit #5: ALL CLEAR across all 6 dimensions
+- 3 new seasonal badge tests (total: 173 across 13 files)
+
+#### Changed
+- Total badges: 56 -> 61 (40 user + 21 business)
+- Updated team performance dashboard through Sprint 75 (583 story points)
+- **Production `as any` casts: 3 (93% reduction — effectively complete)**
+
 ### Sprint 74 — Suggest Category Integration + API Wiring (March 8, 2026)
 #### Added
 - "Suggest" chip on leaderboard category row — opens SuggestCategory modal

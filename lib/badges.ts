@@ -414,6 +414,63 @@ export const USER_BADGES: Badge[] = [
     color: "#C49A1A",
     gradient: ["#FFD700", "#9A7510"],
   },
+
+  // ── Seasonal Badges ──
+  {
+    id: "spring-explorer",
+    name: "Spring Explorer",
+    description: "Rate 5 businesses in March, April, or May",
+    icon: "flower",
+    category: "seasonal",
+    rarity: "rare",
+    target: "user",
+    color: "#66BB6A",
+    gradient: ["#81C784", "#388E3C"],
+  },
+  {
+    id: "summer-heat",
+    name: "Summer Heat",
+    description: "Rate 5 businesses in June, July, or August",
+    icon: "sunny",
+    category: "seasonal",
+    rarity: "rare",
+    target: "user",
+    color: "#FF9800",
+    gradient: ["#FFB74D", "#E65100"],
+  },
+  {
+    id: "fall-harvest",
+    name: "Fall Harvest",
+    description: "Rate 5 businesses in September, October, or November",
+    icon: "leaf",
+    category: "seasonal",
+    rarity: "rare",
+    target: "user",
+    color: "#BF360C",
+    gradient: ["#E64A19", "#8D2C0A"],
+  },
+  {
+    id: "winter-chill",
+    name: "Winter Chill",
+    description: "Rate 5 businesses in December, January, or February",
+    icon: "snow",
+    category: "seasonal",
+    rarity: "rare",
+    target: "user",
+    color: "#42A5F5",
+    gradient: ["#64B5F6", "#1565C0"],
+  },
+  {
+    id: "year-round",
+    name: "Year-Round Rater",
+    description: "Earn all 4 seasonal badges",
+    icon: "earth",
+    category: "seasonal",
+    rarity: "legendary",
+    target: "user",
+    color: "#C49A1A",
+    gradient: ["#FFD700", "#9A7510"],
+  },
 ];
 
 // ─── BUSINESS BADGES ────────────────────────────────────────────
@@ -664,6 +721,11 @@ export interface UserBadgeContext {
   hasGivenScore1: boolean;
   businessesMovedUp: number;
   businessesMovedToFirst: number;
+  // Seasonal badge context
+  springRatings: number;
+  summerRatings: number;
+  fallRatings: number;
+  winterRatings: number;
 }
 
 export function evaluateUserBadges(ctx: UserBadgeContext): EarnedBadge[] {
@@ -720,6 +782,16 @@ export function evaluateUserBadges(ctx: UserBadgeContext): EarnedBadge[] {
   check("tough-critic",     ctx.hasGivenScore1,              ctx.hasGivenScore1 ? 100 : 0);
   check("impact-maker",     ctx.businessesMovedUp >= 1,      Math.min(ctx.businessesMovedUp / 1 * 100, 100));
   check("king-maker",       ctx.businessesMovedToFirst >= 1, ctx.businessesMovedToFirst >= 1 ? 100 : 0);
+
+  // Seasonal
+  check("spring-explorer",  ctx.springRatings >= 5, Math.min(ctx.springRatings / 5 * 100, 100));
+  check("summer-heat",      ctx.summerRatings >= 5, Math.min(ctx.summerRatings / 5 * 100, 100));
+  check("fall-harvest",     ctx.fallRatings >= 5,   Math.min(ctx.fallRatings / 5 * 100, 100));
+  check("winter-chill",     ctx.winterRatings >= 5, Math.min(ctx.winterRatings / 5 * 100, 100));
+
+  const allSeasons = ctx.springRatings >= 5 && ctx.summerRatings >= 5 && ctx.fallRatings >= 5 && ctx.winterRatings >= 5;
+  const seasonProgress = [ctx.springRatings >= 5, ctx.summerRatings >= 5, ctx.fallRatings >= 5, ctx.winterRatings >= 5].filter(Boolean).length;
+  check("year-round",       allSeasons, seasonProgress / 4 * 100);
 
   return earned;
 }

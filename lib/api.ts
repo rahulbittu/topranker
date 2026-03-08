@@ -124,6 +124,10 @@ export interface ApiMemberProfile {
   hasRatedBefore7AM?: boolean;
   hasGivenPerfect5?: boolean;
   hasGivenScore1?: boolean;
+  springRatings?: number;
+  summerRatings?: number;
+  fallRatings?: number;
+  winterRatings?: number;
 }
 
 const CATEGORY_DISPLAY: Record<string, string> = {};

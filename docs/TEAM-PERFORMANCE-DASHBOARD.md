@@ -368,8 +368,15 @@
 | 66 | 8 | 4 | ~350 | James Park, Suki |
 | 67 | 13 | 3 | ~400 | James Park, Sage |
 | 68 | 21 | 6 | ~800 | James Park, Jordan (CVO), Suki |
+| 69 | 16 | 4 | ~570 | James Park, Sage, Marcus Chen |
+| 70 | 13 | 13 | ~300 | Mei Lin, James Park |
+| 71 | 11 | 8 | ~200 | Mei Lin, James Park, Jordan (CVO) |
+| 72 | 15 | 6 | ~560 | Sage, Mei Lin, James Park, Carlos |
+| 73 | 13 | 7 | ~470 | Sage, Jordan (CVO), Mei Lin |
+| 74 | 11 | 4 | ~300 | James Park, Carlos Ruiz |
+| 75 | 15 | 6 | ~400 | Jordan (CVO), Mei Lin, Marcus Chen |
 
-**Total Story Points: 489** | **Total Sprints: 68** | **Avg Velocity: 7.2 pts/sprint**
+**Total Story Points: 583** | **Total Sprints: 75** | **Avg Velocity: 7.8 pts/sprint**
 
 ---
 
@@ -383,7 +390,9 @@
 | 57 | Storage domain split (1010 LOC → 6 modules), TS fix | A+ |
 | 58 | Structured logging system, 4 levels, tagged modules | A |
 | 67 | API response time logging middleware (2 sprints late) | A |
-**Average: A** | **Note: Hired Sprint 52, strong backend velocity when focused**
+| 72 | Category DB migration (categories + suggestions tables) | A+ |
+| 73 | Category storage module + seed script + API routes | A+ |
+**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB layer**
 
 ### Jordan — Chief Value Officer
 | Sprint | Contribution | Rating |
@@ -392,7 +401,10 @@
 | 53 | Tier perks test design, incentive math verification | A |
 | 54 | Gamification design, perk copy, unlock psychology | A+ |
 | 68 | Achievement badges system — 35 user + 21 business badges, Apple Fitness-style | A+ |
-**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems**
+| 71 | Business badge display on detail page | A+ |
+| 73 | Badge notification toast design + implementation | A+ |
+| 75 | Seasonal badges (Spring, Summer, Fall, Winter, Year-Round) | A+ |
+**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems, 40→61 total badges**
 
 ### Suki — Design Lead
 | Sprint | Contribution | Rating |
@@ -422,7 +434,12 @@
 | 63 | Typed FighterPhoto, removed 3 `as any` casts | A |
 | 67 | 1 `as any` removal (tierBarStyle) | A- |
 | 68 | DimensionValue cast batch removal (planned) | — |
-**Average: A** | **Note: Systematic approach to type safety**
+| 70 | TypedIcon wrapper — eliminated 16 `as any` casts | A+ |
+| 71 | pct() DimensionValue helper — eliminated 10 casts | A+ |
+| 72 | SafeImage typed wrapper — eliminated 8 casts | A+ |
+| 73 | Google Maps type declarations — eliminated 3 casts | A+ |
+| 74 | sortBy cast fix | A |
+**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction)**
 
 ### Priya Sharma — RBAC Lead
 | Sprint | Contribution | Rating |

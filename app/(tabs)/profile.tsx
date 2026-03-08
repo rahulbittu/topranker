@@ -16,6 +16,7 @@ import {
   type CredibilityTier,
 } from "@/lib/data";
 import { LinearGradient } from "expo-linear-gradient";
+import { pct } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiMemberImpact } from "@/lib/api";
@@ -138,7 +139,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
               <Text style={styles.credProgressPct}>{Math.round(progressToNext)}%</Text>
             </View>
             <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: `${progressToNext}%` as any, backgroundColor: tierColor }]} />
+              <View style={[styles.progressBarFill, { width: pct(progressToNext), backgroundColor: tierColor }]} />
             </View>
             <Text style={styles.credProgressHint}>
               {Math.max(nextRange.min - profile.credibilityScore, 0)} points to {TIER_DISPLAY_NAMES[nextTier]}
@@ -331,6 +332,10 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           hasGivenScore1: profile.hasGivenScore1 ?? false,
           businessesMovedUp: impact?.businessesMovedUp ?? 0,
           businessesMovedToFirst: impact?.businessesMovedToFirst ?? 0,
+          springRatings: profile.springRatings ?? 0,
+          summerRatings: profile.summerRatings ?? 0,
+          fallRatings: profile.fallRatings ?? 0,
+          winterRatings: profile.winterRatings ?? 0,
         };
         const badges = evaluateUserBadges(badgeCtx);
         return (
