@@ -14,6 +14,10 @@
  */
 
 import { track } from "./analytics";
+import { hashString } from "@shared/hash";
+
+// Re-export for consumers that imported hashString from this module
+export { hashString };
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -36,21 +40,6 @@ export interface Experiment {
 }
 
 export type ExperimentRegistry = Record<string, Experiment>;
-
-// ─── Hash Function ───────────────────────────────────────────
-
-/**
- * Simple deterministic string hash (DJB2 variant).
- * Returns a positive integer for consistent bucketing.
- */
-export function hashString(str: string): number {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    // hash * 33 + charCode
-    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
-  }
-  return hash;
-}
 
 // ─── Experiment Registry ─────────────────────────────────────
 

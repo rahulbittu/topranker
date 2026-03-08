@@ -15,6 +15,10 @@ import type { Express, Request, Response } from "express";
 import { apiRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { log } from "./logger";
+import { hashString } from "@shared/hash";
+
+// Re-export for any consumers that imported hashString from this module
+export { hashString };
 
 const expLog = log.tag("Experiments");
 
@@ -30,20 +34,6 @@ export interface Experiment {
   description: string;
   active: boolean;
   variants: ExperimentVariant[];
-}
-
-// ─── DJB2 Hash (identical to client-side lib/ab-testing.ts) ──
-
-/**
- * Deterministic string hash (DJB2 variant).
- * Must produce identical output to the client-side hashString() in lib/ab-testing.ts.
- */
-export function hashString(str: string): number {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) + hash + str.charCodeAt(i)) >>> 0;
-  }
-  return hash;
 }
 
 // ─── Experiment Registry ─────────────────────────────────────

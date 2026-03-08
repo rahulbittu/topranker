@@ -43,13 +43,7 @@ import { trackEvent } from "./analytics";
 import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
-
-function requireAuth(req: Request, res: Response, next: Function) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
+import { requireAuth } from "./middleware";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -266,6 +260,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       getMemberBadges(userId),
     ]);
 
+    // Tier freshness guard (Sprint 141): ensure exported data reflects correct tier
+    const freshExportTier = profile
+      ? checkAndRefreshTier(profile.credibilityTier, profile.credibilityScore)
+      : null;
+
     const exportData = {
       exportDate: new Date().toISOString(),
       format: "GDPR Art. 20 compliant",
@@ -275,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: profile.email,
         city: profile.city,
         credibilityScore: profile.credibilityScore,
-        credibilityTier: profile.credibilityTier,
+        credibilityTier: freshExportTier,
         totalRatings: profile.totalRatings,
         joinedAt: profile.joinedAt,
         lastActive: profile.lastActive,
@@ -658,11 +657,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const member = await getMemberByUsername(req.params.username as string);
     if (!member) return res.status(404).json({ error: "Member not found" });
 
+    // Tier freshness guard (Sprint 141): ensure public profile returns correct tier
+    const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
+
     return res.json({
       data: {
         displayName: member.displayName,
         username: member.username,
-        credibilityTier: member.credibilityTier,
+        credibilityTier: freshTier,
         totalRatings: member.totalRatings,
         joinedAt: member.joinedAt,
       },
@@ -739,7 +741,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Category Suggestions
   app.post("/api/category-suggestions", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    try {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
@@ -750,9 +751,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         suggestedBy: req.user!.id,
       });
       return res.status(201).json({ data: suggestion });
-    } catch (err: any) {
-      return res.status(400).json({ error: err.message });
-    }
   }));
 
   app.get("/api/category-suggestions", wrapAsync(async (req: Request, res: Response) => {

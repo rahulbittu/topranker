@@ -7,6 +7,7 @@ import { getMemberByEmail, getMemberById, createMember, getMemberByUsername, get
 import bcrypt from "bcrypt";
 import type { Express, Request } from "express";
 import { config } from "./config";
+import { checkAndRefreshTier } from "./tier-staleness";
 
 declare global {
   namespace Express {
@@ -89,6 +90,8 @@ export function setupAuth(app: Express) {
       if (!member) {
         return done(null, false);
       }
+      // Tier freshness guard (Sprint 141): ensure session user has correct tier
+      const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
       done(null, {
         id: member.id,
         displayName: member.displayName,
@@ -96,7 +99,7 @@ export function setupAuth(app: Express) {
         email: member.email,
         city: member.city,
         credibilityScore: member.credibilityScore,
-        credibilityTier: member.credibilityTier,
+        credibilityTier: freshTier,
       });
     } catch (err) {
       done(err);

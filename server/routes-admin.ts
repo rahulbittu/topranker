@@ -28,13 +28,8 @@ import { getAllFlags } from "../lib/feature-flags";
 import { CATEGORY_CONFIDENCE_THRESHOLDS, DEFAULT_THRESHOLDS } from "../lib/data";
 import { adminRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
-
-function requireAuth(req: Request, res: Response, next: Function) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
+import { checkAndRefreshTier } from "./tier-staleness";
+import { requireAuth } from "./middleware";
 
 function requireAdmin(req: Request, res: Response, next: Function) {
   if (!isAdminEmail(req.user?.email)) {
@@ -140,7 +135,12 @@ export function registerAdminRoutes(app: Express) {
   app.get("/api/admin/members", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
       const data = await getAdminMemberList(limit);
-      return res.json({ data });
+      // Tier freshness guard (Sprint 141): ensure admin list reflects correct tiers
+      const freshData = data.map((m) => ({
+        ...m,
+        credibilityTier: checkAndRefreshTier(m.credibilityTier, m.credibilityScore),
+      }));
+      return res.json({ data: freshData });
   }));
 
   app.get("/api/admin/members/count", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {

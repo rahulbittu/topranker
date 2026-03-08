@@ -11,13 +11,7 @@ import { broadcast } from "./sse";
 import { log } from "./logger";
 import { sanitizeString, sanitizeSlug } from "./sanitize";
 import { paymentRateLimiter } from "./rate-limiter";
-
-function requireAuth(req: Request, res: Response, next: Function) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
+import { requireAuth } from "./middleware";
 
 export function registerPaymentRoutes(app: Express) {
   // Apply strict rate limiting to all payment routes (20 req/min per IP)

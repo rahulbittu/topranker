@@ -1,0 +1,93 @@
+name: TopRanker CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: File size check (LOC limit 1000)
+        continue-on-error: true
+        run: |
+          EXIT_CODE=0
+          FILES=(
+            "app/(tabs)/profile.tsx"
+            "app/(tabs)/challenger.tsx"
+            "app/(tabs)/search.tsx"
+            "app/business/[id].tsx"
+            "server/routes.ts"
+          )
+          for FILE in "${FILES[@]}"; do
+            if [ -f "$FILE" ]; then
+              LINES=$(wc -l < "$FILE")
+              if [ "$LINES" -gt 1000 ]; then
+                echo "::warning file=$FILE::$FILE exceeds 1000 LOC ($LINES lines)"
+                EXIT_CODE=1
+              else
+                echo "OK: $FILE ($LINES lines)"
+              fi
+            else
+              echo "SKIP: $FILE not found"
+            fi
+          done
+          exit $EXIT_CODE
+
+      - name: Type cast count (as any)
+        continue-on-error: true
+        run: |
+          COUNT=$(grep -r "as any" --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=tests --exclude-dir=__tests__ \
+            -l . | wc -l | tr -d ' ')
+          TOTAL=$(grep -r "as any" --include="*.ts" --include="*.tsx" \
+            --exclude-dir=node_modules --exclude-dir=tests --exclude-dir=__tests__ \
+            . | wc -l | tr -d ' ')
+          echo "Found $TOTAL 'as any' casts across $COUNT files"
+          if [ "$TOTAL" -gt 30 ]; then
+            echo "::warning::Production source has $TOTAL 'as any' casts (threshold: 30)"
+            exit 1
+          fi
+
+      - name: Check @types in devDependencies
+        continue-on-error: true
+        run: |
+          TYPES_IN_DEPS=$(node -e "
+            const pkg = require('./package.json');
+            const deps = Object.keys(pkg.dependencies || {});
+            const typePkgs = deps.filter(d => d.startsWith('@types/'));
+            if (typePkgs.length > 0) {
+              console.log('Found @types packages in dependencies (should be devDependencies):');
+              typePkgs.forEach(p => console.log('  - ' + p));
+              process.exit(1);
+            } else {
+              console.log('OK: No @types packages in dependencies');
+            }
+          ")
+          echo "$TYPES_IN_DEPS"
+
+      - name: TypeScript type check
+        run: |
+          if [ -f "tsconfig.json" ]; then
+            npx tsc --noEmit
+          else
+            echo "SKIP: No tsconfig.json found"
+          fi

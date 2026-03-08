@@ -12,13 +12,7 @@ import {
 } from "./storage";
 import { log } from "./logger";
 import { wrapAsync } from "./wrap-async";
-
-function requireAuth(req: Request, res: Response, next: Function) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
+import { requireAuth } from "./middleware";
 
 export function registerBadgeRoutes(app: Express) {
   // GET /api/members/:id/badges — list earned badge IDs for a member
