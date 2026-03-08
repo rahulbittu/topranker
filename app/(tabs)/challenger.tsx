@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger } from "@/lib/api";
+import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger, type ApiBusiness } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
@@ -161,7 +161,7 @@ function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
   );
 }
 
-const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { biz: any; label: string; score?: number }) {
+const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { biz: ApiBusiness; label: string; score?: number }) {
   const [err, setErr] = useState(false);
   const photoUrl = biz.photoUrl || (biz.photoUrls && biz.photoUrls[0]);
 
@@ -255,7 +255,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
-          <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" score={parseFloat(challenge.defenderBusiness.weightedScore as any) || 0} />
+          <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" score={parseFloat(challenge.defenderBusiness.weightedScore) || 0} />
           <Text style={styles.voteCount}>{defenderVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>
@@ -275,7 +275,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
           accessibilityRole="button"
           accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
-          <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" score={parseFloat(challenge.challengerBusiness.weightedScore as any) || 0} />
+          <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" score={parseFloat(challenge.challengerBusiness.weightedScore) || 0} />
           <Text style={styles.voteCount}>{challengerVotes.toLocaleString()}</Text>
           <Text style={styles.voteLabel}>weighted votes</Text>
         </TouchableOpacity>

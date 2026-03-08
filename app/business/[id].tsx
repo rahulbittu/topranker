@@ -24,7 +24,8 @@ import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
   SubScoreBar, DistributionChart, RatingRow, ActionButton,
   CollapsibleReviews, AnimatedScore, DishPill,
-  type MappedRating,
+  RatingDistribution, RankHistoryChart,
+  type MappedRating, type RankHistoryPoint,
 } from "@/components/business/SubComponents";
 
 const HERO_HEIGHT = 280;
@@ -344,72 +345,12 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Rating Distribution — Anti-fraud transparency */}
-          {ratings.length >= 3 && (() => {
-            const dist = [0, 0, 0, 0, 0];
-            ratings.forEach(r => {
-              const bucket = Math.min(4, Math.max(0, Math.round(r.rawScore) - 1));
-              dist[bucket]++;
-            });
-            const maxCount = Math.max(...dist);
-            return (
-              <View style={styles.distCard}>
-                <Text style={styles.distTitle}>Rating Distribution</Text>
-                <Text style={styles.distSubtitle}>Transparent breakdown of all community ratings</Text>
-                {[5, 4, 3, 2, 1].map(score => {
-                  const count = dist[score - 1];
-                  const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
-                  return (
-                    <View key={score} style={styles.distRow}>
-                      <Text style={styles.distLabel}>{score}</Text>
-                      <View style={styles.distBarBg}>
-                        <View style={[styles.distBarFill, { width: `${pct}%` as any, backgroundColor: score >= 4 ? Colors.green : score === 3 ? BRAND.colors.amber : Colors.red }]} />
-                      </View>
-                      <Text style={styles.distCount}>{count}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            );
-          })()}
+          {ratings.length >= 3 && <RatingDistribution ratings={ratings} />}
 
           {/* Rank History Chart — 30-day trend */}
-          {rankHistoryData && rankHistoryData.length >= 2 && (() => {
-            const points = rankHistoryData;
-            const maxRank = Math.max(...points.map(p => p.rank));
-            const minRank = Math.min(...points.map(p => p.rank));
-            const range = Math.max(maxRank - minRank, 1);
-            const chartW = 280;
-            const chartH = 60;
-            return (
-              <View style={styles.rankHistoryCard}>
-                <View style={styles.rankHistoryHeader}>
-                  <Ionicons name="trending-up" size={14} color={BRAND.colors.amber} />
-                  <Text style={styles.rankHistoryTitle}>30-Day Rank Trend</Text>
-                </View>
-                <View style={styles.rankHistoryChart}>
-                  {points.map((p, i) => {
-                    const x = (i / (points.length - 1)) * chartW;
-                    const y = chartH - ((maxRank - p.rank) / range) * chartH;
-                    return (
-                      <View
-                        key={i}
-                        style={[styles.rankHistoryDot, {
-                          left: x - 3,
-                          top: y - 3,
-                        }]}
-                      />
-                    );
-                  })}
-                  {/* Connecting line approximation */}
-                  <View style={[styles.rankHistoryLine, { width: chartW }]} />
-                </View>
-                <View style={styles.rankHistoryLabels}>
-                  <Text style={styles.rankHistoryLabel}>#{maxRank}</Text>
-                  <Text style={styles.rankHistoryLabel}>#{minRank}</Text>
-                </View>
-              </View>
-            );
-          })()}
+          {rankHistoryData && rankHistoryData.length >= 2 && (
+            <RankHistoryChart points={rankHistoryData as RankHistoryPoint[]} />
+          )}
 
           <View style={styles.sectionDivider} />
 
@@ -840,52 +781,6 @@ const styles = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
   },
   directionsBtnText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-
-
-  rankHistoryCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
-    ...Colors.cardShadow,
-  },
-  rankHistoryHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-  },
-  rankHistoryTitle: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  rankHistoryChart: {
-    height: 66, position: "relative",
-  },
-  rankHistoryDot: {
-    position: "absolute", width: 6, height: 6, borderRadius: 3,
-    backgroundColor: BRAND.colors.amber,
-  },
-  rankHistoryLine: {
-    position: "absolute", top: "50%", left: 0, height: 1,
-    backgroundColor: Colors.border,
-  },
-  rankHistoryLabels: {
-    flexDirection: "row", justifyContent: "space-between",
-  },
-  rankHistoryLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-
-  distCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
-    ...Colors.cardShadow,
-  },
-  distTitle: {
-    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  distSubtitle: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginBottom: 4,
-  },
-  distRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  distLabel: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center" },
-  distBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
-  distBarFill: { height: "100%", borderRadius: 2 },
-  distCount: { width: 20, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
-
 
   photoGrid: {
     flexDirection: "row", flexWrap: "wrap", gap: 4, borderRadius: 12, overflow: "hidden",

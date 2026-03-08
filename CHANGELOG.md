@@ -4,6 +4,13 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 63 — Chart Extraction + Type Safety (March 7, 2026)
+#### Changed
+- Extracted `RatingDistribution` and `RankHistoryChart` from `business/[id].tsx` into SubComponents
+- `business/[id].tsx` reduced from 921 to 816 LOC (total -33% from original 1210)
+- Typed `FighterPhoto` component prop as `ApiBusiness` instead of `any`
+- Removed 3 `as any` casts (36 -> 33 total in frontend)
+
 ### Sprint 62 — Integration Tests + supertest (March 7, 2026)
 #### Added
 - `supertest` + `@types/supertest` dev dependencies for HTTP integration testing

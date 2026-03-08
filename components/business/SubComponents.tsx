@@ -227,6 +227,74 @@ export function AnimatedScore({ value, style }: { value: number; style: any }) {
   return <Text style={style}>{displayVal}</Text>;
 }
 
+export interface RankHistoryPoint {
+  rank: number;
+  date: string;
+}
+
+export const RatingDistribution = React.memo(function RatingDistribution({ ratings }: { ratings: MappedRating[] }) {
+  const dist = [0, 0, 0, 0, 0];
+  ratings.forEach(r => {
+    const bucket = Math.min(4, Math.max(0, Math.round(r.rawScore) - 1));
+    dist[bucket]++;
+  });
+  const maxCount = Math.max(...dist);
+
+  return (
+    <View style={s.rdCard}>
+      <Text style={s.rdTitle}>Rating Distribution</Text>
+      <Text style={s.rdSubtitle}>Transparent breakdown of all community ratings</Text>
+      {[5, 4, 3, 2, 1].map(score => {
+        const count = dist[score - 1];
+        const pct = maxCount > 0 ? (count / maxCount) * 100 : 0;
+        return (
+          <View key={score} style={s.rdRow}>
+            <Text style={s.rdLabel}>{score}</Text>
+            <View style={s.rdBarBg}>
+              <View style={[s.rdBarFill, { width: `${pct}%` as any, backgroundColor: score >= 4 ? Colors.green : score === 3 ? BRAND.colors.amber : Colors.red }]} />
+            </View>
+            <Text style={s.rdCount}>{count}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+});
+
+export const RankHistoryChart = React.memo(function RankHistoryChart({ points }: { points: RankHistoryPoint[] }) {
+  const maxRank = Math.max(...points.map(p => p.rank));
+  const minRank = Math.min(...points.map(p => p.rank));
+  const range = Math.max(maxRank - minRank, 1);
+  const chartW = 280;
+  const chartH = 60;
+
+  return (
+    <View style={s.rhCard}>
+      <View style={s.rhHeader}>
+        <Ionicons name="trending-up" size={14} color={BRAND.colors.amber} />
+        <Text style={s.rhTitle}>30-Day Rank Trend</Text>
+      </View>
+      <View style={s.rhChart}>
+        {points.map((p, i) => {
+          const x = (i / (points.length - 1)) * chartW;
+          const y = chartH - ((maxRank - p.rank) / range) * chartH;
+          return (
+            <View
+              key={i}
+              style={[s.rhDot, { left: x - 3, top: y - 3 }]}
+            />
+          );
+        })}
+        <View style={[s.rhLine, { width: chartW }]} />
+      </View>
+      <View style={s.rhLabels}>
+        <Text style={s.rhLabel}>#{maxRank}</Text>
+        <Text style={s.rhLabel}>#{minRank}</Text>
+      </View>
+    </View>
+  );
+});
+
 export function DishPill({ dish }: { dish: ApiDish }) {
   return (
     <View style={s.dishPill}>
@@ -315,6 +383,33 @@ const s = StyleSheet.create({
     fontSize: 13, color: BRAND.colors.amber, fontWeight: "600",
     fontFamily: "DMSans_600SemiBold",
   },
+
+  rdCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
+    ...Colors.cardShadow,
+  },
+  rdTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  rdSubtitle: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginBottom: 4 },
+  rdRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rdLabel: { width: 12, fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", textAlign: "center" },
+  rdBarBg: { flex: 1, height: 6, backgroundColor: Colors.border, borderRadius: 3, overflow: "hidden" },
+  rdBarFill: { height: "100%", borderRadius: 2 },
+  rdCount: { width: 20, fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "right" },
+
+  rhCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
+    ...Colors.cardShadow,
+  },
+  rhHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  rhTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  rhChart: { height: 66, position: "relative" },
+  rhDot: {
+    position: "absolute", width: 6, height: 6, borderRadius: 3,
+    backgroundColor: BRAND.colors.amber,
+  },
+  rhLine: { position: "absolute", top: "50%", left: 0, height: 1, backgroundColor: Colors.border },
+  rhLabels: { flexDirection: "row", justifyContent: "space-between" },
+  rhLabel: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
   dishPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
