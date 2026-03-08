@@ -4,6 +4,13 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 80 — Architectural Audit #6 + Badge Award Flow + Badge Count (March 8, 2026)
+#### Added
+- Architectural Audit #6: 5/6 ALL CLEAR, 1 WATCH (file size)
+- Badge award persistence in rating flow — `awardBadgeApi` fires on toast trigger
+- Badge count in profile stats row (amber colored, computed from evaluated badges)
+- 5 new badge award flow tests (total: 202 across 17 files)
+
 ### Sprint 79 — Server-Side Badge Persistence + Badge API (March 8, 2026)
 #### Added
 - `server/storage/badges.ts` — CRUD for member_badges table (5 functions: getMemberBadges, getMemberBadgeCount, awardBadge, hasBadge, getEarnedBadgeIds)

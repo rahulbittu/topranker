@@ -23,7 +23,7 @@ import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiM
 import { BRAND } from "@/constants/brand";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
-import { evaluateUserBadges, getUserBadgeCount, type UserBadgeContext } from "@/lib/badges";
+import { evaluateUserBadges, getUserBadgeCount, getEarnedCount, type UserBadgeContext } from "@/lib/badges";
 import { TypedIcon } from "@/components/TypedIcon";
 import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
@@ -64,6 +64,34 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   const breakdown = profile.credibilityBreakdown;
   const totalScore = profile.credibilityScore;
+
+  // Compute earned badge count for stats display
+  const earnedBadgeCount = (() => {
+    const ctx: UserBadgeContext = {
+      totalRatings: profile.totalRatings,
+      distinctBusinesses: profile.distinctBusinesses,
+      totalCategories: profile.totalCategories,
+      daysActive: profile.daysActive,
+      currentStreak: profile.currentStreak ?? 0,
+      credibilityTier: tier,
+      credibilityScore: profile.credibilityScore,
+      isFoundingMember: profile.isFoundingMember,
+      referralCount: profile.referralCount ?? 0,
+      helpfulVotes: profile.helpfulVotes ?? 0,
+      citiesRated: profile.citiesRated ?? 1,
+      hasRatedAfterMidnight: profile.hasRatedAfterMidnight ?? false,
+      hasRatedBefore7AM: profile.hasRatedBefore7AM ?? false,
+      hasGivenPerfect5: profile.hasGivenPerfect5 ?? false,
+      hasGivenScore1: profile.hasGivenScore1 ?? false,
+      businessesMovedUp: impact?.businessesMovedUp ?? 0,
+      businessesMovedToFirst: impact?.businessesMovedToFirst ?? 0,
+      springRatings: profile.springRatings ?? 0,
+      summerRatings: profile.summerRatings ?? 0,
+      fallRatings: profile.fallRatings ?? 0,
+      winterRatings: profile.winterRatings ?? 0,
+    };
+    return getEarnedCount(evaluateUserBadges(ctx));
+  })();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -165,9 +193,13 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Text style={styles.statNum}>{profile.totalCategories.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Categories</Text>
         </View>
-        <View style={styles.statBox}>
+        <View style={[styles.statBox, styles.statBoxMiddle]}>
           <Text style={styles.statNum}>{profile.daysActive.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Days</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={[styles.statNum, { color: AMBER }]}>{earnedBadgeCount}</Text>
+          <Text style={styles.statLabel}>Badges</Text>
         </View>
       </View>
 
