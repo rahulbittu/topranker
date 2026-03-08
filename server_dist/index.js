@@ -17,6 +17,7 @@ var __export = (target, all) => {
 // shared/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
+  analyticsEvents: () => analyticsEvents,
   businessClaims: () => businessClaims,
   businessPhotos: () => businessPhotos,
   businesses: () => businesses,
@@ -55,7 +56,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -393,6 +394,21 @@ var init_schema = __esm({
         index("idx_featured_business").on(table.businessId),
         index("idx_featured_city_status").on(table.city, table.status),
         index("idx_featured_expires").on(table.expiresAt)
+      ]
+    );
+    analyticsEvents = pgTable(
+      "analytics_events",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        event: text("event").notNull(),
+        userId: varchar("user_id").references(() => members.id),
+        metadata: jsonb("metadata"),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_analytics_event").on(table.event),
+        index("idx_analytics_user").on(table.userId),
+        index("idx_analytics_created").on(table.createdAt)
       ]
     );
     insertMemberSchema = createInsertSchema(members).pick({
@@ -3001,14 +3017,14 @@ async function handlePhotoProxy(req, res) {
       const contentType2 = legacyRes.headers.get("content-type") || "image/jpeg";
       res.setHeader("Content-Type", contentType2);
       res.setHeader("Cache-Control", "public, max-age=86400");
-      const buffer2 = Buffer.from(await legacyRes.arrayBuffer());
-      return res.send(buffer2);
+      const buffer3 = Buffer.from(await legacyRes.arrayBuffer());
+      return res.send(buffer3);
     }
     const contentType = upstream.headers.get("content-type") || "image/jpeg";
     res.setHeader("Content-Type", contentType);
     res.setHeader("Cache-Control", "public, max-age=86400");
-    const buffer = Buffer.from(await upstream.arrayBuffer());
-    res.send(buffer);
+    const buffer2 = Buffer.from(await upstream.arrayBuffer());
+    res.send(buffer2);
   } catch (err) {
     if (err.name === "TimeoutError") {
       return res.status(504).json({ error: "Photo fetch timed out" });
@@ -3294,6 +3310,35 @@ function getPerfStats() {
   };
 }
 
+// server/analytics.ts
+init_logger();
+var analyticsLog = log.tag("Analytics");
+var buffer = [];
+var MAX_BUFFER = 1e3;
+function trackEvent(event, userId, metadata) {
+  const entry = {
+    event,
+    userId,
+    metadata,
+    timestamp: Date.now()
+  };
+  buffer.push(entry);
+  analyticsLog.info(`${event}${userId ? ` [${userId}]` : ""}`);
+  if (buffer.length > MAX_BUFFER) {
+    buffer.splice(0, buffer.length - MAX_BUFFER);
+  }
+}
+function getFunnelStats() {
+  const stats2 = {};
+  for (const entry of buffer) {
+    stats2[entry.event] = (stats2[entry.event] || 0) + 1;
+  }
+  return stats2;
+}
+function getRecentEvents(limit = 50) {
+  return buffer.slice(-limit);
+}
+
 // server/routes-admin.ts
 function requireAuth(req, res, next) {
   if (!req.isAuthenticated()) {
@@ -3476,6 +3521,17 @@ function registerAdminRoutes(app2) {
       return res.status(500).json({ error: err.message });
     }
   });
+  app2.get("/api/admin/analytics", requireAuth, requireAdmin, async (_req, res) => {
+    try {
+      const data = {
+        funnel: getFunnelStats(),
+        recentEvents: getRecentEvents(20)
+      };
+      return res.json({ data });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
   app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req, res) => {
     try {
       const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
@@ -3516,6 +3572,31 @@ function broadcast(type, payload = {}) {
 
 // server/routes-payments.ts
 init_logger();
+
+// server/sanitize.ts
+function stripHtml(input) {
+  return input.replace(/<[^>]*>/g, "").trim();
+}
+function sanitizeString(input, maxLength = 500) {
+  if (typeof input !== "string") return "";
+  return stripHtml(input).slice(0, maxLength).trim();
+}
+function sanitizeNumber(input, min, max, fallback) {
+  const num = Number(input);
+  if (isNaN(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+function sanitizeEmail(input) {
+  if (typeof input !== "string") return "";
+  const trimmed = input.toLowerCase().trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : "";
+}
+function sanitizeSlug(input) {
+  if (typeof input !== "string") return "";
+  return input.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 100);
+}
+
+// server/routes-payments.ts
 function requireAuth2(req, res, next) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
@@ -3525,7 +3606,8 @@ function requireAuth2(req, res, next) {
 function registerPaymentRoutes(app2) {
   app2.post("/api/payments/challenger", requireAuth2, async (req, res) => {
     try {
-      const { businessName, slug } = req.body;
+      const businessName = sanitizeString(req.body.businessName, 100);
+      const slug = sanitizeSlug(req.body.slug);
       if (!businessName || !slug) {
         return res.status(400).json({ error: "businessName and slug are required" });
       }
@@ -3565,7 +3647,7 @@ function registerPaymentRoutes(app2) {
   });
   app2.post("/api/payments/dashboard-pro", requireAuth2, async (req, res) => {
     try {
-      const { slug } = req.body;
+      const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
       }
@@ -3605,7 +3687,7 @@ function registerPaymentRoutes(app2) {
   });
   app2.post("/api/payments/featured", requireAuth2, async (req, res) => {
     try {
-      const { slug } = req.body;
+      const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
       }
@@ -3745,13 +3827,32 @@ init_schema();
 // server/rate-limiter.ts
 init_logger();
 var rlLog = log.tag("RateLimiter");
-var windows = /* @__PURE__ */ new Map();
-setInterval(() => {
-  const now = Date.now();
-  Array.from(windows.entries()).forEach(([key, entry]) => {
-    if (now > entry.resetAt) windows.delete(key);
-  });
-}, 6e4);
+var MemoryStore = class {
+  windows = /* @__PURE__ */ new Map();
+  cleanupTimer;
+  constructor() {
+    this.cleanupTimer = setInterval(() => {
+      const now = Date.now();
+      for (const [key, entry] of this.windows) {
+        if (now > entry.resetAt) this.windows.delete(key);
+      }
+    }, 6e4);
+  }
+  async increment(key, windowMs) {
+    const now = Date.now();
+    let entry = this.windows.get(key);
+    if (!entry || now > entry.resetAt) {
+      entry = { count: 0, resetAt: now + windowMs };
+      this.windows.set(key, entry);
+    }
+    entry.count++;
+    return { count: entry.count, resetAt: entry.resetAt };
+  }
+  cleanup() {
+    clearInterval(this.cleanupTimer);
+  }
+};
+var defaultStore = new MemoryStore();
 var DEFAULT_OPTIONS = {
   windowMs: 6e4,
   // 1 minute
@@ -3760,39 +3861,30 @@ var DEFAULT_OPTIONS = {
 };
 function rateLimiter(options = {}) {
   const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
+  const store = options.store || defaultStore;
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
     const now = Date.now();
-    let entry = windows.get(ip);
-    if (!entry || now > entry.resetAt) {
-      entry = { count: 0, resetAt: now + windowMs };
-      windows.set(ip, entry);
-    }
-    entry.count++;
-    res.setHeader("X-RateLimit-Limit", String(maxRequests));
-    res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - entry.count)));
-    res.setHeader("X-RateLimit-Reset", String(Math.ceil(entry.resetAt / 1e3)));
-    if (entry.count > maxRequests) {
-      rlLog.warn(`Rate limit exceeded for ${ip}: ${entry.count}/${maxRequests}`);
-      return res.status(429).json({
-        error: "Too many requests. Please try again later.",
-        retryAfter: Math.ceil((entry.resetAt - now) / 1e3)
-      });
-    }
-    next();
+    store.increment(ip, windowMs).then(({ count: count7, resetAt }) => {
+      res.setHeader("X-RateLimit-Limit", String(maxRequests));
+      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count7)));
+      res.setHeader("X-RateLimit-Reset", String(Math.ceil(resetAt / 1e3)));
+      if (count7 > maxRequests) {
+        rlLog.warn(`Rate limit exceeded for ${ip}: ${count7}/${maxRequests}`);
+        return res.status(429).json({
+          error: "Too many requests. Please try again later.",
+          retryAfter: Math.ceil((resetAt - now) / 1e3)
+        });
+      }
+      next();
+    }).catch((err) => {
+      rlLog.warn(`Rate limit store error: ${err}`);
+      next();
+    });
   };
 }
 var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10 });
 var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100 });
-
-// server/sanitize.ts
-function stripHtml(input) {
-  return input.replace(/<[^>]*>/g, "").trim();
-}
-function sanitizeString(input, maxLength = 500) {
-  if (typeof input !== "string") return "";
-  return stripHtml(input).slice(0, maxLength).trim();
-}
 
 // server/routes.ts
 function requireAuth4(req, res, next) {
@@ -3881,7 +3973,10 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/auth/signup", authRateLimiter, async (req, res) => {
     try {
-      const { displayName, username, email, password, city } = req.body;
+      const { password, city } = req.body;
+      const displayName = sanitizeString(req.body.displayName, 100);
+      const username = sanitizeString(req.body.username, 50);
+      const email = sanitizeEmail(req.body.email);
       if (!displayName || !username || !email || !password) {
         return res.status(400).json({ error: "All fields are required" });
       }
@@ -3898,6 +3993,7 @@ async function registerRoutes(app2) {
         city: member.city,
         username: member.username
       }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
+      trackEvent("signup_completed", member.id);
       req.login(
         {
           id: member.id,
@@ -3964,6 +4060,44 @@ async function registerRoutes(app2) {
       return res.json({ data: null });
     }
     return res.json({ data: req.user });
+  });
+  app2.get("/api/account/export", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    try {
+      const userId = req.user.id;
+      const [profile, ratings3, impact, seasonal, badges] = await Promise.all([
+        getMemberById(userId),
+        getMemberRatings(userId, 1, 1e4),
+        getMemberImpact(userId),
+        getSeasonalRatingCounts(userId),
+        getMemberBadges(userId)
+      ]);
+      const exportData = {
+        exportDate: (/* @__PURE__ */ new Date()).toISOString(),
+        format: "GDPR Art. 20 compliant",
+        profile: profile ? {
+          displayName: profile.displayName,
+          username: profile.username,
+          email: profile.email,
+          city: profile.city,
+          credibilityScore: profile.credibilityScore,
+          credibilityTier: profile.credibilityTier,
+          totalRatings: profile.totalRatings,
+          joinedAt: profile.joinedAt,
+          lastActive: profile.lastActive
+        } : null,
+        ratings: ratings3 || [],
+        impact: impact || null,
+        seasonalActivity: seasonal || [],
+        badges: badges || []
+      };
+      res.setHeader("Content-Disposition", `attachment; filename="topranker-data-export-${userId}.json"`);
+      return res.json({ data: exportData });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
   });
   app2.delete("/api/account", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -4100,8 +4234,9 @@ async function registerRoutes(app2) {
       if (!business) {
         return res.status(404).json({ error: "Business not found" });
       }
-      const { role, phone } = req.body;
-      if (!role || typeof role !== "string" || role.trim().length === 0) {
+      const role = sanitizeString(req.body.role, 100);
+      const phone = sanitizeString(req.body.phone, 20);
+      if (!role || role.length === 0) {
         return res.status(400).json({ error: "Role is required" });
       }
       const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
@@ -4109,7 +4244,7 @@ async function registerRoutes(app2) {
       if (existing) {
         return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
       }
-      const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
+      const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
       const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
       const { sendClaimConfirmationEmail: sendClaimConfirmationEmail2, sendClaimAdminNotification: sendClaimAdminNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
       sendClaimConfirmationEmail2({
@@ -4178,7 +4313,7 @@ async function registerRoutes(app2) {
   app2.get("/api/dishes/search", async (req, res) => {
     try {
       const businessId = req.query.business_id;
-      const query = req.query.q || "";
+      const query = sanitizeString(req.query.q, 200);
       if (!businessId) return res.status(400).json({ error: "business_id required" });
       const data = await searchDishes(businessId, query);
       return res.json({ data });
@@ -4192,10 +4327,12 @@ async function registerRoutes(app2) {
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
+      parsed.data.score = sanitizeNumber(parsed.data.score, 1, 5, 3);
       const memberId = req.user.id;
       const result = await submitRating(memberId, parsed.data);
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
+      trackEvent("first_rating", memberId);
       return res.status(201).json({ data: result });
     } catch (err) {
       if (err.message.includes("3+ days")) {
@@ -4319,6 +4456,33 @@ async function registerRoutes(app2) {
       const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await updatePushToken2(req.user.id, pushToken);
       return res.json({ ok: true });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.get("/api/members/me/notification-preferences", requireAuth4, async (req, res) => {
+    try {
+      const prefs = {
+        ratingUpdates: true,
+        challengeResults: true,
+        weeklyDigest: false,
+        ...req.user.notificationPrefs || {}
+      };
+      return res.json({ data: prefs });
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+  app2.put("/api/members/me/notification-preferences", requireAuth4, async (req, res) => {
+    try {
+      const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
+      const prefs = {
+        ratingUpdates: ratingUpdates !== false,
+        challengeResults: challengeResults !== false,
+        weeklyDigest: weeklyDigest === true
+      };
+      req.user.notificationPrefs = prefs;
+      return res.json({ data: prefs });
     } catch (err) {
       return res.status(500).json({ error: err.message });
     }
@@ -4656,4 +4820,17 @@ function setupErrorHandler(app2) {
       log2(`express server serving on port ${port}`);
     }
   );
+  function gracefulShutdown(signal) {
+    log.info(`${signal} received. Starting graceful shutdown...`);
+    server.close(() => {
+      log.info("HTTP server closed");
+      process.exit(0);
+    });
+    setTimeout(() => {
+      log.error("Forced shutdown after timeout");
+      process.exit(1);
+    }, 1e4);
+  }
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 })();
