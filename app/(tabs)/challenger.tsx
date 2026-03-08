@@ -310,7 +310,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
         return (
           <ReAnimated.View entering={FadeInDown.delay(200).duration(600)} style={styles.winnerBanner}>
             <LinearGradient
-              colors={[BRAND.colors.navy, "#162940"]}
+              colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.winnerGradient}

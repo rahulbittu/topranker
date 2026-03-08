@@ -73,7 +73,7 @@ export default function ReferralScreen() {
         {/* Hero */}
         <Animated.View entering={FadeInDown.delay(100).duration(500)}>
           <LinearGradient
-            colors={[BRAND.colors.navy, "#1A3050"]}
+            colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
             style={styles.hero}
           >
             <Text style={styles.heroEmoji}>🤝</Text>

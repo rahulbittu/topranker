@@ -101,7 +101,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </View>
 
       <LinearGradient
-        colors={[BRAND.colors.navy, "#1A3050"]}
+        colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
         style={styles.profileCard}
       >
         <View style={styles.avatarCircle}>

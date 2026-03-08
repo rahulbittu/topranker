@@ -75,7 +75,7 @@ export default function EnterChallengerScreen() {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <LinearGradient
-          colors={[BRAND.colors.navy, "#162940"]}
+          colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
