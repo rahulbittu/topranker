@@ -154,6 +154,7 @@ function RootLayoutNav() {
       <Stack.Screen name="business/claim" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="business/enter-challenger" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="business/qr" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="business/dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="admin/index" options={{ headerShown: false }} />
       <Stack.Screen name="rate/[id]" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="auth/login" options={{ headerShown: false, presentation: "modal" }} />
