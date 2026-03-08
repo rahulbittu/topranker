@@ -24,7 +24,7 @@ import {
   getBusinessPhotos,
   getBusinessPhotosMap,
 } from "./storage";
-import { insertRatingSchema } from "@shared/schema";
+import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -420,6 +420,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { getMemberImpact } = await import("./storage");
       const data = await getMemberImpact(req.user!.id);
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Category Suggestions
+  app.post("/api/category-suggestions", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const parsed = insertCategorySuggestionSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      const { createCategorySuggestion } = await import("./storage");
+      const suggestion = await createCategorySuggestion({
+        ...parsed.data,
+        suggestedBy: req.user!.id,
+      });
+      return res.status(201).json({ data: suggestion });
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/category-suggestions", async (req: Request, res: Response) => {
+    try {
+      const { getPendingSuggestions } = await import("./storage");
+      const data = await getPendingSuggestions();
       return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });

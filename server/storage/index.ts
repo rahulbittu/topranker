@@ -44,3 +44,11 @@ export { getActiveChallenges, updateChallengerVotes } from "./challengers";
 
 // Dishes
 export { getBusinessDishes, searchDishes } from "./dishes";
+
+// Categories
+export {
+  getDbCategories,
+  createCategorySuggestion,
+  getPendingSuggestions,
+  reviewSuggestion,
+} from "./categories";

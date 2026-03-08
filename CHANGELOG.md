@@ -4,6 +4,18 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 73 — Category API + Badge Toast + Google Maps Types (March 8, 2026)
+#### Added
+- `server/storage/categories.ts` — CRUD for categories and suggestions tables
+- `server/seed-categories.ts` — Idempotent seed from CategoryRegistry (24 categories)
+- POST/GET `/api/category-suggestions` endpoints with Zod validation
+- `components/badges/BadgeToast.tsx` — Animated badge notification toast with rarity colors
+- `types/google-maps.d.ts` — Platform declarations for Google Maps window types
+
+#### Changed
+- Eliminated 3 `window as any` casts in search.tsx via platform declarations
+- **Production `as any` casts: 7 -> 4 (91% total reduction from 43 across 4 sprints)**
+
 ### Sprint 72 — Category DB Migration + SafeImage Typed Wrapper + E2E Evaluation (March 8, 2026)
 #### Added
 - `categories` and `category_suggestions` tables in Drizzle schema with proper FK relations, jsonb fields, and insert validation

@@ -59,7 +59,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
     }
 
     // Listen for Google Maps auth failures (fires when key is invalid/restricted)
-    (window as any).gm_authFailure = () => {
+    window.gm_authFailure = () => {
       console.error("[MapView] Google Maps auth failure — key rejected");
       setMapError("Map temporarily unavailable. Please try the list view.");
     };
@@ -92,7 +92,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 
       mapInstance.current = map;
       setMapReady(true);
-      const google = (window as any).google;
+      const google = window.google;
       if (google) updateMarkers(google, map, bizWithCoords);
     }).catch((err: any) => {
       console.error("[MapView] Google Maps load error:", err);
@@ -114,7 +114,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 
   useEffect(() => {
     if (!mapInstance.current || !mapReady) return;
-    const google = (window as any).google;
+    const google = window.google;
     if (!google) return;
     const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
     mapInstance.current.panTo(center);
