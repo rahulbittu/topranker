@@ -2,6 +2,39 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 124] - 2026-03-08
+### Added
+- Visual regression testing utility (lib/visual-regression.ts) — screenshot comparison abstraction with 8 critical screens, diff threshold, manifest generation
+- Database migration runner (server/migrate.ts) — migration tracking with apply/rollback, in-memory Set tracking
+- Performance budget utility (lib/performance-budget.ts) — TTFB, FCP, bundle size, API response budgets with checkBudget/getBudgetReport
+### Changed
+- CHANGELOG updated with Sprints 121-124
+- 1147+ tests across 57 files
+
+## [Sprint 123] - 2026-03-08
+### Added
+- Admin dashboard conversion funnel — 5-stage funnel visualization with FunnelStage interface
+- Social sharing deep link enhancements — share card metadata for business pages
+- Request metrics aggregation — p50/p95/p99 latency tracking
+### Changed
+- 1100+ tests across 56 files
+
+## [Sprint 122] - 2026-03-08
+### Added
+- Sentry integration layer (lib/sentry-config.ts) — breadcrumb capture, scope management, environment tagging
+- API response compression middleware — gzip support for JSON responses
+- Admin audit log viewer — paginated audit trail with filters
+### Changed
+- 1050+ tests across 55 files
+
+## [Sprint 121] - 2026-03-08
+### Added
+- Sentry error boundary integration — automatic crash reporting with component stack traces
+- Admin dashboard metrics panel — real-time user count, revenue totals, error rates
+- Cache invalidation hooks — tag-based cache busting for React Query
+### Changed
+- 1000+ tests across 54 files
+
 ## [Sprint 120] - 2026-03-08
 ### Added
 - Request logging middleware (server/request-logger.ts) — structured in-memory request log with 500-entry buffer
