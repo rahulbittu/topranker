@@ -27,6 +27,13 @@ import {
   getMemberBadgeCount,
   awardBadge,
   getEarnedBadgeIds,
+  getBadgeLeaderboard,
+  getPendingClaims,
+  reviewClaim,
+  getClaimCount,
+  getPendingFlags,
+  reviewFlag,
+  getFlagCount,
 } from "./storage";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 
@@ -515,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const badges = await getMemberBadges(memberId);
       return res.json({ data: badges });
     } catch (err: any) {
-      log("error", "routes", `Failed to fetch member badges: ${err.message}`);
+      log.error(`Failed to fetch member badges: ${err.message}`);
       return res.status(500).json({ error: "Failed to fetch badges" });
     }
   });
@@ -531,7 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await awardBadge(memberId, badgeId, badgeFamily);
       return res.json({ data: result, awarded: result !== null });
     } catch (err: any) {
-      log("error", "routes", `Failed to award badge: ${err.message}`);
+      log.error(`Failed to award badge: ${err.message}`);
       return res.status(500).json({ error: "Failed to award badge" });
     }
   });
@@ -544,8 +551,110 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const badgeCount = badgeIds.length;
       return res.json({ data: { badgeIds, badgeCount } });
     } catch (err: any) {
-      log("error", "routes", `Failed to fetch earned badges: ${err.message}`);
+      log.error(`Failed to fetch earned badges: ${err.message}`);
       return res.status(500).json({ error: "Failed to fetch earned badges" });
+    }
+  });
+
+  // GET /api/badges/leaderboard — top members by badge count
+  app.get("/api/badges/leaderboard", async (req: Request, res: Response) => {
+    try {
+      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
+      const data = await getBadgeLeaderboard(limit);
+      return res.json({ data });
+    } catch (err: any) {
+      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
+      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
+    }
+  });
+
+  // ── Admin Claims & Flags ──────────────────────────────────────
+
+  // GET /api/admin/claims — pending business claims
+  app.get("/api/admin/claims", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const data = await getPendingClaims();
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH /api/admin/claims/:id — approve or reject a claim
+  app.patch("/api/admin/claims/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+      }
+      const updated = await reviewClaim(req.params.id as string, status, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "Claim not found" });
+      return res.json({ data: updated });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/admin/claims/count — pending claim count
+  app.get("/api/admin/claims/count", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const count = await getClaimCount();
+      return res.json({ data: { count } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/admin/flags — pending rating flags
+  app.get("/api/admin/flags", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const data = await getPendingFlags();
+      return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // PATCH /api/admin/flags/:id — confirm or dismiss a flag
+  app.patch("/api/admin/flags/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const { status } = req.body;
+      if (!["confirmed", "dismissed"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
+      }
+      const updated = await reviewFlag(req.params.id as string, status, req.user!.id);
+      if (!updated) return res.status(404).json({ error: "Flag not found" });
+      return res.json({ data: updated });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // GET /api/admin/flags/count — pending flag count
+  app.get("/api/admin/flags/count", requireAuth, async (req: Request, res: Response) => {
+    try {
+      if (!isAdminEmail(req.user?.email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const count = await getFlagCount();
+      return res.json({ data: { count } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
     }
   });
 

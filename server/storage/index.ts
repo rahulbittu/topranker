@@ -61,4 +61,15 @@ export {
   awardBadge,
   hasBadge,
   getEarnedBadgeIds,
+  getBadgeLeaderboard,
 } from "./badges";
+
+// Claims & Flags
+export {
+  getPendingClaims,
+  reviewClaim,
+  getClaimCount,
+  getPendingFlags,
+  reviewFlag,
+  getFlagCount,
+} from "./claims";

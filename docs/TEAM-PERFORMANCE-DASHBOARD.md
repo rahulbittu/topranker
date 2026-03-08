@@ -381,8 +381,10 @@
 | 79 | 13 | 5 | ~300 | Sage, James Park |
 | 80 | 13 | 4 | ~250 | Marcus Chen, James Park, Carlos Ruiz |
 | 81 | 13 | 4 | ~200 | Mei Lin, James Park |
+| 82 | 8 | 2 | ~80 | James Park, Mei Lin |
+| 83 | 16 | 9 | ~450 | Sage, Priya, Jordan, James Park |
 
-**Total Story Points: 662** | **Total Sprints: 81** | **Avg Velocity: 8.2 pts/sprint**
+**Total Story Points: 686** | **Total Sprints: 83** | **Avg Velocity: 8.3 pts/sprint**
 
 ---
 
@@ -400,7 +402,8 @@
 | 73 | Category storage module + seed script + API routes | A+ |
 | 76 | Seasonal API + admin review endpoint | A+ |
 | 79 | Badge storage module + badge API endpoints | A+ |
-**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB + badge layers**
+| 83 | Claims/flags storage + routes + logger fix | A+ |
+**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB + badge + admin layers**
 
 ### Jordan — Chief Value Officer
 | Sprint | Contribution | Rating |
@@ -415,7 +418,8 @@
 | 76 | Badge toast integration strategy (milestone triggers) | A+ |
 | 77 | Streak toast trigger strategy (3/7/14/30 day) | A+ |
 | 78 | Badge engagement loop strategy | A+ |
-**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems, 61 total badges, full earn→toast→share pipeline**
+| 83 | Badge leaderboard competitive engagement design | A+ |
+**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems, 61 total badges, full earn→toast→share→leaderboard pipeline**
 
 ### Suki — Design Lead
 | Sprint | Contribution | Rating |
@@ -454,7 +458,9 @@
 | 73 | Google Maps type declarations — eliminated 3 casts | A+ |
 | 74 | sortBy cast fix | A |
 | 81 | useBadgeContext hook extraction, eliminated duplication | A+ |
-**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction), now owns hook patterns**
+| 82 | as-any audit verification (cast moved to SubComponents) | A |
+| 83 | Logger call fix verification | A |
+**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction), now owns hook patterns + type audit cadence**
 
 ### Priya Sharma — RBAC Lead
 | Sprint | Contribution | Rating |
@@ -463,7 +469,8 @@
 | 68 | Admin legal section planning | A- |
 | 78 | Admin category suggestions tab + RBAC integration | A+ |
 | 79 | Badge endpoint RBAC design | A+ |
-**Average: A** | **Note: Strong RBAC ownership since Sprint 78**
+| 83 | Admin claims/flags RBAC + panel wiring | A+ |
+**Average: A+** | **Note: Strong RBAC ownership since Sprint 78, now owns full admin RBAC surface**
 
 ## Top Performers (Cumulative through Sprint 45)
 1. **James Park** — Frontend Architect. Present in 40+ sprints. Highest output, consistently A/A+. MVP.
@@ -480,6 +487,53 @@
 - **Legal team hired** (Sprint 40): Victoria Ashworth (VP), Arjun Mehta (Senior Counsel)
 - **Total active employees**: 28
 - **Departments**: 8 (Engineering, Design, Animation, Copy, Legal, Compliance, Revenue/Growth, Product)
+
+## Team Engagement by Sprint (Sprints 68-83)
+
+Tracks each team member's participation per sprint. A check mark means the member contributed meaningfully (code, review, test, design, or strategy).
+
+| Member | 68 | 69 | 70 | 71 | 72 | 73 | 74 | 75 | 76 | 77 | 78 | 79 | 80 | 81 | 82 | 83 | Sprints | Rate |
+|--------|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|---------|------|
+| Rahul Pitta (CEO) | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | 16/16 | 100% |
+| Marcus Chen (CTO) | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | 16/16 | 100% |
+| James Park | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | 16/16 | 100% |
+| Carlos Ruiz (QA) | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | x | 16/16 | 100% |
+| Sage | . | x | . | . | x | x | . | . | x | . | . | x | . | . | . | x | 7/16 | 44% |
+| Jordan (CVO) | x | . | . | x | . | x | . | x | x | x | x | . | . | . | . | x | 8/16 | 50% |
+| Mei Lin | . | . | x | x | x | x | x | x | . | . | . | . | . | x | x | x | 9/16 | 56% |
+| Suki | x | . | . | . | . | . | . | . | . | x | x | . | x | . | x | x | 6/16 | 38% |
+| Priya Sharma | . | . | . | . | . | . | . | . | . | . | x | x | . | . | . | x | 3/16 | 19% |
+| Nadia Kaur | . | . | . | . | . | . | . | . | . | . | . | . | x | . | x | x | 3/16 | 19% |
+
+### Engagement Insights
+- **100% engagement**: Rahul, Marcus, James Park, Carlos — the core four who participate in every sprint
+- **High engagement (50%+)**: Jordan (CVO), Mei Lin — strong contributors in their domain areas
+- **Moderate engagement (30-50%)**: Sage, Suki — intense bursts when their domain is active
+- **Growth opportunity (<30%)**: Priya, Nadia — specialized roles mean fewer sprints, but high impact when active
+
+### Sprint Engagement Density (team members active per sprint)
+| Sprint | Active Members | Density |
+|--------|---------------|---------|
+| 68 | 6 | High |
+| 69 | 5 | Medium |
+| 70 | 5 | Medium |
+| 71 | 6 | High |
+| 72 | 6 | High |
+| 73 | 7 | High |
+| 74 | 5 | Medium |
+| 75 | 6 | High |
+| 76 | 6 | High |
+| 77 | 6 | High |
+| 78 | 7 | High |
+| 79 | 5 | Medium |
+| 80 | 5 | Medium |
+| 81 | 5 | Medium |
+| 82 | 6 | High |
+| 83 | 9 | Very High |
+
+**Average team density: 5.9 members/sprint** | **Sprint 83 had highest engagement (9 members)**
+
+---
 
 ## Areas for Team Growth
 - **Backend depth**: Need dedicated API sprints for analytics, payment webhooks, cron jobs

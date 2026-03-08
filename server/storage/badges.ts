@@ -5,8 +5,8 @@
  * Persists earned badges in the member_badges table.
  * Enables badge counts, leaderboard badge display, and share-by-link.
  */
-import { eq, and, count } from "drizzle-orm";
-import { memberBadges, type MemberBadge } from "@shared/schema";
+import { eq, and, count, desc } from "drizzle-orm";
+import { memberBadges, members, type MemberBadge } from "@shared/schema";
 import { db } from "../db";
 
 /**
@@ -71,4 +71,24 @@ export async function getEarnedBadgeIds(memberId: string): Promise<string[]> {
     .from(memberBadges)
     .where(eq(memberBadges.memberId, memberId));
   return rows.map(r => r.badgeId);
+}
+
+/**
+ * Badge leaderboard — top members ranked by badge count
+ */
+export async function getBadgeLeaderboard(limit: number = 20) {
+  return db
+    .select({
+      memberId: memberBadges.memberId,
+      displayName: members.displayName,
+      username: members.username,
+      avatarUrl: members.avatarUrl,
+      credibilityTier: members.credibilityTier,
+      badgeCount: count(memberBadges.id),
+    })
+    .from(memberBadges)
+    .innerJoin(members, eq(memberBadges.memberId, members.id))
+    .groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier)
+    .orderBy(desc(count(memberBadges.id)))
+    .limit(limit);
 }

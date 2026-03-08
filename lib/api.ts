@@ -376,3 +376,71 @@ export async function awardBadgeApi(badgeId: string, badgeFamily: string) {
 export async function fetchEarnedBadges() {
   return apiFetch<{ badgeIds: string[]; badgeCount: number }>("/api/badges/earned");
 }
+
+// ── Badge Leaderboard ────────────────────────────────────────
+
+export interface BadgeLeaderboardEntry {
+  memberId: string;
+  displayName: string;
+  username: string;
+  avatarUrl: string | null;
+  credibilityTier: string;
+  badgeCount: number;
+}
+
+export async function fetchBadgeLeaderboard(limit: number = 20) {
+  return apiFetch<BadgeLeaderboardEntry[]>(`/api/badges/leaderboard?limit=${limit}`);
+}
+
+// ── Admin Claims & Flags ─────────────────────────────────────
+
+export interface AdminClaim {
+  id: string;
+  businessId: string;
+  businessName: string | null;
+  memberId: string;
+  memberName: string | null;
+  verificationMethod: string;
+  status: string;
+  submittedAt: string;
+}
+
+export interface AdminFlag {
+  id: string;
+  ratingId: string;
+  flaggerName: string | null;
+  explanation: string | null;
+  aiFraudProbability: number | null;
+  status: string;
+  createdAt: string;
+}
+
+export async function fetchPendingClaims() {
+  return apiFetch<AdminClaim[]>("/api/admin/claims");
+}
+
+export async function fetchPendingFlags() {
+  return apiFetch<AdminFlag[]>("/api/admin/flags");
+}
+
+export async function reviewAdminClaim(id: string, status: "approved" | "rejected") {
+  const res = await fetch(`${getApiUrl()}/api/admin/claims/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Review claim failed: ${res.status}`);
+  return res.json();
+}
+
+export async function reviewAdminFlag(id: string, status: "confirmed" | "dismissed") {
+  const res = await fetch(`${getApiUrl()}/api/admin/flags/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error(`Review flag failed: ${res.status}`);
+  return res.json();
+}

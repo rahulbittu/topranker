@@ -172,10 +172,10 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Text style={styles.statNum}>{profile.daysActive.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Days</Text>
         </View>
-        <View style={styles.statBox}>
+        <TouchableOpacity style={styles.statBox} onPress={() => router.push("/badge-leaderboard")} activeOpacity={0.7}>
           <Text style={[styles.statNum, { color: AMBER }]}>{earnedBadgeCount}</Text>
           <Text style={styles.statLabel}>Badges</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       {profile.joinedAt && (

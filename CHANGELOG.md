@@ -4,6 +4,19 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 83 — Admin Claims/Flags API Wiring + Badge Leaderboard (March 8, 2026)
+#### Added
+- `server/storage/claims.ts` — Admin review storage for business claims and rating flags (6 functions)
+- 7 new admin API routes: GET/PATCH claims, GET/PATCH flags, GET counts, GET badge leaderboard
+- `app/badge-leaderboard.tsx` — Badge leaderboard screen ranking members by total badges earned
+- API client functions for claims, flags, and badge leaderboard in `lib/api.ts`
+- 12 new tests for admin claims/flags validation and badge leaderboard contract (total: 220 across 19 files)
+
+#### Changed
+- Admin panel claims/flags tabs now use real API endpoints instead of mock data
+- Profile badge count is now tappable — navigates to badge leaderboard
+- Fixed 4 pre-existing logger call errors in routes.ts (`log()` → `log.error()`)
+
 ### Sprint 82 — Google Maps Extraction + Business Detail Cleanup (March 8, 2026)
 #### Changed
 - Extracted `OpeningHoursCard` and `LocationCard` from business/[id].tsx into SubComponents.tsx

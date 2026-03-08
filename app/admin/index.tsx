@@ -14,7 +14,10 @@ import { useAuth } from "@/lib/auth-context";
 import { isAdminEmail } from "@/shared/admin";
 import {
   fetchCategorySuggestions, reviewCategorySuggestion,
+  fetchPendingClaims, fetchPendingFlags,
+  reviewAdminClaim, reviewAdminFlag,
   type CategorySuggestionItem,
+  type AdminClaim, type AdminFlag,
 } from "@/lib/api";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -111,26 +114,30 @@ function SuggestionCard({
   );
 }
 
-// Mock admin data
-const MOCK_QUEUE = [
-  { id: "1", title: "Pecan Lodge", subtitle: "Claim by John Smith (Owner)", type: "claim" },
-  { id: "2", title: "Suspicious rating pattern", subtitle: "5 identical scores on Uchi in 2 hours", type: "flag" },
-  { id: "3", title: "Lucia vs Uchi", subtitle: "Challenge entry payment confirmed", type: "challenger" },
-  { id: "4", title: "Terry Black's BBQ", subtitle: "Claim by Maria Garcia (GM)", type: "claim" },
-  { id: "5", title: "Bot-like behavior", subtitle: "User 'review_king' rated 20 businesses in 10 min", type: "flag" },
-];
 
 export default function AdminScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
-  const [queue, setQueue] = useState(MOCK_QUEUE);
   const queryClient = useQueryClient();
+  const isAdmin = user && isAdminEmail(user.email);
 
   const { data: suggestions = [], isLoading: suggestionsLoading } = useQuery({
     queryKey: ["admin-category-suggestions"],
     queryFn: fetchCategorySuggestions,
+    enabled: !!isAdmin,
+  });
+
+  const { data: claims = [], isLoading: claimsLoading } = useQuery({
+    queryKey: ["admin-claims"],
+    queryFn: fetchPendingClaims,
+    enabled: !!isAdmin,
+  });
+
+  const { data: flags = [], isLoading: flagsLoading } = useQuery({
+    queryKey: ["admin-flags"],
+    queryFn: fetchPendingFlags,
     enabled: !!isAdmin,
   });
 
@@ -142,7 +149,21 @@ export default function AdminScreen() {
     },
   });
 
-  const isAdmin = user && isAdminEmail(user.email);
+  const claimMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "approved" | "rejected" }) =>
+      reviewAdminClaim(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-claims"] });
+    },
+  });
+
+  const flagMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "confirmed" | "dismissed" }) =>
+      reviewAdminFlag(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-flags"] });
+    },
+  });
 
   if (!isAdmin) {
     return (
@@ -157,17 +178,32 @@ export default function AdminScreen() {
     );
   }
 
-  const handleAction = (id: string, action: "approve" | "reject") => {
-    const item = queue.find(q => q.id === id);
+  const handleClaimAction = (id: string, action: "approved" | "rejected") => {
+    const claim = claims.find(c => c.id === id);
     Alert.alert(
-      action === "approve" ? "Approve" : "Reject",
-      `${action === "approve" ? "Approve" : "Reject"} "${item?.title}"?`,
+      action === "approved" ? "Approve Claim" : "Reject Claim",
+      `${action === "approved" ? "Approve" : "Reject"} claim for "${claim?.businessName}"?`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: action === "approve" ? "Approve" : "Reject",
-          style: action === "reject" ? "destructive" : "default",
-          onPress: () => setQueue(q => q.filter(item => item.id !== id)),
+          text: action === "approved" ? "Approve" : "Reject",
+          style: action === "rejected" ? "destructive" : "default",
+          onPress: () => claimMutation.mutate({ id, status: action }),
+        },
+      ]
+    );
+  };
+
+  const handleFlagAction = (id: string, action: "confirmed" | "dismissed") => {
+    Alert.alert(
+      action === "confirmed" ? "Confirm Flag" : "Dismiss Flag",
+      `${action === "confirmed" ? "Confirm" : "Dismiss"} this rating flag?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: action === "confirmed" ? "Confirm" : "Dismiss",
+          style: action === "confirmed" ? "destructive" : "default",
+          onPress: () => flagMutation.mutate({ id, status: action }),
         },
       ]
     );
@@ -213,8 +249,8 @@ export default function AdminScreen() {
             <View style={styles.statsGrid}>
               <StatCard label="Total Businesses" value="50" icon="storefront-outline" color={BRAND.colors.amber} />
               <StatCard label="Active Challenges" value="2" icon="flash-outline" color="#FF6B35" />
-              <StatCard label="Pending Claims" value={String(queue.filter(q => q.type === "claim").length)} icon="shield-outline" color={Colors.green} />
-              <StatCard label="Flagged Items" value={String(queue.filter(q => q.type === "flag").length)} icon="flag-outline" color={Colors.red} />
+              <StatCard label="Pending Claims" value={String(claims.length)} icon="shield-outline" color={Colors.green} />
+              <StatCard label="Flagged Items" value={String(flags.length)} icon="flag-outline" color={Colors.red} />
             </View>
 
             <View style={styles.statsGrid}>
@@ -253,24 +289,55 @@ export default function AdminScreen() {
           </>
         )}
 
-        {activeTab !== "suggestions" && queue.filter(q => {
-          if (activeTab === "overview") return true;
-          if (activeTab === "claims") return q.type === "claim";
-          if (activeTab === "flags") return q.type === "flag";
-          if (activeTab === "challengers") return q.type === "challenger";
-          return true;
-        }).map(item => (
-          <QueueItem
-            key={item.id}
-            title={item.title}
-            subtitle={item.subtitle}
-            type={item.type}
-            onApprove={() => handleAction(item.id, "approve")}
-            onReject={() => handleAction(item.id, "reject")}
-          />
-        ))}
+        {(activeTab === "overview" || activeTab === "claims") && (
+          <>
+            {activeTab === "claims" && <Text style={styles.sectionTitle}>Business Claims</Text>}
+            {claimsLoading && <Text style={styles.emptySub}>Loading claims...</Text>}
+            {!claimsLoading && claims.length === 0 && activeTab === "claims" && (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={48} color={Colors.green} />
+                <Text style={styles.emptyTitle}>No Pending Claims</Text>
+                <Text style={styles.emptySub}>All business claims have been reviewed</Text>
+              </View>
+            )}
+            {claims.map(claim => (
+              <QueueItem
+                key={claim.id}
+                title={claim.businessName || "Unknown Business"}
+                subtitle={`Claim by ${claim.memberName || "Unknown"} via ${claim.verificationMethod}`}
+                type="claim"
+                onApprove={() => handleClaimAction(claim.id, "approved")}
+                onReject={() => handleClaimAction(claim.id, "rejected")}
+              />
+            ))}
+          </>
+        )}
 
-        {queue.length === 0 && (
+        {(activeTab === "overview" || activeTab === "flags") && (
+          <>
+            {activeTab === "flags" && <Text style={styles.sectionTitle}>Rating Flags</Text>}
+            {flagsLoading && <Text style={styles.emptySub}>Loading flags...</Text>}
+            {!flagsLoading && flags.length === 0 && activeTab === "flags" && (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={48} color={Colors.green} />
+                <Text style={styles.emptyTitle}>No Pending Flags</Text>
+                <Text style={styles.emptySub}>All rating flags have been reviewed</Text>
+              </View>
+            )}
+            {flags.map(flag => (
+              <QueueItem
+                key={flag.id}
+                title={flag.aiFraudProbability != null ? `Fraud risk: ${flag.aiFraudProbability}%` : "Flagged Rating"}
+                subtitle={`Flagged by ${flag.flaggerName || "Unknown"}${flag.explanation ? ` — ${flag.explanation}` : ""}`}
+                type="flag"
+                onApprove={() => handleFlagAction(flag.id, "confirmed")}
+                onReject={() => handleFlagAction(flag.id, "dismissed")}
+              />
+            ))}
+          </>
+        )}
+
+        {claims.length === 0 && flags.length === 0 && activeTab === "overview" && (
           <View style={styles.emptyState}>
             <Ionicons name="checkmark-circle-outline" size={48} color={Colors.green} />
             <Text style={styles.emptyTitle}>All Clear</Text>
