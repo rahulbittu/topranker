@@ -87,7 +87,7 @@ export type RankConfidence = "provisional" | "early" | "established" | "strong";
  * High-volume categories (fast food, casual dining) calibrate faster.
  * Niche categories (fine dining, breweries) need more ratings for confidence.
  */
-const CATEGORY_CONFIDENCE_THRESHOLDS: Record<string, { provisional: number; early: number; established: number }> = {
+export const CATEGORY_CONFIDENCE_THRESHOLDS: Record<string, { provisional: number; early: number; established: number }> = {
   fast_food:      { provisional: 3, early: 8,  established: 20 },
   casual_dining:  { provisional: 3, early: 8,  established: 20 },
   buffet:         { provisional: 3, early: 8,  established: 20 },
@@ -101,7 +101,7 @@ const CATEGORY_CONFIDENCE_THRESHOLDS: Record<string, { provisional: number; earl
   food_hall:      { provisional: 5, early: 12, established: 30 },
 };
 
-const DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
+export const DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
 
 export function getRankConfidence(totalRatings: number, category?: string): RankConfidence {
   const t = (category && CATEGORY_CONFIDENCE_THRESHOLDS[category]) || DEFAULT_THRESHOLDS;

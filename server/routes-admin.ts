@@ -24,6 +24,7 @@ import { getFunnelStats, getRecentEvents } from "./analytics";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
 import { getAllFlags } from "../lib/feature-flags";
+import { CATEGORY_CONFIDENCE_THRESHOLDS, DEFAULT_THRESHOLDS } from "../lib/data";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -334,6 +335,20 @@ export function registerAdminRoutes(app: Express) {
           activeConnections: 0,
           featureFlags: flags,
           generatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Confidence Thresholds (read-only) ──────────────────
+  app.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      return res.json({
+        data: {
+          thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
+          defaults: DEFAULT_THRESHOLDS,
         },
       });
     } catch (err: any) {

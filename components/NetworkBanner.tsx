@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, Platform, TouchableOpacity } from "react-native";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
@@ -12,8 +12,9 @@ import { useQueryClient } from "@tanstack/react-query";
 
 /**
  * Network connectivity banner.
- * Shows a persistent bar when the device is offline.
- * Animates in/out smoothly.
+ * Shows a persistent bar when the device is offline or serving mock data.
+ * Uses navigator.onLine + online/offline events on web (reliable, no CORS issues).
+ * Does NOT ping external URLs — that causes false positives in dev.
  */
 export function NetworkBanner() {
   const [isOffline, setIsOffline] = useState(false);
@@ -24,6 +25,7 @@ export function NetworkBanner() {
   const opacity = useSharedValue(0);
   const isMock = isServingMockData();
   const queryClient = useQueryClient();
+  const wasOfflineRef = useRef(false);
 
   const handleRetry = async () => {
     setRetrying(true);
@@ -33,52 +35,38 @@ export function NetworkBanner() {
   };
 
   useEffect(() => {
-    // Check connectivity by hitting our own API health endpoint.
-    // Only mark offline on actual network errors (TypeError), not HTTP errors or CORS.
-    const check = async () => {
-      try {
-        if (Platform.OS === "web" && typeof navigator !== "undefined" && !navigator.onLine) {
-          setIsOffline(true);
-          return;
-        }
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
-        await fetch("https://clients3.google.com/generate_204", {
-          method: "HEAD",
-          mode: "no-cors",
-          signal: controller.signal,
-        });
-        clearTimeout(timeout);
+    // On web: use navigator.onLine + online/offline events (reliable, no CORS).
+    // On native: use NetInfo or similar (future). For now, don't show offline banner
+    // unless the browser API explicitly says we're offline.
+    if (Platform.OS === "web" && typeof navigator !== "undefined") {
+      // Initial check
+      if (!navigator.onLine) {
+        setIsOffline(true);
+        wasOfflineRef.current = true;
+      }
 
-        if (isOffline) {
+      const goOnline = () => {
+        if (wasOfflineRef.current) {
           setWasOffline(true);
           setTimeout(() => setWasOffline(false), 3000);
         }
-        setIsOffline(false);
-      } catch (err) {
-        // Only mark offline for actual network failures, not CORS or abort
-        if (err instanceof TypeError && !String(err).includes("abort")) {
-          setIsOffline(true);
-        }
-      }
-    };
-
-    check();
-    const interval = setInterval(check, 15000);
-
-    // Also listen for online/offline events on web
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      const goOnline = () => {
-        if (isOffline) { setWasOffline(true); setTimeout(() => setWasOffline(false), 3000); }
+        wasOfflineRef.current = false;
         setIsOffline(false);
       };
-      const goOffline = () => setIsOffline(true);
+      const goOffline = () => {
+        setIsOffline(true);
+        wasOfflineRef.current = true;
+      };
       window.addEventListener("online", goOnline);
       window.addEventListener("offline", goOffline);
-      return () => { clearInterval(interval); window.removeEventListener("online", goOnline); window.removeEventListener("offline", goOffline); };
+      return () => {
+        window.removeEventListener("online", goOnline);
+        window.removeEventListener("offline", goOffline);
+      };
     }
-    return () => clearInterval(interval);
-  }, [isOffline]);
+    // On native platforms, don't falsely report offline
+    return undefined;
+  }, []);
 
   useEffect(() => {
     if (isOffline || wasOffline || isMock) {

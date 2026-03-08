@@ -1,7 +1,7 @@
 # Technical Debt Registry
 
 **Owner**: Marcus Chen (CTO)
-**Last Updated**: 2026-03-08 (Sprint 112)
+**Last Updated**: 2026-03-08 (Sprint 129)
 
 This document tracks known technical debt. Items are prioritized and assigned to future sprints.
 
@@ -23,6 +23,7 @@ This document tracks known technical debt. Items are prioritized and assigned to
 | TD-006 | CSP may need expansion | New integrations may break under current policy | Nadia Kaur | As needed |
 | TD-007 | Cookie consent "Learn more" links to privacy but no deep-link to cookies section | Minor UX gap | Jordan Blake | 107 |
 | TD-011 | E2E tests need broader coverage | Basic E2E done (Sprint 108), need more endpoint coverage | Sarah Nakamura | Gradual |
+| TD-013 | Paginated ratings may omit logged-in user's own rating from first page | "Your Previous Rating" card won't render on business detail page — user sees "Rate This Place" instead of "Update Your Rating", causing UX confusion. Not currently hitting this at low rating counts but will matter at scale. Mitigation options: (1) Separate API call for user's own rating, (2) Server-side injection of user's rating into first page, (3) Client-side secondary fetch | Sarah Nakamura | Future |
 
 ### LOW Priority
 
