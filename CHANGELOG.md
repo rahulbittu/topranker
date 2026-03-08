@@ -4,6 +4,15 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 81 — useBadgeContext Hook + Team Dashboard Update (March 8, 2026)
+#### Added
+- `lib/hooks/useBadgeContext.ts` — Memoized hook for badge context, evaluation, and counts
+- 6 new hook logic tests (total: 208 across 18 files)
+- Team Performance Dashboard updated through Sprint 81 (662 total story points)
+
+#### Changed
+- Refactored profile.tsx — replaced dual badge context construction with `useBadgeContext` hook (~40 LOC reduction)
+
 ### Sprint 80 — Architectural Audit #6 + Badge Award Flow + Badge Count (March 8, 2026)
 #### Added
 - Architectural Audit #6: 5/6 ALL CLEAR, 1 WATCH (file size)
