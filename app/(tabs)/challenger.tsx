@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Animated, Share,
+  View, Text, StyleSheet, ScrollView, Animated as RNAnimated, Share,
   Platform, TouchableOpacity, RefreshControl, LayoutAnimation, UIManager,
 } from "react-native";
+import ReAnimated, { FadeInDown, FadeInUp, ZoomIn } from "react-native-reanimated";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -236,7 +237,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   };
 
   return (
-    <Animated.View style={[styles.card, { transform: [{ scale }] }]}>
+    <RNAnimated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.catText}>{catDisplay.emoji} {catDisplay.label.toUpperCase()}</Text>
         <Text style={styles.cityText}>{challenge.city}</Text>
@@ -292,6 +293,54 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
         <View style={[styles.progressBarInner, { width: `${Math.min((daysElapsed / totalDays) * 100, 100)}%` as any }]} />
       </View>
 
+      {/* Winner Reveal */}
+      {countdown.ended && (() => {
+        const defenderWins = defenderVotes >= challengerVotes;
+        const winnerName = defenderWins ? challenge.defenderBusiness.name : challenge.challengerBusiness.name;
+        const loserName = defenderWins ? challenge.challengerBusiness.name : challenge.defenderBusiness.name;
+        const winnerVotes = defenderWins ? defenderVotes : challengerVotes;
+        const loserVotes = defenderWins ? challengerVotes : defenderVotes;
+        const total = winnerVotes + loserVotes;
+        const winPct = total > 0 ? ((winnerVotes / total) * 100).toFixed(0) : "50";
+        const margin = (winnerVotes - loserVotes).toFixed(1);
+
+        return (
+          <ReAnimated.View entering={FadeInDown.delay(200).duration(600)} style={styles.winnerBanner}>
+            <LinearGradient
+              colors={[BRAND.colors.navy, "#162940"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.winnerGradient}
+            >
+              <ReAnimated.View entering={ZoomIn.delay(400).duration(500)}>
+                <Text style={styles.winnerTrophy}>🏆</Text>
+              </ReAnimated.View>
+              <ReAnimated.Text entering={FadeInUp.delay(600).duration(400)} style={styles.winnerLabel}>WINNER</ReAnimated.Text>
+              <ReAnimated.Text entering={FadeInUp.delay(700).duration(400)} style={styles.winnerName}>{winnerName}</ReAnimated.Text>
+              <ReAnimated.View entering={FadeInUp.delay(800).duration(400)} style={styles.winnerStats}>
+                <View style={styles.winnerStatItem}>
+                  <Text style={styles.winnerStatValue}>{winPct}%</Text>
+                  <Text style={styles.winnerStatLabel}>of votes</Text>
+                </View>
+                <View style={styles.winnerStatDivider} />
+                <View style={styles.winnerStatItem}>
+                  <Text style={styles.winnerStatValue}>+{margin}</Text>
+                  <Text style={styles.winnerStatLabel}>vote margin</Text>
+                </View>
+                <View style={styles.winnerStatDivider} />
+                <View style={styles.winnerStatItem}>
+                  <Text style={styles.winnerStatValue}>{totalDays}</Text>
+                  <Text style={styles.winnerStatLabel}>days</Text>
+                </View>
+              </ReAnimated.View>
+              <ReAnimated.Text entering={FadeInUp.delay(900).duration(400)} style={styles.winnerDefeat}>
+                defeated {loserName}
+              </ReAnimated.Text>
+            </LinearGradient>
+          </ReAnimated.View>
+        );
+      })()}
+
       <View style={styles.voteCta}>
         <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
       </View>
@@ -308,7 +357,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       </TouchableOpacity>
 
       <CommunityReviews challenge={challenge} />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -687,5 +736,40 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold",
     letterSpacing: -0.5,
+  },
+
+  // Winner reveal
+  winnerBanner: { marginTop: 16 },
+  winnerGradient: {
+    borderRadius: 16, padding: 24, alignItems: "center", gap: 6,
+  },
+  winnerTrophy: { fontSize: 44, marginBottom: 4 },
+  winnerLabel: {
+    fontSize: 11, fontWeight: "800", color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold", letterSpacing: 3, textTransform: "uppercase" as const,
+  },
+  winnerName: {
+    fontSize: 24, fontWeight: "900", color: "#FFFFFF",
+    fontFamily: "PlayfairDisplay_900Black", letterSpacing: -0.5, textAlign: "center",
+  },
+  winnerStats: {
+    flexDirection: "row", alignItems: "center", gap: 16,
+    marginTop: 12, marginBottom: 8,
+  },
+  winnerStatItem: { alignItems: "center" },
+  winnerStatValue: {
+    fontSize: 20, fontWeight: "800", color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold",
+  },
+  winnerStatLabel: {
+    fontSize: 10, color: "rgba(255,255,255,0.5)",
+    fontFamily: "DMSans_400Regular", marginTop: 2,
+  },
+  winnerStatDivider: {
+    width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.15)",
+  },
+  winnerDefeat: {
+    fontSize: 12, color: "rgba(255,255,255,0.5)",
+    fontFamily: "DMSans_400Regular", fontStyle: "italic",
   },
 });
