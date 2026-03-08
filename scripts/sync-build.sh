@@ -10,7 +10,7 @@ echo "[1/4] Pulling latest from GitHub..."
 # Preserve .replit (contains Replit Secrets) — never let git overwrite it
 cp .replit .replit.bak 2>/dev/null || true
 git checkout -- .replit 2>/dev/null || true
-git pull origin main --ff-only
+git pull origin main --ff-only || git merge origin/main --no-ff -m "Merge remote main"
 cp .replit.bak .replit 2>/dev/null || true
 rm -f .replit.bak
 echo "Done."
