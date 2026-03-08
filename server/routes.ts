@@ -8,6 +8,7 @@ import { handleBadgeShare } from "./badge-share";
 import { sendWelcomeEmail } from "./email";
 import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
+import { registerBadgeRoutes } from "./routes-badges";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { log } from "./logger";
 import {
@@ -26,11 +27,6 @@ import {
   getAllCategories,
   getBusinessPhotos,
   getBusinessPhotosMap,
-  getMemberBadges,
-  getMemberBadgeCount,
-  awardBadge,
-  getEarnedBadgeIds,
-  getBadgeLeaderboard,
   getMemberPayments,
   getActiveFeaturedInCity,
 } from "./storage";
@@ -128,8 +124,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "All fields are required" });
       }
 
-      if (password.length < 6) {
-        return res.status(400).json({ error: "Password must be at least 6 characters" });
+      if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+      }
+      if (!/\d/.test(password)) {
+        return res.status(400).json({ error: "Password must contain at least one number" });
       }
 
       const member = await registerMember({ displayName, username, email, password, city });
@@ -652,60 +651,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Badge share-by-link — server-rendered OG meta for social previews
   app.get("/share/badge/:badgeId", handleBadgeShare);
 
-  // ── Badge Persistence Endpoints ──────────────────────────────
-
-  // GET /api/members/:id/badges — list earned badge IDs for a member
-  app.get("/api/members/:id/badges", async (req: Request, res: Response) => {
-    try {
-      const memberId = req.params.id as string;
-      const badges = await getMemberBadges(memberId);
-      return res.json({ data: badges });
-    } catch (err: any) {
-      log.error(`Failed to fetch member badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badges" });
-    }
-  });
-
-  // POST /api/badges/award — award a badge to the authenticated user
-  app.post("/api/badges/award", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const memberId = req.user!.id;
-      const { badgeId, badgeFamily } = req.body;
-      if (!badgeId || !badgeFamily) {
-        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
-      }
-      const result = await awardBadge(memberId, badgeId, badgeFamily);
-      return res.json({ data: result, awarded: result !== null });
-    } catch (err: any) {
-      log.error(`Failed to award badge: ${err.message}`);
-      return res.status(500).json({ error: "Failed to award badge" });
-    }
-  });
-
-  // GET /api/badges/earned — get earned badge IDs for authenticated user
-  app.get("/api/badges/earned", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const memberId = req.user!.id;
-      const badgeIds = await getEarnedBadgeIds(memberId);
-      const badgeCount = badgeIds.length;
-      return res.json({ data: { badgeIds, badgeCount } });
-    } catch (err: any) {
-      log.error(`Failed to fetch earned badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch earned badges" });
-    }
-  });
-
-  // GET /api/badges/leaderboard — top members by badge count
-  app.get("/api/badges/leaderboard", async (req: Request, res: Response) => {
-    try {
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
-      const data = await getBadgeLeaderboard(limit);
-      return res.json({ data });
-    } catch (err: any) {
-      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
-    }
-  });
+  // ── Badge Routes (extracted to routes-badges.ts) ───────────
+  registerBadgeRoutes(app);
 
   // ── Admin Routes (extracted to routes-admin.ts) ─────────────
   registerAdminRoutes(app);

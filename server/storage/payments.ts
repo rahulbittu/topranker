@@ -31,6 +31,15 @@ export async function createPaymentRecord(params: {
   return payment;
 }
 
+export async function getPaymentById(id: string): Promise<Payment | null> {
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.id, id))
+    .limit(1);
+  return payment ?? null;
+}
+
 export async function updatePaymentStatus(
   id: string,
   status: string,

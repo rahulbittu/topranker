@@ -3,7 +3,7 @@
  * Handles Challenger ($99), Dashboard Pro ($49/mo), and Featured Placement ($199/week).
  */
 import type { Express, Request, Response } from "express";
-import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, updatePaymentStatus } from "./storage";
+import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus } from "./storage";
 import { sendPaymentReceiptEmail } from "./email";
 import { log } from "./logger";
 
@@ -146,25 +146,24 @@ export function registerPaymentRoutes(app: Express) {
     }
   });
 
-  // Cancel a subscription/payment — marks payment as cancelled
+  // Cancel a subscription/payment — checks ownership BEFORE mutating
   app.post("/api/payments/cancel", requireAuth, async (req: Request, res: Response) => {
     try {
       const { paymentId } = req.body;
       if (!paymentId) {
         return res.status(400).json({ error: "paymentId is required" });
       }
-      const updated = await updatePaymentStatus(paymentId, "cancelled");
-      if (!updated) {
+      // Check existence and ownership before mutation
+      const existing = await getPaymentById(paymentId);
+      if (!existing) {
         return res.status(404).json({ error: "Payment not found" });
       }
-      // Verify the payment belongs to the requesting user
-      if (updated.memberId !== req.user!.id) {
-        // Revert — user doesn't own this payment
-        await updatePaymentStatus(paymentId, updated.status);
+      if (existing.memberId !== req.user!.id) {
         return res.status(403).json({ error: "Not authorized to cancel this payment" });
       }
+      const updated = await updatePaymentStatus(paymentId, "cancelled");
       log.info(`Payment ${paymentId} cancelled by ${req.user!.id}`);
-      return res.json({ data: { id: updated.id, status: "cancelled" } });
+      return res.json({ data: { id: updated!.id, status: "cancelled" } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

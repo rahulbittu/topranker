@@ -73,6 +73,7 @@ export {
 // Payments
 export {
   createPaymentRecord,
+  getPaymentById,
   updatePaymentStatus,
   updatePaymentStatusByStripeId,
   getMemberPayments,
