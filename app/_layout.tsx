@@ -24,6 +24,7 @@ import Animated, {
   withSequence, withSpring, Easing, runOnJS,
 } from "react-native-reanimated";
 import { BRAND } from "@/constants/brand";
+import { LeaderboardMark } from "@/components/Logo";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -107,15 +108,18 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   return (
     <Animated.View style={[splashStyles.container, containerStyle]} pointerEvents="none">
       <Animated.View style={crownStyle}>
-        <Text style={splashStyles.crown}>👑</Text>
+        <LeaderboardMark fill={BRAND.colors.amber} size={64} />
       </Animated.View>
       <Animated.View style={logoStyle}>
-        <Text style={splashStyles.logo}>TopRanker</Text>
+        <View style={splashStyles.logoRow}>
+          <Text style={splashStyles.logoTop}>TOP</Text>
+          <Text style={splashStyles.logo}>Ranker</Text>
+        </View>
       </Animated.View>
       <Animated.View style={[splashStyles.decorLine, lineStyle]} />
       <Animated.View style={taglineStyle}>
-        <Text style={splashStyles.tagline}>Trust-weighted rankings</Text>
-        <Text style={splashStyles.taglineSub}>Dallas, TX</Text>
+        <Text style={splashStyles.tagline}>{BRAND.tagline}</Text>
+        <Text style={splashStyles.taglineSub}>Texas</Text>
       </Animated.View>
     </Animated.View>
   );
@@ -129,9 +133,13 @@ const splashStyles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 999,
   },
-  crown: { fontSize: 56, textAlign: "center", marginBottom: 4 },
+  logoRow: { alignItems: "center", gap: 2, marginTop: 16 },
+  logoTop: {
+    fontSize: 13, fontWeight: "800", color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold", letterSpacing: 6, textTransform: "uppercase" as const,
+  },
   logo: {
-    fontSize: 40, fontWeight: "900", color: BRAND.colors.amber,
+    fontSize: 44, fontWeight: "900", color: "#FFFFFF",
     fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1.5, textAlign: "center",
   },
   decorLine: {

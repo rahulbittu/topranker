@@ -7,8 +7,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { LeaderboardMark } from "@/components/Logo";
 import { hapticPress } from "@/lib/audio";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -65,9 +67,16 @@ function SlideItem({ item, index }: { item: OnboardingSlide; index: number }) {
   return (
     <View style={[slideStyles.container, { width: SCREEN_W }]}>
       <Animated.View entering={FadeInDown.delay(100).duration(500)}>
-        <View style={[slideStyles.emojiCircle, { backgroundColor: `${item.accentColor}15` }]}>
-          <Text style={slideStyles.emoji}>{item.emoji}</Text>
-        </View>
+        <LinearGradient
+          colors={[`${item.accentColor}18`, `${item.accentColor}08`]}
+          style={slideStyles.emojiCircle}
+        >
+          {index === 0 ? (
+            <LeaderboardMark fill={item.accentColor} size={48} />
+          ) : (
+            <Text style={slideStyles.emoji}>{item.emoji}</Text>
+          )}
+        </LinearGradient>
       </Animated.View>
 
       <Animated.Text entering={FadeInDown.delay(200).duration(500)} style={slideStyles.title}>

@@ -4,6 +4,14 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 64 — UI/UX Design Sprint (March 8, 2026)
+#### Changed
+- Animated splash: replaced emoji crown with `LeaderboardMark` SVG, added "TOP"/"Ranker" wordmark hierarchy, navy background
+- Custom SVG favicon with brand mark on navy (replaced default Expo chevron)
+- Web metadata: updated title, description, OG tags for multi-city, theme-color to navy
+- Splash/Android adaptive icon backgrounds changed from cream to navy (#0D1B2A)
+- Onboarding slide 1 uses `LeaderboardMark` SVG with gradient circle
+
 ### Sprint 63 — Chart Extraction + Type Safety (March 7, 2026)
 #### Changed
 - Extracted `RatingDistribution` and `RankHistoryChart` from `business/[id].tsx` into SubComponents

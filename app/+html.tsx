@@ -9,18 +9,19 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no, viewport-fit=cover" />
 
-        <link rel="icon" type="image/png" href="/assets/images/favicon.png" />
-        <link rel="apple-touch-icon" href="/assets/images/favicon.png" />
-        <title>Top Ranker - Dallas Restaurant Rankings</title>
+        <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg" />
+        <link rel="icon" type="image/png" href="/assets/images/favicon.png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/assets/images/icon.png" />
+        <title>TopRanker - Trust-Weighted Restaurant Rankings</title>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="description" content="Community-powered restaurant rankings for Dallas. Rate, discover, and track the best places to eat." />
-        <meta name="theme-color" content="#C49A1A" />
+        <meta name="description" content="Trust-weighted restaurant rankings for Texas. Rate, discover, and track the best places to eat — powered by community credibility." />
+        <meta name="theme-color" content="#0D1B2A" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:title" content="Top Ranker - Dallas Restaurant Rankings" />
-        <meta property="og:description" content="Community-powered restaurant rankings for Dallas. Rate, discover, and track the best places to eat." />
+        <meta property="og:title" content="TopRanker - Where Your Rankings Matter" />
+        <meta property="og:description" content="Trust-weighted restaurant rankings for Texas. Rate, discover, and track the best places to eat — powered by community credibility." />
 
         {/* Prevent text scaling on web */}
         <ScrollViewStyleReset />
