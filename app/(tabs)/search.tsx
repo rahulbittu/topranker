@@ -22,6 +22,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { FeaturedSection, MOCK_FEATURED } from "@/components/FeaturedCard";
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -720,6 +721,9 @@ export default function SearchScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Featured / Promoted Listings */}
+              {activeFilter === "Top 10" && <FeaturedSection featured={MOCK_FEATURED} />}
+
               {/* Trending This Week — PRD requirement */}
               {!debouncedQuery && trending.length > 0 && (
                 <View style={styles.trendingSection}>
