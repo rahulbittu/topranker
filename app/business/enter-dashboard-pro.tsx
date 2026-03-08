@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getApiUrl } from "@/lib/query-client";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { PRICING } from "@/shared/pricing";
 
 export default function EnterDashboardProScreen() {
   const insets = useSafeAreaInsets();
@@ -102,7 +103,7 @@ export default function EnterDashboardProScreen() {
           <Text style={styles.heroTitle}>Dashboard Pro</Text>
           <Text style={styles.heroSub}>{name || "Your Business"}</Text>
           <View style={styles.heroDivider} />
-          <Text style={styles.heroPrice}>$49</Text>
+          <Text style={styles.heroPrice}>{`$${PRICING.dashboardPro.amountCents / 100}`}</Text>
           <Text style={styles.heroPriceSub}>per month</Text>
         </LinearGradient>
 
@@ -159,13 +160,13 @@ export default function EnterDashboardProScreen() {
 
         <View style={styles.priceBreakdown}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Dashboard Pro (monthly)</Text>
-            <Text style={styles.priceValue}>$49.00</Text>
+            <Text style={styles.priceLabel}>{PRICING.dashboardPro.label} (monthly)</Text>
+            <Text style={styles.priceValue}>{`$${(PRICING.dashboardPro.amountCents / 100).toFixed(2)}`}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
             <Text style={styles.priceLabelBold}>Total today</Text>
-            <Text style={styles.priceValueBold}>$49.00</Text>
+            <Text style={styles.priceValueBold}>{`$${(PRICING.dashboardPro.amountCents / 100).toFixed(2)}`}</Text>
           </View>
           <Text style={styles.renewalNote}>Renews monthly. Cancel anytime.</Text>
         </View>
@@ -178,7 +179,7 @@ export default function EnterDashboardProScreen() {
         >
           <Ionicons name="card-outline" size={18} color="#FFFFFF" />
           <Text style={styles.payBtnText}>
-            {processing ? "Processing..." : "Subscribe — $49/mo"}
+            {processing ? "Processing..." : `Subscribe — ${PRICING.dashboardPro.displayAmount}`}
           </Text>
         </TouchableOpacity>
 

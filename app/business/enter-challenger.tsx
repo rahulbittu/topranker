@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getApiUrl } from "@/lib/query-client";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { PRICING } from "@/shared/pricing";
 
 export default function EnterChallengerScreen() {
   const insets = useSafeAreaInsets();
@@ -98,7 +99,7 @@ export default function EnterChallengerScreen() {
           <Text style={styles.heroTitle}>30-Day Challenge</Text>
           <Text style={styles.heroSub}>{name || "Your Business"} vs the #1 Ranked</Text>
           <View style={styles.heroDivider} />
-          <Text style={styles.heroPrice}>$99</Text>
+          <Text style={styles.heroPrice}>{PRICING.challenger.displayAmount}</Text>
           <Text style={styles.heroPriceSub}>one-time entry fee</Text>
         </LinearGradient>
 
@@ -139,13 +140,13 @@ export default function EnterChallengerScreen() {
 
         <View style={styles.priceBreakdown}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Challenger Entry (30 days)</Text>
-            <Text style={styles.priceValue}>$99.00</Text>
+            <Text style={styles.priceLabel}>{PRICING.challenger.label} (30 days)</Text>
+            <Text style={styles.priceValue}>{`$${(PRICING.challenger.amountCents / 100).toFixed(2)}`}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
             <Text style={styles.priceLabelBold}>Total</Text>
-            <Text style={styles.priceValueBold}>$99.00</Text>
+            <Text style={styles.priceValueBold}>{`$${(PRICING.challenger.amountCents / 100).toFixed(2)}`}</Text>
           </View>
         </View>
 
@@ -157,7 +158,7 @@ export default function EnterChallengerScreen() {
         >
           <Ionicons name="card-outline" size={18} color="#FFFFFF" />
           <Text style={styles.payBtnText}>
-            {processing ? "Processing..." : "Pay $99 — Enter Challenge"}
+            {processing ? "Processing..." : `Pay ${PRICING.challenger.displayAmount} — Enter Challenge`}
           </Text>
         </TouchableOpacity>
 

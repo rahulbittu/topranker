@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
+import { TYPOGRAPHY } from "@/constants/typography";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
@@ -385,8 +386,8 @@ const s = StyleSheet.create({
   },
   heroStripLeft: { gap: 4, flex: 1 },
   heroStripRow2: { flexDirection: "row", alignItems: "center", gap: 8 },
-  heroStripCategory: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  heroStripRatings: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  heroStripCategory: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
+  heroStripRatings: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   heroStripLink: { fontSize: 12, color: AMBER, fontFamily: "DMSans_600SemiBold" },
   hotBadge: {
     flexDirection: "row", alignItems: "center", gap: 2,
@@ -418,10 +419,10 @@ const s = StyleSheet.create({
     fontSize: 16, fontWeight: "700", color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
   },
-  rankedMeta: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  rankedMeta: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
   rankedRow3: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   rankedScore: { fontSize: 15, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black" },
-  rankedRatingCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  rankedRatingCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   rankedDelta: { fontSize: 11, fontFamily: "DMSans_500Medium" },
   statusPillSmall: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99 },
   statusPillOpen: {

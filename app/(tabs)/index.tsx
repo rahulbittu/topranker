@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   ScrollView, Platform, Modal,
@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
@@ -31,7 +32,13 @@ export default function LeaderboardScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
+  const [showBanner, setShowBanner] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("banner_dismissed").then((val) => {
+      if (val !== "true") setShowBanner(true);
+    });
+  }, []);
 
   // Fetch dynamic categories from API
   const { data: dbCategories = [] } = useQuery({
@@ -229,7 +236,7 @@ export default function LeaderboardScreen() {
                   <Text style={styles.welcomeBannerSubtext}>Rate businesses you've visited to build your credibility.</Text>
                   <TouchableOpacity
                     style={styles.welcomeBannerClose}
-                    onPress={() => setShowBanner(false)}
+                    onPress={() => { AsyncStorage.setItem("banner_dismissed", "true"); setShowBanner(false); }}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel="Dismiss welcome banner"

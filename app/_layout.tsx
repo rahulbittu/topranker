@@ -34,6 +34,7 @@ import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
 import { NetworkBanner } from "@/components/NetworkBanner";
+import { CookieConsent } from "@/components/CookieConsent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerForPushNotifications } from "@/lib/notifications";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
@@ -375,6 +376,7 @@ export default function RootLayout() {
                 <KeyboardProvider>
                   <RootLayoutNav />
                   <NetworkBanner />
+                  <CookieConsent />
                   {showSplash && <AnimatedSplash onFinish={handleSplashFinish} />}
                 </KeyboardProvider>
               </GestureHandlerRootView>

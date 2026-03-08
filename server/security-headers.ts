@@ -24,6 +24,20 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "camera=(), microphone=(), geolocation=(self), payment=(self)"
   );
 
+  // Content Security Policy — restrict resource loading origins
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https: blob:",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+  res.setHeader("Content-Security-Policy", csp);
+
   // HSTS — enforce HTTPS (1 year, include subdomains)
   if (process.env.NODE_ENV === "production") {
     res.setHeader(

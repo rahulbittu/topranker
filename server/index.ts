@@ -7,6 +7,7 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 
 import { log as logger } from "./logger";
 import { securityHeaders } from "./security-headers";
+import { apiRateLimiter } from "./rate-limiter";
 
 const app = express();
 const log = console.log;
@@ -296,6 +297,7 @@ function setupErrorHandler(app: express.Application) {
   setupCors(app);
   setupBodyParsing(app);
   app.use(securityHeaders);
+  app.use("/api", apiRateLimiter);
   setupRequestLogging(app);
 
   const server = await registerRoutes(app);

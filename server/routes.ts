@@ -33,6 +33,7 @@ import {
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
+import { authRateLimiter } from "./rate-limiter";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -40,45 +41,6 @@ function requireAuth(req: Request, res: Response, next: Function) {
   }
   next();
 }
-
-// In-memory rate limiter — per IP, configurable limits
-const rateLimitBuckets = new Map<string, Map<string, { count: number; resetAt: number }>>();
-
-function createRateLimiter(name: string, maxRequests: number, windowMs: number) {
-  const bucket = new Map<string, { count: number; resetAt: number }>();
-  rateLimitBuckets.set(name, bucket);
-
-  return function rateLimit(req: Request, res: Response, next: Function) {
-    const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const now = Date.now();
-    const entry = bucket.get(ip);
-    if (entry && entry.resetAt > now) {
-      if (entry.count >= maxRequests) {
-        return res.status(429).json({ error: "Too many requests. Please try again later." });
-      }
-      entry.count++;
-    } else {
-      bucket.set(ip, { count: 1, resetAt: now + windowMs });
-    }
-    next();
-  };
-}
-
-// Auth: 10 requests per minute (strict)
-const authRateLimit = createRateLimiter("auth", 10, 60000);
-
-// API: 100 requests per minute (general public endpoints)
-const apiRateLimit = createRateLimiter("api", 100, 60000);
-
-// Cleanup old entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [, bucket] of rateLimitBuckets) {
-    for (const [ip, entry] of bucket) {
-      if (entry.resetAt <= now) bucket.delete(ip);
-    }
-  }
-}, 300000);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -102,16 +64,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
-  // Global API rate limit — 100 req/min per IP (excludes /api/health and /api/auth)
-  app.use("/api/leaderboard", apiRateLimit);
-  app.use("/api/businesses", apiRateLimit);
-  app.use("/api/dishes", apiRateLimit);
-  app.use("/api/challengers", apiRateLimit);
-  app.use("/api/trending", apiRateLimit);
-  app.use("/api/members", apiRateLimit);
-  app.use("/api/ratings", apiRateLimit);
-  app.use("/api/photos", apiRateLimit);
-
   // Health check — lightest possible response for connectivity checks and uptime monitoring
   app.get("/api/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok", ts: Date.now() });
@@ -134,7 +86,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.on("close", () => clearInterval(keepAlive));
   });
 
-  app.post("/api/auth/signup", authRateLimit, async (req: Request, res: Response) => {
+  app.post("/api/auth/signup", authRateLimiter, async (req: Request, res: Response) => {
     try {
       const { displayName, username, email, password, city } = req.body;
 
@@ -179,7 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/auth/login", authRateLimit, (req: Request, res: Response, next) => {
+  app.post("/api/auth/login", authRateLimiter, (req: Request, res: Response, next) => {
     passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) return res.status(500).json({ error: "Internal server error" });
       if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
@@ -191,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
-  app.post("/api/auth/google", authRateLimit, async (req: Request, res: Response) => {
+  app.post("/api/auth/google", authRateLimiter, async (req: Request, res: Response) => {
     try {
       const { idToken } = req.body;
       if (!idToken) {

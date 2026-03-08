@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getApiUrl } from "@/lib/query-client";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
+import { PRICING } from "@/shared/pricing";
 
 export default function EnterFeaturedScreen() {
   const insets = useSafeAreaInsets();
@@ -99,7 +100,7 @@ export default function EnterFeaturedScreen() {
           <Text style={styles.heroTitle}>Featured Placement</Text>
           <Text style={styles.heroSub}>{name || "Your Business"} in {city || "Your City"}</Text>
           <View style={styles.heroDivider} />
-          <Text style={styles.heroPrice}>$199</Text>
+          <Text style={styles.heroPrice}>{`$${PRICING.featuredPlacement.amountCents / 100}`}</Text>
           <Text style={styles.heroPriceSub}>per week</Text>
         </LinearGradient>
 
@@ -148,13 +149,13 @@ export default function EnterFeaturedScreen() {
 
         <View style={styles.priceBreakdown}>
           <View style={styles.priceRow}>
-            <Text style={styles.priceLabel}>Featured Placement (7 days)</Text>
-            <Text style={styles.priceValue}>$199.00</Text>
+            <Text style={styles.priceLabel}>{PRICING.featuredPlacement.label} (7 days)</Text>
+            <Text style={styles.priceValue}>{`$${(PRICING.featuredPlacement.amountCents / 100).toFixed(2)}`}</Text>
           </View>
           <View style={styles.priceDivider} />
           <View style={styles.priceRow}>
             <Text style={styles.priceLabelBold}>Total</Text>
-            <Text style={styles.priceValueBold}>$199.00</Text>
+            <Text style={styles.priceValueBold}>{`$${(PRICING.featuredPlacement.amountCents / 100).toFixed(2)}`}</Text>
           </View>
         </View>
 
@@ -166,7 +167,7 @@ export default function EnterFeaturedScreen() {
         >
           <Ionicons name="card-outline" size={18} color="#FFFFFF" />
           <Text style={styles.payBtnText}>
-            {processing ? "Processing..." : "Pay $199 — Get Featured"}
+            {processing ? "Processing..." : `Pay $${PRICING.featuredPlacement.amountCents / 100} — Get Featured`}
           </Text>
         </TouchableOpacity>
 
