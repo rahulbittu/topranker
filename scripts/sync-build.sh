@@ -7,12 +7,10 @@ echo "========================================="
 
 echo ""
 echo "[1/4] Pulling latest from GitHub..."
-# Preserve .replit (contains Replit Secrets) — never let git overwrite it
-cp .replit .replit.bak 2>/dev/null || true
-git checkout -- .replit 2>/dev/null || true
+# Pull latest code from GitHub. The .replit file from git contains the
+# correct workflow/port configuration. Replit Secrets are stored in
+# [userenv] which is managed by Replit separately, so git pull is safe.
 git pull origin main --ff-only || git merge origin/main --no-ff -m "Merge remote main"
-cp .replit.bak .replit 2>/dev/null || true
-rm -f .replit.bak
 echo "Done."
 
 echo ""
