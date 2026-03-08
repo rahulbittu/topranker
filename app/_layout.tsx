@@ -37,46 +37,78 @@ SplashScreen.preventAutoHideAsync();
 function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const logoScale = useSharedValue(0.3);
   const logoOpacity = useSharedValue(0);
+  const crownScale = useSharedValue(0);
+  const crownRotate = useSharedValue(-15);
   const taglineOpacity = useSharedValue(0);
+  const taglineTranslate = useSharedValue(20);
+  const lineWidth = useSharedValue(0);
   const containerOpacity = useSharedValue(1);
+  const containerScale = useSharedValue(1);
 
   useEffect(() => {
-    // Crown/logo entrance
-    logoOpacity.value = withTiming(1, { duration: 400 });
-    logoScale.value = withSequence(
-      withSpring(1.1, { damping: 8, stiffness: 120 }),
-      withSpring(1, { damping: 12 }),
-    );
-    // Tagline fade in
-    taglineOpacity.value = withDelay(500, withTiming(1, { duration: 400 }));
-    // Fade out entire splash
-    containerOpacity.value = withDelay(1800, withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) }, () => {
+    // Crown drops in with bounce
+    crownScale.value = withDelay(100, withSequence(
+      withSpring(1.2, { damping: 6, stiffness: 150 }),
+      withSpring(1, { damping: 10 }),
+    ));
+    crownRotate.value = withDelay(100, withSequence(
+      withSpring(8, { damping: 6 }),
+      withSpring(0, { damping: 10 }),
+    ));
+    // Logo text fades and scales
+    logoOpacity.value = withDelay(300, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
+    logoScale.value = withDelay(300, withSequence(
+      withSpring(1.05, { damping: 10, stiffness: 100 }),
+      withSpring(1, { damping: 14 }),
+    ));
+    // Decorative line extends
+    lineWidth.value = withDelay(700, withTiming(120, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    // Tagline slides up and fades in
+    taglineOpacity.value = withDelay(900, withTiming(1, { duration: 500 }));
+    taglineTranslate.value = withDelay(900, withSpring(0, { damping: 14 }));
+    // Cinematic exit: scale up slightly + fade out
+    containerScale.value = withDelay(2200, withTiming(1.05, { duration: 400, easing: Easing.in(Easing.cubic) }));
+    containerOpacity.value = withDelay(2200, withTiming(0, { duration: 400, easing: Easing.in(Easing.cubic) }, () => {
       runOnJS(onFinish)();
     }));
   }, []);
+
+  const crownStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: crownScale.value }, { rotate: `${crownRotate.value}deg` }],
+  }));
 
   const logoStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
     opacity: logoOpacity.value,
   }));
 
+  const lineStyle = useAnimatedStyle(() => ({
+    width: lineWidth.value,
+  }));
+
   const taglineStyle = useAnimatedStyle(() => ({
     opacity: taglineOpacity.value,
+    transform: [{ translateY: taglineTranslate.value }],
   }));
 
   const containerStyle = useAnimatedStyle(() => ({
     opacity: containerOpacity.value,
+    transform: [{ scale: containerScale.value }],
   }));
 
   return (
     <Animated.View style={[splashStyles.container, containerStyle]} pointerEvents="none">
-      <Animated.View style={logoStyle}>
+      <Animated.View style={crownStyle}>
         <Text style={splashStyles.crown}>👑</Text>
+      </Animated.View>
+      <Animated.View style={logoStyle}>
         <Text style={splashStyles.logo}>TopRanker</Text>
       </Animated.View>
-      <Animated.Text style={[splashStyles.tagline, taglineStyle]}>
-        Trust-weighted rankings
-      </Animated.Text>
+      <Animated.View style={[splashStyles.decorLine, lineStyle]} />
+      <Animated.View style={taglineStyle}>
+        <Text style={splashStyles.tagline}>Trust-weighted rankings</Text>
+        <Text style={splashStyles.taglineSub}>Dallas, TX</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -89,14 +121,22 @@ const splashStyles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 999,
   },
-  crown: { fontSize: 48, textAlign: "center", marginBottom: 8 },
+  crown: { fontSize: 56, textAlign: "center", marginBottom: 4 },
   logo: {
-    fontSize: 36, fontWeight: "900", color: BRAND.colors.amber,
-    fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1, textAlign: "center",
+    fontSize: 40, fontWeight: "900", color: BRAND.colors.amber,
+    fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1.5, textAlign: "center",
+  },
+  decorLine: {
+    height: 1, backgroundColor: "rgba(196,154,26,0.3)", marginVertical: 12,
   },
   tagline: {
-    fontSize: 14, color: "rgba(255,255,255,0.6)",
-    fontFamily: "DMSans_400Regular", marginTop: 8, textAlign: "center",
+    fontSize: 15, color: "rgba(255,255,255,0.7)",
+    fontFamily: "DMSans_500Medium", textAlign: "center", letterSpacing: 1,
+  },
+  taglineSub: {
+    fontSize: 11, color: "rgba(255,255,255,0.35)",
+    fontFamily: "DMSans_400Regular", textAlign: "center", marginTop: 4, letterSpacing: 2,
+    textTransform: "uppercase" as const,
   },
 });
 

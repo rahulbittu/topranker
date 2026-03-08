@@ -2,19 +2,34 @@ import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Tabs } from "expo-router";
 import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import { Platform, StyleSheet, View } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
 const AMBER = BRAND.colors.amber;
 
 function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof Ionicons>["name"]; color: string; focused: boolean }) {
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    if (focused) {
+      scale.value = withSpring(1.15, { damping: 8, stiffness: 200 });
+    } else {
+      scale.value = withSpring(1, { damping: 10 });
+    }
+  }, [focused]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
+    <Animated.View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive, animStyle]}>
       <Ionicons name={name} size={22} color={color} />
       {focused && <View style={tabStyles.activeDot} />}
-    </View>
+    </Animated.View>
   );
 }
 

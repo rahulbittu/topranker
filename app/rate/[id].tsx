@@ -21,6 +21,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { apiRequest } from "@/lib/query-client";
+import { Confetti } from "@/components/Confetti";
 
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
 
@@ -320,6 +321,7 @@ export default function RateScreen() {
   if (showConfirm) {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
+        <Confetti show={showConfirm} />
         <View style={styles.confirmInner}>
           <Animated.View style={[styles.confirmIconWrap, confirmIconStyle]}>
             <View style={styles.confirmIconCircle}>
