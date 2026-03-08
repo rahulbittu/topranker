@@ -4,6 +4,13 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 62 — Integration Tests + supertest (March 7, 2026)
+#### Added
+- `supertest` + `@types/supertest` dev dependencies for HTTP integration testing
+- 20 integration tests covering: health, leaderboard, business CRUD, auth middleware, input validation, member endpoints, response shape consistency
+- Total test count: 114 (up from 94, +21%)
+- `as any` audit analysis: 36 casts categorized by type (14 RN width, 10 Ionicons, 5 style, 3 window, 2 API, 2 misc)
+
 ### Sprint 61 — Component Extraction: business/[id].tsx (March 7, 2026)
 #### Changed
 - Extracted 7 presentational components from `app/business/[id].tsx` into `components/business/SubComponents.tsx`
