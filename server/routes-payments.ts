@@ -5,6 +5,7 @@
 import type { Express, Request, Response } from "express";
 import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus } from "./storage";
 import { sendPaymentReceiptEmail } from "./email";
+import { broadcast } from "./sse";
 import { log } from "./logger";
 
 function requireAuth(req: Request, res: Response, next: Function) {
@@ -131,6 +132,7 @@ export function registerPaymentRoutes(app: Express) {
           paymentId: paymentRecord.id,
           city: business.city,
         });
+        broadcast("featured_updated", { businessId: business.id, city: business.city });
       }
       sendPaymentReceiptEmail({
         email: req.user!.email || "",

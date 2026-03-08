@@ -10,6 +10,7 @@ import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
 import { registerBadgeRoutes } from "./routes-badges";
 import { handleStripeWebhook } from "./stripe-webhook";
+import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
 import {
   getLeaderboard,
@@ -114,6 +115,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check — lightest possible response for connectivity checks and uptime monitoring
   app.get("/api/health", (_req: Request, res: Response) => {
     res.status(200).json({ status: "ok", ts: Date.now() });
+  });
+
+  // ── Server-Sent Events — near-real-time updates ───────────
+  app.get("/api/events", (req: Request, res: Response) => {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+    res.write("data: {\"type\":\"connected\",\"timestamp\":" + Date.now() + "}\n\n");
+    addClient(res);
+    // Keep-alive ping every 30s to prevent proxy/LB timeout
+    const keepAlive = setInterval(() => {
+      try { res.write(": ping\n\n"); } catch { clearInterval(keepAlive); }
+    }, 30000);
+    req.on("close", () => clearInterval(keepAlive));
   });
 
   app.post("/api/auth/signup", authRateLimit, async (req: Request, res: Response) => {
@@ -459,6 +477,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const memberId = req.user!.id;
       const result = await submitRating(memberId, parsed.data);
+      // Broadcast real-time update so other clients refresh rankings
+      broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
+      broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
       return res.status(201).json({ data: result });
     } catch (err: any) {
       if (err.message.includes("3+ days")) {

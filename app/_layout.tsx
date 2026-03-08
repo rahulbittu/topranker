@@ -39,6 +39,7 @@ import { registerForPushNotifications } from "@/lib/notifications";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 import { ONBOARDING_KEY } from "@/app/onboarding";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
+import { useRealtimeEvents } from "@/lib/use-realtime";
 
 async function savePushToken(token: string) {
   try {
@@ -358,6 +359,9 @@ export default function RootLayout() {
 
     return () => subscription.remove();
   }, []);
+
+  // Connect to SSE for near-real-time data updates
+  useRealtimeEvents();
 
   if (!fontsLoaded && !fontError) return null;
 
