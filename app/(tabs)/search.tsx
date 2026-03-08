@@ -17,6 +17,7 @@ import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/j
 
 import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
@@ -213,6 +214,13 @@ export default function SearchScreen() {
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [showDiscoverTip, setShowDiscoverTip] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("discover_tip_dismissed").then((val) => {
+      if (val !== "true") setShowDiscoverTip(true);
+    });
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
@@ -527,6 +535,25 @@ export default function SearchScreen() {
           }
           ListHeaderComponent={
             <>
+              {showDiscoverTip && (
+                <View style={styles.discoverTip}>
+                  <Ionicons name="compass-outline" size={20} color={AMBER} style={{ marginTop: 2 }} />
+                  <View style={styles.discoverTipTextStack}>
+                    <Text style={styles.discoverTipTitle}>Discover top-rated places near you</Text>
+                    <Text style={styles.discoverTipSubtext}>Search by name, category, or explore the map</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.discoverTipClose}
+                    onPress={() => { AsyncStorage.setItem("discover_tip_dismissed", "true"); setShowDiscoverTip(false); }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Dismiss discover tip"
+                  >
+                    <Ionicons name="close" size={14} color={Colors.textTertiary} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* Featured / Promoted Listings */}
               {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
 
@@ -669,6 +696,23 @@ const styles = StyleSheet.create({
   },
   trendingDeltaText: {
     fontSize: 12, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
+  },
+
+  discoverTip: {
+    flexDirection: "row", alignItems: "flex-start", gap: 10,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
+    borderRadius: 12, padding: 14, marginBottom: 12, marginHorizontal: 0,
+    position: "relative" as const,
+  },
+  discoverTipTextStack: { flex: 1, gap: 2, paddingRight: 20 },
+  discoverTipTitle: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  discoverTipSubtext: {
+    fontSize: 12, fontWeight: "400", color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+  discoverTipClose: {
+    position: "absolute" as const, top: 10, right: 10,
   },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },

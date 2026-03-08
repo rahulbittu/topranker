@@ -22,6 +22,7 @@ import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile, type ApiMemberImpact } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
+import { TYPOGRAPHY } from "@/constants/typography";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
@@ -610,7 +611,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10,
   },
   legalLinkText: {
-    flex: 1, fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    flex: 1, ...TYPOGRAPHY.ui.body, color: Colors.textSecondary,
   },
   deleteAccountBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
@@ -657,18 +658,18 @@ const styles = StyleSheet.create({
   credScoreRow: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
-  credScoreLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", letterSpacing: 0.5, textTransform: "uppercase" as const },
+  credScoreLabel: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, letterSpacing: 0.5, textTransform: "uppercase" as const },
   credScore: { fontSize: 48, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -2 },
   credWeightBox: { alignItems: "center", gap: 2 },
   credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
   credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
   credProgress: { gap: 6 },
   credProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  credProgressLabel: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  credProgressLabel: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
   credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold" },
   progressBarBg: { height: 4, backgroundColor: Colors.surfaceRaised, borderRadius: 2, overflow: "hidden" },
   progressBarFill: { height: "100%", borderRadius: 2 },
-  credProgressHint: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
+  credProgressHint: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginTop: 4 },
 
   statsRow: {
     flexDirection: "row", backgroundColor: "rgba(13,27,42,0.9)", borderRadius: 14,
@@ -680,7 +681,7 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
 
   joinedText: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
     textAlign: "center",
   },
 
@@ -723,7 +724,7 @@ const styles = StyleSheet.create({
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingTop: 6, marginTop: 2,
   },
-  breakdownTotalLabel: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  breakdownTotalLabel: { ...TYPOGRAPHY.ui.bodyBold, fontWeight: "700", color: Colors.text },
   breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
 
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
@@ -750,7 +751,7 @@ const styles = StyleSheet.create({
   tierRowInfo: { flex: 1, gap: 1 },
   tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  tierRange: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  tierRange: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   currentBadge: {
     backgroundColor: Colors.goldFaint,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
@@ -777,7 +778,7 @@ const styles = StyleSheet.create({
   perkInfo: { flex: 1, gap: 1 },
   perkTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   perkTitleLocked: { color: Colors.textTertiary },
-  perkDesc: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  perkDesc: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   nextTierPreview: {
     marginTop: 8, gap: 0,
     backgroundColor: Colors.surface, borderRadius: 14,
@@ -805,10 +806,10 @@ const styles = StyleSheet.create({
     fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
   paymentDate: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 2,
+    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginTop: 2,
   },
   paymentAmount: {
-    fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+    ...TYPOGRAPHY.ui.bodyBold, fontWeight: "700", color: Colors.text,
   },
   paymentStatus: {
     fontSize: 10, fontFamily: "DMSans_500Medium", marginTop: 2,

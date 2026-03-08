@@ -70,7 +70,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ── Server-Sent Events — near-real-time updates ───────────
+  // SECURITY (Nadia Kaur, 2026-03-08):
+  //   1. Max 5 concurrent SSE connections per IP — prevents single-origin resource exhaustion
+  //   2. 30-minute connection timeout — prevents indefinite resource holding
+  //   3. Connections tracked in sseConnectionsByIp; cleaned up on close/timeout
+  const SSE_MAX_PER_IP = 5;
+  const SSE_TIMEOUT_MS = 1_800_000; // 30 minutes
+  const sseConnectionsByIp = new Map<string, number>();
+
   app.get("/api/events", (req: Request, res: Response) => {
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+    const currentCount = sseConnectionsByIp.get(clientIp) || 0;
+
+    if (currentCount >= SSE_MAX_PER_IP) {
+      log.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
+      return res.status(429).json({ error: "Too many SSE connections from this IP" });
+    }
+
+    sseConnectionsByIp.set(clientIp, currentCount + 1);
+
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -79,11 +97,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
     res.write("data: {\"type\":\"connected\",\"timestamp\":" + Date.now() + "}\n\n");
     addClient(res);
+
     // Keep-alive ping every 30s to prevent proxy/LB timeout
     const keepAlive = setInterval(() => {
       try { res.write(": ping\n\n"); } catch { clearInterval(keepAlive); }
     }, 30000);
-    req.on("close", () => clearInterval(keepAlive));
+
+    // Auto-close after 30 minutes to prevent resource exhaustion
+    const timeout = setTimeout(() => {
+      try { res.end(); } catch { /* already closed */ }
+    }, SSE_TIMEOUT_MS);
+
+    const cleanup = () => {
+      clearInterval(keepAlive);
+      clearTimeout(timeout);
+      const count = sseConnectionsByIp.get(clientIp) || 1;
+      if (count <= 1) {
+        sseConnectionsByIp.delete(clientIp);
+      } else {
+        sseConnectionsByIp.set(clientIp, count - 1);
+      }
+    };
+
+    req.on("close", cleanup);
   });
 
   app.post("/api/auth/signup", authRateLimiter, async (req: Request, res: Response) => {

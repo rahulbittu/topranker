@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { PRICING } from "@/shared/pricing";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
@@ -111,7 +112,7 @@ export default function ClaimBusinessScreen() {
             { icon: "chatbubble-outline", text: "Respond to community reviews" },
             { icon: "shield-checkmark-outline", text: "Verified Owner badge on listing" },
             { icon: "trending-up-outline", text: "Track ranking position over time" },
-            { icon: "megaphone-outline", text: "Enter Challenger events ($99)" },
+            { icon: "megaphone-outline", text: `Enter Challenger events (${PRICING.challenger.displayAmount})` },
           ].map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
               <TypedIcon name={benefit.icon} size={18} color={BRAND.colors.amber} />

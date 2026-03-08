@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
@@ -38,7 +39,7 @@ export function CookieConsent() {
       <View style={styles.content}>
         <Text style={styles.text}>
           We use essential cookies for authentication and analytics cookies to improve your experience.{" "}
-          <Text style={styles.link} onPress={() => {}}>Learn more</Text>
+          <Text style={styles.link} onPress={() => router.push("/legal/privacy")}>Learn more</Text>
         </Text>
         <View style={styles.buttons}>
           <TouchableOpacity style={styles.declineBtn} onPress={decline}>

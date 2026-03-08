@@ -19,6 +19,7 @@ import {
   markWebhookProcessed,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
+import { getPerfStats } from "./perf-monitor";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -206,6 +207,16 @@ export function registerAdminRoutes(app: Express) {
         return res.json({ data: { id: event.id, replayed: true } });
       }
       return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Performance Stats ─────────────────────────────────────
+  app.get("/api/admin/perf", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const data = getPerfStats();
+      return res.json({ data });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

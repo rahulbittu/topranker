@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { PRICING } from "@/shared/pricing";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
@@ -235,7 +236,7 @@ export default function BusinessDashboardScreen() {
                   <Text style={styles.proCardTitle}>Upgrade to Pro</Text>
                   <Text style={styles.proCardSub}>Respond to reviews, advanced analytics, verified badge</Text>
                 </View>
-                <Text style={styles.proCardPrice}>$49/mo</Text>
+                <Text style={styles.proCardPrice}>{PRICING.dashboardPro.displayAmount}</Text>
               </View>
             </Animated.View>
           </>
