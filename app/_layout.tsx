@@ -334,6 +334,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      if (typeof window !== "undefined" && (window as any).__REMOVE_LOADING) {
+        (window as any).__REMOVE_LOADING();
+      }
     }
   }, [fontsLoaded, fontError]);
 
