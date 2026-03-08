@@ -53,3 +53,12 @@ export {
   getPendingSuggestions,
   reviewSuggestion,
 } from "./categories";
+
+// Badges
+export {
+  getMemberBadges,
+  getMemberBadgeCount,
+  awardBadge,
+  hasBadge,
+  getEarnedBadgeIds,
+} from "./badges";

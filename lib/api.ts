@@ -359,3 +359,20 @@ export async function reviewCategorySuggestion(id: string, status: "approved" | 
   if (!res.ok) throw new Error(`Review failed: ${res.status}`);
   return res.json();
 }
+
+// ── Badge Persistence ──────────────────────────────────────────
+
+export async function awardBadgeApi(badgeId: string, badgeFamily: string) {
+  const res = await fetch(`${getApiUrl()}/api/badges/award`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ badgeId, badgeFamily }),
+  });
+  if (!res.ok) throw new Error(`Award badge failed: ${res.status}`);
+  return res.json() as Promise<{ data: any; awarded: boolean }>;
+}
+
+export async function fetchEarnedBadges() {
+  return apiFetch<{ badgeIds: string[]; badgeCount: number }>("/api/badges/earned");
+}

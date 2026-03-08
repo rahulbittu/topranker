@@ -32,6 +32,7 @@ import {
 } from "@/components/rate/SubComponents";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import { getBadgeById, type Badge } from "@/lib/badges";
+import { awardBadgeApi } from "@/lib/api";
 
 type RatingStep = 1 | 2;
 
@@ -194,6 +195,8 @@ export default function RateScreen() {
         const badge = getBadgeById(badgeId);
         if (badge) {
           setTimeout(() => setToastBadge(badge), 1500);
+          // Persist badge award to server
+          awardBadgeApi(badge.id, badge.category).catch(() => {});
         }
       }
     },

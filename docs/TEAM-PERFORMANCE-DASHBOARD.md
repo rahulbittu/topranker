@@ -375,8 +375,14 @@
 | 73 | 13 | 7 | ~470 | Sage, Jordan (CVO), Mei Lin |
 | 74 | 11 | 4 | ~300 | James Park, Carlos Ruiz |
 | 75 | 15 | 6 | ~400 | Jordan (CVO), Mei Lin, Marcus Chen |
+| 76 | 13 | 4 | ~250 | Sage, James Park, Jordan (CVO) |
+| 77 | 13 | 6 | ~350 | Suki, James Park, Carlos Ruiz |
+| 78 | 14 | 6 | ~450 | Suki, James Park, Priya Sharma |
+| 79 | 13 | 5 | ~300 | Sage, James Park |
+| 80 | 13 | 4 | ~250 | Marcus Chen, James Park, Carlos Ruiz |
+| 81 | 13 | 4 | ~200 | Mei Lin, James Park |
 
-**Total Story Points: 583** | **Total Sprints: 75** | **Avg Velocity: 7.8 pts/sprint**
+**Total Story Points: 662** | **Total Sprints: 81** | **Avg Velocity: 8.2 pts/sprint**
 
 ---
 
@@ -392,7 +398,9 @@
 | 67 | API response time logging middleware (2 sprints late) | A |
 | 72 | Category DB migration (categories + suggestions tables) | A+ |
 | 73 | Category storage module + seed script + API routes | A+ |
-**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB layer**
+| 76 | Seasonal API + admin review endpoint | A+ |
+| 79 | Badge storage module + badge API endpoints | A+ |
+**Average: A+** | **Note: Hired Sprint 52, strong backend velocity, owns DB + badge layers**
 
 ### Jordan — Chief Value Officer
 | Sprint | Contribution | Rating |
@@ -404,7 +412,10 @@
 | 71 | Business badge display on detail page | A+ |
 | 73 | Badge notification toast design + implementation | A+ |
 | 75 | Seasonal badges (Spring, Summer, Fall, Winter, Year-Round) | A+ |
-**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems, 40→61 total badges**
+| 76 | Badge toast integration strategy (milestone triggers) | A+ |
+| 77 | Streak toast trigger strategy (3/7/14/30 day) | A+ |
+| 78 | Badge engagement loop strategy | A+ |
+**Average: A+** | **Note: Hired Sprint 52, owns all reward/engagement systems, 61 total badges, full earn→toast→share pipeline**
 
 ### Suki — Design Lead
 | Sprint | Contribution | Rating |
@@ -414,7 +425,10 @@
 | 66 | Rich favicon pipeline, PNG generation | A+ |
 | 67 | Favicon verification on production | A |
 | 68 | Badge grid UI component design, profile visual refresh | A+ |
-**Average: A+** | **Note: Hired Sprint 64, immediate design impact**
+| 77 | BadgeShareCard design + sharing utility | A+ |
+| 78 | BadgeDetailModal design | A+ |
+| 80 | Profile badge count UI design | A |
+**Average: A+** | **Note: Hired Sprint 64, immediate design impact, owns badge visual system**
 
 ### Nadia Kaur — VP Security + Legal
 | Sprint | Contribution | Rating |
@@ -439,14 +453,17 @@
 | 72 | SafeImage typed wrapper — eliminated 8 casts | A+ |
 | 73 | Google Maps type declarations — eliminated 3 casts | A+ |
 | 74 | sortBy cast fix | A |
-**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction)**
+| 81 | useBadgeContext hook extraction, eliminated duplication | A+ |
+**Average: A+** | **Note: Led as-any elimination from 43 to 3 (93% reduction), now owns hook patterns**
 
 ### Priya Sharma — RBAC Lead
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
 | 67 | Legal page design consistency review | A- |
 | 68 | Admin legal section planning | A- |
-**Average: A-** | **Note: Needs more ticket volume**
+| 78 | Admin category suggestions tab + RBAC integration | A+ |
+| 79 | Badge endpoint RBAC design | A+ |
+**Average: A** | **Note: Strong RBAC ownership since Sprint 78**
 
 ## Top Performers (Cumulative through Sprint 45)
 1. **James Park** — Frontend Architect. Present in 40+ sprints. Highest output, consistently A/A+. MVP.
