@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
 
@@ -92,7 +93,7 @@ export default function ClaimBusinessScreen() {
             { icon: "megaphone-outline", text: "Enter Challenger events ($99)" },
           ].map((benefit, i) => (
             <View key={i} style={styles.benefitRow}>
-              <Ionicons name={benefit.icon as any} size={18} color={BRAND.colors.amber} />
+              <TypedIcon name={benefit.icon} size={18} color={BRAND.colors.amber} />
               <Text style={styles.benefitText}>{benefit.text}</Text>
             </View>
           ))}

@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
 import { hapticPress } from "@/lib/audio";
@@ -51,7 +52,7 @@ function SettingRow({
 }) {
   return (
     <View style={styles.settingRow}>
-      <Ionicons name={icon as any} size={18} color={Colors.textSecondary} />
+      <TypedIcon name={icon} size={18} color={Colors.textSecondary} />
       <View style={styles.settingInfo}>
         <Text style={styles.settingLabel}>{label}</Text>
         {sublabel && <Text style={styles.settingSublabel}>{sublabel}</Text>}
@@ -86,7 +87,7 @@ function NavigationRow({
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <Ionicons name={icon as any} size={18} color={Colors.textSecondary} />
+      <TypedIcon name={icon} size={18} color={Colors.textSecondary} />
       <View style={styles.settingInfo}>
         <Text style={styles.settingLabel}>{label}</Text>
         {sublabel && <Text style={styles.settingSublabel}>{sublabel}</Text>}

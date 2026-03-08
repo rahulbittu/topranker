@@ -8,6 +8,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { TypedIcon } from "@/components/TypedIcon";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import {
@@ -52,7 +53,7 @@ export function BadgeSummary({
           <Text style={s.nextBadgeLabel}>NEXT BADGE</Text>
           <View style={s.nextBadgeRow}>
             <View style={[s.nextBadgeIcon, { backgroundColor: `${next.badge.color}15` }]}>
-              <Ionicons name={next.badge.icon as any} size={14} color={next.badge.color} />
+              <TypedIcon name={next.badge.icon} size={14} color={next.badge.color} />
             </View>
             <View style={s.nextBadgeInfo}>
               <Text style={s.nextBadgeName}>{next.badge.name}</Text>
@@ -94,8 +95,8 @@ export function BadgeItem({ item, compact }: { item: EarnedBadge; compact?: bool
             transform: [{ rotate: `${(item.progress / 100) * 360}deg` }],
           }]} />
         )}
-        <Ionicons
-          name={item.badge.icon as any}
+        <TypedIcon
+          name={item.badge.icon}
           size={iconSize}
           color={isEarned ? item.badge.color : Colors.textTertiary}
         />
@@ -151,7 +152,7 @@ export function BadgeCategorySection({
   return (
     <View style={s.categorySection}>
       <View style={s.categoryHeader}>
-        <Ionicons name={cat.icon as any} size={14} color={AMBER} />
+        <TypedIcon name={cat.icon} size={14} color={AMBER} />
         <Text style={s.categoryTitle}>{cat.label}</Text>
         <Text style={s.categoryCount}>{earned}/{catBadges.length}</Text>
       </View>

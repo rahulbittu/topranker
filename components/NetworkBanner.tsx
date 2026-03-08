@@ -6,6 +6,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 
 /**
  * Network connectivity banner.
@@ -105,7 +106,7 @@ export function ErrorState({
 }) {
   return (
     <View style={styles.errorContainer}>
-      <Ionicons name={icon as any} size={48} color={Colors.textTertiary} />
+      <TypedIcon name={icon} size={48} color={Colors.textTertiary} />
       <Text style={styles.errorTitle}>{title}</Text>
       <Text style={styles.errorSubtitle}>{subtitle}</Text>
       {onRetry && (
@@ -138,7 +139,7 @@ export function EmptyState({
 }) {
   return (
     <View style={styles.emptyContainer}>
-      <Ionicons name={icon as any} size={40} color={Colors.textTertiary} />
+      <TypedIcon name={icon} size={40} color={Colors.textTertiary} />
       <Text style={styles.emptyTitle}>{title}</Text>
       {subtitle && <Text style={styles.emptySubtitle}>{subtitle}</Text>}
     </View>

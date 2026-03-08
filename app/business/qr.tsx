@@ -7,6 +7,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import * as Haptics from "expo-haptics";
 
 export default function QRCodeScreen() {
@@ -82,7 +83,7 @@ export default function QRCodeScreen() {
             { icon: "shield-checkmark-outline", text: "All ratings are trust-weighted" },
           ].map((item, i) => (
             <View key={i} style={styles.statRow}>
-              <Ionicons name={item.icon as any} size={16} color={BRAND.colors.amber} />
+              <TypedIcon name={item.icon} size={16} color={BRAND.colors.amber} />
               <Text style={styles.statText}>{item.text}</Text>
             </View>
           ))}

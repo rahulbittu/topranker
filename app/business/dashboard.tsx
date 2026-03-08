@@ -9,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -40,7 +41,7 @@ function StatCard({ label, value, delta, icon, color, delay }: {
   return (
     <Animated.View entering={FadeInDown.delay(delay).duration(400)} style={styles.statCard}>
       <View style={[styles.statIconWrap, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon as any} size={20} color={color} />
+        <TypedIcon name={icon} size={20} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <View style={styles.statBottom}>

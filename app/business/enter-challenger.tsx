@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
@@ -116,7 +117,7 @@ export default function EnterChallengerScreen() {
             { icon: "analytics-outline", text: "Real-time vote tracking and community engagement metrics" },
           ].map((item, i) => (
             <View key={i} style={styles.benefitRow}>
-              <Ionicons name={item.icon as any} size={18} color={BRAND.colors.amber} />
+              <TypedIcon name={item.icon} size={18} color={BRAND.colors.amber} />
               <Text style={styles.benefitText}>{item.text}</Text>
             </View>
           ))}

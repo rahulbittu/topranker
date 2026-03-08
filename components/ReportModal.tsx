@@ -6,6 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeIn, SlideInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { hapticPress, hapticError } from "@/lib/audio";
 import * as Haptics from "expo-haptics";
 
@@ -105,8 +106,8 @@ export function ReportModal({ visible, onClose, onSubmit, targetType, targetName
                     accessibilityRole="radio"
                     accessibilityState={{ selected: selectedReason === reason.value }}
                   >
-                    <Ionicons
-                      name={reason.icon as any}
+                    <TypedIcon
+                      name={reason.icon}
                       size={18}
                       color={selectedReason === reason.value ? BRAND.colors.amber : Colors.textSecondary}
                     />

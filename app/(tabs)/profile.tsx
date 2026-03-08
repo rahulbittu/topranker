@@ -23,6 +23,7 @@ import { BRAND } from "@/constants/brand";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 import { evaluateUserBadges, getUserBadgeCount, type UserBadgeContext } from "@/lib/badges";
+import { TypedIcon } from "@/components/TypedIcon";
 import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 
@@ -348,7 +349,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           {getUnlockedPerks(tier).map((perk) => (
             <View key={perk.id} style={styles.perkItem}>
               <View style={styles.perkIconWrap}>
-                <Ionicons name={perk.icon as any} size={16} color={AMBER} />
+                <TypedIcon name={perk.icon} size={16} color={AMBER} />
               </View>
               <View style={styles.perkInfo}>
                 <Text style={styles.perkTitle}>{perk.title}</Text>
@@ -371,7 +372,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
               {next.perks.slice(0, 3).map((perk) => (
                 <View key={perk.id} style={[styles.perkItem, styles.perkItemLocked]}>
                   <View style={[styles.perkIconWrap, styles.perkIconLocked]}>
-                    <Ionicons name={perk.icon as any} size={16} color={Colors.textTertiary} />
+                    <TypedIcon name={perk.icon} size={16} color={Colors.textTertiary} />
                   </View>
                   <View style={styles.perkInfo}>
                     <Text style={[styles.perkTitle, styles.perkTitleLocked]}>{perk.title}</Text>

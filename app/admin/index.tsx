@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { isAdminEmail } from "@/shared/admin";
 
@@ -17,7 +18,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string;
   return (
     <View style={styles.statCard}>
       <View style={[styles.statIcon, { backgroundColor: `${color}15` }]}>
-        <Ionicons name={icon as any} size={20} color={color} />
+        <TypedIcon name={icon} size={20} color={color} />
       </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
@@ -126,7 +127,7 @@ export default function AdminScreen() {
             style={[styles.tab, activeTab === key && styles.tabActive]}
             onPress={() => setActiveTab(key)}
           >
-            <Ionicons name={icon as any} size={14} color={activeTab === key ? "#FFFFFF" : Colors.textSecondary} />
+            <TypedIcon name={icon} size={14} color={activeTab === key ? "#FFFFFF" : Colors.textSecondary} />
             <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}

@@ -9,6 +9,7 @@ import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { hapticPress } from "@/lib/audio";
 import { Analytics } from "@/lib/analytics";
@@ -136,8 +137,8 @@ export default function ReferralScreen() {
                 style={[styles.rewardRow, unlocked && styles.rewardRowUnlocked]}
               >
                 <View style={[styles.rewardIcon, unlocked && styles.rewardIconUnlocked]}>
-                  <Ionicons
-                    name={reward.icon as any}
+                  <TypedIcon
+                    name={reward.icon}
                     size={18}
                     color={unlocked ? BRAND.colors.amber : Colors.textTertiary}
                   />

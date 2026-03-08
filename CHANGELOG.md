@@ -4,6 +4,12 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 70 — Architectural Audit #4 + TypedIcon Type Safety (March 8, 2026)
+#### Changed
+- Created `TypedIcon` wrapper component — eliminates `as any` casts for Ionicons icon names
+- Applied TypedIcon across 12 files, eliminating 16 `as any` casts (43 → 27 total)
+- Architectural Audit #4: N1/N6 ALL CLEAR, 150 tests, 0 TS errors, security GOOD
+
 ### Sprint 69 — Index Extraction (Final N1/N6) + Category Registry Architecture (March 8, 2026)
 #### Changed
 - Extracted `PhotoMosaic`, `StarRating`, `PhotoStrip`, `HeroCard`, `RankedCard` from `index.tsx` into `components/leaderboard/SubComponents.tsx`
