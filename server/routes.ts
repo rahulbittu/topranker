@@ -323,6 +323,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const verificationMethod = `role:${role.trim()}${phone ? ` phone:${phone.trim()}` : ""}`;
       const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
+
+      // Send email notifications (non-blocking)
+      const { sendClaimConfirmationEmail, sendClaimAdminNotification } = await import("./email");
+      sendClaimConfirmationEmail({
+        email: req.user!.email || "",
+        displayName: req.user!.displayName || "User",
+        businessName: business.name,
+      }).catch(() => {});
+      sendClaimAdminNotification({
+        businessName: business.name,
+        claimantName: req.user!.displayName || "Unknown",
+        claimantEmail: req.user!.email || "",
+      }).catch(() => {});
+
       return res.json({ data: { id: claim.id, status: claim.status } });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
@@ -380,6 +394,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })),
         },
       });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Payment Endpoints ──────────────────────────────────────
+  app.post("/api/payments/challenger", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { businessName, slug } = req.body;
+      if (!businessName || !slug) {
+        return res.status(400).json({ error: "businessName and slug are required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createChallengerPayment } = await import("./payments");
+      const payment = await createChallengerPayment({
+        challengerId: business.id,
+        businessName,
+        customerEmail: req.user!.email || "",
+        userId: req.user!.id,
+      });
+      return res.json({ data: payment });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/payments/dashboard-pro", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { slug } = req.body;
+      if (!slug) {
+        return res.status(400).json({ error: "slug is required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createDashboardProPayment } = await import("./payments");
+      const payment = await createDashboardProPayment({
+        businessId: business.id,
+        businessName: business.name,
+        customerEmail: req.user!.email || "",
+        userId: req.user!.id,
+      });
+      return res.json({ data: payment });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/payments/featured", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { slug } = req.body;
+      if (!slug) {
+        return res.status(400).json({ error: "slug is required" });
+      }
+      const business = await getBusinessBySlug(slug);
+      if (!business) {
+        return res.status(404).json({ error: "Business not found" });
+      }
+      const { createFeaturedPlacementPayment } = await import("./payments");
+      const payment = await createFeaturedPlacementPayment({
+        businessId: business.id,
+        businessName: business.name,
+        city: business.city,
+        customerEmail: req.user!.email || "",
+        userId: req.user!.id,
+      });
+      return res.json({ data: payment });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

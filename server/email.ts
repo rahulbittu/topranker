@@ -110,3 +110,84 @@ Start exploring: https://topranker.com
     text,
   });
 }
+
+export async function sendClaimConfirmationEmail(params: {
+  email: string;
+  displayName: string;
+  businessName: string;
+}): Promise<void> {
+  const { email, displayName, businessName } = params;
+  const firstName = displayName.split(" ")[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Received</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we received your claim for <strong>${businessName}</strong>.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Status</p>
+            <p style="margin:0;color:#C49A1A;font-size:16px;font-weight:700;">Pending Review</p>
+            <p style="margin:4px 0 0;color:#888;font-size:12px;">Our team will verify your claim within 24-48 hours.</p>
+          </div>
+          <p style="margin:0;color:#555;font-size:14px;line-height:1.6;">
+            Once approved, you'll get access to your business dashboard with analytics, review responses, and a verified owner badge.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+We received your claim for ${businessName}.
+
+Status: Pending Review
+Our team will verify your claim within 24-48 hours.
+
+Once approved, you'll get access to your business dashboard.
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: `Claim received: ${businessName}`,
+    html,
+    text,
+  });
+}
+
+export async function sendClaimAdminNotification(params: {
+  businessName: string;
+  claimantName: string;
+  claimantEmail: string;
+}): Promise<void> {
+  // Send to admin — in production, this would go to an admin email list
+  const adminEmail = "admin@topranker.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `New claim: ${params.businessName} by ${params.claimantName}`,
+    html: `<p>New business claim submitted.</p>
+      <ul>
+        <li><strong>Business:</strong> ${params.businessName}</li>
+        <li><strong>Claimant:</strong> ${params.claimantName} (${params.claimantEmail})</li>
+      </ul>
+      <p>Review at: https://topranker.com/admin</p>`,
+    text: `New claim: ${params.businessName} by ${params.claimantName} (${params.claimantEmail})`,
+  });
+}

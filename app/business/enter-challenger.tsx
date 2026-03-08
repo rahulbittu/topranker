@@ -10,6 +10,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
+import { getApiUrl } from "@/lib/query-client";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 
@@ -54,13 +55,26 @@ export default function EnterChallengerScreen() {
   const handlePayment = async () => {
     setProcessing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    // TODO: Call POST /api/payments/challenger when Stripe is configured
-    // Simulate payment processing
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${getApiUrl()}/api/payments/challenger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ businessName: name || "Business", slug }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        Alert.alert("Payment Error", json.error || "Payment failed");
+        setProcessing(false);
+        return;
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setProcessing(false);
       setConfirmed(true);
-    }, 1500);
+    } catch {
+      Alert.alert("Error", "Network error — please try again");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
