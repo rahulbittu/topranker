@@ -4,6 +4,12 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 82 — Google Maps Extraction + Business Detail Cleanup (March 8, 2026)
+#### Changed
+- Extracted `OpeningHoursCard` and `LocationCard` from business/[id].tsx into SubComponents.tsx
+- Removed ~40 LOC and unused `Feather` import from business/[id].tsx
+- `as any` iframe cast relocated to SubComponents.tsx (production count: 3, stable)
+
 ### Sprint 81 — useBadgeContext Hook + Team Dashboard Update (March 8, 2026)
 #### Added
 - `lib/hooks/useBadgeContext.ts` — Memoized hook for badge context, evaluation, and counts

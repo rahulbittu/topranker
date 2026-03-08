@@ -296,6 +296,56 @@ export const RankHistoryChart = React.memo(function RankHistoryChart({ points }:
   );
 });
 
+// ── Opening Hours Card ─────────────────────────────────────────
+export function OpeningHoursCard({ hours }: { hours: string[] }) {
+  const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
+  return (
+    <View style={s.hoursCard}>
+      <Text style={s.sectionTitle}>Opening Hours</Text>
+      {hours.map((line: string, i: number) => {
+        const isToday = line.toLowerCase().startsWith(todayName);
+        return (
+          <View key={i} style={[s.hoursRow, isToday && s.hoursRowToday]}>
+            <Text style={[s.hoursText, isToday && s.hoursTextToday]}>{line}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ── Location Card with Map ─────────────────────────────────────
+export function LocationCard({
+  address,
+  lat,
+  lng,
+  onDirections,
+}: {
+  address: string;
+  lat?: string | null;
+  lng?: string | null;
+  onDirections: () => void;
+}) {
+  return (
+    <View style={s.locationCard}>
+      <Text style={s.sectionTitle}>Location</Text>
+      {Platform.OS === "web" && lat && lng && (
+        <View style={s.mapEmbed}>
+          <iframe
+            src={`https://www.google.com/maps?q=${lat},${lng}&z=15&output=embed`}
+            style={{ width: "100%", height: 180, border: "none", borderRadius: 10 } as any}
+            loading="lazy"
+          />
+        </View>
+      )}
+      <Text style={s.addressText}>{address}</Text>
+      <TouchableOpacity style={s.directionsBtn} onPress={onDirections} accessibilityRole="button" accessibilityLabel="Get directions">
+        <Text style={s.directionsBtnText}>Get Directions</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function DishPill({ dish }: { dish: ApiDish }) {
   return (
     <View style={s.dishPill}>
@@ -424,5 +474,35 @@ const s = StyleSheet.create({
   dishVoteCountText: {
     fontSize: 11, color: BRAND.colors.amber, fontWeight: "700",
     fontFamily: "DMSans_700Bold",
+  },
+
+  // Opening Hours
+  hoursCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 4,
+    ...Colors.cardShadow,
+  },
+  sectionTitle: {
+    fontSize: 15, fontWeight: "600", color: Colors.text,
+    fontFamily: "DMSans_600SemiBold", marginBottom: 8,
+  },
+  hoursRow: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6 },
+  hoursRowToday: { backgroundColor: `${BRAND.colors.amber}10` },
+  hoursText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  hoursTextToday: { color: Colors.text, fontWeight: "600", fontFamily: "DMSans_600SemiBold" },
+
+  // Location Card
+  locationCard: {
+    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
+    ...Colors.cardShadow,
+  },
+  mapEmbed: { borderRadius: 10, overflow: "hidden", marginBottom: 4 },
+  addressText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  directionsBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+    backgroundColor: Colors.surfaceRaised, alignSelf: "flex-start",
+  },
+  directionsBtnText: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
 });

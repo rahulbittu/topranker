@@ -7,7 +7,7 @@ import {
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,6 +25,7 @@ import {
   SubScoreBar, DistributionChart, RatingRow, ActionButton,
   CollapsibleReviews, AnimatedScore, DishPill,
   RatingDistribution, RankHistoryChart,
+  OpeningHoursCard, LocationCard,
   type MappedRating, type RankHistoryPoint,
 } from "@/components/business/SubComponents";
 import { evaluateBusinessBadges, getBusinessBadgeCount, type BusinessBadgeContext } from "@/lib/badges";
@@ -438,41 +439,17 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Opening Hours */}
-          {openingHoursText && openingHoursText.length > 0 && (() => {
-            const todayName = new Date().toLocaleDateString("en-US", { weekday: "long" }).toLowerCase();
-            return (
-            <View style={styles.hoursCard}>
-              <Text style={styles.sectionTitle}>Opening Hours</Text>
-              {openingHoursText.map((line: string, i: number) => {
-                const isToday = line.toLowerCase().startsWith(todayName);
-                return (
-                  <View key={i} style={[styles.hoursRow, isToday && styles.hoursRowToday]}>
-                    <Text style={[styles.hoursText, isToday && styles.hoursTextToday]}>{line}</Text>
-                  </View>
-                );
-              })}
-            </View>
-            );
-          })()}
+          {openingHoursText && openingHoursText.length > 0 && (
+            <OpeningHoursCard hours={openingHoursText} />
+          )}
 
           {business.address && (
-            <View style={styles.addressCard}>
-              <Text style={styles.sectionTitle}>Location</Text>
-              {Platform.OS === "web" && business.lat && business.lng && (
-                <View style={styles.mapEmbed}>
-                  <iframe
-                    src={`https://www.google.com/maps?q=${business.lat},${business.lng}&z=15&output=embed`}
-                    style={{ width: "100%", height: 180, border: "none", borderRadius: 10 } as any}
-                    loading="lazy"
-                  />
-                </View>
-              )}
-              <Text style={styles.addressText}>{business.address}</Text>
-              <TouchableOpacity style={styles.directionsBtn} onPress={handleMaps} accessibilityRole="button" accessibilityLabel="Get directions">
-                <Feather name="navigation" size={13} color={Colors.text} />
-                <Text style={styles.directionsBtnText}>Get Directions</Text>
-              </TouchableOpacity>
-            </View>
+            <LocationCard
+              address={business.address}
+              lat={business.lat}
+              lng={business.lng}
+              onDirections={handleMaps}
+            />
           )}
 
           {/* Community Ratings — collapsible */}
@@ -790,29 +767,6 @@ const styles = StyleSheet.create({
   rateGatedSubtext: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
-
-  hoursCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
-    ...Colors.cardShadow,
-  },
-  hoursRow: { paddingVertical: 3, paddingHorizontal: 4, borderRadius: 4 },
-  hoursRowToday: { backgroundColor: Colors.goldFaint },
-  hoursText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
-  hoursTextToday: { color: Colors.gold, fontFamily: "DMSans_600SemiBold" },
-
-  addressCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
-    ...Colors.cardShadow,
-  },
-  mapEmbed: { borderRadius: 10, overflow: "hidden", marginBottom: 8 },
-  addressText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
-  directionsBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    alignSelf: "flex-start",
-    paddingVertical: 6, paddingHorizontal: 12,
-    borderRadius: 8, borderWidth: 1, borderColor: Colors.border,
-  },
-  directionsBtnText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
 
   photoGrid: {
     flexDirection: "row", flexWrap: "wrap", gap: 4, borderRadius: 12, overflow: "hidden",
