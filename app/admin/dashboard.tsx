@@ -1,0 +1,171 @@
+/**
+ * Admin Analytics Dashboard — Sprint 121
+ * Foundation for admin-facing analytics UI.
+ * Owner: Leo Hernandez (Frontend)
+ */
+
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import Colors from "../../constants/Colors";
+import { BRAND } from "../../constants/brand";
+import { TYPOGRAPHY } from "../../constants/typography";
+
+interface StatCard {
+  label: string;
+  value: string;
+  key: string;
+}
+
+const STAT_CARDS: StatCard[] = [
+  { key: "totalEvents", label: "Total Events", value: "12,847" },
+  { key: "activeUsers", label: "Active Users", value: "1,204" },
+  { key: "signupRate", label: "Signup Rate", value: "8.3%" },
+  { key: "ratingRate", label: "Rating Rate", value: "24.1%" },
+];
+
+const RECENT_ACTIVITY = [
+  { id: "1", text: "New user registered — member #1205", time: "2m ago" },
+  { id: "2", text: "Rating submitted for Sakura Ramen", time: "5m ago" },
+  { id: "3", text: "Challenge created: Pizza Wars", time: "12m ago" },
+  { id: "4", text: "Business claimed: Blue Bottle Coffee", time: "18m ago" },
+  { id: "5", text: "Featured placement purchased — $49", time: "31m ago" },
+];
+
+export default function AdminDashboard() {
+  const [lastRefresh, setLastRefresh] = useState<string>(
+    new Date().toLocaleTimeString()
+  );
+
+  const handleRefresh = () => {
+    setLastRefresh(new Date().toLocaleTimeString());
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Analytics Dashboard</Text>
+        <Text style={styles.subtitle}>Last updated: {lastRefresh}</Text>
+      </View>
+
+      <View style={styles.statsGrid}>
+        {STAT_CARDS.map((card) => (
+          <View key={card.key} style={styles.statCard}>
+            <Text style={styles.statValue}>{card.value}</Text>
+            <Text style={styles.statLabel}>{card.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        style={styles.refreshButton}
+        onPress={handleRefresh}
+        accessibilityRole="button"
+        accessibilityLabel="Refresh dashboard data"
+      >
+        <Text style={styles.refreshButtonText}>Refresh</Text>
+      </TouchableOpacity>
+
+      <View style={styles.activitySection}>
+        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        {RECENT_ACTIVITY.map((item) => (
+          <View key={item.id} style={styles.activityRow}>
+            <Text style={styles.activityText}>{item.text}</Text>
+            <Text style={styles.activityTime}>{item.time}</Text>
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
+  },
+  header: {
+    padding: 24,
+    paddingTop: 60,
+    backgroundColor: BRAND.colors.navy,
+  },
+  title: {
+    fontSize: TYPOGRAPHY.display.heading.fontSize,
+    fontWeight: TYPOGRAPHY.display.heading.fontWeight,
+    color: "#FFFFFF",
+  },
+  subtitle: {
+    fontSize: TYPOGRAPHY.ui.caption.fontSize,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 4,
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 12,
+  },
+  statCard: {
+    width: "48%" as any,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    margin: "1%" as any,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statValue: {
+    fontSize: TYPOGRAPHY.display.score.fontSize,
+    fontWeight: TYPOGRAPHY.display.score.fontWeight,
+    color: BRAND.colors.amber,
+  },
+  statLabel: {
+    fontSize: TYPOGRAPHY.ui.label.fontSize,
+    color: Colors.textSecondary,
+    marginTop: 4,
+  },
+  refreshButton: {
+    backgroundColor: BRAND.colors.amber,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  refreshButtonText: {
+    fontSize: TYPOGRAPHY.ui.button.fontSize,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  activitySection: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: TYPOGRAPHY.display.small.fontSize,
+    fontWeight: TYPOGRAPHY.display.small.fontWeight,
+    color: Colors.text,
+    marginBottom: 12,
+  },
+  activityRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  activityText: {
+    fontSize: TYPOGRAPHY.ui.body.fontSize,
+    color: Colors.text,
+    flex: 1,
+  },
+  activityTime: {
+    fontSize: TYPOGRAPHY.ui.caption.fontSize,
+    color: Colors.textSecondary,
+    marginLeft: 8,
+  },
+});

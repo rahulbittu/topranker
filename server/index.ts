@@ -277,6 +277,12 @@ function setupErrorHandler(app: express.Application) {
 
   const server = await registerRoutes(app);
 
+  // Startup banner: count registered routes (Sprint 121)
+  const routeCount = app._router?.stack
+    ?.filter((layer: any) => layer.route)
+    ?.length ?? 0;
+  log(`[TopRanker] ${routeCount} routes registered`);
+
   configureExpoAndLanding(app);
 
   const { seedDatabase } = await import("./seed");
