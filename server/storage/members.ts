@@ -240,6 +240,33 @@ export async function getMemberRatings(
   return { ratings: ratingsResult, total: totalResult.count };
 }
 
+export async function getSeasonalRatingCounts(memberId: string) {
+  const result = await db
+    .select({
+      month: sql<number>`EXTRACT(MONTH FROM ${ratings.createdAt})::int`,
+      cnt: count(),
+    })
+    .from(ratings)
+    .where(
+      and(
+        eq(ratings.memberId, memberId),
+        eq(ratings.isFlagged, false),
+      ),
+    )
+    .groupBy(sql`EXTRACT(MONTH FROM ${ratings.createdAt})`);
+
+  let spring = 0, summer = 0, fall = 0, winter = 0;
+  for (const row of result) {
+    const c = Number(row.cnt);
+    if ([3, 4, 5].includes(row.month)) spring += c;
+    else if ([6, 7, 8].includes(row.month)) summer += c;
+    else if ([9, 10, 11].includes(row.month)) fall += c;
+    else winter += c; // 12, 1, 2
+  }
+
+  return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
+}
+
 export async function getMemberImpact(
   memberId: string,
 ): Promise<{ businessesMovedUp: number; topContributions: { name: string; slug: string; rankChange: number }[] }> {

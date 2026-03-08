@@ -18,6 +18,7 @@ export {
   recalculateCredibilityScore,
   getMemberRatings,
   getMemberImpact,
+  getSeasonalRatingCounts,
 } from "./members";
 
 // Businesses

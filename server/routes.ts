@@ -326,6 +326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
       const { ratings, total } = await getMemberRatings(member.id);
+      const { getSeasonalRatingCounts } = await import("./storage");
+      const seasonal = await getSeasonalRatingCounts(member.id);
 
       const daysActive = Math.floor(
         (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
@@ -350,6 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ratingVariance: parseFloat(member.ratingVariance),
           credibilityBreakdown: breakdown,
           ratingHistory: ratings,
+          ...seasonal,
         },
       });
     } catch (err: any) {
@@ -449,6 +452,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { getPendingSuggestions } = await import("./storage");
       const data = await getPendingSuggestions();
       return res.json({ data });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Admin: Review category suggestion (approve/reject)
+  app.patch("/api/admin/category-suggestions/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const email = req.user?.email;
+      if (!isAdminEmail(email)) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      const { status } = req.body;
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+      }
+      const { reviewSuggestion } = await import("./storage");
+      const updated = await reviewSuggestion(req.params.id as string, status, req.user!.id);
+      if (!updated) {
+        return res.status(404).json({ error: "Suggestion not found" });
+      }
+      return res.json({ data: updated });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

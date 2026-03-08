@@ -13,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { pct } from "@/lib/style-helpers";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS, TIER_SCORE_RANGES,
   type CredibilityTier, getQ1Label, getQ3Label, getWouldReturnLabel,
@@ -29,6 +30,8 @@ import {
   CircleScorePicker, CircleScoreLabels, ProgressBar, StepIndicator,
   DishPill, RatingConfirmation,
 } from "@/components/rate/SubComponents";
+import { BadgeToast } from "@/components/badges/BadgeToast";
+import { getBadgeById, type Badge } from "@/lib/badges";
 
 type RatingStep = 1 | 2;
 
@@ -51,6 +54,7 @@ export default function RateScreen() {
 
   const [step, setStep] = useState<RatingStep>(1);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [toastBadge, setToastBadge] = useState<Badge | null>(null);
   const [q1Score, setQ1Score] = useState(0);
   const [q2Score, setQ2Score] = useState(0);
   const [q3Score, setQ3Score] = useState(0);
@@ -96,7 +100,7 @@ export default function RateScreen() {
   }));
 
   const tierBarStyle = useAnimatedStyle(() => ({
-    width: `${tierProgress.value}%` as any,
+    width: pct(tierProgress.value),
   }));
 
   useEffect(() => {
@@ -162,6 +166,23 @@ export default function RateScreen() {
       setShowConfirm(true);
       hapticRatingSuccess();
       setTimeout(() => hapticConfetti(), 300);
+
+      // Check for milestone badges earned by this rating
+      const milestoneBadgeMap: Record<number, string> = {
+        1: "first-taste", 5: "getting-started", 10: "ten-strong",
+        25: "quarter-century", 50: "half-century", 100: "centurion",
+        250: "rating-machine", 500: "legendary-judge",
+      };
+      // Profile data comes from react-query cache
+      const profileData = qc.getQueryData<{ totalRatings?: number }>(["profile"]);
+      const newTotal = (profileData?.totalRatings ?? 0) + 1;
+      const badgeId = milestoneBadgeMap[newTotal];
+      if (badgeId) {
+        const badge = getBadgeById(badgeId);
+        if (badge) {
+          setTimeout(() => setToastBadge(badge), 1500);
+        }
+      }
     },
     onError: (err: Error) => {
       const msg = err.message || "";
@@ -241,6 +262,9 @@ export default function RateScreen() {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
         <Confetti show={showConfirm} />
+        {toastBadge && (
+          <BadgeToast badge={toastBadge} onDismiss={() => setToastBadge(null)} />
+        )}
         <RatingConfirmation
           business={business}
           rawScore={rawScore}

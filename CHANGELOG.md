@@ -4,6 +4,13 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 76 — Seasonal Rating API + Badge Toast Integration + Admin Review (March 8, 2026)
+#### Added
+- Server-side `getSeasonalRatingCounts()` — SQL GROUP BY month mapped to seasons
+- Seasonal rating counts in `/api/members/me` response
+- Badge toast integration in rating flow — milestone badges trigger on submission
+- Admin PATCH `/api/admin/category-suggestions/:id` — approve/reject with RBAC
+
 ### Sprint 75 — Architectural Audit #5 + Seasonal Badges + Dashboard (March 8, 2026)
 #### Added
 - 5 seasonal badges: Spring Explorer, Summer Heat, Fall Harvest, Winter Chill, Year-Round Rater
