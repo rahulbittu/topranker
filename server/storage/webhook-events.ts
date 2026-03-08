@@ -38,6 +38,15 @@ export async function markWebhookProcessed(
     .where(eq(webhookEvents.id, id));
 }
 
+export async function getWebhookEventById(id: string): Promise<WebhookEvent | null> {
+  const [event] = await db
+    .select()
+    .from(webhookEvents)
+    .where(eq(webhookEvents.id, id))
+    .limit(1);
+  return event ?? null;
+}
+
 export async function getRecentWebhookEvents(
   source: string,
   limit: number = 50,

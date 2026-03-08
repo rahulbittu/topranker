@@ -84,6 +84,7 @@ export {
 export {
   logWebhookEvent,
   markWebhookProcessed,
+  getWebhookEventById,
   getRecentWebhookEvents,
 } from "./webhook-events";
 

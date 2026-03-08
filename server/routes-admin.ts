@@ -14,6 +14,9 @@ import {
   getAdminMemberList,
   getMemberCount,
   getBusinessesWithoutPhotos,
+  getRecentWebhookEvents,
+  getWebhookEventById,
+  markWebhookProcessed,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 
@@ -173,6 +176,36 @@ export function registerAdminRoutes(app: Express) {
     try {
       const count = await getMemberCount();
       return res.json({ data: { count } });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Webhook Events ──────────────────────────────────────────
+  app.get("/api/admin/webhooks", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const source = (req.query.source as string) || "stripe";
+      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+      const events = await getRecentWebhookEvents(source, limit);
+      return res.json({ data: events });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const event = await getWebhookEventById(req.params.id);
+      if (!event) return res.status(404).json({ error: "Webhook event not found" });
+
+      // Re-process the webhook by importing and calling the handler
+      const { processStripeEvent } = await import("./stripe-webhook");
+      if (event.source === "stripe" && event.payload) {
+        await processStripeEvent(event.payload as any);
+        await markWebhookProcessed(event.id);
+        return res.json({ data: { id: event.id, replayed: true } });
+      }
+      return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }
