@@ -4,6 +4,7 @@ import passport from "passport";
 import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
+import { sendWelcomeEmail } from "./email";
 import {
   getLeaderboard,
   getBusinessBySlug,
@@ -70,6 +71,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const member = await registerMember({ displayName, username, email, password, city });
+
+      // Fire-and-forget welcome email (don't block signup on email delivery)
+      sendWelcomeEmail({
+        email: member.email,
+        displayName: member.displayName,
+        city: member.city,
+        username: member.username,
+      }).catch((emailErr) => console.error("[Email] Welcome email failed:", emailErr));
 
       req.login(
         {

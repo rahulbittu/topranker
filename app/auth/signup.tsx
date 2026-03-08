@@ -25,6 +25,7 @@ export default function SignupScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -51,7 +52,7 @@ export default function SignupScreen() {
         password,
         city,
       });
-      router.back();
+      setShowWelcome(true);
     } catch (err: any) {
       const msg = err.message || "Signup failed";
       if (msg.includes("400")) {
@@ -63,6 +64,54 @@ export default function SignupScreen() {
       setLoading(false);
     }
   };
+
+  if (showWelcome) {
+    return (
+      <View style={[styles.container, { paddingTop: topPad }]}>
+        <View style={styles.welcomeInner}>
+          <View style={styles.welcomeIconCircle}>
+            <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+          </View>
+          <Text style={styles.welcomeTitle}>Welcome to TopRanker!</Text>
+          <Text style={styles.welcomeSub}>You've joined the {city} community as @{username.trim().toLowerCase()}</Text>
+
+          <View style={styles.welcomeSteps}>
+            <View style={styles.welcomeStep}>
+              <Text style={styles.welcomeStepNum}>1</Text>
+              <View style={styles.welcomeStepInfo}>
+                <Text style={styles.welcomeStepTitle}>Explore rankings</Text>
+                <Text style={styles.welcomeStepSub}>See what {city} thinks about local restaurants</Text>
+              </View>
+            </View>
+            <View style={styles.welcomeStep}>
+              <Text style={styles.welcomeStepNum}>2</Text>
+              <View style={styles.welcomeStepInfo}>
+                <Text style={styles.welcomeStepTitle}>Unlock rating in 3 days</Text>
+                <Text style={styles.welcomeStepSub}>Your voice will shape the leaderboard</Text>
+              </View>
+            </View>
+            <View style={styles.welcomeStep}>
+              <Text style={styles.welcomeStepNum}>3</Text>
+              <View style={styles.welcomeStepInfo}>
+                <Text style={styles.welcomeStepTitle}>Build credibility</Text>
+                <Text style={styles.welcomeStepSub}>More ratings = higher vote weight</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.welcomeEmailNote}>Check your email for a welcome guide</Text>
+
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={() => router.back()}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.submitButtonText}>Start Exploring</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
@@ -345,4 +394,36 @@ const styles = StyleSheet.create({
   switchLink: { alignItems: "center", paddingVertical: 12 },
   switchText: { fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   switchHighlight: { color: Colors.gold, fontFamily: "DMSans_600SemiBold" },
+
+  // Welcome screen
+  welcomeInner: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32 },
+  welcomeIconCircle: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.green,
+    alignItems: "center", justifyContent: "center", marginBottom: 20,
+  },
+  welcomeTitle: {
+    fontSize: 26, fontWeight: "700", color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, marginBottom: 8,
+  },
+  welcomeSub: {
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", marginBottom: 28,
+  },
+  welcomeSteps: { width: "100%", gap: 12, marginBottom: 24 },
+  welcomeStep: {
+    flexDirection: "row", alignItems: "center", gap: 14,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 12, padding: 14,
+  },
+  welcomeStepNum: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.gold,
+    textAlign: "center", lineHeight: 28, fontSize: 14, fontWeight: "700",
+    color: "#FFFFFF", fontFamily: "DMSans_700Bold",
+  },
+  welcomeStepInfo: { flex: 1 },
+  welcomeStepTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  welcomeStepSub: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 2 },
+  welcomeEmailNote: {
+    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", marginBottom: 20,
+  },
 });
