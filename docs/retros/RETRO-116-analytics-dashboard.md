@@ -1,7 +1,7 @@
-# Retrospective — Sprint 116
+# Sprint 116 Retrospective — Analytics Dashboard, Error Monitoring, Push Notification Sync
 
 **Date:** 2026-03-08
-**Duration:** 1 session
+**Duration:** 1 sprint cycle
 **Story Points:** 16
 **Facilitator:** Sarah Nakamura (Lead Engineer)
 
@@ -9,37 +9,33 @@
 
 ## What Went Well
 
-**Rachel Wei (CFO):** "The dashboard endpoint design was clean — pre-computing conversion rates server-side means the admin UI just renders data without doing math. The funnel shape (page views -> signups -> ratings -> challenger -> dashboard pro) maps directly to our revenue pipeline."
+**Rachel Wei:** "Having the analytics module already in place from Sprint 110 made the dashboard endpoint trivial. We just called `getFunnelStats()` and did the math. This is the payoff of good foundational work — Sprint 110's analytics module is now serving a real business need."
 
-**Sarah Nakamura (Lead Engineer):** "The error reporting service went from design to integration in one pass. Having ErrorBoundary already well-structured made the integration trivial — just import and call. The API surface is minimal but covers the two main error paths: general errors and component crashes."
+**Marcus Chen:** "Error reporting abstraction is clean and vendor-agnostic. The team resisted the temptation to integrate Sentry directly and instead built a clean interface. When we pick a vendor, it's a surgical change."
 
-**Amir Patel (Architecture):** "Good separation of concerns. The error reporting module in lib/ is framework-agnostic, the analytics dashboard in server/ stays server-only, and the ErrorBoundary integration is a single import. No circular dependencies introduced."
-
-**Nadia Kaur (Cybersecurity):** "All new endpoints maintain the auth middleware chain. The error buffer's fixed cap prevents DoS via error flooding. Stack truncation is a defense-in-depth measure for information exposure."
+**Jasmine Taylor:** "Notification preference logging was a small change with big visibility. One line of structured logging gives us the data we need to understand user engagement patterns."
 
 ---
 
 ## What Could Improve
 
-- The error reporting service currently only logs to console — Sentry integration should be prioritized for Sprint 118-120 timeframe
-- Push notification preferences are stored on the user object in memory, not persisted to a database column — this needs migration
-- The analytics dashboard endpoint returns all-time funnel stats; we should add time-range filtering (last 7d, 30d, 90d)
-- No admin UI component yet for the dashboard data — endpoint exists but no frontend consumption
+- **Dashboard needs a frontend** — the API is done but non-technical team members still can't see the data without curl/Postman. Sprint 117 should prioritize a simple admin panel.
+- **Error reporting is console-only** — we need to pick a monitoring vendor (Sentry, Bugsnag, or Datadog) and integrate. The abstraction is ready but the pipeline is incomplete until errors reach a real dashboard.
+- **Test count validation** — we should automate test count verification in CI rather than manually tracking in sprint docs.
 
 ---
 
 ## Action Items
 
-| Action | Owner | Sprint |
-|--------|-------|--------|
-| Integrate Sentry SDK with error-reporting service | Sarah Nakamura | 118-120 |
-| Add time-range filtering to analytics dashboard | Rachel Wei | 118 |
-| Persist notification preferences to database column | Jasmine Taylor | 119 |
-| Build admin dashboard UI component | Marcus Chen | 120 |
-| Add error rate alerting thresholds | Nadia Kaur | 119 |
+| Action | Owner | Due |
+|--------|-------|-----|
+| Evaluate Sentry vs Bugsnag vs Datadog | Sarah Nakamura | Sprint 117 |
+| Build admin analytics dashboard UI | Rachel Wei + Leo | Sprint 117-118 |
+| Add notification preference analytics events | Jasmine Taylor | Sprint 117 |
+| Continue dark mode migration (10 files) | Leo Hernandez | Sprint 117 |
 
 ---
 
 ## Team Morale
 
-**8/10** — Solid sprint delivering on SLT P0 priorities. The error monitoring foundation gives the team confidence that production crashes will be traceable. The analytics dashboard endpoint unlocks future admin UI work. Team appreciates the clean, incremental approach rather than trying to ship Sentry + dashboard UI all at once.
+**8.5/10** — Strong sprint with clear business value. The team appreciates shipping features that directly serve the SLT backlog priorities. The error reporting abstraction gives confidence that production monitoring is close. Momentum is high heading into Sprint 117.

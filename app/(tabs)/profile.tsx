@@ -29,7 +29,6 @@ import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { TypedIcon } from "@/components/TypedIcon";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useThemeColors } from "@/lib/theme-context";
 import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
@@ -38,7 +37,7 @@ import { type EarnedBadge } from "@/lib/badges";
 const AMBER = BRAND.colors.amber;
 
 function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refetch: () => Promise<any> }) {
-  const themeColors = useThemeColors();
+
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
   const { savedList, bookmarkCount } = useBookmarks();
@@ -118,7 +117,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   return (
     <>
     <ScrollView
-      style={[styles.container, { paddingTop: topPad, backgroundColor: themeColors.background }]}
+      style={[styles.container, { paddingTop: topPad }]}
       contentContainerStyle={[
         styles.content,
         { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }
@@ -609,7 +608,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 }
 
 export default function ProfileScreen() {
-  const themeColors = useThemeColors();
+
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: profile, isLoading: profileLoading, isError, refetch } = useQuery({
@@ -621,7 +620,7 @@ export default function ProfileScreen() {
 
   if (authLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container]}>
         <ProfileSkeleton />
       </View>
     );
@@ -633,7 +632,7 @@ export default function ProfileScreen() {
 
   if (isError) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.errorContainer]}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
         <Text style={styles.errorTitle}>Couldn't load your profile</Text>
         <Text style={styles.errorSubtitle}>Check your connection and try again</Text>
@@ -646,7 +645,7 @@ export default function ProfileScreen() {
 
   if (profileLoading || !profile) {
     return (
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <View style={[styles.container]}>
         <ProfileSkeleton />
       </View>
     );

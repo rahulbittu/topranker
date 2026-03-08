@@ -2,6 +2,26 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 116] - 2026-03-08
+### Added
+- Admin analytics dashboard endpoint (GET /api/admin/analytics/dashboard) with conversion funnel rates
+- Centralized error reporting service (lib/error-reporting.ts) — Sentry-ready abstraction
+- ErrorBoundary now pipes crashes through reportComponentCrash
+- Push notification preference sync logging (structured server-side logging)
+### Changed
+- Reverted dark mode background overrides on all tabs, skeletons, and CookieConsent (user request)
+- ThemeProvider infrastructure retained (settings toggle, context) but component backgrounds use static Colors
+- 802 tests across 49 files
+
+## [Sprint 115] - 2026-03-08
+### Added
+- Revenue analytics client-side tracking (business views, dashboard upgrade taps)
+- ErrorBoundary structured logging (error + component stack)
+- SLT + Architecture backlog meeting (Sprint 115)
+### Changed
+- Dark mode migration to components (CookieConsent, Skeleton, Settings)
+- 770+ tests across 48 files
+
 ## [Sprint 114] - 2026-03-08
 ### Added
 - createThemedStyles + useThemedStyles utilities for dark mode migration

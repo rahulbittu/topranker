@@ -12,7 +12,7 @@ import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
-import { useTheme, useThemeColors, type ThemePreference } from "@/lib/theme-context";
+import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
 
 const NOTIFICATION_KEYS = {
@@ -103,7 +103,6 @@ export default function SettingsScreen() {
   const { user, logout } = useAuth();
   const { city, setCity } = useCity();
   const { theme, setTheme } = useTheme();
-  const themeColors = useThemeColors();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const THEME_LABELS: Record<ThemePreference, string> = {
@@ -182,7 +181,7 @@ export default function SettingsScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: topPad, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}

@@ -9,12 +9,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import { useThemeColors } from "@/lib/theme-context";
+
 
 const CONSENT_KEY = "cookie_consent_v1";
 
 export function CookieConsent() {
-  const themeColors = useThemeColors();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -37,7 +36,7 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background ? `${themeColors.background}F7` : "rgba(13, 27, 42, 0.97)" }]}>
+    <View style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.text}>
           We use essential cookies for authentication and analytics cookies to improve your experience.{" "}

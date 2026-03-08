@@ -21,14 +21,13 @@ import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useThemeColors } from "@/lib/theme-context";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
 const RANKED_CARD_HEIGHT = 222;
 
 export default function LeaderboardScreen() {
-  const themeColors = useThemeColors();
+
   const insets = useSafeAreaInsets();
   const { city, setCity } = useCity();
   const [activeCategory, setActiveCategory] = useState<string>("restaurant");
@@ -83,7 +82,7 @@ export default function LeaderboardScreen() {
 
   return (
     <ErrorBoundary>
-    <View style={[styles.container, { paddingTop: topPad, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <View>
           <AppLogo size="md" />

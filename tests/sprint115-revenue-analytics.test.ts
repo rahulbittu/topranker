@@ -112,54 +112,20 @@ describe("ErrorBoundary Structured Logging", () => {
   });
 });
 
-// ── 4. Dark Mode Migration — Sprint 115 Components ────────────────
-describe("Dark Mode Migration — Sprint 115", () => {
-  it("CookieConsent imports useThemeColors", () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, "..", "components/CookieConsent.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain("useThemeColors");
+// ── 4. Dark Mode Migration — Reverted (dark background removed per user request) ──
+describe("Dark Mode Infrastructure (retained)", () => {
+  it("ThemeProvider context still exists", () => {
+    const filePath = path.resolve(__dirname, "..", "lib/theme-context.tsx");
+    expect(fs.existsSync(filePath)).toBe(true);
   });
 
-  it("CookieConsent uses themeColors for container", () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, "..", "components/CookieConsent.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain("themeColors");
-  });
-
-  it("Skeleton imports useThemeColors", () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, "..", "components/Skeleton.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain("useThemeColors");
-  });
-
-  it("LeaderboardSkeleton uses themeColors", () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, "..", "components/Skeleton.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain("themeColors.background");
-  });
-
-  it("Settings imports useThemeColors", () => {
+  it("Settings still has appearance toggle", () => {
     const content = fs.readFileSync(
       path.resolve(__dirname, "..", "app/settings.tsx"),
       "utf-8"
     );
-    expect(content).toContain("useThemeColors");
-  });
-
-  it("Settings applies themeColors to container", () => {
-    const content = fs.readFileSync(
-      path.resolve(__dirname, "..", "app/settings.tsx"),
-      "utf-8"
-    );
-    expect(content).toContain("themeColors.background");
+    expect(content).toContain("useTheme");
+    expect(content).toContain("Appearance");
   });
 });
 

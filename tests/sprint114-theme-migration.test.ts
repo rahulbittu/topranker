@@ -31,30 +31,13 @@ describe("Themed Styles Utility", () => {
   });
 });
 
-// ── 2. Tab Theme Integration ────────────────────────────────────────
+// ── 2. Tab Theme Integration (reverted — dark background removed per user request) ──
 describe("Tab Theme Integration", () => {
-  const tabFiles = [
-    { name: "index.tsx", path: "app/(tabs)/index.tsx" },
-    { name: "search.tsx", path: "app/(tabs)/search.tsx" },
-    { name: "challenger.tsx", path: "app/(tabs)/challenger.tsx" },
-    { name: "profile.tsx", path: "app/(tabs)/profile.tsx" },
-  ];
-
-  for (const tab of tabFiles) {
-    it(`${tab.name} imports useThemeColors`, () => {
-      const filePath = path.resolve(__dirname, "..", tab.path);
-      const content = fs.readFileSync(filePath, "utf-8");
-      expect(content).toContain("useThemeColors");
-    });
-  }
-
-  for (const tab of tabFiles) {
-    it(`${tab.name} imports from theme-context`, () => {
-      const filePath = path.resolve(__dirname, "..", tab.path);
-      const content = fs.readFileSync(filePath, "utf-8");
-      expect(content).toContain("theme-context");
-    });
-  }
+  it("settings.tsx still imports from theme-context for appearance toggle", () => {
+    const filePath = path.resolve(__dirname, "..", "app/settings.tsx");
+    const content = fs.readFileSync(filePath, "utf-8");
+    expect(content).toContain("theme-context");
+  });
 });
 
 // ── 3. WebSocket Evaluation ─────────────────────────────────────────

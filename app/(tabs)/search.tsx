@@ -26,7 +26,6 @@ import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCar
 import { getApiUrl } from "@/lib/query-client";
 import { DiscoverPhotoStrip, BusinessCard, MapBusinessCard, haversineKm } from "@/components/search/SubComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { useThemeColors } from "@/lib/theme-context";
 
 const AMBER = BRAND.colors.amber;
 
@@ -206,7 +205,7 @@ function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness
 }
 
 export default function SearchScreen() {
-  const themeColors = useThemeColors();
+
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -305,7 +304,7 @@ export default function SearchScreen() {
 
   return (
     <ErrorBoundary>
-    <View style={[styles.container, { paddingTop: topPad, backgroundColor: themeColors.background }]}>
+    <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Discover</Text>
         <TouchableOpacity style={styles.cityButton} onPress={() => setShowCityPicker(!showCityPicker)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`City: ${city}. Tap to change`}>
