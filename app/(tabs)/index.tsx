@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform,
+  ScrollView, Platform, Modal,
   TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -11,7 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { fetchLeaderboard, fetchCategories } from "@/lib/api";
+import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
+import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
@@ -29,6 +30,7 @@ export default function LeaderboardScreen() {
   const [activeCategory, setActiveCategory] = useState<string>("restaurant");
   const [searchQuery, setSearchQuery] = useState("");
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [showSuggest, setShowSuggest] = useState(false);
 
   // Fetch dynamic categories from API
   const { data: dbCategories = [] } = useQuery({
@@ -169,7 +171,25 @@ export default function LeaderboardScreen() {
             </TouchableOpacity>
           );
         })}
+        <TouchableOpacity
+          onPress={() => { Haptics.selectionAsync(); setShowSuggest(true); }}
+          style={styles.suggestChip}
+          accessibilityRole="button"
+          accessibilityLabel="Suggest a new category"
+        >
+          <Ionicons name="add-circle-outline" size={16} color={AMBER} />
+          <Text style={styles.suggestChipText}>Suggest</Text>
+        </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showSuggest} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <SuggestCategory
+            onSubmit={(s) => submitCategorySuggestion(s).catch(() => {})}
+            onClose={() => setShowSuggest(false)}
+          />
+        </View>
+      </Modal>
 
       {isLoading ? (
         <LeaderboardSkeleton />
@@ -303,4 +323,14 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER, borderRadius: 10,
   },
   retryButtonText: { color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 },
+
+  suggestChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 14, height: 38, borderRadius: 100,
+    backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: AMBER, borderStyle: "dashed",
+  },
+  suggestChipText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center",
+  },
 });

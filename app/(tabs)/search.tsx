@@ -381,7 +381,7 @@ export default function SearchScreen() {
         {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
           <TouchableOpacity
             key={key}
-            onPress={() => { Haptics.selectionAsync(); setSortBy(key as any); }}
+            onPress={() => { Haptics.selectionAsync(); setSortBy(key); }}
             style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
             accessibilityRole="button"
             accessibilityState={{ selected: sortBy === key }}

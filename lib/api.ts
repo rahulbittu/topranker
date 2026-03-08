@@ -311,3 +311,34 @@ export interface ApiMemberImpact {
 export async function fetchMemberImpact() {
   return apiFetch<ApiMemberImpact>("/api/members/me/impact");
 }
+
+export async function submitCategorySuggestion(data: {
+  name: string;
+  description: string;
+  vertical: string;
+}) {
+  const url = `${getApiUrl()}/api/category-suggestions`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(err.error || "Failed to submit suggestion");
+  }
+  return res.json();
+}
+
+export async function fetchCategorySuggestions() {
+  return apiFetch<Array<{
+    id: string;
+    name: string;
+    description: string;
+    vertical: string;
+    voteCount: number;
+    status: string;
+    createdAt: string;
+  }>>("/api/category-suggestions");
+}

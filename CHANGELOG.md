@@ -4,6 +4,16 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 74 — Suggest Category Integration + API Wiring (March 8, 2026)
+#### Added
+- "Suggest" chip on leaderboard category row — opens SuggestCategory modal
+- `submitCategorySuggestion()` and `fetchCategorySuggestions()` API client functions
+- 11 new category suggestion validation tests (total: 170 across 13 files)
+
+#### Changed
+- Eliminated sortBy `as any` cast in search.tsx
+- **Production `as any` casts: 4 -> 3 (93% total reduction from 43)**
+
 ### Sprint 73 — Category API + Badge Toast + Google Maps Types (March 8, 2026)
 #### Added
 - `server/storage/categories.ts` — CRUD for categories and suggestions tables
