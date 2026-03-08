@@ -96,6 +96,7 @@ export const BusinessCard = React.memo(function BusinessCard({
   const saved = isBookmarked(item.id);
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
+  const [showConfTooltip, setShowConfTooltip] = useState(false);
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
@@ -156,15 +157,25 @@ export const BusinessCard = React.memo(function BusinessCard({
             const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
             if (conf === "strong" || conf === "established") {
               return (
-                <View style={s.verifiedPill}>
-                  <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
+                <View style={s.confIndicatorWrap}>
+                  <View style={s.verifiedPill}>
+                    <Ionicons name="shield-checkmark" size={8} color={Colors.green} />
+                  </View>
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                    <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
+                  </TouchableOpacity>
                 </View>
               );
             }
             if (conf === "early") {
               return (
-                <View style={[s.verifiedPill, { backgroundColor: `${AMBER}15` }]}>
-                  <Ionicons name="hourglass-outline" size={8} color={AMBER} />
+                <View style={s.confIndicatorWrap}>
+                  <View style={[s.verifiedPill, { backgroundColor: `${AMBER}15` }]}>
+                    <Ionicons name="hourglass-outline" size={8} color={AMBER} />
+                  </View>
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                    <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
+                  </TouchableOpacity>
                 </View>
               );
             }
@@ -187,6 +198,14 @@ export const BusinessCard = React.memo(function BusinessCard({
             </View>
           )}
         </View>
+        {showConfTooltip && (() => {
+          const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
+          return (
+            <View style={s.confTooltip}>
+              <Text style={s.confTooltipText}>{RANK_CONFIDENCE_LABELS[conf].description}</Text>
+            </View>
+          );
+        })()}
       </View>
     </TouchableOpacity>
     </Animated.View>
@@ -303,6 +322,15 @@ const s = StyleSheet.create({
   activityPillText: {
     fontSize: 8, fontWeight: "700", color: AMBER,
     fontFamily: "DMSans_700Bold", letterSpacing: 0.3,
+  },
+  confIndicatorWrap: { flexDirection: "row", alignItems: "center", gap: 2 },
+  confTooltip: {
+    backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4, marginTop: 4,
+  },
+  confTooltipText: {
+    fontSize: 11, color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular", lineHeight: 14,
   },
 
   mapCard: {

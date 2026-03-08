@@ -17,7 +17,8 @@ import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger, type ApiBusiness } from "@/lib/api";
-import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, getRankConfidence, RANK_CONFIDENCE_LABELS, type CredibilityTier } from "@/lib/data";
+import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, TIER_INFLUENCE_LABELS, TIER_WEIGHTS, getRankConfidence, RANK_CONFIDENCE_LABELS, type CredibilityTier } from "@/lib/data";
+import { useAuth } from "@/lib/auth-context";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { pct, formatCompact } from "@/lib/style-helpers";
 import * as Haptics from "expo-haptics";
@@ -213,6 +214,7 @@ const FighterPhoto = React.memo(function FighterPhoto({ biz, label, score }: { b
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const { scale, onPressIn, onPressOut } = usePressAnimation();
   const { cardRef, captureAndShare } = useShareCard();
+  const { user } = useAuth();
   const [, setTick] = useState(0);
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
@@ -391,12 +393,29 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
         <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
       </View>
 
-      {/* How Voting Works — Sprint 131 */}
+      {/* How Voting Works — Sprint 131, personalized weight preview (RETRO-131) */}
       <View style={styles.howVotingWorks}>
         <Ionicons name="information-circle-outline" size={13} color={Colors.textTertiary} />
-        <Text style={styles.howVotingWorksText}>
-          Your vote weight depends on your credibility tier. Higher-tier members have more influence on the outcome.
-        </Text>
+        {user?.credibilityTier ? (
+          <View style={styles.howVotingWorksPersonalized}>
+            <Text style={styles.howVotingWorksText}>
+              Your votes count as{" "}
+              <Text style={[styles.howVotingWorksAccent, { color: TIER_COLORS[user.credibilityTier as CredibilityTier] || Colors.textSecondary }]}>
+                {TIER_INFLUENCE_LABELS[user.credibilityTier as CredibilityTier] || "Standard"}
+              </Text>
+              {" "}({(TIER_WEIGHTS[user.credibilityTier as CredibilityTier] * 100).toFixed(0)}% weight)
+            </Text>
+            {user.credibilityTier !== "top" && (
+              <Text style={styles.howVotingWorksMotivation}>
+                Rate more places to increase your influence
+              </Text>
+            )}
+          </View>
+        ) : (
+          <Text style={styles.howVotingWorksText}>
+            Your vote weight depends on your credibility tier. Higher-tier members have more influence on the outcome.
+          </Text>
+        )}
       </View>
 
       <TouchableOpacity
@@ -729,6 +748,16 @@ const styles = StyleSheet.create({
   howVotingWorksText: {
     fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     flex: 1, lineHeight: 14,
+  },
+  howVotingWorksPersonalized: {
+    flex: 1, gap: 2,
+  },
+  howVotingWorksAccent: {
+    fontFamily: "DMSans_600SemiBold", fontWeight: "600",
+  },
+  howVotingWorksMotivation: {
+    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    fontStyle: "italic", lineHeight: 12,
   },
   shareBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

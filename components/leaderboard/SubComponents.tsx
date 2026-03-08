@@ -246,6 +246,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
   const saved = isBookmarked(item.id);
   const { scale, onPressIn: scaleIn, onPressOut } = usePressAnimation();
   const onPressIn = useCallback(() => { scaleIn(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }, [scaleIn]);
+  const [showConfTooltip, setShowConfTooltip] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(8)).current;
   useEffect(() => {
@@ -305,18 +306,28 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
             const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
             if (confidence === "strong" || confidence === "established") {
               return (
-                <View style={s.verifiedPill}>
-                  <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
-                  <Text style={s.verifiedPillText}>VERIFIED</Text>
+                <View style={s.confIndicatorWrap}>
+                  <View style={s.verifiedPill}>
+                    <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
+                    <Text style={s.verifiedPillText}>VERIFIED</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                    <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
+                  </TouchableOpacity>
                 </View>
               );
             }
             return (
-              <View style={[s.verifiedPill, { backgroundColor: `${BRAND.colors.amber}15` }]}>
-                <Ionicons name="hourglass-outline" size={9} color={BRAND.colors.amber} />
-                <Text style={[s.verifiedPillText, { color: BRAND.colors.amber }]}>
-                  {RANK_CONFIDENCE_LABELS[confidence].label.toUpperCase()}
-                </Text>
+              <View style={s.confIndicatorWrap}>
+                <View style={[s.verifiedPill, { backgroundColor: `${BRAND.colors.amber}15` }]}>
+                  <Ionicons name="hourglass-outline" size={9} color={BRAND.colors.amber} />
+                  <Text style={[s.verifiedPillText, { color: BRAND.colors.amber }]}>
+                    {RANK_CONFIDENCE_LABELS[confidence].label.toUpperCase()}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowConfTooltip(v => !v)} hitSlop={6} accessibilityRole="button" accessibilityLabel="Confidence info">
+                  <Ionicons name="information-circle-outline" size={12} color={Colors.textTertiary} />
+                </TouchableOpacity>
               </View>
             );
           })()}
@@ -346,6 +357,14 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
             </View>
           )}
         </View>
+        {showConfTooltip && (() => {
+          const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
+          return (
+            <View style={s.confTooltip}>
+              <Text style={s.confTooltipText}>{RANK_CONFIDENCE_LABELS[confidence].description}</Text>
+            </View>
+          );
+        })()}
       </View>
     </TouchableOpacity>
     </Animated.View>
@@ -472,4 +491,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99, backgroundColor: `${AMBER}15`,
   },
   activityPillText: { fontSize: 8, fontWeight: "700", color: AMBER, fontFamily: "DMSans_700Bold", letterSpacing: 0.3 },
+  confIndicatorWrap: { flexDirection: "row", alignItems: "center", gap: 2 },
+  confTooltip: {
+    backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4, marginTop: 4,
+  },
+  confTooltipText: {
+    fontSize: 11, color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular", lineHeight: 14,
+  },
 });
