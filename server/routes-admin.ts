@@ -23,6 +23,7 @@ import { getPerfStats } from "./perf-monitor";
 import { getFunnelStats, getRecentEvents } from "./analytics";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
+import { getAllFlags } from "../lib/feature-flags";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -302,6 +303,37 @@ export function registerAdminRoutes(app: Express) {
           nodeVersion,
           requestCount,
           errorCount,
+        },
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Detailed Health Dashboard — Sprint 125 ─────────────
+  app.get("/api/admin/health/detailed", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    try {
+      const mem = process.memoryUsage();
+      const cpu = process.cpuUsage();
+      const flags = getAllFlags();
+
+      return res.json({
+        data: {
+          uptime: Math.floor(process.uptime()),
+          memory: {
+            heapUsed: mem.heapUsed,
+            heapTotal: mem.heapTotal,
+            rss: mem.rss,
+          },
+          nodeVersion: process.version,
+          platform: process.platform,
+          cpuUsage: {
+            user: cpu.user,
+            system: cpu.system,
+          },
+          activeConnections: 0,
+          featureFlags: flags,
+          generatedAt: new Date().toISOString(),
         },
       });
     } catch (err: any) {

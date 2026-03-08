@@ -345,6 +345,90 @@ Admin check uses centralized `shared/admin.ts` whitelist.
 - `401` — Not authenticated
 - `403` — Not an admin
 
+### GET /api/admin/analytics/dashboard
+Get analytics dashboard with funnel data and conversion rates. **Requires auth + admin**.
+
+**Response** `200`
+```json
+{
+  "data": {
+    "overview": { "totalEvents": 1234, "uniqueEventTypes": 8 },
+    "funnel": {
+      "pageViews": 500, "signups": 50, "firstRatings": 20,
+      "challengerEntries": 10, "dashboardSubs": 2,
+      "signupRate": "10.0%", "ratingRate": "40.0%"
+    },
+    "recentActivity": [...],
+    "generatedAt": "2026-03-08T00:00:00.000Z"
+  }
+}
+```
+
+### GET /api/admin/metrics
+Server metrics snapshot (uptime, memory, request/error counts). **Requires auth + admin**.
+
+**Response** `200`
+```json
+{
+  "data": {
+    "uptime": 3600,
+    "memoryUsage": 52428800,
+    "nodeVersion": "v20.11.0",
+    "requestCount": 150,
+    "errorCount": 3
+  }
+}
+```
+
+### GET /api/admin/health/detailed
+Detailed system health dashboard with memory, CPU, feature flags. **Requires auth + admin**.
+
+**Response** `200`
+```json
+{
+  "data": {
+    "uptime": 3600,
+    "memory": { "heapUsed": 40000000, "heapTotal": 60000000, "rss": 80000000 },
+    "nodeVersion": "v20.11.0",
+    "platform": "linux",
+    "cpuUsage": { "user": 500000, "system": 100000 },
+    "activeConnections": 0,
+    "featureFlags": [
+      { "name": "dark_mode", "enabled": true, "description": "Dark mode theme support", "createdAt": 1709827200000 }
+    ],
+    "generatedAt": "2026-03-08T00:00:00.000Z"
+  }
+}
+```
+
+---
+
+## Account Management
+
+### POST /api/account/schedule-deletion
+Schedule account for GDPR deletion with grace period. **Requires auth**.
+
+**Response** `200`
+```json
+{ "data": { "message": "Account scheduled for deletion", "deletionDate": "2026-04-07T00:00:00.000Z" } }
+```
+
+### GET /api/account/deletion-status
+Check current deletion schedule status. **Requires auth**.
+
+**Response** `200`
+```json
+{ "data": { "scheduled": true, "deletionDate": "2026-04-07T00:00:00.000Z" } }
+```
+
+### POST /api/account/cancel-deletion
+Cancel a previously scheduled account deletion. **Requires auth**.
+
+**Response** `200`
+```json
+{ "data": { "message": "Deletion cancelled", "cancelled": true } }
+```
+
 ---
 
 ## Error Format
