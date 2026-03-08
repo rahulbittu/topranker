@@ -292,6 +292,13 @@ export async function getSeasonalRatingCounts(memberId: string) {
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
 }
 
+export async function updatePushToken(memberId: string, pushToken: string): Promise<void> {
+  await db
+    .update(members)
+    .set({ pushToken })
+    .where(eq(members.id, memberId));
+}
+
 export async function getMemberImpact(
   memberId: string,
 ): Promise<{ businessesMovedUp: number; topContributions: { name: string; slug: string; rankChange: number }[] }> {

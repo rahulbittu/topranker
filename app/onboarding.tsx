@@ -8,10 +8,13 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { LeaderboardMark } from "@/components/Logo";
 import { hapticPress } from "@/lib/audio";
+
+export const ONBOARDING_KEY = "hasSeenOnboarding";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -156,10 +159,15 @@ export default function OnboardingScreen() {
 
   const isLastSlide = currentIndex === SLIDES.length - 1;
 
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem(ONBOARDING_KEY, "true");
+    router.replace("/(tabs)");
+  };
+
   const goNext = () => {
     hapticPress();
     if (isLastSlide) {
-      router.replace("/(tabs)");
+      completeOnboarding();
     } else {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     }
@@ -167,7 +175,7 @@ export default function OnboardingScreen() {
 
   const skip = () => {
     hapticPress();
-    router.replace("/(tabs)");
+    completeOnboarding();
   };
 
   return (

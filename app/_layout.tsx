@@ -34,8 +34,19 @@ import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
 import { NetworkBanner } from "@/components/NetworkBanner";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerForPushNotifications } from "@/lib/notifications";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
+import { ONBOARDING_KEY } from "@/app/onboarding";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
+
+async function savePushToken(token: string) {
+  try {
+    await apiRequest("POST", `${getApiUrl()}/api/members/me/push-token`, { pushToken: token });
+  } catch {
+    // Non-critical — token will be retried next app launch
+  }
+}
 
 SplashScreen.preventAutoHideAsync();
 
@@ -201,6 +212,16 @@ export default function RootLayout() {
 
   const [showSplash, setShowSplash] = useState(true);
 
+  const handleSplashFinish = useRef(() => {
+    setShowSplash(false);
+    // Check onboarding flag — navigate if first launch
+    AsyncStorage.getItem(ONBOARDING_KEY).then((seen) => {
+      if (!seen) {
+        router.replace("/onboarding");
+      }
+    });
+  }).current;
+
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
@@ -209,7 +230,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     registerForPushNotifications().then((token) => {
-      if (token) console.log("[Push] Token:", token);
+      if (token) {
+        console.log("[Push] Token:", token);
+        // Store token on backend
+        savePushToken(token);
+      }
     });
 
     // Handle notification taps — navigate to the right screen
@@ -240,7 +265,7 @@ export default function RootLayout() {
                 <KeyboardProvider>
                   <RootLayoutNav />
                   <NetworkBanner />
-                  {showSplash && <AnimatedSplash onFinish={() => setShowSplash(false)} />}
+                  {showSplash && <AnimatedSplash onFinish={handleSplashFinish} />}
                 </KeyboardProvider>
               </GestureHandlerRootView>
             </BookmarksProvider>

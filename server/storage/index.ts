@@ -21,6 +21,7 @@ export {
   getSeasonalRatingCounts,
   getAdminMemberList,
   getMemberCount,
+  updatePushToken,
 } from "./members";
 
 // Businesses

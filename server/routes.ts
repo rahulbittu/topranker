@@ -443,6 +443,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Push token storage
+  app.post("/api/members/me/push-token", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { pushToken } = req.body;
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(400).json({ error: "pushToken is required" });
+      }
+      const { updatePushToken } = await import("./storage");
+      await updatePushToken(req.user!.id, pushToken);
+      return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
   // Category Suggestions
   app.post("/api/category-suggestions", requireAuth, async (req: Request, res: Response) => {
     try {
