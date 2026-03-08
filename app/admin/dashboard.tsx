@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import Colors from "../../constants/Colors";
+import Colors from "../../constants/colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
 import { getApiUrl } from "../../lib/query-client";

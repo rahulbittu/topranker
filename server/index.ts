@@ -266,6 +266,7 @@ function setupErrorHandler(app: express.Application) {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = process.hrtime();
     res.on("finish", () => {
+      if (res.headersSent) return;
       const [seconds, nanoseconds] = process.hrtime(start);
       const durationMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
       res.setHeader("X-Response-Time", `${durationMs}ms`);
