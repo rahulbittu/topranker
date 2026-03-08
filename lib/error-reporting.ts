@@ -1,9 +1,11 @@
 /**
- * Error Reporting Service — Sprint 116
- * Centralized error reporting. Currently logs to console.
- * Replace with Sentry/Bugsnag integration in production.
+ * Error Reporting Service — Sprint 116 (Sentry wired Sprint 122)
+ * Centralized error reporting with Sentry integration.
+ * Falls back to console.error when Sentry is not initialized.
  * Owner: Sarah Nakamura (Lead Engineer)
  */
+
+import { captureException, isInitialized } from "./sentry";
 
 export interface ErrorReport {
   message: string;
@@ -32,8 +34,12 @@ export function reportError(error: Error, context?: Record<string, unknown>): vo
     errorBuffer.splice(0, errorBuffer.length - MAX_ERRORS);
   }
 
-  // Production: replace with Sentry.captureException(error, { extra: context })
-  console.error("[ErrorReporting]", report.message, context || "");
+  // Route to Sentry if initialized, otherwise fall back to console
+  if (isInitialized()) {
+    captureException(error, context);
+  } else {
+    console.error("[ErrorReporting]", report.message, context || "");
+  }
 }
 
 /** Report a component crash (from ErrorBoundary) */
@@ -55,7 +61,12 @@ export function reportComponentCrash(
     errorBuffer.splice(0, errorBuffer.length - MAX_ERRORS);
   }
 
-  console.error("[ErrorReporting] Component crash:", report.message);
+  // Route to Sentry if initialized, otherwise fall back to console
+  if (isInitialized()) {
+    captureException(error, { componentStack, userId });
+  } else {
+    console.error("[ErrorReporting] Component crash:", report.message);
+  }
 }
 
 /** Get recent errors for debugging */

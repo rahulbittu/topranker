@@ -4,17 +4,19 @@
  * Owner: Leo Hernandez (Frontend)
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import Colors from "../../constants/Colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
+import { getApiUrl } from "../../lib/query-client";
 
 interface StatCard {
   label: string;
@@ -29,6 +31,39 @@ const STAT_CARDS: StatCard[] = [
   { key: "ratingRate", label: "Rating Rate", value: "24.1%" },
 ];
 
+interface DashboardData {
+  overview: { totalEvents: number; activeUsers: number };
+  funnel: { signupRate: number; ratingRate: number };
+}
+
+function useDashboardData() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboard = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(getApiUrl() + "/api/admin/analytics/dashboard", {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      }
+    } catch {
+      // Silently fail — stat cards will show defaults
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboard();
+  }, []);
+
+  return { data, loading, refetch: fetchDashboard };
+}
+
 const RECENT_ACTIVITY = [
   { id: "1", text: "New user registered — member #1205", time: "2m ago" },
   { id: "2", text: "Rating submitted for Sakura Ramen", time: "5m ago" },
@@ -41,10 +76,30 @@ export default function AdminDashboard() {
   const [lastRefresh, setLastRefresh] = useState<string>(
     new Date().toLocaleTimeString()
   );
+  const { data, loading, refetch } = useDashboardData();
 
   const handleRefresh = () => {
     setLastRefresh(new Date().toLocaleTimeString());
+    refetch();
   };
+
+  // Build live stat cards from API data when available
+  const liveCards: StatCard[] = data
+    ? [
+        { key: "totalEvents", label: "Total Events", value: String(data.overview.totalEvents) },
+        { key: "activeUsers", label: "Active Users", value: String(data.overview.activeUsers) },
+        { key: "signupRate", label: "Signup Rate", value: `${data.funnel.signupRate}%` },
+        { key: "ratingRate", label: "Rating Rate", value: `${data.funnel.ratingRate}%` },
+      ]
+    : STAT_CARDS;
+
+  if (loading && !data) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={BRAND.colors.amber} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -54,7 +109,7 @@ export default function AdminDashboard() {
       </View>
 
       <View style={styles.statsGrid}>
-        {STAT_CARDS.map((card) => (
+        {liveCards.map((card) => (
           <View key={card.key} style={styles.statCard}>
             <Text style={styles.statValue}>{card.value}</Text>
             <Text style={styles.statLabel}>{card.label}</Text>

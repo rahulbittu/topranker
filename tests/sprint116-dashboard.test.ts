@@ -46,9 +46,9 @@ describe("Error Reporting Module", () => {
     expect(content).toContain("MAX_ERRORS = 100");
   });
 
-  it("includes Sentry integration comment for production", () => {
+  it("includes Sentry integration via captureException import", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("Sentry.captureException");
+    expect(content).toContain("captureException");
   });
 
   it("truncates stack traces to 10 lines in reportError", () => {

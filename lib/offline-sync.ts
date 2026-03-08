@@ -1,11 +1,16 @@
 /**
  * Offline Sync Foundation
  * Sprint 119 — in-memory queue for offline action buffering
+ * Sprint 122 — AsyncStorage persistence (persistQueue / loadQueue)
  * Foundation for future offline-first data sync
  *
  * Author: Sarah Nakamura (Lead Eng)
  * Reviewed: Amir Patel (Architecture)
  */
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const STORAGE_KEY = "topranker_sync_queue";
 
 export interface SyncAction {
   id: string;
@@ -63,4 +68,21 @@ export function clearCompletedActions(): number {
   });
   toRemove.forEach((id) => actionQueue.delete(id));
   return toRemove.length;
+}
+
+/** Persist the current action queue to AsyncStorage */
+export async function persistQueue(): Promise<void> {
+  const entries = Array.from(actionQueue.entries());
+  await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+/** Load persisted queue from AsyncStorage into the in-memory Map */
+export async function loadQueue(): Promise<void> {
+  const raw = await AsyncStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    const entries: [string, SyncAction][] = JSON.parse(raw);
+    entries.forEach(([id, action]) => {
+      actionQueue.set(id, action);
+    });
+  }
 }
