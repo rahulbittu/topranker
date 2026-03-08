@@ -4,45 +4,83 @@ import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import { Platform, StyleSheet, View } from "react-native";
 import React, { useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  Easing,
+  interpolateColor,
+} from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { hapticTabSwitch } from "@/lib/audio";
 
 const AMBER = BRAND.colors.amber;
 
 function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof Ionicons>["name"]; color: string; focused: boolean }) {
   const scale = useSharedValue(1);
+  const glowOpacity = useSharedValue(0);
+  const glowScale = useSharedValue(0.6);
 
   useEffect(() => {
     if (focused) {
-      scale.value = withSpring(1.15, { damping: 8, stiffness: 200 });
+      scale.value = withSpring(1.18, { damping: 8, stiffness: 200 });
+      glowOpacity.value = withTiming(1, { duration: 300, easing: Easing.out(Easing.cubic) });
+      glowScale.value = withSpring(1, { damping: 12, stiffness: 120 });
+      hapticTabSwitch();
     } else {
       scale.value = withSpring(1, { damping: 10 });
+      glowOpacity.value = withTiming(0, { duration: 200 });
+      glowScale.value = withTiming(0.6, { duration: 200 });
     }
   }, [focused]);
 
-  const animStyle = useAnimatedStyle(() => ({
+  const iconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: glowOpacity.value,
+    transform: [{ scale: glowScale.value }],
+  }));
+
   return (
-    <Animated.View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive, animStyle]}>
-      <Ionicons name={name} size={22} color={color} />
-      {focused && <View style={tabStyles.activeDot} />}
-    </Animated.View>
+    <View style={tabStyles.iconContainer}>
+      {/* Golden glow behind icon when selected */}
+      <Animated.View style={[tabStyles.glow, glowStyle]} />
+      <Animated.View style={[tabStyles.iconWrap, iconStyle]}>
+        <Ionicons name={name} size={22} color={color} />
+      </Animated.View>
+    </View>
   );
 }
 
 const tabStyles = StyleSheet.create({
-  iconWrap: { alignItems: "center", justifyContent: "center", height: 28 },
-  iconWrapActive: {},
-  activeDot: {
+  iconContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 44,
+    height: 32,
+  },
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  glow: {
     position: "absolute",
-    bottom: -4,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: AMBER,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(196,154,26,0.15)",
+    // Soft amber glow shadow
+    shadowColor: AMBER,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1,
   },
 });
 
@@ -93,6 +131,7 @@ function ClassicTabLayout() {
         tabBarLabelStyle: {
           fontFamily: "DMSans_600SemiBold",
           fontSize: 10,
+          marginTop: -2,
         },
       }}
     >
