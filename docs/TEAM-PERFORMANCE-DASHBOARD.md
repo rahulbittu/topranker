@@ -10,128 +10,92 @@
 
 ---
 
-## Individual Performance Charts (Sprints 1-23)
+## Individual Performance Charts (Sprints 1-45)
 
 ### Rahul Pitta — CEO & Founder
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 1 | Product direction, card design spec | A |
-| 2 | Filter requirements, competitive analysis | A |
-| 3 | Social proof strategy | A |
-| 4 | Refinement priorities | A |
-| 5 | Rating flow UX direction | A |
-| 6 | Map integration requirements | A |
-| 7 | Visual testing mandate | A |
-| 8 | SafeImage fallback spec | A |
-| 9 | City context requirements (DoorDash comparison) | A+ |
-| 10 | Trust signal strategy | A+ |
-| 11 | Code quality standards | A |
-| 12 | Bookmark feature spec | A |
-| 13 | Saved places UX direction | A |
-| 14 | Trust explainer content | A+ |
-| 15 | PRD trust features prioritization | A |
-| 16 | OPEN badge vision | A |
-| 17 | Pride mechanism concept | A+ |
-| 18 | Trending strategy | A |
-| 19 | Mock data requirement for visual testing | A |
-| 20 | Share format specification | A |
-| 21 | Sort selector requirements | A |
-| 22 | Rate gating anti-fraud direction | A+ |
-| 23 | Delete account compliance priority | A |
-**Average: A / A+** | **Consistency: Exceptional**
+| 1-9 | Product direction, card design, city context, DoorDash comparison | A / A+ |
+| 10-19 | Trust signals, OPEN badge, pride mechanism, mock data | A+ |
+| 20-23 | Share format, sort selector, rate gating, delete account | A / A+ |
+| 24 | Near Me feature spec | A |
+| 25 | Welcome email onboarding direction | A |
+| 26 | Winner reveal UX vision | A+ |
+| 27 | Business claim strategy | A |
+| 28-31 | Splash animation direction, confetti, tab bounce, QR codes | A+ |
+| 32 | Admin dashboard requirements | A |
+| 33 | Photo upload on ratings spec | A |
+| 34 | Email drip sequence timing | A |
+| 35 | Deep linking viral loop strategy | A |
+| 36 | Business dashboard analytics vision | A+ |
+| 37 | Share image card social strategy | A+ |
+| 38 | Push notification event types | A |
+| 39 | Audio branding quality bar ("world-class") | A+ |
+| 40 | Trust score legal defense strategy, global expansion vision | A+ |
+| 41 | Onboarding slide content direction | A |
+| 42 | Settings notification control philosophy | A |
+| 43 | Weekly digest "sports recap" vision | A+ |
+| 44 | App Store listing positioning | A |
+| 45 | Saved places re-engagement strategy | A |
+**Average: A+** | **45 sprints** | **Consistency: Exceptional**
 
 ---
 
 ### Marcus Chen — CTO
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 1 | Architecture decisions, component structure | A |
-| 2 | Performance optimization strategy | A |
-| 3 | Query caching design | A |
-| 4 | Code review, refactoring priorities | A |
-| 5 | Rating flow state management | A |
-| 6 | Map API integration architecture | A |
-| 7 | Playwright pipeline design | A+ |
-| 8 | Image loading strategy | A |
-| 9 | Context architecture (AsyncStorage) | A |
-| 10 | Trust computation optimization | A |
-| 11 | Cleanup priorities, dead code removal | A |
-| 12 | Bookmark state management | A |
-| 13 | Offline-first architecture | A |
-| 14-18 | Architecture oversight, performance reviews | A |
-| 19 | Mock data architecture design | A+ |
+| 1-19 | Architecture, state management, performance, mock data | A / A+ |
 | 20-23 | Cross-cutting architecture review | A |
+| 24 | Location API architecture | A |
+| 25 | Email service pluggable architecture | A |
+| 26 | Reanimated integration, RNAnimated rename | A |
+| 27 | Claim flow state management | A |
+| 28 | Splash animation reanimated timeline | A+ |
+| 30 | Payment service pluggable architecture | A |
+| 31 | QR code display architecture | A |
+| 32 | Admin dashboard 5-tab architecture | A |
+| 35 | Deep link URL scheme architecture | A |
+| 36 | Dashboard route architecture | A |
+| 37 | View-shot + sharing integration | A |
+| 38 | Expo push architecture, APNs/FCM integration | A+ |
+| 40 | Legal route consent flow design | A |
+| 42 | AsyncStorage notification persistence | A |
 **Average: A** | **Consistency: Very High**
-
----
-
-### Sarah Nakamura — VP Engineering
-| Sprint | Contribution | Rating |
-|--------|-------------|--------|
-| 1-6 | Quality standards, code review, maintainability flags | A |
-| 7 | Testing infrastructure approval | A |
-| 8-11 | Component quality review | A |
-| 12-13 | Bookmark implementation oversight | A |
-| 14-18 | Feature quality gates | A |
-| 19 | Mock data code review | A |
-| 20-23 | Sprint velocity tracking | A |
-**Average: A** | **Consistency: High**
 
 ---
 
 ### James Park — Frontend Architect
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 1 | Card component architecture | A |
-| 2 | Filter chip system | A |
-| 3 | Social proof components | A |
-| 4 | Component refactoring | A |
-| 5 | Rating flow architecture (6-step) | A+ |
-| 6 | Map integration (react-native-maps) | A |
-| 7 | Screenshot pipeline setup | A |
-| 8 | SafeImage component design | A+ |
-| 9 | CityContext + AsyncStorage | A |
-| 10 | Trust UI components | A |
-| 11 | Style cleanup, dead code removal | A |
-| 12 | BookmarksContext architecture | A+ |
-| 13 | Saved places tab implementation | A |
-| 14 | Trust explainer card | A |
-| 15 | Rating distribution chart | A |
-| 16 | OPEN badge with glow effect | A |
-| 17 | Rank history chart, pride mechanism | A+ |
-| 18 | Trending section implementation | A |
-| 19 | Mock data integration in apiFetch | A+ |
-| 20 | Share API integration | A |
-| 21 | Sort logic in useMemo | A |
-| 22 | Rate gating with React Query | A |
-| 23 | Delete account UI flow | A |
-**Average: A / A+** | **Consistency: Exceptional** | **MVP: Sprints 8, 12, 17, 19**
-
----
-
-### Tommy Nguyen — Frontend
-| Sprint | Contribution | Rating |
-|--------|-------------|--------|
-| 2 | Filter UI implementation | A |
-| 6 | Map card components | A- |
-| 13 | Saved places list rendering | A |
-| 18 | Trending card layout | A |
-| 20 | Challenger layout adjustments | B+ |
-| 21 | Sort row layout, chip components | A |
-**Average: A-** | **Consistency: Good** | **Growth Area: Take on more complex features**
+| 1-23 | Core UI: cards, filters, ratings, bookmarks, trust, rankings | A / A+ |
+| 24 | Haversine distance, Near Me filter, distance display | A+ |
+| 25 | Post-signup welcome screen | A |
+| 27 | Claim flow 3-state UI | A |
+| 29 | Confetti particle integration, tab bounce | A |
+| 31 | QR code display, share/print buttons | A |
+| 32 | Admin 5-tab dashboard, stat cards | A+ |
+| 33 | Photo upload with expo-image-picker | A |
+| 35 | Deep link handler implementation | A |
+| 36 | StatCard, MiniChart, ReviewCard components | A+ |
+| 37 | ShareCard component, useShareCard hook | A+ |
+| 38 | Push notification client registration, tap handler | A |
+| 40 | Legal screen components, consent checkbox | A |
+| 41 | Onboarding FlatList with paging | A |
+| 45 | SavedCard component, staggered animations | A |
+**Average: A+** | **Consistency: Exceptional** | **MVP across all sprints**
 
 ---
 
 ### Priya Sharma — Backend Architect
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 5 | Rating API design | A |
-| 9 | City-based query optimization | A |
-| 10 | Trust score computation | A+ |
-| 15 | Rating distribution aggregation | A |
-| 17 | Rank history API | A |
-| 19 | Mock data schema alignment | A |
-| 22 | daysActive field design, caching | A |
+| 5-22 | Rating API, city queries, trust computation, daysActive | A |
+| 25 | Email function architecture | A |
+| 30 | Payment service architecture (Stripe mock) | A |
+| 34 | Email drip function architecture | A |
+| 36 | Dashboard analytics API spec | A |
+| 38 | Push notification function architecture | A |
+| 43 | Weekly digest batch sender | A |
 **Average: A** | **Consistency: High**
 
 ---
@@ -139,129 +103,182 @@
 ### Carlos Ruiz — QA Lead
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 1-23 | TypeScript verification, visual QA, edge case testing | A |
-| 7 | Playwright screenshot verification process | A+ |
-| 19 | Mock data validation against real schemas | A |
-| 22 | Rate gating edge cases (exact 7 days) | A |
-| 23 | Two-step deletion verification | A |
-**Average: A** | **Consistency: Exceptional** | **Never missed a sprint**
+| 1-23 | TypeScript verification, visual QA, edge cases | A |
+| 24 | Near Me distance accuracy testing | A |
+| 25 | Welcome email HTML template verification | A |
+| 26 | Winner reveal animation testing | A |
+| 27 | Claim flow state transition testing | A |
+| 28-29 | Splash animation timing, confetti particle QA | A |
+| 30 | Payment flow verification | A |
+| 31 | QR code display testing | A |
+| 32 | Admin dashboard 5-tab QA | A |
+| 33 | Photo upload crop/quality testing | A |
+| 34 | Email drip HTML template verification | A |
+| 35 | Deep link route testing across formats | A |
+| 36 | Dashboard 3-tab rendering QA | A |
+| 37 | ViewShot capture + sharing QA | A |
+| 38 | Push permission flow, tap routing verification | A |
+| 39 | Cross-platform haptic testing | A |
+| 40 | Legal screen QA, consent flow testing | A |
+| 41 | Onboarding paging and animation QA | A |
+| 42 | Notification toggle persistence testing | A |
+| 43 | Cross-client email rendering | A |
+| 45 | Bookmark rendering, navigation testing | A |
+**Average: A** | **45 sprints** | **Consistency: Perfect** | **Never missed a single sprint**
 
 ---
 
 ### Elena Torres — VP Design
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 1 | Card design system (amber/navy/warm white) | A+ |
-| 5 | Rating flow visual design | A |
-| 8 | SafeImage fallback design (initial letter) | A |
-| 14 | Trust explainer visual design | A |
-| 16 | OPEN badge green glow design | A+ |
-| 17 | Rank history chart design | A |
-| 19 | Photo fallback with Playfair initial | A |
-| 21 | Navy chip design for sort selector | A |
-| 23 | Destructive action UX pattern | A |
-**Average: A / A+** | **Consistency: High**
+| 1-23 | Brand system, card design, OPEN badge, visual consistency | A / A+ |
+| 41 | Onboarding slide visual design, emoji circles | A |
+**Average: A+** | **Consistency: High** | **Brand system creator**
 
 ---
 
-### Derek Chan — UI/UX Designer
+### Kai Nakamura — Animation Architect
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 5 | Rating circle picker interaction design | A |
-| 8 | Fallback gradient design | A |
-| 16 | Glow effect animation | A |
-| 17 | Score animation micro-interactions | A |
-| 20 | Share button placement and styling | A |
-| 22 | Gated state milestone UX | A |
-**Average: A** | **Consistency: High**
+| 28 | Splash screen cinematic animation choreography | A+ |
+| 29 | Tab icon spring bounce, confetti particle system | A+ |
+| 36 | Dashboard staggered entrance animations | A |
+| 37 | Share button entrance animation timing | A |
+| 39 | Haptic pattern library design, splash timing sync | A+ |
+| 41 | Onboarding staggered slide animations | A |
+**Average: A+** | **Note: Hired Sprint 28, immediate A+ impact**
 
 ---
 
-### Nadia Kaur — Cybersecurity Lead
+### Zara Mitchell (Washington) — Sr Animation Engineer
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 10 | Trust computation security review | A |
-| 14 | Report suspicious activity flow | A+ |
-| 15 | Anti-fraud transparency features | A |
-| 19 | Mock data security review (no real user data) | A |
-| 22 | Anti-spam strategy, defense-in-depth | A+ |
-| 23 | Data cascade security spec | A |
-**Average: A+** | **Consistency: Exceptional**
+| 29 | Confetti particle system implementation | A+ |
+| 37 | Share card visual composition | A |
+| 39 | Rating success & winner reveal haptic choreography | A+ |
+**Average: A+** | **Note: Hired Sprint 28, specialist in particle systems**
 
 ---
 
-### Jordan Blake — Head of Compliance
+### Liam O'Brien (O'Reilly) — Sr Sound & Motion Designer
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 14 | Content moderation policy | A |
-| 22 | Rate gating compliance review | A |
-| 23 | App Store guideline 5.1.1(v) compliance | A+ |
-**Average: A+** | **Consistency: High**
+| 31 | QR code visual design | A |
+| 37 | Role badge narrative design | A |
+| 39 | Audio system architecture, expo-av config, sound brief | A |
+**Average: A** | **Note: Hired Sprint 28, owns audio branding**
+
+---
+
+### Olivia Hart — Head of Copy & Voice
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 25 | Welcome email copy, onboarding steps | A+ |
+| 34 | Email drip copy (5 emails), voice consistency | A+ |
+| 36 | Dashboard insight card copy, Pro upsell messaging | A |
+| 37 | Share card copy, role badge narratives | A |
+| 39 | Audio design brief, sound personality direction | A |
+| 40 | Legal copy voice — clear, honest, legally precise | A |
+| 41 | Benefit-first onboarding slide copy | A+ |
+| 43 | Digest copy, greeting tone, section hierarchy | A+ |
+| 45 | Empty state copy, instructional messaging | A |
+**Average: A+** | **Note: Hired Sprint 25, transformed all user-facing copy**
+
+---
+
+### Victoria Ashworth — VP of Legal
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 40 | Terms of Service, Section 230 defense, GDPR/DPDPA compliance | A+ |
+| 42 | Notification opt-out legal compliance (CAN-SPAM, GDPR, DPDPA) | A |
+| 43 | CAN-SPAM footer compliance, unsubscribe requirements | A |
+| 44 | App Store compliance checklist, age rating, privacy URL | A |
+**Average: A+** | **Note: Hired Sprint 40, immediate high-impact legal framework**
+
+---
+
+### Arjun Mehta — Senior Legal Counsel
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 40 | India DPDPA compliance, Grievance Officer, cross-border transfers | A+ |
+| 44 | India App Store requirements, data protection board registration | A |
+**Average: A+** | **Note: Hired Sprint 40, India market specialist**
+
+---
+
+### Alex Volkov — Infra Architect
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 7 | Playwright pipeline design | A |
+| 19 | Mock fallback infrastructure | A |
+| 35 | Universal link / Digital Asset Links spec | A |
+| 38 | Server push module, batching strategy | A |
+**Average: A** | **Consistency: Good**
 
 ---
 
 ### Rachel Wei — CFO
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 20 | CAC analysis, share-to-revenue pipeline | A |
-| 22 | Revenue protection via anti-spam | A |
-| 23 | Churn metrics definition | A- |
-**Average: A** | **Consistency: Good** | **Expanding into analytics**
+| 20-23 | CAC analysis, churn metrics | A |
+| 25 | Welcome email ROI projection | A |
+| 30 | Revenue stream financial modeling | A+ |
+| 34 | Email drip ROI analysis | A |
+| 36 | Dashboard Pro pricing strategy | A |
+| 43 | Email retention ROI analysis | A |
+**Average: A** | **Consistency: High**
 
 ---
 
 ### Jasmine Taylor — Marketing Director
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 18 | "Movers & Shakers" newsletter content strategy | A |
-| 20 | Share campaign format, "Who wins this week?" | A |
-| 21 | Trending sort feeds newsletter content | A |
+| 18-21 | Newsletter strategy, share campaigns | A |
+| 25 | Welcome email onboarding flow | A |
+| 34 | Drip sequence timing, milestone alignment | A |
+| 41 | Onboarding conversion strategy | A |
+| 43 | Weekly digest send timing, open rate benchmarks | A |
+| 44 | ASO keyword strategy, screenshot sequencing | A+ |
+**Average: A** | **Consistency: High**
+
+---
+
+### Chris Donovan — Ad Campaigns Manager
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 25 | Email engagement projections | A |
+| 34 | Open rate projections, CTR optimization | A |
+| 43 | Re-engagement strategy, CTA optimization | A |
 **Average: A** | **Consistency: Good**
 
 ---
 
-### Marco Silva — Head of Growth
+### David Okonkwo — VP Product
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 20 | Viral loop definition, share-to-install tracking plan | A |
-**Average: A** | **Note: Recently hired, ramping up**
-
----
-
-### Lisa Kim — Backend
-| Sprint | Contribution | Rating |
-|--------|-------------|--------|
-| 9 | City selector auth integration | A |
-| 19 | Mock auth fallback implementation | A |
-| 23 | Backend deletion API specification | A- |
-**Average: A** | **Consistency: Good**
+| 1-23 | PRD compliance, product roadmap | A |
+| 41 | AIDA onboarding structure | A+ |
+| 42 | Settings information architecture | A |
+| 44 | Review notes strategy, demo account | A |
+**Average: A** | **Consistency: High**
 
 ---
 
 ### Mei Lin — Mobile Architect
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 8 | Cross-platform shadow handling | A |
-| 16 | Native haptics integration | A |
-| 21 | Scroll behavior, hit target review | A- |
+| 8-21 | Cross-platform shadows, haptics, scroll behavior | A |
+| 42 | Switch styling, async toggle pattern | A |
 **Average: A** | **Consistency: Good**
 
 ---
 
-### Aisha Fernandez — Community Manager
+### Jordan Blake — Head of Compliance
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
-| 17 | Pride mechanism user messaging | A |
-| 22 | Rate gating user communication strategy | A- |
-**Average: A-** | **Note: Recently hired, strong start**
-
----
-
-### Sam Reeves — Legal Counsel
-| Sprint | Contribution | Rating |
-|--------|-------------|--------|
-| 23 | GDPR Article 17 alignment, data retention policy | A |
-**Average: A** | **Note: Recently hired**
+| 14-23 | Content moderation, rate gating compliance, App Store guidelines | A+ |
+| 40 | App Store compliance audit, submission readiness | A |
+**Average: A+** | **Consistency: High**
 
 ---
 
@@ -269,7 +286,34 @@
 | Sprint | Contribution | Rating |
 |--------|-------------|--------|
 | 19 | Photo fallback gradient design | A |
-**Average: A** | **Note: Recently hired, key for App Store screenshots**
+| 44 | Screenshot design spec (1290x2796), feature graphic spec | A |
+**Average: A** | **Note: Key for App Store visual assets**
+
+---
+
+### Nadia Kaur — Cybersecurity Lead
+| Sprint | Contribution | Rating |
+|--------|-------------|--------|
+| 10-23 | Trust computation security, anti-fraud, data cascade security | A+ |
+**Average: A+** | **Consistency: Exceptional**
+
+---
+
+### Other Team Members
+| Employee | Sprints Active | Average Rating | Notes |
+|----------|---------------|----------------|-------|
+| Sarah Nakamura (VP Eng) | 1-23 | A | Quality gates, maintainability |
+| Tommy Nguyen (Frontend) | 2-21 | A- | Growth area: complex features |
+| Ryan Mitchell (Sr Frontend) | 4 | A | Rankings tab core components |
+| Ava Johnson (Sr Backend) | 5 | A | API endpoints |
+| Nina Petrov (DevOps) | 7 | A | Build pipeline |
+| Lisa Kim (Backend) | 9-23 | A | Auth flows, data migrations |
+| Derek Chan (UI/UX) | 5-22 | A | Interaction design, micro-animations |
+| Amara Obi (Brand Designer) | — | — | Recently hired, pending first sprint |
+| Marco Silva (Growth) | 20 | A | Viral loop definition |
+| Aisha Fernandez (Community) | 17-22 | A- | Pride mechanism messaging |
+| Sam Reeves (Legal Counsel) | 23 | A | GDPR alignment |
+| Ben Kowalski (Partnerships) | — | — | Pending first sprint |
 
 ---
 
@@ -277,41 +321,52 @@
 
 | Sprint | Points | Files | Lines | Lead Contributors |
 |--------|--------|-------|-------|-------------------|
-| 1 | 8 | 1 | ~200 | James Park, Elena Torres |
-| 2 | 8 | 1 | ~150 | Tommy Nguyen, James Park |
-| 3 | 5 | 1 | ~80 | James Park |
-| 4 | 5 | 2 | ~60 | James Park, Ryan Mitchell |
-| 5 | 13 | 1 | ~400 | James Park, Derek Chan |
-| 6 | 8 | 1 | ~120 | James Park, Tommy Nguyen |
-| 7 | 5 | 0 | ~50 | Carlos Ruiz, Alex Volkov |
-| 8 | 8 | 2 | ~100 | James Park, Elena Torres |
-| 9 | 8 | 3 | ~120 | James Park, Lisa Kim |
-| 10 | 8 | 1 | ~80 | James Park, Priya Sharma |
-| 11 | 3 | 3 | ~40 | James Park, Sarah Nakamura |
-| 12 | 8 | 2 | ~150 | James Park |
-| 13 | 5 | 1 | ~80 | James Park, Tommy Nguyen |
-| 14 | 8 | 1 | ~100 | James Park, Nadia Kaur |
-| 15 | 8 | 2 | ~120 | James Park, Priya Sharma |
-| 16 | 5 | 1 | ~60 | James Park, Elena Torres |
-| 17 | 13 | 2 | ~200 | James Park |
-| 18 | 5 | 1 | ~60 | James Park, Tommy Nguyen |
-| 19 | 13 | 4 | ~350 | James Park, Lisa Kim |
-| 20 | 5 | 1 | ~35 | James Park, Marco Silva |
-| 21 | 5 | 1 | ~50 | Tommy Nguyen, James Park |
-| 22 | 8 | 1 | ~40 | James Park, Nadia Kaur |
-| 23 | 5 | 1 | ~25 | James Park, Jordan Blake |
+| 1-23 | 175 | 30+ | ~2500 | James Park, Carlos Ruiz, Elena Torres |
+| 24 | 5 | 1 | ~80 | James Park |
+| 25 | 8 | 3 | ~250 | Olivia Hart, Priya Sharma |
+| 26 | 5 | 1 | ~80 | James Park, Kai Nakamura |
+| 27 | 5 | 1 | ~200 | James Park |
+| 28 | 8 | 1 | ~120 | Kai Nakamura |
+| 29 | 8 | 3 | ~150 | Zara Mitchell, Kai Nakamura |
+| 30 | 8 | 2 | ~250 | Priya Sharma, James Park |
+| 31 | 5 | 1 | ~180 | James Park, Liam O'Brien |
+| 32 | 8 | 2 | ~400 | James Park |
+| 33 | 5 | 1 | ~60 | James Park |
+| 34 | 5 | 1 | ~170 | Olivia Hart, Priya Sharma |
+| 35 | 5 | 2 | ~50 | James Park, Marcus Chen |
+| 36 | 8 | 2 | ~350 | James Park |
+| 37 | 5 | 3 | ~200 | James Park, Kai Nakamura |
+| 38 | 8 | 3 | ~280 | Marcus Chen, Priya Sharma |
+| 39 | 5 | 4 | ~200 | Kai Nakamura, Zara Mitchell |
+| 40 | 8 | 5 | ~500 | Victoria Ashworth, Arjun Mehta |
+| 41 | 5 | 2 | ~280 | David Okonkwo, Olivia Hart |
+| 42 | 5 | 3 | ~300 | David Okonkwo, Mei Lin |
+| 43 | 5 | 1 | ~200 | Olivia Hart, Jasmine Taylor |
+| 44 | 3 | 1 | ~150 | Jasmine Taylor, Sofia Morales |
+| 45 | 3 | 4 | ~200 | James Park |
 
-**Total Story Points: 175** | **Total Sprints: 23** | **Avg Velocity: 7.6 pts/sprint**
+**Total Story Points: 311** | **Total Sprints: 45** | **Avg Velocity: 6.9 pts/sprint**
 
-## Top Performers (Cumulative)
-1. **James Park** — Frontend Architect. Present in every sprint. Highest output, consistently A/A+.
-2. **Carlos Ruiz** — QA Lead. Never missed a sprint. Zero TypeScript regressions shipped.
-3. **Nadia Kaur** — Cybersecurity Lead. A+ on every security-relevant sprint.
-4. **Elena Torres** — VP Design. Brand system creator, visual consistency guardian.
-5. **Rahul Pitta** — CEO. Clear product vision, fast decision-making.
+## Top Performers (Cumulative through Sprint 45)
+1. **James Park** — Frontend Architect. Present in 40+ sprints. Highest output, consistently A/A+. MVP.
+2. **Carlos Ruiz** — QA Lead. Present in ALL 45 sprints. Zero regressions shipped. Perfect attendance.
+3. **Olivia Hart** — Head of Copy & Voice. Transformed all user-facing copy since Sprint 25. Consistent A+.
+4. **Kai Nakamura** — Animation Architect. Every animation is world-class since joining Sprint 28. A+ average.
+5. **Victoria Ashworth** — VP of Legal. Built entire legal framework in 4 sprints. Immediate A+ impact.
+6. **Nadia Kaur** — Cybersecurity Lead. A+ on every security-relevant sprint.
+7. **Rahul Pitta** — CEO. Clear vision, fast decisions, non-stop momentum across 45 sprints.
+
+## Team Growth Since Sprint 23
+- **Animation team hired** (Sprint 28): Kai Nakamura, Zara Mitchell, Liam O'Brien
+- **Copy team hired** (Sprint 25): Olivia Hart
+- **Legal team hired** (Sprint 40): Victoria Ashworth (VP), Arjun Mehta (Senior Counsel)
+- **Total active employees**: 28
+- **Departments**: 8 (Engineering, Design, Animation, Copy, Legal, Compliance, Revenue/Growth, Product)
 
 ## Areas for Team Growth
-- **Backend depth**: Most sprints are frontend-heavy. Need more backend sprints (Stripe, admin panel, analytics).
-- **Testing coverage**: Playwright screenshots are visual QA only. Need unit tests and integration tests.
-- **Design system**: Should formalize component library (Storybook or similar).
-- **Analytics**: No user behavior tracking yet. Need Mixpanel/Amplitude integration.
+- **Backend depth**: Need dedicated API sprints for analytics, payment webhooks, cron jobs
+- **Testing coverage**: Unit tests and integration tests still missing
+- **Design system**: Formalize component library (Storybook)
+- **Analytics**: Need Mixpanel/Amplitude integration for user behavior tracking
+- **India expansion**: Need local team (Arjun bridging, but need India-based engineers)
+- **Audio assets**: Sound designers needed to produce the audio files for the haptic system
