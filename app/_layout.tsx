@@ -32,6 +32,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
+import { NetworkBanner } from "@/components/NetworkBanner";
 import { registerForPushNotifications } from "@/lib/notifications";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 
@@ -230,6 +231,7 @@ export default function RootLayout() {
               <GestureHandlerRootView style={styles.root}>
                 <KeyboardProvider>
                   <RootLayoutNav />
+                  <NetworkBanner />
                   {showSplash && <AnimatedSplash onFinish={() => setShowSplash(false)} />}
                 </KeyboardProvider>
               </GestureHandlerRootView>
