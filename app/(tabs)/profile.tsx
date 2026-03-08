@@ -518,6 +518,32 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
+      {/* Legal Links */}
+      <View style={styles.legalLinks}>
+        <TouchableOpacity
+          style={styles.legalLink}
+          onPress={() => router.push("/legal/terms")}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="View Terms of Service"
+        >
+          <Ionicons name="document-text-outline" size={14} color={Colors.textTertiary} />
+          <Text style={styles.legalLinkText}>Terms of Service</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.legalLink}
+          onPress={() => router.push("/legal/privacy")}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="View Privacy Policy"
+        >
+          <Ionicons name="shield-outline" size={14} color={Colors.textTertiary} />
+          <Text style={styles.legalLinkText}>Privacy Policy</Text>
+          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      </View>
+
       {/* Delete Account — App Store requirement */}
       <TouchableOpacity
         style={styles.deleteAccountBtn}
@@ -634,6 +660,16 @@ const styles = StyleSheet.create({
   adminLinkText: {
     flex: 1, fontSize: 14, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
+  },
+  legalLinks: {
+    marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.border,
+    marginHorizontal: 20, gap: 2,
+  },
+  legalLink: {
+    flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 10,
+  },
+  legalLinkText: {
+    flex: 1, fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   deleteAccountBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,

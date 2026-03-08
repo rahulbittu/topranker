@@ -8,6 +8,7 @@ import { router } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 import { useAuth } from "@/lib/auth-context";
 import { useCity } from "@/lib/city-context";
 import { AppLogo } from "@/components/Logo";
@@ -26,6 +27,7 @@ export default function SignupScreen() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -40,6 +42,10 @@ export default function SignupScreen() {
     }
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("Please agree to the Terms of Service and Privacy Policy");
       return;
     }
     setError("");
@@ -261,6 +267,26 @@ export default function SignupScreen() {
         </View>
 
         <TouchableOpacity
+          style={styles.consentRow}
+          onPress={() => setAgreedToTerms(!agreedToTerms)}
+          activeOpacity={0.7}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: agreedToTerms }}
+        >
+          <Ionicons
+            name={agreedToTerms ? "checkbox" : "square-outline"}
+            size={20}
+            color={agreedToTerms ? BRAND.colors.amber : Colors.textTertiary}
+          />
+          <Text style={styles.consentText}>
+            I agree to the{" "}
+            <Text style={styles.consentLink} onPress={() => router.push("/legal/terms")}>Terms of Service</Text>
+            {" "}and{" "}
+            <Text style={styles.consentLink} onPress={() => router.push("/legal/privacy")}>Privacy Policy</Text>
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
           style={[styles.submitButton, loading && styles.submitButtonLoading]}
           onPress={handleSignup}
           activeOpacity={0.85}
@@ -377,6 +403,15 @@ const styles = StyleSheet.create({
   tierPreviewTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   tierPreviewSub: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", lineHeight: 16 },
 
+  consentRow: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8, marginTop: 12, marginBottom: 8,
+  },
+  consentText: {
+    flex: 1, fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 20,
+  },
+  consentLink: {
+    color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold", textDecorationLine: "underline",
+  },
   submitButton: {
     backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
     alignItems: "center", justifyContent: "center", marginTop: 4,
