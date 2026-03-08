@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { track } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, ActivityIndicator, RefreshControl, Alert, Switch,
@@ -27,6 +28,7 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import { getUnlockedPerks, getNextTierPerks } from "@/lib/tier-perks";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { TypedIcon } from "@/components/TypedIcon";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
@@ -83,6 +85,26 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   // Shared badge context — used for both stats count and badge grid
   const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
+
+  const saveNotifPref = useCallback(async (key: string, value: boolean) => {
+    const newPrefs = {
+      ratingUpdates: key === "ratingUpdates" ? value : notifRatingUpdates,
+      challengeResults: key === "challengeResults" ? value : notifChallengeResults,
+      weeklyDigest: key === "weeklyDigest" ? value : notifWeeklyDigest,
+    };
+    if (key === "ratingUpdates") setNotifRatingUpdates(value);
+    if (key === "challengeResults") setNotifChallengeResults(value);
+    if (key === "weeklyDigest") setNotifWeeklyDigest(value);
+    track("notification_settings_change", { setting: key, enabled: value });
+    try {
+      await fetch(getApiUrl("/api/members/me/notification-preferences"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(newPrefs),
+      });
+    } catch {}
+  }, [notifRatingUpdates, notifChallengeResults, notifWeeklyDigest]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -477,7 +499,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
           <Switch
             value={notifRatingUpdates}
-            onValueChange={setNotifRatingUpdates}
+            onValueChange={(v) => saveNotifPref("ratingUpdates", v)}
             trackColor={{ false: Colors.border, true: AMBER }}
             thumbColor="#fff"
           />
@@ -490,7 +512,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
           <Switch
             value={notifChallengeResults}
-            onValueChange={setNotifChallengeResults}
+            onValueChange={(v) => saveNotifPref("challengeResults", v)}
             trackColor={{ false: Colors.border, true: AMBER }}
             thumbColor="#fff"
           />
@@ -503,7 +525,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           </View>
           <Switch
             value={notifWeeklyDigest}
-            onValueChange={setNotifWeeklyDigest}
+            onValueChange={(v) => saveNotifPref("weeklyDigest", v)}
             trackColor={{ false: Colors.border, true: AMBER }}
             thumbColor="#fff"
           />
@@ -627,7 +649,7 @@ export default function ProfileScreen() {
     );
   }
 
-  return <ProfileContent profile={profile} refetch={refetch} />;
+  return <ErrorBoundary><ProfileContent profile={profile} refetch={refetch} /></ErrorBoundary>;
 }
 
 const styles = StyleSheet.create({

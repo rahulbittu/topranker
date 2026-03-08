@@ -2,6 +2,41 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 111] - 2026-03-08
+### Added
+- ErrorBoundary integration: all 4 tab screens wrapped for graceful crash recovery
+- Notification preferences backend: GET/PUT /api/members/me/notification-preferences
+- Client-side analytics emission: challenger views, search queries, notification settings
+- Server-side funnel tracking: signup_completed and first_rating events
+### Changed
+- Payment routes sanitized: challenger businessName/slug, dashboard-pro slug, featured slug
+- Notification preference switches now persist to API and track analytics events
+- Search tab tracks query analytics on submit
+
+## [Sprint 110] - 2026-03-08
+### Added
+- ErrorBoundary component with branded recovery UI and retry
+- Analytics conversion funnel module (server/analytics.ts) with 12 event types
+- Dark mode color palette (constants/dark-colors.ts)
+- Notification preferences UI on profile page (3 toggles)
+- Admin analytics endpoint (GET /api/admin/analytics)
+- SLT + Architecture backlog meeting doc (Sprint 110)
+### Changed
+- Input sanitization expanded: signup (displayName, username, email), claims (role, phone), dishes (query), ratings (score clamping)
+- Graceful shutdown: SIGTERM/SIGINT handlers with 10s timeout
+- 637 tests across 43 files
+
+## [Sprint 109] - 2026-03-08
+### Added
+- Input sanitization utilities: stripHtml, sanitizeString, sanitizeNumber, sanitizeEmail, sanitizeSlug
+- Health check endpoint with version, uptime, memory stats
+- GDPR/CCPA account deletion (DELETE /api/account) with 30-day grace period
+- Monthly revenue endpoint (GET /api/admin/revenue/monthly)
+### Changed
+- Search endpoint sanitized via sanitizeString
+- Typography migration completed: business detail page (14 styles)
+- 595 tests across 42 files
+
 ## [Sprint 108] - 2026-03-08
 ### Added
 - E2E test framework: 21 tests covering full API contract (L1 CLOSED)

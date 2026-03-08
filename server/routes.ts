@@ -35,6 +35,7 @@ import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 import { authRateLimiter } from "./rate-limiter";
 import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
+import { trackEvent } from "./analytics";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -162,6 +163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         city: member.city,
         username: member.username,
       }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
+
+      trackEvent("signup_completed", member.id);
 
       req.login(
         {
@@ -518,6 +521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast real-time update so other clients refresh rankings
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
+      trackEvent("first_rating", memberId);
       return res.status(201).json({ data: result });
     } catch (err: any) {
       if (err.message.includes("3+ days")) {
@@ -653,6 +657,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { updatePushToken } = await import("./storage");
       await updatePushToken(req.user!.id, pushToken);
       return res.json({ ok: true });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ── Notification Preferences ─────────────────────────────────
+  app.get("/api/members/me/notification-preferences", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const prefs = {
+        ratingUpdates: true,
+        challengeResults: true,
+        weeklyDigest: false,
+        ...((req.user as any).notificationPrefs || {}),
+      };
+      return res.json({ data: prefs });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.put("/api/members/me/notification-preferences", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
+      const prefs = {
+        ratingUpdates: ratingUpdates !== false,
+        challengeResults: challengeResults !== false,
+        weeklyDigest: weeklyDigest === true,
+      };
+      // Store as user metadata (future: dedicated column)
+      (req.user as any).notificationPrefs = prefs;
+      return res.json({ data: prefs });
     } catch (err: any) {
       return res.status(500).json({ error: err.message });
     }

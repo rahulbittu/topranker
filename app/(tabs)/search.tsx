@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { Analytics } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ScrollView, Platform, ActivityIndicator, RefreshControl,
@@ -24,6 +25,7 @@ import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
 import { getApiUrl } from "@/lib/query-client";
 import { DiscoverPhotoStrip, BusinessCard, MapBusinessCard, haversineKm } from "@/components/search/SubComponents";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
 
@@ -234,6 +236,13 @@ export default function SearchScreen() {
     staleTime: 30000,
   });
 
+  // Track search queries after debounce settles
+  useEffect(() => {
+    if (debouncedQuery.length > 0) {
+      Analytics.searchQuery(debouncedQuery, allBusinesses.length);
+    }
+  }, [debouncedQuery, allBusinesses.length]);
+
   const { data: trending = [] } = useQuery({
     queryKey: ["trending", city],
     queryFn: () => fetchTrending(city, 3),
@@ -293,6 +302,7 @@ export default function SearchScreen() {
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   return (
+    <ErrorBoundary>
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Discover</Text>
@@ -595,6 +605,7 @@ export default function SearchScreen() {
         />
       )}
     </View>
+    </ErrorBoundary>
   );
 }
 

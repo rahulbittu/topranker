@@ -8,6 +8,7 @@ import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPay
 import { sendPaymentReceiptEmail } from "./email";
 import { broadcast } from "./sse";
 import { log } from "./logger";
+import { sanitizeString, sanitizeSlug } from "./sanitize";
 
 function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
@@ -19,7 +20,8 @@ function requireAuth(req: Request, res: Response, next: Function) {
 export function registerPaymentRoutes(app: Express) {
   app.post("/api/payments/challenger", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { businessName, slug } = req.body;
+      const businessName = sanitizeString(req.body.businessName, 100);
+      const slug = sanitizeSlug(req.body.slug);
       if (!businessName || !slug) {
         return res.status(400).json({ error: "businessName and slug are required" });
       }
@@ -61,7 +63,7 @@ export function registerPaymentRoutes(app: Express) {
 
   app.post("/api/payments/dashboard-pro", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { slug } = req.body;
+      const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
       }
@@ -101,7 +103,7 @@ export function registerPaymentRoutes(app: Express) {
 
   app.post("/api/payments/featured", requireAuth, async (req: Request, res: Response) => {
     try {
-      const { slug } = req.body;
+      const slug = sanitizeSlug(req.body.slug);
       if (!slug) {
         return res.status(400).json({ error: "slug is required" });
       }

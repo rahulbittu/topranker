@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
+import { track } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, ScrollView, Animated as RNAnimated, Share,
   Platform, TouchableOpacity, RefreshControl, LayoutAnimation, UIManager,
@@ -26,6 +27,7 @@ import { usePressAnimation } from "@/hooks/usePressAnimation";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const CHALLENGER_TIP_KEY = "challenger_tip_dismissed";
 
@@ -406,6 +408,8 @@ export default function ChallengerScreen() {
     staleTime: 30000,
   });
 
+  useEffect(() => { track("view_challenger"); }, []);
+
   const [showChallengerTip, setShowChallengerTip] = useState(false);
 
   useEffect(() => {
@@ -428,6 +432,7 @@ export default function ChallengerScreen() {
   }, [refetch]);
 
   return (
+    <ErrorBoundary>
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Live Challenges</Text>
@@ -491,6 +496,7 @@ export default function ChallengerScreen() {
         </ScrollView>
       )}
     </View>
+    </ErrorBoundary>
   );
 }
 

@@ -20,6 +20,7 @@ import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -79,6 +80,7 @@ export default function LeaderboardScreen() {
   const restBiz = useMemo(() => filteredBiz.slice(1), [filteredBiz]);
 
   return (
+    <ErrorBoundary>
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <View>
@@ -271,6 +273,7 @@ export default function LeaderboardScreen() {
         />
       )}
     </View>
+    </ErrorBoundary>
   );
 }
 
