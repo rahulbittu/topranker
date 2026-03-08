@@ -16,6 +16,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { pct as pctDim } from "@/lib/style-helpers";
 import {
   formatTimeAgo, TIER_COLORS, TIER_DISPLAY_NAMES, type CredibilityTier,
 } from "@/lib/data";
@@ -42,7 +43,7 @@ export function SubScoreBar({ label, value }: { label: string; value: number }) 
     <View style={s.subScoreRow}>
       <Text style={s.subScoreLabel}>{label}</Text>
       <View style={s.subScoreTrack}>
-        <View style={[s.subScoreFill, { width: `${pct}%` as any }]} />
+        <View style={[s.subScoreFill, { width: pctDim(pct) }]} />
       </View>
       <Text style={s.subScoreValue}>{value.toFixed(1)}</Text>
     </View>
@@ -64,7 +65,7 @@ export const DistributionChart = React.memo(function DistributionChart({ ratings
           <View style={s.distBarTrack}>
             <View
               style={[s.distBarFill, {
-                width: `${(count / maxCount) * 100}%` as any,
+                width: pctDim((count / maxCount) * 100),
                 backgroundColor: count === maxCount && count > 0 ? Colors.gold : Colors.border,
               }]}
             />
@@ -251,7 +252,7 @@ export const RatingDistribution = React.memo(function RatingDistribution({ ratin
           <View key={score} style={s.rdRow}>
             <Text style={s.rdLabel}>{score}</Text>
             <View style={s.rdBarBg}>
-              <View style={[s.rdBarFill, { width: `${pct}%` as any, backgroundColor: score >= 4 ? Colors.green : score === 3 ? BRAND.colors.amber : Colors.red }]} />
+              <View style={[s.rdBarFill, { width: pctDim(pct), backgroundColor: score >= 4 ? Colors.green : score === 3 ? BRAND.colors.amber : Colors.red }]} />
             </View>
             <Text style={s.rdCount}>{count}</Text>
           </View>

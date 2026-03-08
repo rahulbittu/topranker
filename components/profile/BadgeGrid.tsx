@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { TypedIcon } from "@/components/TypedIcon";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { pct as pctDim } from "@/lib/style-helpers";
 import {
   type EarnedBadge, type BadgeCategory,
   RARITY_COLORS, RARITY_LABELS,
@@ -43,7 +44,7 @@ export function BadgeSummary({
         <View style={s.summaryInfo}>
           <Text style={s.summaryLabel}>{label}</Text>
           <View style={s.summaryBarBg}>
-            <View style={[s.summaryBarFill, { width: `${pct}%` as any }]} />
+            <View style={[s.summaryBarFill, { width: pctDim(pct) }]} />
           </View>
           <Text style={s.summaryPct}>{pct}% complete</Text>
         </View>
@@ -58,7 +59,7 @@ export function BadgeSummary({
             <View style={s.nextBadgeInfo}>
               <Text style={s.nextBadgeName}>{next.badge.name}</Text>
               <View style={s.nextBadgeProgressBg}>
-                <View style={[s.nextBadgeProgressFill, { width: `${next.progress}%` as any, backgroundColor: next.badge.color }]} />
+                <View style={[s.nextBadgeProgressFill, { width: pctDim(next.progress), backgroundColor: next.badge.color }]} />
               </View>
             </View>
             <Text style={[s.nextBadgePct, { color: next.badge.color }]}>{Math.round(next.progress)}%</Text>

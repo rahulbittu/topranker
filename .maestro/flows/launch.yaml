@@ -1,0 +1,10 @@
+# Flow: App Launch
+# Verifies the app loads to the leaderboard screen
+# Owner: Carlos Ruiz (QA Lead)
+
+appId: com.topranker.app
+name: App Launch Flow
+---
+- launchApp
+- assertVisible: "TopRanker"
+- assertVisible: "Find the best"

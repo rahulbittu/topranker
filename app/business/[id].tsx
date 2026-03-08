@@ -27,6 +27,8 @@ import {
   RatingDistribution, RankHistoryChart,
   type MappedRating, type RankHistoryPoint,
 } from "@/components/business/SubComponents";
+import { evaluateBusinessBadges, getBusinessBadgeCount, type BusinessBadgeContext } from "@/lib/badges";
+import { BadgeRowCompact, BadgeSummary } from "@/components/profile/BadgeGrid";
 
 const HERO_HEIGHT = 280;
 
@@ -271,6 +273,30 @@ export default function BusinessProfileScreen() {
             </>
           )}
         </View>
+
+        {/* Business Badges — CVO owned */}
+        {(() => {
+          const badgeCtx: BusinessBadgeContext = {
+            totalRatings: business.ratingCount,
+            averageScore: business.weightedScore,
+            categoryRank: business.rank,
+            trustedRaterCount: ratings.filter(r => r.userTier === "trusted" || r.userTier === "top").length,
+            topJudgeHighRatings: ratings.filter(r => r.userTier === "top" && r.rawScore >= 4).length,
+            consecutiveWeeksImproved: 0,
+            isVerified: business.isClaimed,
+            challengerWins: 0,
+            isNew: business.ratingCount <= 3,
+          };
+          const badges = evaluateBusinessBadges(badgeCtx);
+          const earned = badges.filter(b => b.earnedAt > 0);
+          if (earned.length === 0) return null;
+          return (
+            <View style={styles.badgeSection}>
+              <Text style={styles.badgeSectionTitle}>Achievements</Text>
+              <BadgeRowCompact badges={badges} />
+            </View>
+          );
+        })()}
 
         <View style={styles.body}>
           {/* Description */}
@@ -529,6 +555,12 @@ export default function BusinessProfileScreen() {
 
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: Colors.background },
+  badgeSection: {
+    paddingHorizontal: 16, paddingVertical: 10, gap: 8,
+  },
+  badgeSectionTitle: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
   notFound: {
     flex: 1, backgroundColor: Colors.background,
     alignItems: "center", justifyContent: "center", gap: 12,

@@ -167,16 +167,29 @@ export default function RateScreen() {
       hapticRatingSuccess();
       setTimeout(() => hapticConfetti(), 300);
 
-      // Check for milestone badges earned by this rating
+      // Check for milestone and streak badges earned by this rating
       const milestoneBadgeMap: Record<number, string> = {
         1: "first-taste", 5: "getting-started", 10: "ten-strong",
         25: "quarter-century", 50: "half-century", 100: "centurion",
         250: "rating-machine", 500: "legendary-judge",
       };
+      const streakBadgeMap: Record<number, string> = {
+        3: "three-day-streak", 7: "week-warrior",
+        14: "two-week-streak", 30: "monthly-devotion",
+      };
       // Profile data comes from react-query cache
-      const profileData = qc.getQueryData<{ totalRatings?: number }>(["profile"]);
+      const profileData = qc.getQueryData<{
+        totalRatings?: number;
+        currentStreak?: number;
+      }>(["profile"]);
       const newTotal = (profileData?.totalRatings ?? 0) + 1;
-      const badgeId = milestoneBadgeMap[newTotal];
+      const newStreak = (profileData?.currentStreak ?? 0) + 1;
+
+      // Milestone badge takes priority, then streak badge
+      const milestoneBadgeId = milestoneBadgeMap[newTotal];
+      const streakBadgeId = streakBadgeMap[newStreak];
+      const badgeId = milestoneBadgeId || streakBadgeId;
+
       if (badgeId) {
         const badge = getBadgeById(badgeId);
         if (badge) {

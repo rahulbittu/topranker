@@ -4,6 +4,16 @@ All notable changes to TopRanker are documented here. Format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Sprint 77 — Badge Sharing + Streak Toast Triggers + Maestro E2E (March 8, 2026)
+#### Added
+- `lib/badge-sharing.ts` — `shareBadgeCard()` utility using react-native-view-shot + expo-sharing
+- Streak badge toast triggers in rating flow — 3-day, 7-day, 14-day, 30-day streak milestones
+- Maestro E2E setup: `.maestro/config.yaml` + 3 initial flows (launch, search, profile)
+- 9 new badge sharing + streak toast tests (total: 182 across 14 files)
+
+#### Changed
+- Badge toast now fires on both milestone AND streak thresholds (milestones take priority)
+
 ### Sprint 76 — Seasonal Rating API + Badge Toast Integration + Admin Review (March 8, 2026)
 #### Added
 - Server-side `getSeasonalRatingCounts()` — SQL GROUP BY month mapped to seasons

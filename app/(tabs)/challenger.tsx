@@ -18,6 +18,7 @@ import Colors from "@/constants/colors";
 import { fetchActiveChallenges, fetchBusinessBySlug, type ApiChallenger, type ApiBusiness } from "@/lib/api";
 import { formatCountdown, formatTimeAgo, TIER_DISPLAY_NAMES, TIER_COLORS, type CredibilityTier } from "@/lib/data";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
+import { pct } from "@/lib/style-helpers";
 import * as Haptics from "expo-haptics";
 import { ShareCardView, useShareCard } from "@/components/ShareCard";
 import { ChallengerSkeleton } from "@/components/Skeleton";
@@ -41,8 +42,8 @@ function VoteBar({ challenger, defender }: { challenger: number; defender: numbe
         </Text>
       </View>
       <View style={styles.voteBar}>
-        <View style={[styles.voteBarDefender, { width: `${defenderPct}%` as any }]} />
-        <View style={[styles.voteBarChallenger, { width: `${challengerPct}%` as any }]} />
+        <View style={[styles.voteBarDefender, { width: pct(defenderPct) }]} />
+        <View style={[styles.voteBarChallenger, { width: pct(challengerPct) }]} />
       </View>
     </View>
   );
@@ -292,7 +293,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       </View>
 
       <View style={styles.progressBarOuter}>
-        <View style={[styles.progressBarInner, { width: `${Math.min((daysElapsed / totalDays) * 100, 100)}%` as any }]} />
+        <View style={[styles.progressBarInner, { width: pct(Math.min((daysElapsed / totalDays) * 100, 100)) }]} />
       </View>
 
       {/* Winner Reveal */}
@@ -527,14 +528,14 @@ const styles = StyleSheet.create({
   },
   fighter: { flex: 1, alignItems: "center" as const, gap: 4 },
   fighterPhotoWrap: {
-    width: "100%" as any,
+    width: pct(100),
     height: 130,
     borderRadius: 10,
     overflow: "hidden" as const,
     position: "relative" as const,
   },
   fighterPhoto: {
-    width: "100%" as any,
+    width: pct(100),
     height: 130,
     alignItems: "center" as const,
     justifyContent: "center" as const,
