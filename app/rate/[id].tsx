@@ -157,13 +157,40 @@ export default function RateScreen() {
       });
       return res.json();
     },
+    // Optimistic update — instant UI feedback before server confirms
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["business", slug] });
+      const prev = qc.getQueryData(["business", slug]);
+      if (prev && typeof prev === "object" && "totalRatings" in (prev as any)) {
+        qc.setQueryData(["business", slug], (old: any) => ({
+          ...old,
+          totalRatings: (old?.totalRatings ?? 0) + 1,
+        }));
+      }
+      return { prev };
+    },
+    onError: (err: Error, _vars: void, context: { prev?: unknown } | undefined) => {
+      // Rollback optimistic update
+      if (context?.prev) {
+        qc.setQueryData(["business", slug], context.prev);
+      }
+      const msg = err.message || "";
+      if (msg.includes("Failed to fetch") || msg.includes("Network")) {
+        setSubmitError("No internet connection. Please check your network and try again.");
+      } else if (msg.includes("401")) {
+        setSubmitError("Your session has expired. Please sign in again.");
+      } else {
+        setSubmitError(msg || "Failed to submit rating");
+      }
+    },
+    onSettled: () => {
+      // Always refetch to get accurate server state
+      qc.invalidateQueries({ queryKey: ["business", slug] });
+    },
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      qc.invalidateQueries({ queryKey: ["business", slug] });
-      qc.invalidateQueries({ queryKey: ["leaderboard"] });
-      qc.invalidateQueries({ queryKey: ["search"] });
+      // SSE handles leaderboard/search/challengers invalidation; profile needs explicit
       qc.invalidateQueries({ queryKey: ["profile"] });
-      qc.invalidateQueries({ queryKey: ["challengers"] });
       setShowConfirm(true);
       hapticRatingSuccess();
       setTimeout(() => hapticConfetti(), 300);
@@ -178,7 +205,6 @@ export default function RateScreen() {
         3: "three-day-streak", 7: "week-warrior",
         14: "two-week-streak", 30: "monthly-devotion",
       };
-      // Profile data comes from react-query cache
       const profileData = qc.getQueryData<{
         totalRatings?: number;
         currentStreak?: number;
@@ -186,7 +212,6 @@ export default function RateScreen() {
       const newTotal = (profileData?.totalRatings ?? 0) + 1;
       const newStreak = (profileData?.currentStreak ?? 0) + 1;
 
-      // Milestone badge takes priority, then streak badge
       const milestoneBadgeId = milestoneBadgeMap[newTotal];
       const streakBadgeId = streakBadgeMap[newStreak];
       const badgeId = milestoneBadgeId || streakBadgeId;
@@ -195,19 +220,8 @@ export default function RateScreen() {
         const badge = getBadgeById(badgeId);
         if (badge) {
           setTimeout(() => setToastBadge(badge), 1500);
-          // Persist badge award to server
           awardBadgeApi(badge.id, badge.category).catch(() => {});
         }
-      }
-    },
-    onError: (err: Error) => {
-      const msg = err.message || "";
-      if (msg.includes("Failed to fetch") || msg.includes("Network")) {
-        setSubmitError("No internet connection. Please check your network and try again.");
-      } else if (msg.includes("401")) {
-        setSubmitError("Your session has expired. Please sign in again.");
-      } else {
-        setSubmitError(msg || "Failed to submit rating");
       }
     },
   });

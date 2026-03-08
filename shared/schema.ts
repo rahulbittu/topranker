@@ -94,6 +94,7 @@ export const businesses = pgTable(
     index("idx_biz_score").on(table.weightedScore),
     index("idx_biz_rank").on(table.city, table.category, table.rankPosition),
     index("idx_biz_slug").on(table.slug),
+    index("idx_biz_google_place").on(table.googlePlaceId),
   ],
 );
 
