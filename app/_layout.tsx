@@ -14,10 +14,11 @@ import {
 } from "@expo-google-fonts/playfair-display";
 import { useFonts } from "expo-font";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { StyleSheet, View, Text } from "react-native";
+import * as Notifications from "expo-notifications";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay,
   withSequence, withSpring, Easing, runOnJS,
@@ -31,6 +32,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { CityProvider } from "@/lib/city-context";
 import { BookmarksProvider } from "@/lib/bookmarks-context";
 import Colors from "@/constants/colors";
+import { registerForPushNotifications } from "@/lib/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -184,6 +186,27 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  useEffect(() => {
+    registerForPushNotifications().then((token) => {
+      if (token) console.log("[Push] Token:", token);
+    });
+
+    // Handle notification taps — navigate to the right screen
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data;
+      const screen = data?.screen as string | undefined;
+      if (screen === "challenger") {
+        router.push("/(tabs)/challenger");
+      } else if (screen === "profile") {
+        router.push("/(tabs)/profile");
+      } else if (screen === "search") {
+        router.push("/(tabs)/search");
+      }
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   if (!fontsLoaded && !fontError) return null;
 
