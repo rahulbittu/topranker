@@ -79,6 +79,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       version: "1.0.0",
       uptime: Math.floor(uptime),
       timestamp: new Date().toISOString(),
+      nodeVersion: process.version,
+      memoryUsage: memUsage.heapUsed,
       memory: {
         heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
         heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
