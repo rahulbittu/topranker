@@ -10,6 +10,12 @@ import { getBusinessById, recalculateBusinessScore, recalculateRanks } from "./b
 import { updateMemberStats, recalculateCredibilityScore } from "./members";
 import { updateChallengerVotes } from "./challengers";
 
+// Sprint 177: Fetch a single rating by ID
+export async function getRatingById(id: string): Promise<Rating | undefined> {
+  const [rating] = await db.select().from(ratings).where(eq(ratings.id, id));
+  return rating;
+}
+
 async function detectAnomalies(
   member: Member,
   business: Business,

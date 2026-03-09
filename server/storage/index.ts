@@ -50,7 +50,7 @@ export {
 } from "./businesses";
 
 // Ratings
-export { submitRating } from "./ratings";
+export { submitRating, getRatingById } from "./ratings";
 
 // Challengers
 export { getActiveChallenges, updateChallengerVotes } from "./challengers";
@@ -125,3 +125,12 @@ export {
   reviewFlag,
   getFlagCount,
 } from "./claims";
+
+// Rating Responses (Sprint 177)
+export {
+  submitRatingResponse,
+  getRatingResponse,
+  getBusinessResponses,
+  getResponsesForRatings,
+  deleteRatingResponse,
+} from "./responses";

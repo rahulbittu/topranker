@@ -137,6 +137,34 @@ export const ratings = pgTable(
   ],
 );
 
+// Sprint 177: Owner responses to ratings
+export const ratingResponses = pgTable(
+  "rating_responses",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    ratingId: varchar("rating_id")
+      .notNull()
+      .references(() => ratings.id),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    ownerId: varchar("owner_id")
+      .notNull()
+      .references(() => members.id),
+    responseText: text("response_text").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_resp_rating").on(table.ratingId),
+    index("idx_resp_business").on(table.businessId),
+  ],
+);
+
+export type RatingResponse = typeof ratingResponses.$inferSelect;
+
 export const dishes = pgTable(
   "dishes",
   {
