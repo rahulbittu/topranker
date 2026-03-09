@@ -134,3 +134,10 @@ export {
   getResponsesForRatings,
   deleteRatingResponse,
 } from "./responses";
+
+// QR Scans (Sprint 178)
+export {
+  recordQrScan,
+  getQrScanStats,
+  markQrScanConverted,
+} from "./qr";
