@@ -117,4 +117,68 @@ Sitemap: ${SITE_URL}/sitemap.xml
 
     return res.json({ data: jsonLd });
   }));
+
+  // ── Sprint 179: Challenger social share preview ─────────
+  // Returns Open Graph-compatible data for shared challenge links
+  app.get("/api/seo/challenger/:id", wrapAsync(async (req: Request, res: Response) => {
+    const { getActiveChallenges } = await import("./storage");
+    const { db } = await import("./db");
+    const { challengers, businesses } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const challengeId = req.params.id as string;
+
+    // Fetch the challenge record directly
+    const [challenge] = await db
+      .select()
+      .from(challengers)
+      .where(eq(challengers.id, challengeId));
+
+    if (!challenge) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+
+    const [challengerBiz, defenderBiz] = await Promise.all([
+      db.select().from(businesses).where(eq(businesses.id, challenge.challengerId)).then(r => r[0]),
+      db.select().from(businesses).where(eq(businesses.id, challenge.defenderId)).then(r => r[0]),
+    ]);
+
+    const challengerName = challengerBiz?.name || "Challenger";
+    const defenderName = defenderBiz?.name || "Defender";
+    const isActive = challenge.status === "active";
+    const daysLeft = isActive
+      ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 0;
+
+    const title = `${challengerName} vs ${defenderName} — ${challenge.category}`;
+    const description = isActive
+      ? `${daysLeft} days left to vote! Who has the best ${challenge.category.toLowerCase()} in ${challenge.city}?`
+      : challenge.winnerId
+        ? `Challenge complete! See who won the ${challenge.category.toLowerCase()} showdown in ${challenge.city}.`
+        : `It was a draw! ${challenge.category} challenge in ${challenge.city}.`;
+
+    return res.json({
+      og: {
+        title,
+        description,
+        url: `${SITE_URL}/challenger?id=${challengeId}`,
+        type: "website",
+        siteName: "TopRanker",
+        image: challengerBiz?.photoUrl || defenderBiz?.photoUrl || `${SITE_URL}/og-default.png`,
+      },
+      data: {
+        id: challenge.id,
+        status: challenge.status,
+        category: challenge.category,
+        city: challenge.city,
+        challengerName,
+        defenderName,
+        challengerSlug: challengerBiz?.slug,
+        defenderSlug: defenderBiz?.slug,
+        totalVotes: challenge.totalVotes,
+        daysLeft,
+        winnerId: challenge.winnerId,
+      },
+    });
+  }));
 }

@@ -158,6 +158,39 @@ export async function processStripeEvent(event: StripeEvent): Promise<{ updated:
   if (!updated) {
     whLog.warn(`No payment record found for PI: ${paymentIntentId}`);
   }
+
+  // Sprint 179: Create challenger record when challenger_entry payment succeeds
+  if (event.type === "payment_intent.succeeded") {
+    const metadata = obj.metadata || {};
+    if (metadata.type === "challenger_entry" && metadata.challengerId) {
+      try {
+        const { createChallenge } = await import("./storage");
+        // defenderId must be resolved from the current #1 in the category
+        // For now, the challenger payment metadata includes challengerId;
+        // defenderId is determined by the top-ranked business in the same category+city
+        const { getBusinessById } = await import("./storage");
+        const challengerBiz = await getBusinessById(metadata.challengerId);
+        if (challengerBiz) {
+          const { getLeaderboard } = await import("./storage");
+          const leaderboard = await getLeaderboard(challengerBiz.city, challengerBiz.category);
+          const defender = leaderboard.find(b => b.id !== metadata.challengerId);
+          if (defender) {
+            await createChallenge({
+              challengerId: metadata.challengerId,
+              defenderId: defender.id,
+              category: challengerBiz.category,
+              city: challengerBiz.city,
+              stripePaymentIntentId: paymentIntentId,
+            });
+            whLog.info(`Challenger record created for PI: ${paymentIntentId}`);
+          }
+        }
+      } catch (err: any) {
+        whLog.error(`Failed to create challenger record: ${err.message}`);
+      }
+    }
+  }
+
   return { updated: !!updated };
 }
 

@@ -12,6 +12,20 @@ export async function getMemberById(id: string): Promise<Member | undefined> {
   return member;
 }
 
+// Sprint 179: Get members with push tokens in a city (for challenger notifications)
+export async function getMembersWithPushTokenByCity(
+  city: string,
+  limit: number = 500,
+): Promise<Array<{ id: string; pushToken: string }>> {
+  const { isNotNull } = await import("drizzle-orm");
+  const results = await db
+    .select({ id: members.id, pushToken: members.pushToken })
+    .from(members)
+    .where(and(eq(members.city, city), isNotNull(members.pushToken)))
+    .limit(limit);
+  return results.filter((m): m is { id: string; pushToken: string } => !!m.pushToken);
+}
+
 export async function getMemberByUsername(username: string): Promise<Member | undefined> {
   const [member] = await db.select().from(members).where(eq(members.username, username));
   return member;

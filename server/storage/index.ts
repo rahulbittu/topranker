@@ -53,7 +53,10 @@ export {
 export { submitRating, getRatingById } from "./ratings";
 
 // Challengers
-export { getActiveChallenges, updateChallengerVotes } from "./challengers";
+export { getActiveChallenges, updateChallengerVotes, createChallenge, closeExpiredChallenges } from "./challengers";
+
+// Members (city push tokens — Sprint 179)
+export { getMembersWithPushTokenByCity } from "./members";
 
 // Dishes
 export {
