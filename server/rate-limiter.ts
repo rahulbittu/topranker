@@ -57,23 +57,40 @@ class MemoryStore implements RateLimitStore {
 }
 
 // ---------------------------------------------------------------------------
-// Redis store — uncomment when Redis is available (Sprint 114)
+// Redis store — Sprint 189: Live implementation
 // ---------------------------------------------------------------------------
-// export class RedisStore implements RateLimitStore {
-//   constructor(private redisClient: any) {}
-//   async increment(key: string, windowMs: number) {
-//     // Use INCR + EXPIRE for atomic sliding window
-//     // const count = await this.redisClient.incr(`rl:${key}`);
-//     // if (count === 1) await this.redisClient.pexpire(`rl:${key}`, windowMs);
-//     // return { count, resetAt: Date.now() + windowMs };
-//   }
-// }
+export class RedisStore implements RateLimitStore {
+  constructor(private redisClient: any) {}
+  async increment(key: string, windowMs: number) {
+    const redisKey = `rl:${key}`;
+    const count = await this.redisClient.incr(redisKey);
+    if (count === 1) await this.redisClient.pexpire(redisKey, windowMs);
+    const ttl = await this.redisClient.pttl(redisKey);
+    return { count, resetAt: Date.now() + Math.max(ttl, 0) };
+  }
+}
 
 // ---------------------------------------------------------------------------
-// Shared default store (single instance across all limiters unless overridden)
+// Shared default store — uses Redis if REDIS_URL is set, else in-memory
 // ---------------------------------------------------------------------------
 
-const defaultStore = new MemoryStore();
+function createDefaultStore(): RateLimitStore {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const Redis = require("ioredis");
+      const client = new Redis(redisUrl, { maxRetriesPerRequest: 1, connectTimeout: 3000, lazyConnect: true });
+      client.connect().catch(() => {});
+      rlLog.info("Using Redis rate-limit store");
+      return new RedisStore(client);
+    } catch {
+      rlLog.info("Redis unavailable — falling back to memory rate-limit store");
+    }
+  }
+  return new MemoryStore();
+}
+
+const defaultStore = createDefaultStore();
 
 // ---------------------------------------------------------------------------
 // Options & factory

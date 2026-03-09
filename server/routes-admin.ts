@@ -283,7 +283,11 @@ export function registerAdminRoutes(app: Express) {
 
   // ── Performance Stats ─────────────────────────────────────
   app.get("/api/admin/perf", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
-      const data = getPerfStats();
+      const { getCacheStats } = await import("./redis");
+      const data = {
+        ...getPerfStats(),
+        cache: getCacheStats(),
+      };
       return res.json({ data });
   }));
 

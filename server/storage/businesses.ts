@@ -5,42 +5,51 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { getTemporalMultiplier } from "./helpers";
+import { cacheAside, cacheDelPattern, trackCacheHit, trackCacheMiss, cacheGet, cacheSet } from "../redis";
 
 export async function getLeaderboard(
   city: string,
   category: string,
   limit: number = 50,
 ): Promise<Business[]> {
-  return db
-    .select()
-    .from(businesses)
-    .where(
-      and(
-        eq(businesses.city, city),
-        eq(businesses.category, category),
-        eq(businesses.isActive, true),
-      ),
-    )
-    .orderBy(asc(businesses.rankPosition))
-    .limit(limit);
+  const key = `leaderboard:${city}:${category}:${limit}`;
+  return cacheAside(key, 300, async () => {
+    trackCacheMiss();
+    return db
+      .select()
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.city, city),
+          eq(businesses.category, category),
+          eq(businesses.isActive, true),
+        ),
+      )
+      .orderBy(asc(businesses.rankPosition))
+      .limit(limit);
+  });
 }
 
 export async function getTrendingBusinesses(
   city: string,
   limit: number = 3,
 ): Promise<Business[]> {
-  return db
-    .select()
-    .from(businesses)
-    .where(
-      and(
-        eq(businesses.city, city),
-        eq(businesses.isActive, true),
-        sql`${businesses.rankDelta} > 0`,
-      ),
-    )
-    .orderBy(desc(businesses.rankDelta))
-    .limit(limit);
+  const key = `trending:${city}:${limit}`;
+  return cacheAside(key, 600, async () => {
+    trackCacheMiss();
+    return db
+      .select()
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.city, city),
+          eq(businesses.isActive, true),
+          sql`${businesses.rankDelta} > 0`,
+        ),
+      )
+      .orderBy(desc(businesses.rankDelta))
+      .limit(limit);
+  });
 }
 
 export async function getBusinessBySlug(slug: string): Promise<Business | undefined> {
@@ -113,14 +122,18 @@ export async function searchBusinesses(
 }
 
 export async function getAllCategories(city: string): Promise<string[]> {
-  const rows = await db
-    .select({
-      category: businesses.category,
-    })
-    .from(businesses)
-    .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
-    .groupBy(businesses.category);
-  return rows.map(r => r.category);
+  const key = `categories:${city}`;
+  return cacheAside(key, 7200, async () => {
+    trackCacheMiss();
+    const rows = await db
+      .select({
+        category: businesses.category,
+      })
+      .from(businesses)
+      .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
+      .groupBy(businesses.category);
+    return rows.map(r => r.category);
+  });
 }
 
 /**
@@ -163,17 +176,21 @@ export async function getPopularCategories(
   city: string,
   limit: number = 8,
 ): Promise<{ category: string; count: number }[]> {
-  const rows = await db
-    .select({
-      category: businesses.category,
-      count: count(businesses.id),
-    })
-    .from(businesses)
-    .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
-    .groupBy(businesses.category)
-    .orderBy(desc(count(businesses.id)))
-    .limit(limit);
-  return rows.map(r => ({ category: r.category, count: Number(r.count) }));
+  const key = `popular_categories:${city}:${limit}`;
+  return cacheAside(key, 3600, async () => {
+    trackCacheMiss();
+    const rows = await db
+      .select({
+        category: businesses.category,
+        count: count(businesses.id),
+      })
+      .from(businesses)
+      .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
+      .groupBy(businesses.category)
+      .orderBy(desc(count(businesses.id)))
+      .limit(limit);
+    return rows.map(r => ({ category: r.category, count: Number(r.count) }));
+  });
 }
 
 export async function recalculateBusinessScore(businessId: string): Promise<number> {
@@ -256,6 +273,10 @@ export async function recalculateRanks(
     ) sub
     WHERE b.id = sub.id
   `);
+
+  // Sprint 189: Invalidate cached leaderboard + trending for this city
+  await cacheDelPattern(`leaderboard:${city}:*`);
+  await cacheDelPattern(`trending:${city}:*`);
 }
 
 export async function getBusinessPhotos(businessId: string): Promise<string[]> {
