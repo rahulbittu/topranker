@@ -134,7 +134,7 @@ export default function SettingsScreen() {
   });
 
   useEffect(() => {
-    // Load saved preferences
+    // Load saved preferences from AsyncStorage, then try server sync
     (async () => {
       for (const [key, storageKey] of Object.entries(NOTIFICATION_KEYS)) {
         const val = await AsyncStorage.getItem(storageKey);
@@ -142,12 +142,36 @@ export default function SettingsScreen() {
           setNotifPrefs((prev) => ({ ...prev, [key]: val === "true" }));
         }
       }
+      // Try to fetch from server — overrides local if available
+      try {
+        const res = await fetch("/api/members/me/notification-preferences", { credentials: "include" });
+        if (res.ok) {
+          const { data } = await res.json();
+          if (data) {
+            setNotifPrefs((prev) => ({ ...prev, ...data }));
+            // Update AsyncStorage to stay in sync with server
+            for (const [key, val] of Object.entries(data)) {
+              const storageKey = NOTIFICATION_KEYS[key as keyof typeof NOTIFICATION_KEYS];
+              if (storageKey) await AsyncStorage.setItem(storageKey, String(val));
+            }
+          }
+        }
+      } catch {
+        /* offline — use local prefs */
+      }
     })();
   }, []);
 
   const toggleNotif = (key: keyof typeof notifPrefs) => async (val: boolean) => {
     setNotifPrefs((prev) => ({ ...prev, [key]: val }));
     await AsyncStorage.setItem(NOTIFICATION_KEYS[key], String(val));
+    // Fire-and-forget server sync
+    fetch("/api/members/me/notification-preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ ...notifPrefs, [key]: val }),
+    }).catch(() => {});
   };
 
   const handleCityChange = () => {

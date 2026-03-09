@@ -22,6 +22,7 @@ export {
   getAdminMemberList,
   getMemberCount,
   updatePushToken,
+  updateNotificationPrefs,
 } from "./members";
 
 // Businesses

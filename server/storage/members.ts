@@ -308,6 +308,18 @@ export async function updatePushToken(memberId: string, pushToken: string): Prom
     .where(eq(members.id, memberId));
 }
 
+export async function updateNotificationPrefs(
+  memberId: string,
+  prefs: Record<string, boolean>,
+): Promise<Record<string, boolean>> {
+  const [updated] = await db
+    .update(members)
+    .set({ notificationPrefs: prefs })
+    .where(eq(members.id, memberId))
+    .returning({ notificationPrefs: members.notificationPrefs });
+  return (updated?.notificationPrefs as Record<string, boolean>) ?? prefs;
+}
+
 export async function getMemberImpact(
   memberId: string,
 ): Promise<{

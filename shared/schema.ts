@@ -42,6 +42,7 @@ export const members = pgTable("members", {
   banReason: text("ban_reason"),
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   lastActive: timestamp("last_active"),
+  notificationPrefs: jsonb("notification_prefs"),
 });
 
 export const businesses = pgTable(

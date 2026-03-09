@@ -168,17 +168,17 @@ describe("Push Notification Preference Sync", () => {
 
   it("PUT handler logs user ID and prefs JSON", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
-    expect(content).toContain("JSON.stringify(prefs)");
+    expect(content).toContain("JSON.stringify(saved)");
   });
 
-  it("default prefs include ratingUpdates true", () => {
+  it("default prefs include ratingResponses true", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
-    expect(content).toContain("ratingUpdates: true");
+    expect(content).toContain("ratingResponses: true");
   });
 
-  it("default prefs include challengeResults true", () => {
+  it("default prefs include challengerResults true", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
-    expect(content).toContain("challengeResults: true");
+    expect(content).toContain("challengerResults: true");
   });
 
   it("default prefs include weeklyDigest false", () => {

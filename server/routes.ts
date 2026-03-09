@@ -725,26 +725,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Notification Preferences ─────────────────────────────────
   app.get("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { getMemberById } = await import("./storage");
+    const member = await getMemberById(req.user!.id);
+    const stored = (member?.notificationPrefs as Record<string, boolean>) || {};
     const prefs = {
-      ratingUpdates: true,
-      challengeResults: true,
+      ratingResponses: true,
+      tierUpgrades: true,
+      challengerResults: true,
+      newChallengers: true,
       weeklyDigest: false,
-      ...((req.user as any).notificationPrefs || {}),
+      marketingEmails: false,
+      ...stored,
     };
     return res.json({ data: prefs });
   }));
 
   app.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
-    const prefs = {
-      ratingUpdates: ratingUpdates !== false,
-      challengeResults: challengeResults !== false,
+    const {
+      ratingResponses, tierUpgrades, challengerResults,
+      newChallengers, weeklyDigest, marketingEmails,
+    } = req.body;
+    const prefs: Record<string, boolean> = {
+      ratingResponses: ratingResponses !== false,
+      tierUpgrades: tierUpgrades !== false,
+      challengerResults: challengerResults !== false,
+      newChallengers: newChallengers !== false,
       weeklyDigest: weeklyDigest === true,
+      marketingEmails: marketingEmails === true,
     };
-    // Store as user metadata (future: dedicated column)
-    (req.user as any).notificationPrefs = prefs;
-    log.tag("Notifications").info(`Preferences updated for user ${req.user!.id}: ${JSON.stringify(prefs)}`);
-    return res.json({ data: prefs });
+    const { updateNotificationPrefs } = await import("./storage");
+    const saved = await updateNotificationPrefs(req.user!.id, prefs);
+    log.tag("Notifications").info(`Preferences updated for user ${req.user!.id}: ${JSON.stringify(saved)}`);
+    return res.json({ data: saved });
   }));
 
   // Category Suggestions
