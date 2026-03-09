@@ -34,6 +34,7 @@ import { registerPushRoutes } from "./routes-push";
 import { registerOwnerResponseRoutes } from "./routes-owner-responses";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
 import { registerSearchRoutes } from "./routes-search";
+import { registerReviewHelpfulnessRoutes } from "./routes-review-helpfulness";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -460,6 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerPushRoutes(app);
   registerOwnerResponseRoutes(app);
   registerSearchRoutes(app);
+  registerReviewHelpfulnessRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

@@ -236,6 +236,10 @@ Deletion requests enter a 30-day grace period stored in the `deletion_requests` 
 - **Every 5 sprints**: Full architectural audit
 - **Output**: `docs/audits/ARCH-AUDIT-N.md`
 - **Pipeline**: CRITICAL -> P0 next sprint, HIGH -> P1 within 2 sprints
-- **Last audit**: Arch Audit #12 at Sprint 140 (A-), 0 Critical, 0 High
-- **Grade trajectory**: C+ -> A+ -> B+ -> A+ -> B+ -> A-
+- **Last audit**: Arch Audit #33 at Sprint 255, 10+ consecutive A-range grades
 - **Automated checks**: `scripts/arch-health-check.sh` covers file sizes, type casts, @types, test count, duplications
+
+## Governing Documents
+- **[TopRanker Constitution](./CONSTITUTION.md)** — 82 governing principles for all product, engineering, growth, and culture decisions. Core loop: rate → consequence → ranking.
+- **[Marketing Strategy](./architecture/MARKETING-STRATEGY.md)** — Indian Dallas First go-to-market: WhatsApp-driven community seeding, Phase 1 (Indian Dallas) → Phase 2 (All Dallas), restaurant owner playbook.
+- **[Rating Integrity System](./architecture/RATING-INTEGRITY-SYSTEM.md)** — Deep technical spec: visit type separation, dimensional scoring, credibility weighting (0.10x-1.00x), 6 anti-gaming layers, Bayesian scoring engine, verification boosts.
