@@ -64,7 +64,7 @@ describe("City registry — shared/city-config.ts", () => {
     expect(CITY_REGISTRY["Memphis"]).toBeDefined();
     expect(CITY_REGISTRY["Memphis"].status).toBe("beta"); // Sprint 237: promoted to beta
     expect(CITY_REGISTRY["Nashville"]).toBeDefined();
-    expect(CITY_REGISTRY["Nashville"].status).toBe("planned"); // Sprint 234: Tennessee expansion
+    expect(CITY_REGISTRY["Nashville"].status).toBe("beta"); // Sprint 241: promoted to beta
   });
 
   it("all cities have required fields", () => {
@@ -105,8 +105,9 @@ describe("City helper functions", () => {
     expect(planned).not.toContain("Oklahoma City"); // Sprint 224: OKC promoted to beta
     expect(planned).not.toContain("New Orleans"); // Sprint 229: NOLA promoted to beta
     expect(planned).not.toContain("Memphis"); // Sprint 237: Memphis promoted to beta
+    expect(planned).not.toContain("Nashville"); // Sprint 241: Nashville promoted to beta
     expect(planned).not.toContain("Dallas");
-    expect(planned).toContain("Nashville"); // Sprint 234: Tennessee expansion
+    expect(planned.length).toBe(0); // No planned cities remaining
   });
 
   it("getCityConfig returns config for known city", () => {
@@ -128,8 +129,8 @@ describe("City helper functions", () => {
   it("getCityStats returns correct counts", () => {
     const stats = getCityStats();
     expect(stats.active).toBe(5);
-    expect(stats.beta).toBe(3); // Sprint 224: OKC, Sprint 229: NOLA, Sprint 237: Memphis
-    expect(stats.planned).toBe(1); // Nashville only
+    expect(stats.beta).toBe(4); // Sprint 224: OKC, Sprint 229: NOLA, Sprint 237: Memphis, Sprint 241: Nashville
+    expect(stats.planned).toBe(0); // All planned cities promoted
     expect(stats.total).toBe(9);
   });
 });

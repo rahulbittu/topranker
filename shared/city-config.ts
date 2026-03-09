@@ -119,7 +119,8 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     region: "Middle Tennessee",
     timezone: "America/Chicago",
     coordinates: { lat: 36.1627, lng: -86.7816 },
-    status: "planned",
+    status: "beta",
+    launchDate: "2026-03-09",
     minBusinesses: 40,
   },
 } as const;

@@ -179,10 +179,10 @@ describe("City config — Memphis and Nashville", () => {
     expect(CITY_REGISTRY["Nashville"]).toBeDefined();
   });
 
-  it("Nashville status is planned", () => {
+  it("Nashville status is beta", () => {
     const nashville = getCityConfig("Nashville");
     expect(nashville).toBeDefined();
-    expect(nashville!.status).toBe("planned");
+    expect(nashville!.status).toBe("beta"); // Sprint 241: promoted to beta
   });
 
   it("Nashville state is Tennessee with TN code", () => {
@@ -202,16 +202,17 @@ describe("City config — Memphis and Nashville", () => {
     expect(nashville!.minBusinesses).toBe(40);
   });
 
-  it("getPlannedCities includes Nashville but not Memphis", () => {
+  it("getPlannedCities includes neither Nashville nor Memphis", () => {
     const planned = getPlannedCities();
     expect(planned).not.toContain("Memphis"); // Sprint 237: promoted to beta
-    expect(planned).toContain("Nashville");
+    expect(planned).not.toContain("Nashville"); // Sprint 241: promoted to beta
+    expect(planned.length).toBe(0);
   });
 
-  it("getCityStats shows 1 planned, 3 beta, 9 total", () => {
+  it("getCityStats shows 0 planned, 4 beta, 9 total", () => {
     const stats = getCityStats();
-    expect(stats.planned).toBe(1); // Nashville only
-    expect(stats.beta).toBe(3); // OKC, NOLA, Memphis
+    expect(stats.planned).toBe(0); // All planned cities promoted
+    expect(stats.beta).toBe(4); // OKC, NOLA, Memphis, Nashville
     expect(stats.total).toBe(9);
   });
 });
