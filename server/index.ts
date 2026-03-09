@@ -418,6 +418,10 @@ function setupErrorHandler(app: express.Application) {
   const { startWeeklyDigestScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();
 
+  // Sprint 223: Drip email scheduler — daily at 9am UTC
+  const { startDripScheduler } = await import("./drip-scheduler");
+  const dripSchedulerTimeout = startDripScheduler();
+
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -435,6 +439,7 @@ function setupErrorHandler(app: express.Application) {
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
+    clearTimeout(dripSchedulerTimeout);
 
     server.close(() => {
       logger.info("HTTP server closed");
