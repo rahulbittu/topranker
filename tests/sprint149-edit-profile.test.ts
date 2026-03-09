@@ -117,9 +117,10 @@ describe("Settings edit profile navigation", () => {
 
 describe("Profile notification preferences unified", () => {
   const profileSubPath = path.resolve(__dirname, "..", "components", "profile", "SubComponents.tsx");
+  const notifLinkPath = path.resolve(__dirname, "..", "components", "profile", "NotificationSettingsLink.tsx");
 
   it("should not have inline notification toggles on profile", () => {
-    const source = fs.readFileSync(profileSubPath, "utf-8");
+    const source = fs.readFileSync(notifLinkPath, "utf-8");
     // The old NotificationPreferences had Switch components for each toggle
     // After unification, it should be a link to settings, not inline switches
     const switchCount = (source.match(/notifRatingUpdates|notifChallengeResults|notifWeeklyDigest/g) || []).length;
@@ -132,7 +133,7 @@ describe("Profile notification preferences unified", () => {
   });
 
   it("should link to settings from profile", () => {
-    const source = fs.readFileSync(profileSubPath, "utf-8");
+    const source = fs.readFileSync(notifLinkPath, "utf-8");
     expect(source).toContain("/settings");
   });
 });
