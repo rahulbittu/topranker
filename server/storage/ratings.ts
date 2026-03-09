@@ -29,22 +29,25 @@ async function detectAnomalies(
     );
   if (recentCount.count > 5) flags.push("burst_velocity");
 
-  if (member.totalRatings >= 10) {
-    const memberRatings = await db
-      .select({ rawScore: ratings.rawScore })
+  // Sprint 164: Combined single query for score-pattern anomalies (was 2 unbounded queries)
+  const needsPatternCheck = member.totalRatings >= 5;
+  if (needsPatternCheck) {
+    const [patternStats] = await db
+      .select({
+        total: count(),
+        highCount: sql<number>`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric >= 4.8)`,
+        lowCount: sql<number>`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric <= 1.5)`,
+      })
       .from(ratings)
       .where(eq(ratings.memberId, member.id));
-    const fiveStarCount = memberRatings.filter(r => parseFloat(r.rawScore) >= 4.8).length;
-    if (fiveStarCount / memberRatings.length > 0.90) flags.push("perfect_score_pattern");
-  }
 
-  if (rawScore <= 1.5 && member.totalRatings >= 5) {
-    const memberRatings = await db
-      .select({ rawScore: ratings.rawScore })
-      .from(ratings)
-      .where(eq(ratings.memberId, member.id));
-    const oneStarCount = memberRatings.filter(r => parseFloat(r.rawScore) <= 1.5).length;
-    if (oneStarCount / memberRatings.length > 0.60) flags.push("one_star_bomber");
+    const total = Number(patternStats.total);
+    if (total >= 10 && Number(patternStats.highCount) / total > 0.90) {
+      flags.push("perfect_score_pattern");
+    }
+    if (rawScore <= 1.5 && total >= 5 && Number(patternStats.lowCount) / total > 0.60) {
+      flags.push("one_star_bomber");
+    }
   }
 
   if (member.totalRatings >= 8 && member.distinctBusinesses <= 2) {

@@ -252,19 +252,25 @@ export const businessClaims = pgTable("business_claims", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
-export const businessPhotos = pgTable("business_photos", {
-  id: varchar("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  businessId: varchar("business_id")
-    .notNull()
-    .references(() => businesses.id),
-  photoUrl: text("photo_url").notNull(),
-  isHero: boolean("is_hero").notNull().default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-  uploadedBy: varchar("uploaded_by").references(() => members.id),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const businessPhotos = pgTable(
+  "business_photos",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    photoUrl: text("photo_url").notNull(),
+    isHero: boolean("is_hero").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    uploadedBy: varchar("uploaded_by").references(() => members.id),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_biz_photos_business").on(table.businessId, table.sortOrder),
+  ],
+);
 
 export const qrScans = pgTable(
   "qr_scans",
@@ -335,21 +341,27 @@ export const memberBadges = pgTable(
   ],
 );
 
-export const credibilityPenalties = pgTable("credibility_penalties", {
-  id: varchar("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  memberId: varchar("member_id")
-    .notNull()
-    .references(() => members.id),
-  ratingFlagId: varchar("rating_flag_id").references(() => ratingFlags.id),
-  basePenalty: integer("base_penalty").notNull(),
-  historyMult: numeric("history_mult", { precision: 3, scale: 1 }).notNull(),
-  patternMult: numeric("pattern_mult", { precision: 3, scale: 1 }).notNull(),
-  finalPenalty: integer("final_penalty").notNull(),
-  severity: text("severity").notNull(),
-  appliedAt: timestamp("applied_at").notNull().defaultNow(),
-});
+export const credibilityPenalties = pgTable(
+  "credibility_penalties",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    memberId: varchar("member_id")
+      .notNull()
+      .references(() => members.id),
+    ratingFlagId: varchar("rating_flag_id").references(() => ratingFlags.id),
+    basePenalty: integer("base_penalty").notNull(),
+    historyMult: numeric("history_mult", { precision: 3, scale: 1 }).notNull(),
+    patternMult: numeric("pattern_mult", { precision: 3, scale: 1 }).notNull(),
+    finalPenalty: integer("final_penalty").notNull(),
+    severity: text("severity").notNull(),
+    appliedAt: timestamp("applied_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_penalties_member").on(table.memberId),
+  ],
+);
 
 export const categories = pgTable("categories", {
   id: varchar("id")

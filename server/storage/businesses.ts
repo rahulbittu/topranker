@@ -59,6 +59,14 @@ export async function getBusinessById(id: string): Promise<Business | undefined>
   return business;
 }
 
+export async function getBusinessesByIds(ids: string[]): Promise<Business[]> {
+  if (ids.length === 0) return [];
+  return db
+    .select()
+    .from(businesses)
+    .where(sql`${businesses.id} = ANY(ARRAY[${sql.join(ids.map(id => sql`${id}`), sql`,`)}]::text[])`);
+}
+
 export async function searchBusinesses(
   query: string,
   city: string,

@@ -17,6 +17,7 @@ import {
   getLeaderboard,
   getBusinessBySlug,
   getBusinessById,
+  getBusinessesByIds,
   getBusinessRatings,
   getBusinessDishes,
   searchDishes,
@@ -397,12 +398,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (placements.length === 0) {
       return res.json({ data: [] });
     }
-    // Resolve business details for each placement
-    const featured = await Promise.all(
-      placements.map(async (p) => {
-        const biz = await getBusinessById(p.businessId);
+    // Batch-resolve business details (Sprint 164: N+1 → 2 queries)
+    const bizIds = placements.map((p) => p.businessId);
+    const [bizList, photoMap] = await Promise.all([
+      getBusinessesByIds(bizIds),
+      getBusinessPhotosMap(bizIds),
+    ]);
+    const bizMap = new Map(bizList.map((b) => [b.id, b]));
+
+    const featured = placements
+      .map((p) => {
+        const biz = bizMap.get(p.businessId);
         if (!biz) return null;
-        const photoMap = await getBusinessPhotosMap([biz.id]);
         return {
           id: biz.id,
           name: biz.name,
@@ -414,9 +421,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalRatings: biz.totalRatings || 0,
           expiresAt: p.expiresAt,
         };
-      }),
-    );
-    return res.json({ data: featured.filter(Boolean) });
+      })
+      .filter(Boolean);
+    return res.json({ data: featured });
   }));
 
   app.get("/api/leaderboard/categories", wrapAsync(async (req: Request, res: Response) => {
