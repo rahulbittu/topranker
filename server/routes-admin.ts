@@ -597,6 +597,66 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data: stats });
   }));
 
+  // ── Launch Week Metrics — Sprint 217 ─────────────────────
+  app.get("/api/admin/analytics/launch-metrics", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const days = Math.min(30, Math.max(1, parseInt(req.query.days as string) || 7));
+      const daily = getDailyStats(days);
+      const funnel = getFunnelStats();
+      const beta = getBetaConversionFunnel();
+      const active = getActiveUserStats();
+
+      // Compute retention-style cohort metrics from daily data
+      const totalSignups = funnel.signup_completed || 0;
+      const totalFirstRatings = funnel.first_rating || 0;
+      const totalFifthRatings = funnel.fifth_rating || 0;
+      const totalTierUpgrades = funnel.tier_upgrade || 0;
+
+      const activationRate = totalSignups > 0
+        ? ((totalFirstRatings / totalSignups) * 100).toFixed(1) + "%"
+        : "N/A";
+
+      const deepEngagementRate = totalFirstRatings > 0
+        ? ((totalFifthRatings / totalFirstRatings) * 100).toFixed(1) + "%"
+        : "N/A";
+
+      const tierConversionRate = totalSignups > 0
+        ? ((totalTierUpgrades / totalSignups) * 100).toFixed(1) + "%"
+        : "N/A";
+
+      // Revenue funnel
+      const challengerEntries = funnel.challenger_entered || 0;
+      const dashboardSubs = funnel.dashboard_pro_subscribed || 0;
+      const featuredPurchases = funnel.featured_purchased || 0;
+      const estimatedMRR = (challengerEntries * 99) + (dashboardSubs * 49) + (featuredPurchases * 199);
+
+      return res.json({
+        data: {
+          period: `${days} days`,
+          generatedAt: new Date().toISOString(),
+          userMetrics: {
+            totalSignups,
+            totalFirstRatings,
+            totalFifthRatings,
+            totalTierUpgrades,
+            activationRate,
+            deepEngagementRate,
+            tierConversionRate,
+          },
+          activeUsers: active,
+          revenueMetrics: {
+            challengerEntries,
+            dashboardSubs,
+            featuredPurchases,
+            estimatedMRR: `$${estimatedMRR}`,
+            breakEvenTarget: "$247/mo",
+            breakEvenMet: estimatedMRR >= 247,
+          },
+          betaFunnel: beta,
+          dailyTrend: daily,
+        },
+      });
+  }));
+
   // ── Beta Invite Batch — Sprint 196 + 197 ───────────────────
   app.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { sendBetaInviteEmail } = await import("./email");

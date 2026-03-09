@@ -31,7 +31,11 @@ export type FunnelEvent =
   | "beta_join_page_view"
   | "beta_signup_completed"
   | "beta_first_rating"
-  | "beta_referral_shared";
+  | "beta_referral_shared"
+  // Sprint 217: Launch week metrics
+  | "retention_day1"
+  | "retention_day3"
+  | "retention_day7";
 
 interface FunnelEntry {
   event: FunnelEvent;
