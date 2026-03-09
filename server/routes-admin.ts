@@ -21,7 +21,7 @@ import {
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { getPerfStats } from "./perf-monitor";
-import { getFunnelStats, getRecentEvents } from "./analytics";
+import { getFunnelStats, getRecentEvents, getRateGateStats } from "./analytics";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
 import { getAllFlags } from "../lib/feature-flags";
@@ -223,6 +223,12 @@ export function registerAdminRoutes(app: Express) {
       };
 
       return res.json({ data: dashboard });
+  }));
+
+  // ── Rate Gate Analytics — Sprint 163 ────────────────────
+  app.get("/api/admin/rate-gate-stats", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const stats = getRateGateStats();
+      return res.json({ data: stats });
   }));
 
   // ── Server Metrics — Sprint 123 ─────────────────────────

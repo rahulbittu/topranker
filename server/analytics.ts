@@ -19,7 +19,13 @@ export type FunnelEvent =
   | "dashboard_pro_viewed"
   | "dashboard_pro_subscribed"
   | "featured_viewed"
-  | "featured_purchased";
+  | "featured_purchased"
+  | "rating_submitted"
+  | "rating_rejected_account_age"
+  | "rating_rejected_duplicate"
+  | "rating_rejected_suspended"
+  | "rating_rejected_validation"
+  | "rating_rejected_unknown";
 
 interface FunnelEntry {
   event: FunnelEvent;
@@ -61,6 +67,42 @@ export function getFunnelStats(): Record<FunnelEvent, number> {
 /** Get recent events for debugging */
 export function getRecentEvents(limit = 50): FunnelEntry[] {
   return buffer.slice(-limit);
+}
+
+/** Get rate gate rejection stats — counts by rejection reason */
+export function getRateGateStats(): {
+  totalSubmissions: number;
+  totalRejections: number;
+  rejectionRate: string;
+  byReason: Record<string, number>;
+  recentRejections: FunnelEntry[];
+} {
+  const rejectionEvents = [
+    "rating_rejected_account_age",
+    "rating_rejected_duplicate",
+    "rating_rejected_suspended",
+    "rating_rejected_validation",
+    "rating_rejected_unknown",
+  ] as const;
+
+  const submissions = buffer.filter((e) => e.event === "rating_submitted").length;
+  const rejections = buffer.filter((e) =>
+    (rejectionEvents as readonly string[]).includes(e.event),
+  );
+
+  const byReason: Record<string, number> = {};
+  for (const r of rejections) {
+    byReason[r.event] = (byReason[r.event] || 0) + 1;
+  }
+
+  const total = submissions + rejections.length;
+  return {
+    totalSubmissions: submissions,
+    totalRejections: rejections.length,
+    rejectionRate: total > 0 ? ((rejections.length / total) * 100).toFixed(1) + "%" : "0%",
+    byReason,
+    recentRejections: rejections.slice(-20),
+  };
 }
 
 /** Clear buffer (for testing) */

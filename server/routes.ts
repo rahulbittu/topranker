@@ -604,6 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       broadcast("ranking_updated", { businessId: parsed.data.businessId });
       broadcast("challenger_updated", { businessId: parsed.data.businessId });
       trackEvent("first_rating", memberId);
+      trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
 
       // Sprint 142: Track rating as outcome for any active experiments the user is in
       const userExperiments = getUserExperiments(String(memberId));
@@ -613,15 +614,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       return res.status(201).json({ data: result });
     } catch (err: any) {
+      const memberId = req.user?.id;
+      const businessId = req.body?.businessId;
       if (err.message.includes("3+ days")) {
+        trackEvent("rating_rejected_account_age", memberId, { businessId });
         return res.status(403).json({ error: err.message });
       }
       if (err.message.includes("Already rated")) {
+        trackEvent("rating_rejected_duplicate", memberId, { businessId });
         return res.status(409).json({ error: err.message });
       }
       if (err.message.includes("suspended")) {
+        trackEvent("rating_rejected_suspended", memberId, { businessId });
         return res.status(403).json({ error: err.message });
       }
+      trackEvent("rating_rejected_unknown", memberId, { businessId, error: err.message });
       return res.status(400).json({ error: err.message });
     }
   }));
