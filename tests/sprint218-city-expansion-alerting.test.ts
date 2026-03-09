@@ -56,9 +56,9 @@ describe("City registry — shared/city-config.ts", () => {
     expect(CITY_REGISTRY.Houston.status).toBe("active");
   });
 
-  it("has planned expansion cities", () => {
+  it("has planned and beta expansion cities", () => {
     expect(CITY_REGISTRY["Oklahoma City"]).toBeDefined();
-    expect(CITY_REGISTRY["Oklahoma City"].status).toBe("planned");
+    expect(CITY_REGISTRY["Oklahoma City"].status).toBe("beta");
     expect(CITY_REGISTRY["New Orleans"]).toBeDefined();
     expect(CITY_REGISTRY["New Orleans"].status).toBe("planned");
   });
@@ -98,7 +98,7 @@ describe("City helper functions", () => {
 
   it("getPlannedCities returns only planned cities", () => {
     const planned = getPlannedCities();
-    expect(planned).toContain("Oklahoma City");
+    expect(planned).not.toContain("Oklahoma City"); // Sprint 224: OKC promoted to beta
     expect(planned).toContain("New Orleans");
     expect(planned).not.toContain("Dallas");
   });
@@ -122,7 +122,8 @@ describe("City helper functions", () => {
   it("getCityStats returns correct counts", () => {
     const stats = getCityStats();
     expect(stats.active).toBe(5);
-    expect(stats.planned).toBe(2);
+    expect(stats.beta).toBe(1); // Sprint 224: OKC promoted to beta
+    expect(stats.planned).toBe(1);
     expect(stats.total).toBe(7);
   });
 });

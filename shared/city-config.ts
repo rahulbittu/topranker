@@ -85,7 +85,8 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     region: "Central Oklahoma",
     timezone: "America/Chicago",
     coordinates: { lat: 35.4676, lng: -97.5164 },
-    status: "planned",
+    status: "beta",
+    launchDate: "2026-03-09",
     minBusinesses: 10,
   },
   "New Orleans": {

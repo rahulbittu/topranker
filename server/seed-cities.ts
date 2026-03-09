@@ -2,7 +2,7 @@
  * Multi-City Seed Script
  * Owner: Priya Sharma (Backend Architect) + Cole (City Growth Lead)
  *
- * Seeds Austin, Houston, San Antonio, and Fort Worth with realistic businesses.
+ * Seeds Austin, Houston, San Antonio, Fort Worth, and Oklahoma City with realistic businesses.
  * Run this AFTER the main seed has populated Dallas.
  * Usage: npx tsx server/seed-cities.ts
  */
@@ -75,15 +75,29 @@ const FORT_WORTH_BUSINESSES: SeedBusiness[] = [
   { name: "Swiss Pastry Shop", slug: "swiss-pastry-fort-worth", city: "Fort Worth", neighborhood: "Camp Bowie", category: "bakery", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Fort Worth's oldest bakery. Since 1950.", priceRange: "$", phone: "(817) 732-5661", address: "3936 W Vickery Blvd, Fort Worth, TX", lat: "32.7370", lng: "-97.3698", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
 ];
 
+const OKC_BUSINESSES: SeedBusiness[] = [
+  { name: "Cattlemen's Steakhouse", slug: "cattlemens-steakhouse-okc", city: "Oklahoma City", neighborhood: "Stockyards City", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Oklahoma's most famous steakhouse since 1910", priceRange: "$$$", phone: "(405) 236-0416", address: "1309 S Agnew Ave, Oklahoma City, OK", lat: "35.4558", lng: "-97.5378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+  { name: "Nic's Grill", slug: "nics-grill-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 2, rankDelta: 0, totalRatings: 467, description: "Tiny counter spot. Best burger in OKC, maybe America", priceRange: "$", phone: "(405) 524-0999", address: "1201 N Pennsylvania Ave, Oklahoma City, OK", lat: "35.4780", lng: "-97.5168", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "Waffle Champion", slug: "waffle-champion-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Gourmet waffles meet breakfast innovation", priceRange: "$$", phone: "(405) 601-9956", address: "1212 N Walker Ave, Oklahoma City, OK", lat: "35.4785", lng: "-97.5225", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
+  { name: "Empire Slice House", slug: "empire-slice-house-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "Artisan pizza with local OKC personality", priceRange: "$$", phone: "(405) 525-7423", address: "1734 NW 16th St, Oklahoma City, OK", lat: "35.4821", lng: "-97.5340", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+  { name: "Tamashii Ramen House", slug: "tamashii-ramen-okc", city: "Oklahoma City", neighborhood: "Asian District", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: 0, totalRatings: 278, description: "Authentic Japanese ramen in OKC's vibrant Asian District", priceRange: "$$", phone: "(405) 600-7788", address: "6608 N May Ave, Oklahoma City, OK", lat: "35.5122", lng: "-97.5605", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
+  { name: "The Jones Assembly", slug: "jones-assembly-okc", city: "Oklahoma City", neighborhood: "Film Row", category: "bar", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Restaurant, bar, and live music venue. OKC culture hub", priceRange: "$$$", phone: "(405) 212-2378", address: "901 W Sheridan Ave, Oklahoma City, OK", lat: "35.4660", lng: "-97.5280", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+  { name: "Pie Junkie", slug: "pie-junkie-okc", city: "Oklahoma City", neighborhood: "Classen", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Handmade pies with seasonal Oklahoma flavors", priceRange: "$$", phone: "(405) 605-8767", address: "1711 NW 16th St, Oklahoma City, OK", lat: "35.4819", lng: "-97.5320", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+  { name: "Big Truck Tacos", slug: "big-truck-tacos-okc", city: "Oklahoma City", neighborhood: "NW 23rd", category: "street_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 356, description: "Food truck turned institution. OKC taco legend", priceRange: "$", phone: "(405) 525-8226", address: "530 NW 23rd St, Oklahoma City, OK", lat: "35.4872", lng: "-97.5241", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+  { name: "Hideaway Pizza", slug: "hideaway-pizza-okc", city: "Oklahoma City", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Oklahoma pizza chain since 1957. The OG", priceRange: "$", phone: "(405) 840-2777", address: "6616 N Western Ave, Oklahoma City, OK", lat: "35.5130", lng: "-97.5435", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
+  { name: "The Press", slug: "the-press-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "cafe", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Coffee and community in the heart of Plaza District", priceRange: "$", phone: "(405) 524-0222", address: "1738 NW 16th St, Oklahoma City, OK", lat: "35.4822", lng: "-97.5342", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+];
+
 const ALL_CITY_BUSINESSES = [
   ...AUSTIN_BUSINESSES,
   ...HOUSTON_BUSINESSES,
   ...SAN_ANTONIO_BUSINESSES,
   ...FORT_WORTH_BUSINESSES,
+  ...OKC_BUSINESSES,
 ];
 
 export async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 4 cities...`);
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 5 cities...`);
 
   let seeded = 0;
   for (const biz of ALL_CITY_BUSINESSES) {
@@ -121,7 +135,7 @@ export async function seedCities() {
   }
 
   console.log(`\nSeeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7)");
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10)");
 }
 
 // Run directly if executed as script
