@@ -621,6 +621,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // ── Avatar Upload ──────────────────────────────────────────
+  // Accepts base64 data URL (max 2 MB). In production this would upload to S3/R2
+  // and store the CDN URL instead.
+  app.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { avatarData } = req.body;
+    if (!avatarData || typeof avatarData !== "string") {
+      return res.status(400).json({ error: "avatarData (base64 data URL) is required" });
+    }
+
+    // Validate data URL format
+    if (!avatarData.startsWith("data:image/")) {
+      return res.status(400).json({ error: "avatarData must be a valid image data URL" });
+    }
+
+    // Enforce 2 MB limit (base64 overhead ~33%, so raw ~1.5 MB)
+    const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+    if (avatarData.length > MAX_SIZE) {
+      return res.status(413).json({ error: "Image exceeds 2 MB limit" });
+    }
+
+    const { updateMemberAvatar } = await import("./storage");
+    const updated = await updateMemberAvatar(req.user!.id, avatarData);
+    if (!updated) {
+      return res.status(404).json({ error: "Member not found" });
+    }
+
+    return res.json({ data: { avatarUrl: updated.avatarUrl } });
+  }));
+
   app.get("/api/members/me", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const member = await getMemberById(req.user!.id);
     if (!member) return res.status(404).json({ error: "Member not found" });

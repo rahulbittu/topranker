@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Platform, Alert, ActivityIndicator,
+  TextInput, Platform, Alert, ActivityIndicator, Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -30,6 +30,110 @@ export default function EditProfileScreen() {
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [username, setUsername] = useState(user?.username ?? "");
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    (user as any)?.avatarUrl ?? null,
+  );
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
+
+  /** Read a File into a base64 data URL */
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+  /** Upload a base64 data URL to the avatar endpoint */
+  const uploadAvatar = useCallback(async (dataUrl: string) => {
+    setUploadingAvatar(true);
+    setError("");
+    try {
+      const res = await apiRequest("POST", "/api/members/me/avatar", {
+        avatarData: dataUrl,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to upload avatar");
+      }
+      await refreshUser();
+    } catch (err: any) {
+      setError(err.message || "Avatar upload failed.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }, [refreshUser]);
+
+  /** Handle web file input change */
+  const handleWebFileChange = useCallback(
+    async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        Alert.alert("Invalid file", "Please select an image file.");
+        return;
+      }
+      if (file.size > MAX_AVATAR_BYTES) {
+        Alert.alert("Too large", "Image must be under 2 MB.");
+        return;
+      }
+
+      try {
+        const dataUrl = await fileToDataUrl(file);
+        setAvatarPreview(dataUrl);
+        await uploadAvatar(dataUrl);
+      } catch {
+        setError("Could not read selected image.");
+      }
+    },
+    [uploadAvatar],
+  );
+
+  /** Tap avatar — open picker */
+  const handleAvatarPress = useCallback(async () => {
+    hapticPress();
+
+    if (Platform.OS === "web") {
+      // Trigger the hidden file input
+      fileInputRef.current?.click();
+      return;
+    }
+
+    // Mobile: try expo-image-picker
+    try {
+      const ImagePicker = require("expo-image-picker");
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please grant photo library access to change your avatar.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+      if (!result.canceled && result.assets?.[0]) {
+        const asset = result.assets[0];
+        const dataUrl = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        setAvatarPreview(dataUrl);
+        await uploadAvatar(dataUrl);
+      }
+    } catch {
+      // expo-image-picker not installed — fallback alert
+      Alert.alert("Not available", "Image picker is not available on this device.");
+    }
+  }, [uploadAvatar]);
 
   const hasChanges =
     displayName.trim() !== (user?.displayName ?? "") ||
@@ -55,6 +159,7 @@ export default function EditProfileScreen() {
     }
 
     setSaving(true);
+    setError("");
     try {
       const res = await apiRequest("PUT", "/api/members/me", {
         displayName: trimmedName,
@@ -65,11 +170,10 @@ export default function EditProfileScreen() {
         throw new Error(body.message || "Failed to update profile");
       }
       await refreshUser();
-      Alert.alert("Success", "Your profile has been updated.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      setSaved(true);
+      setTimeout(() => router.back(), 1500);
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Something went wrong. Please try again.");
+      setError(err.message || "Something went wrong. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -98,17 +202,47 @@ export default function EditProfileScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {getInitials(user?.displayName || "U")}
-              </Text>
-            </View>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleAvatarPress}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Change profile photo"
+            disabled={uploadingAvatar}
+          >
+            {avatarPreview ? (
+              <Image
+                source={{ uri: avatarPreview }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {getInitials(user?.displayName || "U")}
+                </Text>
+              </View>
+            )}
             <View style={styles.avatarEditOverlay}>
-              <Ionicons name="camera" size={14} color="#FFF" />
+              {uploadingAvatar ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Ionicons name="camera" size={14} color="#FFF" />
+              )}
             </View>
-          </View>
-          <Text style={styles.avatarHint}>Tap to change photo</Text>
+          </TouchableOpacity>
+          {/* Hidden file input for web */}
+          {Platform.OS === "web" && (
+            <input
+              ref={fileInputRef as any}
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={handleWebFileChange}
+            />
+          )}
+          <Text style={styles.avatarHint}>
+            {uploadingAvatar ? "Uploading..." : "Tap to change photo"}
+          </Text>
         </View>
 
         {/* Form */}
@@ -118,9 +252,14 @@ export default function EditProfileScreen() {
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Display Name</Text>
             <TextInput
-              style={styles.fieldInput}
+              style={[
+                styles.fieldInput,
+                focusedField === "displayName" && styles.fieldInputFocused,
+              ]}
               value={displayName}
               onChangeText={setDisplayName}
+              onFocus={() => setFocusedField("displayName")}
+              onBlur={() => setFocusedField(null)}
               placeholder="Your name"
               placeholderTextColor={Colors.textTertiary}
               autoCapitalize="words"
@@ -135,9 +274,15 @@ export default function EditProfileScreen() {
             <View style={styles.usernameRow}>
               <Text style={styles.atPrefix}>@</Text>
               <TextInput
-                style={[styles.fieldInput, { flex: 1 }]}
+                style={[
+                  styles.fieldInput,
+                  { flex: 1 },
+                  focusedField === "username" && styles.fieldInputFocused,
+                ]}
                 value={username}
                 onChangeText={(text) => setUsername(text.replace(/[^a-zA-Z0-9_]/g, ""))}
+                onFocus={() => setFocusedField("username")}
+                onBlur={() => setFocusedField(null)}
                 placeholder="username"
                 placeholderTextColor={Colors.textTertiary}
                 autoCapitalize="none"
@@ -178,6 +323,22 @@ export default function EditProfileScreen() {
             <Text style={styles.saveBtnText}>Save Changes</Text>
           )}
         </TouchableOpacity>
+
+        {/* Success feedback */}
+        {saved && (
+          <View style={styles.successBanner}>
+            <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
+            <Text style={styles.successText}>Profile updated!</Text>
+          </View>
+        )}
+
+        {/* Error feedback */}
+        {!!error && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color="#dc2626" />
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -213,6 +374,11 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.colors.navy,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
   },
   avatarText: {
     fontSize: 28,
@@ -325,5 +491,48 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFF",
     fontFamily: "DMSans_700Bold",
+  },
+
+  /* Input focus */
+  fieldInputFocused: {
+    borderBottomColor: BRAND.colors.amber,
+    borderBottomWidth: 2,
+  },
+
+  /* Success banner */
+  successBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 10,
+    gap: 8,
+  },
+  successText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#16a34a",
+    fontFamily: "DMSans_600SemiBold",
+  },
+
+  /* Error banner */
+  errorBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "#fef2f2",
+    borderRadius: 10,
+    gap: 6,
+  },
+  errorText: {
+    fontSize: 13,
+    color: "#dc2626",
+    fontFamily: "DMSans_500Medium",
+    flex: 1,
   },
 });

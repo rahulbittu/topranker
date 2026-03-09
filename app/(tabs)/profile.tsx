@@ -1,5 +1,4 @@
 import React, { useState, useCallback } from "react";
-import { track } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, RefreshControl,
@@ -33,7 +32,7 @@ import { SlideUpView } from "@/components/animations/SlideUpView";
 import {
   TierBadge, HistoryRow, BreakdownRow, SavedRow, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
-  TierRewardsSection, NotificationPreferences, LegalLinksSection,
+  TierRewardsSection, NotificationSettingsLink, LegalLinksSection,
 } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
@@ -49,9 +48,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
-  const [notifRatingUpdates, setNotifRatingUpdates] = useState(true);
-  const [notifChallengeResults, setNotifChallengeResults] = useState(true);
-  const [notifWeeklyDigest, setNotifWeeklyDigest] = useState(false);
 
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
@@ -87,26 +83,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const totalScore = profile.credibilityScore;
 
   const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
-
-  const saveNotifPref = useCallback(async (key: string, value: boolean) => {
-    const newPrefs = {
-      ratingUpdates: key === "ratingUpdates" ? value : notifRatingUpdates,
-      challengeResults: key === "challengeResults" ? value : notifChallengeResults,
-      weeklyDigest: key === "weeklyDigest" ? value : notifWeeklyDigest,
-    };
-    if (key === "ratingUpdates") setNotifRatingUpdates(value);
-    if (key === "challengeResults") setNotifChallengeResults(value);
-    if (key === "weeklyDigest") setNotifWeeklyDigest(value);
-    track("notification_settings_change", { setting: key, enabled: value });
-    try {
-      await fetch(getApiUrl() + "/api/members/me/notification-preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(newPrefs),
-      });
-    } catch {}
-  }, [notifRatingUpdates, notifChallengeResults, notifWeeklyDigest]);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -451,12 +427,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
-      <NotificationPreferences
-        notifRatingUpdates={notifRatingUpdates}
-        notifChallengeResults={notifChallengeResults}
-        notifWeeklyDigest={notifWeeklyDigest}
-        saveNotifPref={saveNotifPref}
-      />
+      <NotificationSettingsLink />
 
       <LegalLinksSection />
     </ScrollView>

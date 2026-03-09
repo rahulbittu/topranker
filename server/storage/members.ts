@@ -320,6 +320,11 @@ export async function updatePushToken(memberId: string, pushToken: string): Prom
     .where(eq(members.id, memberId));
 }
 
+export async function updateMemberAvatar(memberId: string, avatarUrl: string) {
+  const [updated] = await db.update(members).set({ avatarUrl }).where(eq(members.id, memberId)).returning();
+  return updated;
+}
+
 export async function updateNotificationPrefs(
   memberId: string,
   prefs: Record<string, boolean>,
