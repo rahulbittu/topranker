@@ -26,6 +26,7 @@ export {
   updateNotificationPrefs,
   updateMemberAvatar,
   updateMemberEmail,
+  getOnboardingProgress,
 } from "./members";
 
 // Businesses

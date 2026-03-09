@@ -418,3 +418,42 @@ export async function getMemberImpact(
     lastRating,
   };
 }
+
+/**
+ * Sprint 185: Onboarding progress — tracks key milestones for new users.
+ * Returns completion status for each step so the client can show a checklist.
+ */
+export async function getOnboardingProgress(memberId: string): Promise<{
+  steps: Array<{ key: string; label: string; completed: boolean; detail?: string }>;
+  completedCount: number;
+  totalSteps: number;
+}> {
+  const member = await getMemberById(memberId);
+  if (!member) throw new Error("Member not found");
+
+  const daysActive = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  // Check if member has bookmarked anything (via ratings to different businesses)
+  const hasAvatar = !!member.avatarUrl;
+  const hasCity = !!member.city && member.city !== "Dallas"; // explicitly chose a city
+  const hasRated = (member.totalRatings || 0) > 0;
+  const hasMultipleRatings = (member.totalRatings || 0) >= 3;
+  const earnedTier = member.credibilityTier !== "community";
+  const canRate = daysActive >= 3;
+
+  const steps = [
+    { key: "create_account", label: "Create your account", completed: true, detail: `Joined ${daysActive} day${daysActive !== 1 ? "s" : ""} ago` },
+    { key: "set_city", label: "Choose your city", completed: hasCity || true, detail: member.city || "Dallas" },
+    { key: "add_avatar", label: "Add a profile photo", completed: hasAvatar },
+    { key: "wait_period", label: "Complete 3-day waiting period", completed: canRate, detail: canRate ? "Unlocked" : `${3 - daysActive} day${3 - daysActive !== 1 ? "s" : ""} remaining` },
+    { key: "first_rating", label: "Submit your first rating", completed: hasRated, detail: hasRated ? `${member.totalRatings} rating${(member.totalRatings || 0) !== 1 ? "s" : ""} submitted` : undefined },
+    { key: "three_ratings", label: "Rate 3 different restaurants", completed: hasMultipleRatings, detail: hasMultipleRatings ? "Credibility building!" : `${member.totalRatings || 0}/3 ratings` },
+    { key: "earn_tier", label: "Earn your first tier upgrade", completed: earnedTier, detail: earnedTier ? `Current: ${member.credibilityTier}` : "Keep rating to level up" },
+  ];
+
+  const completedCount = steps.filter(s => s.completed).length;
+
+  return { steps, completedCount, totalSteps: steps.length };
+}

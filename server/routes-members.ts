@@ -245,4 +245,11 @@ export function registerMemberRoutes(app: Express) {
     log.tag("Notifications").info(`Preferences updated for user ${req.user!.id}: ${JSON.stringify(saved)}`);
     return res.json({ data: saved });
   }));
+
+  // Sprint 185: Onboarding progress checklist
+  app.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { getOnboardingProgress } = await import("./storage");
+    const progress = await getOnboardingProgress(req.user!.id);
+    return res.json({ data: progress });
+  }));
 }

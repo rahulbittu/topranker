@@ -340,6 +340,13 @@ export async function fetchPopularCategories(city: string): Promise<PopularCateg
   );
 }
 
+export type OnboardingStep = { key: string; label: string; completed: boolean; detail?: string };
+export type OnboardingProgress = { steps: OnboardingStep[]; completedCount: number; totalSteps: number };
+
+export async function fetchOnboardingProgress(): Promise<OnboardingProgress> {
+  return apiFetch<OnboardingProgress>("/api/members/me/onboarding");
+}
+
 export async function fetchCategories(city: string = "Dallas"): Promise<string[]> {
   const data = await apiFetch<string[] | { category: string }[]>(`/api/leaderboard/categories?city=${encodeURIComponent(city)}`);
   if (!data || data.length === 0) return [];

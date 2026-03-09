@@ -35,6 +35,7 @@ import {
   TierRewardsSection, NotificationSettingsLink, LegalLinksSection,
 } from "@/components/profile/SubComponents";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
+import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -142,6 +143,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </LinearGradient>
       </FadeInView>
+
+      {/* Sprint 185: Onboarding checklist for new users */}
+      <OnboardingChecklist />
 
       <View style={styles.credibilityCard}>
         <View style={styles.credScoreRow}>
