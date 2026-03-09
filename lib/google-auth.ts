@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
+// AuthSession used only for makeRedirectUri, WebBrowser for the actual OAuth flow
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -129,29 +130,36 @@ const discovery = {
 };
 
 async function signInWithGoogleNative(): Promise<string> {
-  const redirectUri = AuthSession.makeRedirectUri({ preferLocalhost: true });
-
-  const request = new AuthSession.AuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    scopes: ["openid", "profile", "email"],
-    redirectUri,
-    responseType: AuthSession.ResponseType.Token,
-    usePKCE: false,
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "topranker",
+    path: "google-auth",
   });
 
-  const result = await request.promptAsync(discovery);
+  console.log("[Google Auth] Redirect URI:", redirectUri);
 
-  if (result.type === "cancel" || result.type === "dismiss") {
+  const authUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=token` +
+    `&scope=${encodeURIComponent("openid profile email")}`;
+
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+
+  if (result.type !== "success" || !result.url) {
     throw new Error("Google sign-in cancelled");
   }
 
-  if (result.type !== "success" || !result.authentication?.accessToken) {
-    throw new Error("Google sign-in failed");
+  // Extract access_token from the redirect URL fragment
+  const fragment = result.url.split("#")[1] || "";
+  const params = new URLSearchParams(fragment);
+  const accessToken = params.get("access_token");
+
+  if (!accessToken) {
+    throw new Error("No access token received from Google");
   }
 
-  // Exchange access token for user info to get an ID-like token
-  // The server will verify this access token with Google's userinfo endpoint
-  return result.authentication.accessToken;
+  return accessToken;
 }
 
 // ── Public API ───────────────────────────────────────────────────
