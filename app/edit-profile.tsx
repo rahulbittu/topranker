@@ -43,22 +43,18 @@ export default function EditProfileScreen() {
 
   const MAX_AVATAR_BYTES = 2 * 1024 * 1024; // 2 MB
 
-  /** Read a File into a base64 data URL */
-  const fileToDataUrl = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-
-  /** Upload a base64 data URL to the avatar endpoint */
-  const uploadAvatar = useCallback(async (dataUrl: string) => {
+  /** Upload a file (File or Blob) to the avatar endpoint via multipart FormData */
+  const uploadAvatarFile = useCallback(async (file: File | Blob, filename?: string) => {
     setUploadingAvatar(true);
     setError("");
     try {
-      const res = await apiRequest("POST", "/api/members/me/avatar", {
-        avatarData: dataUrl,
+      const formData = new FormData();
+      formData.append("avatar", file, filename || "avatar.jpg");
+      const res = await fetch("/api/members/me/avatar", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+        // Don't set Content-Type — browser sets it with the multipart boundary
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -87,15 +83,11 @@ export default function EditProfileScreen() {
         return;
       }
 
-      try {
-        const dataUrl = await fileToDataUrl(file);
-        setAvatarPreview(dataUrl);
-        await uploadAvatar(dataUrl);
-      } catch {
-        setError("Could not read selected image.");
-      }
+      // Show local preview via object URL
+      setAvatarPreview(URL.createObjectURL(file));
+      await uploadAvatarFile(file, file.name);
     },
-    [uploadAvatar],
+    [uploadAvatarFile],
   );
 
   /** Tap avatar — open picker */
@@ -121,21 +113,20 @@ export default function EditProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true,
       });
       if (!result.canceled && result.assets?.[0]) {
         const asset = result.assets[0];
-        const dataUrl = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
-        setAvatarPreview(dataUrl);
-        await uploadAvatar(dataUrl);
+        setAvatarPreview(asset.uri);
+        // Fetch the local file URI as a blob and upload via FormData
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        await uploadAvatarFile(blob, "avatar.jpg");
       }
     } catch {
       // expo-image-picker not installed — fallback alert
       Alert.alert("Not available", "Image picker is not available on this device.");
     }
-  }, [uploadAvatar]);
+  }, [uploadAvatarFile]);
 
   const emailChanged = email.trim() !== (user?.email ?? "");
   const hasChanges =
@@ -190,7 +181,7 @@ export default function EditProfileScreen() {
           const body = await emailRes.json().catch(() => ({}));
           throw new Error(body.error || "Failed to update email");
         }
-        setEmailConfirmation("A verification email will be sent to your new address");
+        setEmailConfirmation("Email updated successfully");
       }
 
       await refreshUser();
@@ -335,7 +326,7 @@ export default function EditProfileScreen() {
               keyboardType="email-address"
               maxLength={100}
             />
-            <Text style={styles.fieldHint}>Changing your email requires verification</Text>
+            <Text style={styles.fieldHint}>Your email will be updated immediately</Text>
           </View>
         </View>
 

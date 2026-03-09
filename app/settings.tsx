@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
 import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
+import packageJson from "../package.json";
 
 const NOTIFICATION_KEYS = {
   ratingResponses: "notif_rating_responses",
@@ -318,7 +319,7 @@ export default function SettingsScreen() {
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>Version</Text>
             </View>
-            <Text style={styles.versionText}>1.0.0</Text>
+            <Text style={styles.versionText}>{packageJson.version}</Text>
           </View>
         </View>
 

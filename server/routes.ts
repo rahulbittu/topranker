@@ -624,10 +624,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // ── Avatar Upload ──────────────────────────────────────────
-  // Accepts either:
-  //   1. Multipart form data with an "avatar" file field
-  //   2. JSON body with { avatarData: "data:image/...;base64,..." } (backward compatible)
+  // Accepts multipart form data with an "avatar" file field.
   // Files are stored via the file-storage abstraction (local in dev, R2/S3 in prod).
+  // The avatarUrl persisted to DB is always a file path/URL — never a data URL.
   app.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
     const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
@@ -635,68 +634,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let fileBuffer: Buffer;
     let contentType: string;
 
-    // Detect whether this is a multipart upload or a JSON base64 payload
+    // Only accept multipart form data uploads
     const isMultipart = (req.headers["content-type"] || "").includes("multipart/form-data");
 
-    if (isMultipart) {
-      // ── Multipart form data path ──────────────────────────
-      // Express doesn't parse multipart natively. We read the raw file from
-      // req.file if multer (or similar) middleware is mounted, otherwise we
-      // fall back to reading the raw body chunks ourselves.
-      const file = (req as any).file as
-        | { buffer: Buffer; mimetype: string; size: number }
-        | undefined;
-
-      if (!file) {
-        return res.status(400).json({
-          error: "No file found in multipart request. Send an 'avatar' field.",
-        });
-      }
-
-      if (!ALLOWED_TYPES.includes(file.mimetype)) {
-        return res.status(400).json({
-          error: `Unsupported image type: ${file.mimetype}. Allowed: ${ALLOWED_TYPES.join(", ")}`,
-        });
-      }
-
-      if (file.size > MAX_SIZE) {
-        return res.status(413).json({ error: "Image exceeds 2 MB limit" });
-      }
-
-      fileBuffer = file.buffer;
-      contentType = file.mimetype;
-    } else {
-      // ── JSON base64 data-URL path (backward compatible) ───
-      const { avatarData } = req.body;
-      if (!avatarData || typeof avatarData !== "string") {
-        return res.status(400).json({ error: "avatarData (base64 data URL) is required" });
-      }
-
-      if (!avatarData.startsWith("data:image/")) {
-        return res.status(400).json({ error: "avatarData must be a valid image data URL" });
-      }
-
-      // Parse content type from the data URL
-      const mimeMatch = avatarData.match(/^data:(image\/\w+);base64,/);
-      if (!mimeMatch) {
-        return res.status(400).json({ error: "Invalid data URL format" });
-      }
-      contentType = mimeMatch[1];
-
-      if (!ALLOWED_TYPES.includes(contentType)) {
-        return res.status(400).json({
-          error: `Unsupported image type: ${contentType}. Allowed: ${ALLOWED_TYPES.join(", ")}`,
-        });
-      }
-
-      // Decode base64 payload
-      const base64Data = avatarData.slice(mimeMatch[0].length);
-      fileBuffer = Buffer.from(base64Data, "base64");
-
-      if (fileBuffer.length > MAX_SIZE) {
-        return res.status(413).json({ error: "Image exceeds 2 MB limit" });
-      }
+    if (!isMultipart) {
+      return res.status(400).json({
+        error: "Avatar upload requires multipart/form-data with an 'avatar' file field.",
+      });
     }
+
+    // Express doesn't parse multipart natively. We read the raw file from
+    // req.file if multer (or similar) middleware is mounted, otherwise we
+    // fall back to reading the raw body chunks ourselves.
+    const file = (req as any).file as
+      | { buffer: Buffer; mimetype: string; size: number }
+      | undefined;
+
+    if (!file) {
+      return res.status(400).json({
+        error: "No file found in multipart request. Send an 'avatar' field.",
+      });
+    }
+
+    if (!ALLOWED_TYPES.includes(file.mimetype)) {
+      return res.status(400).json({
+        error: `Unsupported image type: ${file.mimetype}. Allowed: ${ALLOWED_TYPES.join(", ")}`,
+      });
+    }
+
+    if (file.size > MAX_SIZE) {
+      return res.status(413).json({ error: "Image exceeds 2 MB limit" });
+    }
+
+    fileBuffer = file.buffer;
+    contentType = file.mimetype;
 
     // Generate a unique key: avatars/<memberId>-<random>.<ext>
     const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
