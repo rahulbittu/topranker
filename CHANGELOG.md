@@ -2,6 +2,41 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 160] - 2026-03-09
+- SLT meeting: backlog prioritization, audit cadence reset, core loop UX review
+- Sync package-lock.json after dependency cleanup (Sprint 156)
+- CHANGELOG backfill for Sprints 155-159
+- 2160 tests across 96 files
+
+## [Sprint 159] - 2026-03-09
+- Friendly rate gating error messages (already-rated, new account, suspended)
+- Error banner auto-dismiss (8s) + tap-to-dismiss
+- 2160 tests across 96 files
+
+## [Sprint 158] - 2026-03-09
+- Activate challenger_updated SSE broadcast on rating submission
+- Google Maps audit confirms fully working (no fix needed)
+- 2152 tests across 95 files
+
+## [Sprint 157] - 2026-03-09
+- Fix SSE query key mismatch — real-time updates were silently broken
+- Add "Your Rating Moved This" impact banner on business detail (10s dismiss)
+- Rating submitted now invalidates challengers via SSE
+- 2147 tests across 94 files
+
+## [Sprint 156] - 2026-03-09
+- 16 regression tests for production safety (mock data guard, IPv4 binding)
+- Wrap 5 unwrapped async handlers with wrapAsync (Stripe webhook P2 risk)
+- Railway healthcheck config added
+- Remove dead deps: @expo-google-fonts/inter, expo-symbols
+- Architectural Audit #13: grade A (up from A-)
+- 2133 tests across 93 files
+
+## [Sprint 155] - 2026-03-09
+- Documentation truthfulness audit: API.md (27→61 endpoints), CHANGELOG (18 sprints backfilled)
+- ARCHITECTURE.md: test count 70→2117, tables 13→20
+- README + CONTRIBUTING: test counts updated
+
 ## [Sprint 154] - 2026-03-09
 ### Fixed
 - **Railway 502** — server bound IPv6 only on Railway; restored `host: "0.0.0.0"` for IPv4 binding
