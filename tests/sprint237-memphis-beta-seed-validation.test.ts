@@ -84,9 +84,9 @@ describe("Memphis beta promotion — runtime", () => {
     expect(betaCities).toContain("New Orleans");
   });
 
-  it("getBetaCities returns exactly 4 cities (Nashville promoted Sprint 241)", () => {
+  it("getBetaCities returns exactly 5 cities (Charlotte promoted Sprint 252)", () => {
     const betaCities = getBetaCities();
-    expect(betaCities.length).toBe(4);
+    expect(betaCities.length).toBe(5);
   });
 
   it("getPlannedCities does not include Memphis", () => {
@@ -94,16 +94,16 @@ describe("Memphis beta promotion — runtime", () => {
     expect(planned).not.toContain("Memphis");
   });
 
-  it("getPlannedCities includes Charlotte and Raleigh (Sprint 248)", () => {
+  it("getPlannedCities includes only Raleigh (Charlotte promoted Sprint 252)", () => {
     const planned = getPlannedCities();
-    expect(planned).toContain("Charlotte");
+    expect(planned).not.toContain("Charlotte");
     expect(planned).toContain("Raleigh");
   });
 
-  it("getCityStats reflects 4 beta, 2 planned", () => {
+  it("getCityStats reflects 5 beta, 1 planned", () => {
     const stats = getCityStats();
-    expect(stats.beta).toBe(4); // OKC, NOLA, Memphis, Nashville
-    expect(stats.planned).toBe(2); // Charlotte, Raleigh
+    expect(stats.beta).toBe(5); // OKC, NOLA, Memphis, Nashville, Charlotte (Sprint 252)
+    expect(stats.planned).toBe(1); // Only Raleigh
     expect(stats.active).toBe(5);
     expect(stats.total).toBe(11);
   });
@@ -292,13 +292,14 @@ describe("Integration — Sprint 237", () => {
     expect(src).toContain("log.tag");
   });
 
-  it("city-config has exactly 4 beta cities (Nashville promoted Sprint 241)", () => {
+  it("city-config has exactly 5 beta cities (Charlotte promoted Sprint 252)", () => {
     const betaCities = getBetaCities();
-    expect(betaCities.length).toBe(4);
+    expect(betaCities.length).toBe(5);
     expect(betaCities).toContain("Oklahoma City");
     expect(betaCities).toContain("New Orleans");
     expect(betaCities).toContain("Memphis");
     expect(betaCities).toContain("Nashville");
+    expect(betaCities).toContain("Charlotte");
   });
 
   it("city-config total is 11", () => {

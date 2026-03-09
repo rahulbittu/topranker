@@ -122,10 +122,10 @@ describe("City config — Charlotte and Raleigh", () => {
     expect(CITY_REGISTRY["Charlotte"]).toBeDefined();
   });
 
-  it("Charlotte status is planned", () => {
+  it("Charlotte status is beta (promoted Sprint 252)", () => {
     const charlotte = getCityConfig("Charlotte");
     expect(charlotte).toBeDefined();
-    expect(charlotte!.status).toBe("planned");
+    expect(charlotte!.status).toBe("beta");
   });
 
   it("Charlotte state is North Carolina with NC code", () => {

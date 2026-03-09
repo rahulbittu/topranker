@@ -131,7 +131,8 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     region: "Piedmont",
     timezone: "America/New_York",
     coordinates: { lat: 35.2271, lng: -80.8431 },
-    status: "planned",
+    status: "beta",
+    launchDate: "2026-03-09",
     minBusinesses: 40,
   },
   Raleigh: {
