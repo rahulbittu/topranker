@@ -46,7 +46,9 @@ export const config = {
   // Email (optional — console fallback if not set)
   resendApiKey: process.env.RESEND_API_KEY || null,
 
-  // Replit (optional — for CORS)
+  // Hosting platform (optional — for CORS)
   replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
   replitDomains: process.env.REPLIT_DOMAINS || null,
+  railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+  corsOrigins: process.env.CORS_ORIGINS || null,
 } as const;

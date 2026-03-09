@@ -25,7 +25,13 @@ function buildAllowedOrigins(): Set<string> {
     });
   }
 
-  // Replit-specific origins
+  // Railway-specific origins
+  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (railwayDomain) {
+    origins.add(`https://${railwayDomain}`);
+  }
+
+  // Replit-specific origins (legacy — remove after migration)
   const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
   if (replitDevDomain) {
     origins.add(`https://${replitDevDomain}`);
