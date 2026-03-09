@@ -83,8 +83,8 @@ describe("Auto-refresh toggle — app/admin/dashboard.tsx", () => {
 // ---------------------------------------------------------------------------
 // 3. Data export endpoint
 // ---------------------------------------------------------------------------
-describe("Analytics export — server/routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("Analytics export — server/routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("registers export endpoint", () => {
     expect(src).toContain("/api/admin/analytics/export");
@@ -115,8 +115,8 @@ describe("Analytics export — server/routes-admin.ts", () => {
 // ---------------------------------------------------------------------------
 // 4. CSV export support
 // ---------------------------------------------------------------------------
-describe("CSV export — server/routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("CSV export — server/routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("supports csv format parameter", () => {
     expect(src).toContain('format === "csv"');

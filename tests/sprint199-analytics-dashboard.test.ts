@@ -142,8 +142,8 @@ describe("Beta conversion funnel — server/analytics.ts", () => {
 // ---------------------------------------------------------------------------
 // 5. Admin analytics endpoints
 // ---------------------------------------------------------------------------
-describe("Admin analytics endpoints — server/routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("Admin analytics endpoints — server/routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("has hourly analytics endpoint", () => {
     expect(src).toContain('"/api/admin/analytics/hourly"');

@@ -183,8 +183,8 @@ describe("Data retention — server/storage/analytics.ts", () => {
 // ---------------------------------------------------------------------------
 // 6. Admin route registration for retention
 // ---------------------------------------------------------------------------
-describe("Retention admin routes — server/routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("Retention admin routes — server/routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("registers POST purge endpoint", () => {
     expect(src).toContain("/api/admin/analytics/purge");

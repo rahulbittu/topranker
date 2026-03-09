@@ -89,7 +89,7 @@ describe("ErrorBoundary Integration with Error Reporting", () => {
 
 // ── 3. Analytics Dashboard Endpoint ─────────────────────────────────
 describe("Admin Analytics Dashboard Endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server/routes-admin.ts");
+  const routesPath = path.resolve(__dirname, "..", "server/routes-admin-analytics.ts");
 
   it("admin routes file exists", () => {
     expect(fs.existsSync(routesPath)).toBe(true);

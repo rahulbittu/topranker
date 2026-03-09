@@ -21,8 +21,8 @@ const fileExists = (relPath: string) =>
 // ---------------------------------------------------------------------------
 // 1. Extended analytics export
 // ---------------------------------------------------------------------------
-describe("Extended export — server/routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("Extended export — server/routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("supports detailed query parameter", () => {
     expect(src).toContain('req.query.detailed === "true"');

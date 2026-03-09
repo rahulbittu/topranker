@@ -21,8 +21,8 @@ const fileExists = (relPath: string) =>
 // ---------------------------------------------------------------------------
 // 1. Launch metrics endpoint
 // ---------------------------------------------------------------------------
-describe("Launch metrics endpoint — routes-admin.ts", () => {
-  const src = readFile("server/routes-admin.ts");
+describe("Launch metrics endpoint — routes-admin-analytics.ts", () => {
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("registers launch-metrics endpoint", () => {
     expect(src).toContain("/api/admin/analytics/launch-metrics");
@@ -120,7 +120,7 @@ describe("Retention event types — analytics.ts", () => {
 // 3. Revenue computation logic
 // ---------------------------------------------------------------------------
 describe("Revenue metrics computation", () => {
-  const src = readFile("server/routes-admin.ts");
+  const src = readFile("server/routes-admin-analytics.ts");
 
   it("calculates MRR from event counts", () => {
     expect(src).toContain("challengerEntries * 99");
