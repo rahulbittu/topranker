@@ -1,6 +1,6 @@
-import { eq, and, sql, count, gte } from "drizzle-orm";
+import { eq, and, sql, count, gte, desc } from "drizzle-orm";
 import {
-  members, ratings, dishes, dishVotes,
+  members, ratings, dishes, dishVotes, ratingFlags,
   type Member, type Business, type Rating, type InsertRating,
 } from "@shared/schema";
 import { db } from "../db";
@@ -260,4 +260,199 @@ export async function submitRating(
     newTier,
     dishCreated,
   };
+}
+
+// ── Sprint 183: Rating Edit ──────────────────────────────────
+/**
+ * Edit a rating's scores and note. Only the rating author can edit.
+ * Recalculates business score and member stats after edit.
+ * Edit window: 24 hours from creation.
+ */
+export async function editRating(
+  ratingId: string,
+  memberId: string,
+  updates: { q1Score?: number; q2Score?: number; q3Score?: number; wouldReturn?: boolean; note?: string },
+): Promise<Rating> {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId !== memberId) throw new Error("Cannot edit another user's rating");
+
+  // 24-hour edit window
+  const hoursSinceCreation = (Date.now() - new Date(existing.createdAt).getTime()) / (1000 * 60 * 60);
+  if (hoursSinceCreation > 24) throw new Error("Edit window has expired (24 hours)");
+
+  const q1 = updates.q1Score ?? existing.q1Score;
+  const q2 = updates.q2Score ?? existing.q2Score;
+  const q3 = updates.q3Score ?? existing.q3Score;
+  const rawScore = ((q1 + q2 + q3) / 3).toFixed(2);
+  const weightedScore = (parseFloat(rawScore) * parseFloat(existing.weight)).toFixed(3);
+
+  const [updated] = await db
+    .update(ratings)
+    .set({
+      q1Score: q1,
+      q2Score: q2,
+      q3Score: q3,
+      wouldReturn: updates.wouldReturn ?? existing.wouldReturn,
+      note: updates.note !== undefined ? updates.note : existing.note,
+      rawScore,
+      weightedScore,
+    })
+    .where(eq(ratings.id, ratingId))
+    .returning();
+
+  // Recalculate business score and member stats
+  await recalculateBusinessScore(existing.businessId);
+  await recalculateRanks(
+    (await getBusinessById(existing.businessId))?.city || "dallas",
+    (await getBusinessById(existing.businessId))?.category || "",
+  );
+  await updateMemberStats(memberId);
+
+  return updated;
+}
+
+// ── Sprint 183: Rating Delete (Soft) ─────────────────────────
+/**
+ * Soft-delete a rating by marking it as flagged with reason "user_deleted".
+ * Only the rating author can delete. Recalculates business score after deletion.
+ */
+export async function deleteRating(
+  ratingId: string,
+  memberId: string,
+): Promise<void> {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId !== memberId) throw new Error("Cannot delete another user's rating");
+
+  await db
+    .update(ratings)
+    .set({
+      isFlagged: true,
+      flagReason: "user_deleted",
+    })
+    .where(eq(ratings.id, ratingId));
+
+  // Recalculate business score excluding the deleted rating
+  await recalculateBusinessScore(existing.businessId);
+  await recalculateRanks(
+    (await getBusinessById(existing.businessId))?.city || "dallas",
+    (await getBusinessById(existing.businessId))?.category || "",
+  );
+  await updateMemberStats(memberId);
+}
+
+// ── Sprint 183: Submit Rating Flag ───────────────────────────
+/**
+ * Submit a flag on a rating. Any authenticated user can flag.
+ * Creates a ratingFlags record for moderation review.
+ */
+export async function submitRatingFlag(
+  ratingId: string,
+  flaggerId: string,
+  data: {
+    q1NoSpecificExperience?: boolean;
+    q2ScoreMismatchNote?: boolean;
+    q3InsiderSuspected?: boolean;
+    q4CoordinatedPattern?: boolean;
+    q5CompetitorBombing?: boolean;
+    explanation?: string;
+  },
+): Promise<any> {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId === flaggerId) throw new Error("Cannot flag your own rating");
+
+  const [flag] = await db
+    .insert(ratingFlags)
+    .values({
+      ratingId,
+      flaggerId,
+      q1NoSpecificExperience: data.q1NoSpecificExperience || false,
+      q2ScoreMismatchNote: data.q2ScoreMismatchNote || false,
+      q3InsiderSuspected: data.q3InsiderSuspected || false,
+      q4CoordinatedPattern: data.q4CoordinatedPattern || false,
+      q5CompetitorBombing: data.q5CompetitorBombing || false,
+      explanation: data.explanation || "",
+    })
+    .returning();
+
+  return flag;
+}
+
+// ── Sprint 183: Get Moderation Queue ─────────────────────────
+/**
+ * Get auto-flagged ratings that need admin review.
+ * Returns ratings where autoFlagged=true and isFlagged=false (not yet actioned).
+ */
+export async function getAutoFlaggedRatings(
+  page: number = 1,
+  perPage: number = 20,
+): Promise<{ ratings: any[]; total: number }> {
+  const offset = (page - 1) * perPage;
+  const { businesses } = await import("@shared/schema");
+
+  const results = await db
+    .select({
+      id: ratings.id,
+      memberId: ratings.memberId,
+      businessId: ratings.businessId,
+      q1Score: ratings.q1Score,
+      q2Score: ratings.q2Score,
+      q3Score: ratings.q3Score,
+      rawScore: ratings.rawScore,
+      note: ratings.note,
+      flagReason: ratings.flagReason,
+      flagProbability: ratings.flagProbability,
+      autoFlagged: ratings.autoFlagged,
+      isFlagged: ratings.isFlagged,
+      createdAt: ratings.createdAt,
+      businessName: businesses.name,
+      businessSlug: businesses.slug,
+    })
+    .from(ratings)
+    .innerJoin(businesses, eq(ratings.businessId, businesses.id))
+    .where(and(eq(ratings.autoFlagged, true), eq(ratings.isFlagged, false)))
+    .orderBy(desc(ratings.createdAt))
+    .limit(perPage)
+    .offset(offset);
+
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(ratings)
+    .where(and(eq(ratings.autoFlagged, true), eq(ratings.isFlagged, false)));
+
+  return { ratings: results, total: totalResult?.count ?? 0 };
+}
+
+/**
+ * Admin action: confirm or dismiss an auto-flagged rating.
+ * Confirm sets isFlagged=true (excluded from calculations).
+ * Dismiss clears autoFlagged (keeps in calculations).
+ */
+export async function reviewAutoFlaggedRating(
+  ratingId: string,
+  action: "confirm" | "dismiss",
+  reviewedBy: string,
+): Promise<void> {
+  if (action === "confirm") {
+    await db
+      .update(ratings)
+      .set({ isFlagged: true })
+      .where(eq(ratings.id, ratingId));
+
+    // Recalculate after excluding the flagged rating
+    const rating = await getRatingById(ratingId);
+    if (rating) {
+      await recalculateBusinessScore(rating.businessId);
+      const biz = await getBusinessById(rating.businessId);
+      if (biz) await recalculateRanks(biz.city, biz.category);
+      await updateMemberStats(rating.memberId);
+    }
+  } else {
+    await db
+      .update(ratings)
+      .set({ autoFlagged: false })
+      .where(eq(ratings.id, ratingId));
+  }
 }

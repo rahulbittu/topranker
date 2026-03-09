@@ -272,6 +272,28 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data: dashboard });
   }));
 
+  // ── Sprint 183: Auto-Flagged Moderation Queue ──────────────
+  app.get("/api/admin/moderation-queue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const { getAutoFlaggedRatings } = await import("./storage/ratings");
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = Math.min(50, Math.max(1, parseInt(req.query.perPage as string) || 20));
+    const result = await getAutoFlaggedRatings(page, perPage);
+    return res.json({
+      data: result.ratings,
+      pagination: { page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage) },
+    });
+  }));
+
+  app.patch("/api/admin/moderation/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const { reviewAutoFlaggedRating } = await import("./storage/ratings");
+    const action = req.body.action;
+    if (action !== "confirm" && action !== "dismiss") {
+      return res.status(400).json({ error: "action must be 'confirm' or 'dismiss'" });
+    }
+    await reviewAutoFlaggedRating(req.params.id, action, req.user!.id);
+    return res.json({ data: { reviewed: true, action } });
+  }));
+
   // ── Rate Gate Analytics — Sprint 163 ────────────────────
   app.get("/api/admin/rate-gate-stats", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const stats = getRateGateStats();

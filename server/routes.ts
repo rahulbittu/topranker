@@ -276,6 +276,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // ── Sprint 183: Rating Edit ──────────────────────────────────
+  app.patch("/api/ratings/:id", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { editRating } = await import("./storage/ratings");
+    const ratingId = req.params.id;
+    const updates = {
+      q1Score: req.body.q1Score ? sanitizeNumber(req.body.q1Score, 1, 5, undefined) : undefined,
+      q2Score: req.body.q2Score ? sanitizeNumber(req.body.q2Score, 1, 5, undefined) : undefined,
+      q3Score: req.body.q3Score ? sanitizeNumber(req.body.q3Score, 1, 5, undefined) : undefined,
+      wouldReturn: req.body.wouldReturn,
+      note: req.body.note !== undefined ? sanitizeString(req.body.note, 160) : undefined,
+    };
+    try {
+      const updated = await editRating(ratingId, req.user!.id, updates);
+      broadcast("rating_updated", { ratingId, businessId: updated.businessId });
+      return res.json({ data: updated });
+    } catch (err: any) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot edit")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("expired")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+
+  // ── Sprint 183: Rating Delete ─────────────────────────────────
+  app.delete("/api/ratings/:id", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { deleteRating } = await import("./storage/ratings");
+    try {
+      await deleteRating(req.params.id, req.user!.id);
+      broadcast("rating_deleted", { ratingId: req.params.id });
+      return res.json({ data: { deleted: true } });
+    } catch (err: any) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot delete")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+
+  // ── Sprint 183: Submit Rating Flag ────────────────────────────
+  app.post("/api/ratings/:id/flag", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { submitRatingFlag } = await import("./storage/ratings");
+    try {
+      const flag = await submitRatingFlag(req.params.id, req.user!.id, {
+        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
+        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
+        q3InsiderSuspected: req.body.q3InsiderSuspected,
+        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
+        q5CompetitorBombing: req.body.q5CompetitorBombing,
+        explanation: sanitizeString(req.body.explanation, 500),
+      });
+      return res.status(201).json({ data: flag });
+    } catch (err: any) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("own rating")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("unique") || err.message.includes("duplicate")) {
+        return res.status(409).json({ error: "You have already flagged this rating" });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+
   // ── Member Routes (extracted to routes-members.ts, Sprint 171) ──
   registerMemberRoutes(app);
 

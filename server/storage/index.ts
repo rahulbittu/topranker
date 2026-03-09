@@ -50,7 +50,10 @@ export {
 } from "./businesses";
 
 // Ratings
-export { submitRating, getRatingById } from "./ratings";
+export {
+  submitRating, getRatingById, editRating, deleteRating,
+  submitRatingFlag, getAutoFlaggedRatings, reviewAutoFlaggedRating,
+} from "./ratings";
 
 // Challengers
 export { getActiveChallenges, updateChallengerVotes, createChallenge, closeExpiredChallenges } from "./challengers";
