@@ -55,6 +55,8 @@ export {
   getBusinessRatings,
   autocompleteBusinesses,
   getPopularCategories,
+  bulkImportBusinesses,
+  getImportStats,
 } from "./businesses";
 
 // Ratings

@@ -412,3 +412,108 @@ export async function getBusinessRatings(
 
   return { ratings: ratingsResult, total: totalResult.count };
 }
+
+/**
+ * Sprint 187: Generate a URL-safe slug from business name and city.
+ */
+function generateSlug(name: string, city: string): string {
+  const base = `${name}-${city}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+  return base;
+}
+
+/**
+ * Sprint 187: Bulk import businesses from Google Places data.
+ * Deduplicates by googlePlaceId. Returns import results.
+ */
+export async function bulkImportBusinesses(
+  places: Array<{
+    placeId: string;
+    name: string;
+    address: string;
+    city: string;
+    category: string;
+    lat: number;
+    lng: number;
+    googleRating: number | null;
+    priceRange: string;
+  }>,
+): Promise<{ imported: number; skipped: number; results: Array<{ name: string; status: string }> }> {
+  let imported = 0;
+  let skipped = 0;
+  const results: Array<{ name: string; status: string }> = [];
+
+  for (const place of places) {
+    // Check for existing business by googlePlaceId
+    const [existing] = await db
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(eq(businesses.googlePlaceId, place.placeId));
+
+    if (existing) {
+      skipped++;
+      results.push({ name: place.name, status: "skipped_duplicate" });
+      continue;
+    }
+
+    // Generate unique slug
+    let slug = generateSlug(place.name, place.city);
+    const [slugExists] = await db.select({ id: businesses.id }).from(businesses).where(eq(businesses.slug, slug));
+    if (slugExists) {
+      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    // Extract neighborhood from address (text between first comma and city)
+    const addressParts = place.address.split(",").map(p => p.trim());
+    const neighborhood = addressParts.length > 1 ? addressParts[1] : null;
+
+    try {
+      await db.insert(businesses).values({
+        name: place.name,
+        slug,
+        category: place.category,
+        city: place.city,
+        neighborhood,
+        address: place.address,
+        lat: place.lat.toString(),
+        lng: place.lng.toString(),
+        googlePlaceId: place.placeId,
+        googleRating: place.googleRating?.toString() || null,
+        priceRange: place.priceRange,
+        weightedScore: "0",
+        rawAvgScore: "0",
+        rankPosition: 0,
+        totalRatings: 0,
+        isActive: true,
+        dataSource: "google_bulk_import",
+      });
+      imported++;
+      results.push({ name: place.name, status: "imported" });
+    } catch (err: any) {
+      skipped++;
+      results.push({ name: place.name, status: `error: ${err.message?.slice(0, 50)}` });
+    }
+  }
+
+  return { imported, skipped, results };
+}
+
+/**
+ * Sprint 187: Get import statistics per city.
+ */
+export async function getImportStats(): Promise<Array<{ city: string; dataSource: string; count: number }>> {
+  const rows = await db
+    .select({
+      city: businesses.city,
+      dataSource: businesses.dataSource,
+      count: count(businesses.id),
+    })
+    .from(businesses)
+    .where(eq(businesses.isActive, true))
+    .groupBy(businesses.city, businesses.dataSource)
+    .orderBy(businesses.city);
+  return rows.map(r => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
+}

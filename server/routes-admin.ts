@@ -19,7 +19,7 @@ import {
   getWebhookEventById,
   markWebhookProcessed,
 } from "./storage";
-import { fetchAndStorePhotos } from "./google-places";
+import { fetchAndStorePhotos, searchNearbyRestaurants, normalizeCategory } from "./google-places";
 import { getPerfStats } from "./perf-monitor";
 import { getFunnelStats, getRecentEvents, getRateGateStats } from "./analytics";
 import { getRequestLogs } from "./request-logger";
@@ -87,6 +87,70 @@ export function registerAdminRoutes(app: Express) {
           results,
         },
       });
+  }));
+
+  // ── Sprint 187: Bulk Restaurant Import ──────────────────
+  app.post("/api/admin/import-restaurants", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const city = sanitizeString(req.body.city, 100);
+    const category = sanitizeString(req.body.category, 50) || "restaurant";
+
+    if (!city) {
+      return res.status(400).json({ error: "City is required" });
+    }
+
+    // Search Google Places for restaurants
+    const places = await searchNearbyRestaurants(city, category, 20);
+
+    if (places.length === 0) {
+      return res.json({ data: { message: "No places found from Google Places", imported: 0, skipped: 0 } });
+    }
+
+    // Normalize categories and prepare for import
+    const importData = places.map(p => ({
+      placeId: p.placeId,
+      name: p.name,
+      address: p.address,
+      city,
+      category: normalizeCategory(p.types),
+      lat: p.lat,
+      lng: p.lng,
+      googleRating: p.rating,
+      priceRange: p.priceLevel || "$$",
+    }));
+
+    const { bulkImportBusinesses } = await import("./storage");
+    const result = await bulkImportBusinesses(importData);
+
+    // Auto-fetch photos for newly imported businesses
+    let photosFetched = 0;
+    for (const r of result.results) {
+      if (r.status === "imported") {
+        const place = importData.find(p => p.name === r.name);
+        if (place) {
+          try {
+            const count = await fetchAndStorePhotos(place.placeId, place.placeId);
+            photosFetched += count;
+          } catch { /* non-fatal */ }
+        }
+      }
+    }
+
+    return res.json({
+      data: {
+        message: `Imported ${result.imported} restaurants, skipped ${result.skipped}`,
+        imported: result.imported,
+        skipped: result.skipped,
+        photosFetched,
+        results: result.results,
+      },
+    });
+  }));
+
+  // Sprint 187: Import statistics
+  app.get("/api/admin/import-stats", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const { getImportStats } = await import("./storage");
+    const stats = await getImportStats();
+    return res.json({ data: stats });
   }));
 
   // ── Claims ───────────────────────────────────────────────
