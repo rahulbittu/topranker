@@ -371,6 +371,28 @@ function setupErrorHandler(app: express.Application) {
     closeExpiredChallenges().catch((err) => logger.error("Challenger closure error:", err));
   }, 60 * 60 * 1000); // Every hour
 
+  // Dish leaderboard recalculation — runs every 6 hours (Sprint 169)
+  const { recalculateDishLeaderboard } = await import("./storage/dishes");
+  const { dishLeaderboards } = await import("@shared/schema");
+  const { db: dishDb } = await import("./db");
+
+  async function recalculateAllDishBoards() {
+    try {
+      const boards = await dishDb.select().from(dishLeaderboards);
+      let totalEntries = 0;
+      for (const board of boards) {
+        const count = await recalculateDishLeaderboard(board.id);
+        totalEntries += count;
+      }
+      logger.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
+    } catch (err) {
+      logger.error("Dish leaderboard recalculation error:", err);
+    }
+  }
+
+  recalculateAllDishBoards();
+  const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1000);
+
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -386,6 +408,7 @@ function setupErrorHandler(app: express.Application) {
   function gracefulShutdown(signal: string) {
     logger.info(`${signal} received. Starting graceful shutdown...`);
     clearInterval(challengerInterval);
+    clearInterval(dishRecalcInterval);
 
     server.close(() => {
       logger.info("HTTP server closed");

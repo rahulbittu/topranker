@@ -142,6 +142,7 @@ export function RatingConfirmation({
   confirmIconStyle: any;
   rankStyle: any;
   tierBarStyle: any;
+  dishContext?: string;
   onDone: () => void;
 }) {
   return (
@@ -178,6 +179,13 @@ export function RatingConfirmation({
           <View style={s.movedUpBanner}>
             <Ionicons name="trending-up" size={14} color={Colors.green} />
             <Text style={s.movedUpText}>Your rating helped this business move up!</Text>
+          </View>
+        )}
+        {dishContext && (
+          <View style={s.dishRankBanner}>
+            <Text style={s.dishRankText}>
+              This also updates the <Text style={{ fontWeight: "700" }}>{dishContext}</Text> ranking
+            </Text>
           </View>
         )}
       </Animated.View>
@@ -362,6 +370,12 @@ const s = StyleSheet.create({
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center", marginTop: 4,
   },
+  dishRankBanner: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(196,154,26,0.08)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+    marginTop: -4,
+  },
+  dishRankText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   doneButton: {
     width: "100%", marginTop: 8, backgroundColor: Colors.text, borderRadius: 14,
     paddingVertical: 16, alignItems: "center", justifyContent: "center",

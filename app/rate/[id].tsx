@@ -330,6 +330,7 @@ export default function RateScreen() {
           confirmIconStyle={confirmIconStyle}
           rankStyle={rankStyle}
           tierBarStyle={tierBarStyle}
+          dishContext={dishContext}
           onDone={() => router.back()}
         />
       </View>
