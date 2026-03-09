@@ -1,4 +1,5 @@
 import { log } from "./logger";
+import { sendEmail as sendEmailReal } from "./email";
 
 const dripLog = log.tag("EmailDrip");
 
@@ -12,9 +13,9 @@ const dripLog = log.tag("EmailDrip");
  * Day 7: "Your first week stats"
  * Day 14: "Join a Challenger — see your impact"
  * Day 30: "Your first month on TopRanker"
+ *
+ * Sprint 222: Wired to real email sender + scheduler
  */
-
-import { sendWelcomeEmail } from "./email";
 
 interface DripEmailParams {
   email: string;
@@ -23,9 +24,35 @@ interface DripEmailParams {
   username: string;
 }
 
+/** Sprint 222: Wire to real email sender */
 async function sendEmail(to: string, subject: string, html: string, text: string) {
-  // Same pluggable pattern as email.ts
-  dripLog.info(`To: ${to} | Subject: ${subject}`);
+  dripLog.info(`Sending drip: ${to} | ${subject}`);
+  await sendEmailReal({ to, subject, html, text });
+}
+
+/** Sprint 222: Drip schedule definition */
+export interface DripStep {
+  day: number;
+  name: string;
+  send: (params: DripEmailParams & Record<string, unknown>) => Promise<void>;
+}
+
+export const DRIP_SEQUENCE: DripStep[] = [
+  { day: 2, name: "top_5_neighborhood", send: sendDay2Email },
+  { day: 3, name: "rating_unlock", send: sendDay3Email },
+  { day: 7, name: "first_week_stats", send: sendDay7Email as DripStep["send"] },
+  { day: 14, name: "challenger_intro", send: sendDay14Email },
+  { day: 30, name: "first_month_recap", send: sendDay30Email as DripStep["send"] },
+];
+
+/** Get the drip step due for a given number of days since signup */
+export function getDripStepForDay(daysSinceSignup: number): DripStep | undefined {
+  return DRIP_SEQUENCE.find((s) => s.day === daysSinceSignup);
+}
+
+/** Get all drip step names */
+export function getDripStepNames(): string[] {
+  return DRIP_SEQUENCE.map((s) => s.name);
 }
 
 const BRAND_HEADER = `
