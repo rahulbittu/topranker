@@ -418,6 +418,127 @@ If you believe this was in error, please contact us at support@topranker.com wit
   });
 }
 
+// Sprint 186: Email Verification
+export async function sendVerificationEmail(params: {
+  email: string;
+  displayName: string;
+  token: string;
+}): Promise<void> {
+  const { email, displayName, token } = params;
+  const firstName = displayName.split(" ")[0];
+  const verifyUrl = `https://topranker.com/verify-email?token=${token}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Verify Your Email</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, please verify your email address to complete your TopRanker account setup.
+          </p>
+          <a href="${verifyUrl}" style="display:block;text-align:center;background:#C49A1A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Verify Email Address
+          </a>
+          <p style="margin:20px 0 0;color:#888;font-size:12px;line-height:1.5;">
+            If you didn't create a TopRanker account, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+Please verify your email address to complete your TopRanker account setup.
+
+Verify here: ${verifyUrl}
+
+If you didn't create a TopRanker account, you can safely ignore this email.
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: "Verify your TopRanker email",
+    html,
+    text,
+  });
+}
+
+// Sprint 186: Password Reset
+export async function sendPasswordResetEmail(params: {
+  email: string;
+  displayName: string;
+  token: string;
+}): Promise<void> {
+  const { email, displayName, token } = params;
+  const firstName = displayName.split(" ")[0];
+  const resetUrl = `https://topranker.com/reset-password?token=${token}`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Reset Your Password</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we received a request to reset your password. Click the button below to choose a new one.
+          </p>
+          <a href="${resetUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Reset Password
+          </a>
+          <p style="margin:20px 0 0;color:#888;font-size:12px;line-height:1.5;">
+            This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+We received a request to reset your TopRanker password.
+
+Reset here: ${resetUrl}
+
+This link expires in 1 hour.
+If you didn't request a password reset, you can safely ignore this email.
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: "Reset your TopRanker password",
+    html,
+    text,
+  });
+}
+
 export async function sendClaimAdminNotification(params: {
   businessName: string;
   claimantName: string;

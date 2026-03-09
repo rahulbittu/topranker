@@ -6,6 +6,7 @@ import {
 import { db } from "../db";
 import { getTierFromScore } from "./helpers";
 import { checkAndRefreshTier } from "../tier-staleness";
+import crypto from "node:crypto";
 
 export async function getMemberById(id: string): Promise<Member | undefined> {
   const [member] = await db.select().from(members).where(eq(members.id, id));
@@ -456,4 +457,110 @@ export async function getOnboardingProgress(memberId: string): Promise<{
   const completedCount = steps.filter(s => s.completed).length;
 
   return { steps, completedCount, totalSteps: steps.length };
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 186: Email Verification
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a verification token and store it on the member record.
+ * Returns the token for inclusion in the verification email.
+ */
+export async function generateEmailVerificationToken(memberId: string): Promise<string> {
+  const token = crypto.randomBytes(32).toString("hex");
+  await db
+    .update(members)
+    .set({ emailVerificationToken: token })
+    .where(eq(members.id, memberId));
+  return token;
+}
+
+/**
+ * Verify a member's email using their token.
+ * Returns true if verification succeeded, false if token invalid.
+ */
+export async function verifyEmailToken(token: string): Promise<{ success: boolean; memberId?: string }> {
+  if (!token || token.length < 32) return { success: false };
+
+  const [member] = await db
+    .select({ id: members.id })
+    .from(members)
+    .where(eq(members.emailVerificationToken, token));
+
+  if (!member) return { success: false };
+
+  await db
+    .update(members)
+    .set({ emailVerified: true, emailVerificationToken: null })
+    .where(eq(members.id, member.id));
+
+  return { success: true, memberId: member.id };
+}
+
+/**
+ * Check if a member's email is verified.
+ */
+export async function isEmailVerified(memberId: string): Promise<boolean> {
+  const [member] = await db
+    .select({ emailVerified: members.emailVerified })
+    .from(members)
+    .where(eq(members.id, memberId));
+  return member?.emailVerified ?? false;
+}
+
+// ---------------------------------------------------------------------------
+// Sprint 186: Password Reset
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a password reset token with 1-hour expiry.
+ * Returns the token for inclusion in the reset email.
+ */
+export async function generatePasswordResetToken(email: string): Promise<{ token: string; memberId: string; displayName: string } | null> {
+  const member = await getMemberByEmail(email);
+  if (!member) return null;
+  if (!member.password) return null; // Google-only accounts can't reset password
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db
+    .update(members)
+    .set({ passwordResetToken: token, passwordResetExpires: expires })
+    .where(eq(members.id, member.id));
+
+  return { token, memberId: member.id, displayName: member.displayName };
+}
+
+/**
+ * Reset a member's password using their reset token.
+ * Validates token and expiry, then hashes and stores new password.
+ */
+export async function resetPasswordWithToken(token: string, newPasswordHash: string): Promise<{ success: boolean; error?: string }> {
+  if (!token || token.length < 32) return { success: false, error: "Invalid token" };
+
+  const [member] = await db
+    .select({ id: members.id, passwordResetExpires: members.passwordResetExpires })
+    .from(members)
+    .where(eq(members.passwordResetToken, token));
+
+  if (!member) return { success: false, error: "Invalid or expired token" };
+
+  if (member.passwordResetExpires && new Date(member.passwordResetExpires) < new Date()) {
+    // Clear expired token
+    await db.update(members).set({ passwordResetToken: null, passwordResetExpires: null }).where(eq(members.id, member.id));
+    return { success: false, error: "Reset token has expired" };
+  }
+
+  await db
+    .update(members)
+    .set({
+      password: newPasswordHash,
+      passwordResetToken: null,
+      passwordResetExpires: null,
+    })
+    .where(eq(members.id, member.id));
+
+  return { success: true };
 }

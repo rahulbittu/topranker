@@ -27,6 +27,11 @@ export {
   updateMemberAvatar,
   updateMemberEmail,
   getOnboardingProgress,
+  generateEmailVerificationToken,
+  verifyEmailToken,
+  isEmailVerified,
+  generatePasswordResetToken,
+  resetPasswordWithToken,
 } from "./members";
 
 // Businesses

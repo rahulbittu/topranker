@@ -17,7 +17,7 @@
 import type { Express, Request, Response } from "express";
 import passport from "passport";
 import { registerMember, authenticateGoogleUser } from "./auth";
-import { sendWelcomeEmail } from "./email";
+import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { log } from "./logger";
 import {
   getMemberById, getMemberRatings, getMemberImpact,
@@ -51,6 +51,15 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const member = await registerMember({ displayName, username, email, password, city });
+
+      // Sprint 186: Send verification email + welcome email
+      const { generateEmailVerificationToken } = await import("./storage");
+      const verificationToken = await generateEmailVerificationToken(member.id);
+      sendVerificationEmail({
+        email: member.email,
+        displayName: member.displayName,
+        token: verificationToken,
+      }).catch((err) => log.error("Verification email failed:", err));
 
       sendWelcomeEmail({
         email: member.email,
@@ -135,6 +144,90 @@ export function registerAuthRoutes(app: Express) {
     }
     return res.json({ data: req.user });
   });
+
+  // ── Sprint 186: Email Verification ─────────────────────────
+  app.post("/api/auth/verify-email", wrapAsync(async (req: Request, res: Response) => {
+    const token = sanitizeString(req.body.token, 100);
+    if (!token) {
+      return res.status(400).json({ error: "Verification token is required" });
+    }
+
+    const { verifyEmailToken } = await import("./storage");
+    const result = await verifyEmailToken(token);
+
+    if (!result.success) {
+      return res.status(400).json({ error: "Invalid or expired verification token" });
+    }
+
+    return res.json({ data: { verified: true } });
+  }));
+
+  app.post("/api/auth/resend-verification", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { isEmailVerified, generateEmailVerificationToken } = await import("./storage");
+
+    const verified = await isEmailVerified(req.user!.id);
+    if (verified) {
+      return res.json({ data: { message: "Email already verified" } });
+    }
+
+    const token = await generateEmailVerificationToken(req.user!.id);
+    sendVerificationEmail({
+      email: req.user!.email,
+      displayName: req.user!.displayName,
+      token,
+    }).catch((err) => log.error("Resend verification failed:", err));
+
+    return res.json({ data: { message: "Verification email sent" } });
+  }));
+
+  // ── Sprint 186: Password Reset ────────────────────────────
+  app.post("/api/auth/forgot-password", authRateLimiter, wrapAsync(async (req: Request, res: Response) => {
+    const email = sanitizeEmail(req.body.email);
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    const { generatePasswordResetToken } = await import("./storage");
+    const result = await generatePasswordResetToken(email);
+
+    // Always return success to prevent email enumeration
+    if (result) {
+      sendPasswordResetEmail({
+        email,
+        displayName: result.displayName,
+        token: result.token,
+      }).catch((err) => log.error("Password reset email failed:", err));
+    }
+
+    return res.json({ data: { message: "If an account exists with that email, a reset link has been sent" } });
+  }));
+
+  app.post("/api/auth/reset-password", authRateLimiter, wrapAsync(async (req: Request, res: Response) => {
+    const token = sanitizeString(req.body.token, 100);
+    const password = req.body.password as string;
+
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token and new password are required" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+    if (!/\d/.test(password)) {
+      return res.status(400).json({ error: "Password must contain at least one number" });
+    }
+
+    const bcrypt = await import("bcrypt");
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const { resetPasswordWithToken } = await import("./storage");
+    const result = await resetPasswordWithToken(token, hashedPassword);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || "Password reset failed" });
+    }
+
+    return res.json({ data: { message: "Password has been reset successfully" } });
+  }));
 
   // ── GDPR / CCPA Data Export (Portability) ───────────────────
   app.get("/api/account/export", wrapAsync(async (req: Request, res: Response) => {
