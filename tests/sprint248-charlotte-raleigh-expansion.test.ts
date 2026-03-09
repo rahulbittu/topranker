@@ -154,10 +154,10 @@ describe("City config — Charlotte and Raleigh", () => {
     expect(CITY_REGISTRY["Raleigh"]).toBeDefined();
   });
 
-  it("Raleigh status is planned", () => {
+  it("Raleigh status is beta (promoted Sprint 256)", () => {
     const raleigh = getCityConfig("Raleigh");
     expect(raleigh).toBeDefined();
-    expect(raleigh!.status).toBe("planned");
+    expect(raleigh!.status).toBe("beta");
   });
 });
 

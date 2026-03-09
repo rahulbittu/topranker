@@ -108,8 +108,8 @@ describe("City helper functions", () => {
     expect(planned).not.toContain("Nashville"); // Sprint 241: Nashville promoted to beta
     expect(planned).not.toContain("Dallas");
     expect(planned).not.toContain("Charlotte"); // Sprint 252: Charlotte promoted to beta
-    expect(planned).toContain("Raleigh"); // Sprint 248: NC expansion
-    expect(planned.length).toBe(1); // Only Raleigh planned
+    expect(planned).not.toContain("Raleigh"); // Sprint 256: Raleigh promoted to beta
+    expect(planned.length).toBe(0); // All cities promoted
   });
 
   it("getCityConfig returns config for known city", () => {
@@ -131,8 +131,8 @@ describe("City helper functions", () => {
   it("getCityStats returns correct counts", () => {
     const stats = getCityStats();
     expect(stats.active).toBe(5);
-    expect(stats.beta).toBe(5); // Sprint 224: OKC, Sprint 229: NOLA, Sprint 237: Memphis, Sprint 241: Nashville, Sprint 252: Charlotte
-    expect(stats.planned).toBe(1); // Only Raleigh planned
+    expect(stats.beta).toBe(6); // Sprint 224: OKC, Sprint 229: NOLA, Sprint 237: Memphis, Sprint 241: Nashville, Sprint 252: Charlotte, Sprint 256: Raleigh
+    expect(stats.planned).toBe(0); // All cities promoted
     expect(stats.total).toBe(11);
   });
 });

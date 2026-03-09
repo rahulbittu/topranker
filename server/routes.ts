@@ -33,6 +33,7 @@ import { registerAdminPhotoRoutes } from "./routes-admin-photos";
 import { registerPushRoutes } from "./routes-push";
 import { registerOwnerResponseRoutes } from "./routes-owner-responses";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
+import { registerSearchRoutes } from "./routes-search";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -458,6 +459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminPhotoRoutes(app);
   registerPushRoutes(app);
   registerOwnerResponseRoutes(app);
+  registerSearchRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

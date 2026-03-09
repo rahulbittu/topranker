@@ -142,7 +142,8 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     region: "Research Triangle",
     timezone: "America/New_York",
     coordinates: { lat: 35.7796, lng: -78.6382 },
-    status: "planned",
+    status: "beta",
+    launchDate: "2026-03-09",
     minBusinesses: 30,
   },
 } as const;

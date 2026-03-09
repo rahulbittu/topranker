@@ -206,13 +206,13 @@ describe("City config — Memphis and Nashville", () => {
     const planned = getPlannedCities();
     expect(planned).not.toContain("Memphis"); // Sprint 237: promoted to beta
     expect(planned).not.toContain("Nashville"); // Sprint 241: promoted to beta
-    expect(planned.length).toBe(1); // Sprint 252: only Raleigh planned (Charlotte promoted to beta)
+    expect(planned.length).toBe(0); // Sprint 256: Raleigh promoted to beta, none planned
   });
 
-  it("getCityStats shows 1 planned, 5 beta, 11 total", () => {
+  it("getCityStats shows 0 planned, 6 beta, 11 total", () => {
     const stats = getCityStats();
-    expect(stats.planned).toBe(1); // Sprint 252: only Raleigh planned
-    expect(stats.beta).toBe(5); // OKC, NOLA, Memphis, Nashville, Charlotte (Sprint 252)
+    expect(stats.planned).toBe(0); // Sprint 256: Raleigh promoted to beta
+    expect(stats.beta).toBe(6); // OKC, NOLA, Memphis, Nashville, Charlotte, Raleigh (Sprint 256)
     expect(stats.total).toBe(11);
   });
 });

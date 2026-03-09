@@ -60,14 +60,14 @@ describe("Charlotte beta promotion — shared/city-config.ts", () => {
   it("getPlannedCities does not include Charlotte", () => {
     const planned = getPlannedCities();
     expect(planned).not.toContain("Charlotte");
-    expect(planned).toContain("Raleigh");
-    expect(planned.length).toBe(1);
+    expect(planned).not.toContain("Raleigh"); // Sprint 256: promoted to beta
+    expect(planned.length).toBe(0);
   });
 
-  it("getCityStats shows 5 beta, 1 planned", () => {
+  it("getCityStats shows 6 beta, 0 planned", () => {
     const stats = getCityStats();
-    expect(stats.beta).toBe(5); // OKC, NOLA, Memphis, Nashville, Charlotte
-    expect(stats.planned).toBe(1); // Only Raleigh
+    expect(stats.beta).toBe(6); // OKC, NOLA, Memphis, Nashville, Charlotte, Raleigh (Sprint 256)
+    expect(stats.planned).toBe(0); // All promoted
     expect(stats.active).toBe(5);
     expect(stats.total).toBe(11);
   });
