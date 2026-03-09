@@ -251,7 +251,7 @@ export default function SignupScreen() {
             <Ionicons name="lock-closed-outline" size={16} color={Colors.textTertiary} />
             <TextInput
               style={styles.input}
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters with a number"
               placeholderTextColor={Colors.textTertiary}
               value={password}
               onChangeText={setPassword}

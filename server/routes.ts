@@ -19,6 +19,7 @@ import { registerNotificationRoutes } from "./routes-notifications";
 import { registerReferralRoutes } from "./routes-referrals";
 import { registerUnsubscribeRoutes } from "./routes-unsubscribe";
 import { registerWebhookRoutes } from "./routes-webhooks";
+import { registerAdminPromotionRoutes } from "./routes-admin-promotion";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -430,6 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminExperimentRoutes(app);
   registerUnsubscribeRoutes(app);
   registerWebhookRoutes(app);
+  registerAdminPromotionRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
