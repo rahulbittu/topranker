@@ -4,7 +4,7 @@ import {
   Platform, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 import Colors from "@/constants/colors";
@@ -18,6 +18,7 @@ export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const { signup, googleLogin } = useAuth();
   const { city } = useCity();
+  const { ref: referralParam } = useLocalSearchParams<{ ref?: string }>();
   const googleAvailable = isGoogleAuthAvailable();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -57,6 +58,7 @@ export default function SignupScreen() {
         email: email.trim().toLowerCase(),
         password,
         city,
+        ...(referralParam ? { referralCode: referralParam } : {}),
       });
       setShowWelcome(true);
     } catch (err: any) {

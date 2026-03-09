@@ -441,4 +441,69 @@ export function registerAdminRoutes(app: Express) {
       const data = await getRevenueByMonth(months);
       return res.json({ data });
   }));
+
+  // ── Beta Invite — Sprint 196 ─────────────────────────────
+  app.post("/api/admin/beta-invite", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { sendBetaInviteEmail } = await import("./email");
+      const { getMemberByEmail } = await import("./storage");
+
+      const email = sanitizeString(req.body.email, 254);
+      const displayName = sanitizeString(req.body.displayName, 100);
+      const referralCode = sanitizeString(req.body.referralCode || "", 50);
+
+      if (!email || !displayName) {
+        return res.status(400).json({ error: "email and displayName are required" });
+      }
+
+      // Prevent duplicate invites to existing members
+      const existing = await getMemberByEmail(email);
+      if (existing) {
+        return res.status(409).json({ error: "User already has an account" });
+      }
+
+      await sendBetaInviteEmail({
+        email,
+        displayName,
+        referralCode: referralCode || "BETA25",
+        invitedBy: req.body.invitedBy ? sanitizeString(req.body.invitedBy, 100) : undefined,
+      });
+
+      return res.json({ data: { sent: true, email } });
+  }));
+
+  // ── Beta Invite Batch — Sprint 196 ───────────────────────
+  app.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { sendBetaInviteEmail } = await import("./email");
+      const { getMemberByEmail } = await import("./storage");
+
+      const invites: Array<{ email: string; displayName: string; referralCode?: string }> = req.body.invites;
+      if (!Array.isArray(invites) || invites.length === 0 || invites.length > 25) {
+        return res.status(400).json({ error: "invites must be an array of 1-25 entries" });
+      }
+
+      const results: Array<{ email: string; status: "sent" | "skipped"; reason?: string }> = [];
+
+      for (const invite of invites) {
+        const email = sanitizeString(invite.email, 254);
+        const displayName = sanitizeString(invite.displayName, 100);
+        if (!email || !displayName) {
+          results.push({ email: email || "unknown", status: "skipped", reason: "missing fields" });
+          continue;
+        }
+        const existing = await getMemberByEmail(email);
+        if (existing) {
+          results.push({ email, status: "skipped", reason: "already registered" });
+          continue;
+        }
+        await sendBetaInviteEmail({
+          email,
+          displayName,
+          referralCode: sanitizeString(invite.referralCode || "", 50) || "BETA25",
+        });
+        results.push({ email, status: "sent" });
+      }
+
+      const sent = results.filter(r => r.status === "sent").length;
+      return res.json({ data: { total: invites.length, sent, skipped: invites.length - sent, results } });
+  }));
 }

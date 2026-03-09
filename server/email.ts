@@ -560,6 +560,92 @@ If you didn't request a password reset, you can safely ignore this email.
   });
 }
 
+// Sprint 196: Beta invite email
+export async function sendBetaInviteEmail(params: {
+  email: string;
+  displayName: string;
+  referralCode: string;
+  invitedBy?: string;
+}): Promise<void> {
+  const { email, displayName, referralCode, invitedBy } = params;
+  const firstName = displayName.split(" ")[0];
+  const joinUrl = `https://topranker.com/join?ref=${encodeURIComponent(referralCode)}`;
+
+  const inviteContext = invitedBy
+    ? `${invitedBy} thinks you'd be a great addition to our trust network.`
+    : `You've been selected as one of our first 25 beta testers.`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:28px 24px;text-align:center;">
+          <p style="margin:0;font-size:12px;letter-spacing:3px;color:#C49A1A;font-weight:700;">BETA INVITATION</p>
+          <h1 style="margin:8px 0 0;font-size:24px;color:#FFFFFF;font-weight:900;">Welcome to TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:28px 24px;">
+          <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">
+            Hi ${firstName},
+          </p>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            ${inviteContext}
+          </p>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            TopRanker is building <strong>trustworthy restaurant rankings</strong> — no fake reviews, no pay-to-play. Your ratings carry real weight based on your credibility as a reviewer.
+          </p>
+          <a href="${joinUrl}" style="display:block;text-align:center;background:#C49A1A;color:#FFFFFF;padding:16px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Join the Beta
+          </a>
+          <p style="margin:20px 0 0;color:#555;font-size:14px;line-height:1.6;">
+            <strong>What to expect:</strong>
+          </p>
+          <ul style="color:#555;font-size:14px;line-height:1.8;padding-left:20px;">
+            <li>Rate restaurants honestly — your opinion shapes the rankings</li>
+            <li>Build your credibility score over time</li>
+            <li>Invite friends who care about honest dining reviews</li>
+          </ul>
+          <p style="margin:16px 0 0;color:#888;font-size:12px;">
+            Your referral code: <strong style="color:#C49A1A;">${referralCode}</strong>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker Beta — Trust-weighted rankings for restaurants</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+${inviteContext}
+
+TopRanker is building trustworthy restaurant rankings — no fake reviews, no pay-to-play. Your ratings carry real weight based on your credibility as a reviewer.
+
+Join the beta: ${joinUrl}
+
+What to expect:
+- Rate restaurants honestly — your opinion shapes the rankings
+- Build your credibility score over time
+- Invite friends who care about honest dining reviews
+
+Your referral code: ${referralCode}
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: "You're invited to TopRanker Beta",
+    html,
+    text,
+  });
+}
+
 export async function sendClaimAdminNotification(params: {
   businessName: string;
   claimantName: string;

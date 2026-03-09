@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
-  signup: (data: { displayName: string; username: string; email: string; password: string; city?: string }) => Promise<void>;
+  signup: (data: { displayName: string; username: string; email: string; password: string; city?: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(json.data);
   };
 
-  const signup = async (data: { displayName: string; username: string; email: string; password: string; city?: string }) => {
+  const signup = async (data: { displayName: string; username: string; email: string; password: string; city?: string; referralCode?: string }) => {
     const res = await apiRequest("POST", "/api/auth/signup", data);
     const json = await res.json();
     setUser(json.data);
