@@ -32,6 +32,7 @@ import { adminRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
 import { requireAuth } from "./middleware";
+import { getCityEngagement, getAllCityEngagement } from "./city-engagement";
 
 function requireAdmin(req: Request, res: Response, next: Function) {
   if (!isAdminEmail(req.user?.email)) {
@@ -306,6 +307,17 @@ export function registerAdminRoutes(app: Express) {
       const { getActiveUserStatsDb } = await import("./storage");
       const stats = await getActiveUserStatsDb();
       return res.json({ data: stats });
+  }));
+
+  // ── City Engagement Metrics ────────────────────────────────
+  app.get("/api/admin/city-engagement", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const city = req.query.city as string;
+    if (city) {
+      const engagement = await getCityEngagement(city);
+      return res.json({ data: engagement });
+    }
+    const all = await getAllCityEngagement();
+    return res.json({ data: all });
   }));
 
   // ── Sprint 191: Error Log ──────────────────────────────────
