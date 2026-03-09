@@ -17,7 +17,15 @@
     "lint:fix": "npx expo lint --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:cities": "tsx server/seed-cities.ts"
+    "seed:cities": "tsx server/seed-cities.ts",
+    "build:dev": "eas build --profile development --platform all",
+    "build:preview": "eas build --profile preview --platform all",
+    "build:ios": "eas build --profile production --platform ios",
+    "build:android": "eas build --profile production --platform android",
+    "build:all": "eas build --profile production --platform all",
+    "submit:ios": "eas submit --platform ios",
+    "submit:android": "eas submit --platform android",
+    "update": "eas update"
   },
   "dependencies": {
     "@expo-google-fonts/dm-sans": "^0.4.2",

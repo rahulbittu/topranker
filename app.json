@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Top Ranker",
+    "name": "TopRanker",
     "slug": "topranker",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,6 +8,12 @@
     "scheme": "topranker",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/topranker"
+    },
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -16,15 +22,35 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.topranker.app",
-      "associatedDomains": ["applinks:topranker.com"]
+      "associatedDomains": ["applinks:topranker.com"],
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "TopRanker uses your location to find restaurants near you.",
+        "NSCameraUsageDescription": "TopRanker uses the camera for your profile photo.",
+        "NSPhotoLibraryUsageDescription": "TopRanker accesses your photo library for your profile photo."
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.topranker.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
-          "data": [{ "scheme": "https", "host": "topranker.com", "pathPrefix": "/business/" }],
+          "data": [
+            { "scheme": "https", "host": "topranker.com", "pathPrefix": "/business/" },
+            { "scheme": "https", "host": "topranker.com", "pathPrefix": "/join" }
+          ],
           "category": ["BROWSABLE", "DEFAULT"]
         }
       ],
@@ -36,21 +62,47 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://topranker.com"
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#C49A1A"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "TopRanker uses your location to find restaurants near you."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TopRanker accesses your photos for your profile picture.",
+          "cameraPermission": "TopRanker uses the camera for your profile photo."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "topranker"
+      }
     }
   }
 }

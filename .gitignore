@@ -39,3 +39,7 @@ yarn-error.*
 .vercel
 
 .env
+
+# EAS Build
+google-services.json
+GoogleService-Info.plist
