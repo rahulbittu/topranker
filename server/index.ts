@@ -344,8 +344,8 @@ function setupErrorHandler(app: express.Application) {
         const durationMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
         res.setHeader("X-Response-Time", `${durationMs}ms`);
       }
-      return originalEnd.apply(res, args);
-    } as any;
+      return (originalEnd as Function).apply(res, args);
+    } as typeof res.end;
     next();
   });
 

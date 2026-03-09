@@ -125,7 +125,7 @@ export const TIER_SEMANTICS = {
  * These are members whose vote weights may be incorrectly applied.
  */
 export async function findStaleTierMembers(): Promise<
-  { id: number; storedTier: string; score: number; expectedTier: string }[]
+  { id: string; storedTier: string; score: number; expectedTier: string }[]
 > {
   const allMembers = await db
     .select({

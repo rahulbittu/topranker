@@ -582,8 +582,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
 
-      // Sanitize rating score to [1, 5] range
-      parsed.data.score = sanitizeNumber(parsed.data.score, 1, 5, 3);
+      // Sanitize rating scores to [1, 5] range
+      parsed.data.q1Score = sanitizeNumber(parsed.data.q1Score, 1, 5, 3);
+      parsed.data.q2Score = sanitizeNumber(parsed.data.q2Score, 1, 5, 3);
+      parsed.data.q3Score = sanitizeNumber(parsed.data.q3Score, 1, 5, 3);
 
       const memberId = req.user!.id;
       const result = await submitRating(memberId, parsed.data);
@@ -599,14 +601,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Broadcast real-time update so other clients refresh rankings
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
-      broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
+      broadcast("ranking_updated", { businessId: parsed.data.businessId });
       broadcast("challenger_updated", { businessId: parsed.data.businessId });
       trackEvent("first_rating", memberId);
 
       // Sprint 142: Track rating as outcome for any active experiments the user is in
       const userExperiments = getUserExperiments(String(memberId));
       for (const expId of userExperiments) {
-        trackOutcome(String(memberId), expId, "rated", parsed.data.score);
+        trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
       }
 
       return res.status(201).json({ data: result });

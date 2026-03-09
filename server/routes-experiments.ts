@@ -120,7 +120,7 @@ export function registerExperimentRoutes(app: Express): void {
    * Public — returns metadata for all active experiments.
    * No user-specific data is exposed.
    */
-  app.get("/api/experiments", apiRateLimiter, wrapAsync((_req: Request, res: Response) => {
+  app.get("/api/experiments", apiRateLimiter, wrapAsync(async (_req: Request, res: Response) => {
       const active = Object.values(experiments)
         .filter((exp) => exp.active)
         .map((exp) => ({
@@ -137,7 +137,7 @@ export function registerExperimentRoutes(app: Express): void {
    * - Authenticated user → bucket by userId
    * - Unauthenticated → returns default variant ("control", isDefault: true)
    */
-  app.get("/api/experiments/assign", apiRateLimiter, wrapAsync((req: Request, res: Response) => {
+  app.get("/api/experiments/assign", apiRateLimiter, wrapAsync(async (req: Request, res: Response) => {
       const experimentId = req.query.experimentId as string;
 
       if (!experimentId) {
@@ -181,7 +181,7 @@ export function registerExperimentRoutes(app: Express): void {
    * Admin-only — returns exposure + outcome stats for an experiment.
    * Sprint 142: Experiment measurement infrastructure.
    */
-  app.get("/api/admin/experiments/metrics", requireAuth, wrapAsync((req: Request, res: Response) => {
+  app.get("/api/admin/experiments/metrics", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       if (!isAdminEmail(req.user?.email)) {
         return res.status(403).json({ error: "Admin access required" });
       }

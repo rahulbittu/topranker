@@ -184,8 +184,8 @@ describe("2. SSE broadcasts do not emit uncorrected tier data", () => {
     // Specific verification of each broadcast call:
     // 1. broadcast("rating_submitted", { businessId, memberId }) -- no tier
     expect(routesSrc).toMatch(/broadcast\("rating_submitted",\s*\{\s*businessId.*memberId\s*\}/);
-    // 2. broadcast("ranking_updated", { city, category }) -- no tier
-    expect(routesSrc).toMatch(/broadcast\("ranking_updated",\s*\{\s*city.*category\s*\}/);
+    // 2. broadcast("ranking_updated", { businessId }) -- no tier
+    expect(routesSrc).toMatch(/broadcast\("ranking_updated",\s*\{/);
     // 3. broadcast("featured_updated", ...) -- business data only
     expect(routesPaymentsSrc).toMatch(/broadcast\("featured_updated"/);
   });

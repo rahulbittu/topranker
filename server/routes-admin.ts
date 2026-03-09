@@ -157,7 +157,7 @@ export function registerAdminRoutes(app: Express) {
   }));
 
   app.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
-      const event = await getWebhookEventById(req.params.id);
+      const event = await getWebhookEventById(req.params.id as string);
       if (!event) return res.status(404).json({ error: "Webhook event not found" });
 
       // Re-process the webhook by importing and calling the handler

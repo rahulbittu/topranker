@@ -149,7 +149,7 @@ export async function recalculateCredibilityScore(memberId: string): Promise<{
   }
 
   // Pioneer rate: single query replaces N+1 loop (Sprint 136 core-loop fix)
-  const [pioneerResult] = await db.execute(sql`
+  const pioneerQueryResult = await db.execute(sql`
     SELECT
       COUNT(*) AS total_ratings,
       COUNT(*) FILTER (WHERE prior_count < 10) AS early_ratings
@@ -165,6 +165,7 @@ export async function recalculateCredibilityScore(memberId: string): Promise<{
         AND r1.is_flagged = false
     ) sub
   `);
+  const pioneerResult = (pioneerQueryResult as any).rows?.[0] ?? (pioneerQueryResult as any)[0] ?? {};
   const totalMemberRatings = Number(pioneerResult?.total_ratings ?? 0);
   const earlyReviewCount = Number(pioneerResult?.early_ratings ?? 0);
 
