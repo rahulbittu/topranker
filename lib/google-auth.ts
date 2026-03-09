@@ -163,10 +163,9 @@ async function signInWithGoogleNative(): Promise<string> {
 
 // Fallback: redirect through our own server for OAuth
 async function signInWithGoogleViaServer(): Promise<string> {
-  const { apiFetch } = await import("./queryClient");
+  const { getApiUrl } = await import("./query-client");
 
-  // Get the API base URL
-  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "";
+  const apiUrl = getApiUrl();
   const authUrl = `${apiUrl}/api/auth/google/mobile-start?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}`;
 
   const result = await WebBrowser.openAuthSessionAsync(
@@ -178,7 +177,6 @@ async function signInWithGoogleViaServer(): Promise<string> {
     throw new Error("Google sign-in cancelled");
   }
 
-  // Extract token from redirect URL
   const url = new URL(result.url);
   const accessToken = url.searchParams.get("token") || url.hash?.split("access_token=")[1]?.split("&")[0];
 

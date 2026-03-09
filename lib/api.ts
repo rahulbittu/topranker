@@ -270,12 +270,14 @@ async function apiFetch<T>(path: string): Promise<T> {
     _servingMockData = false;
     return json.data;
   } catch (err) {
-    // Fallback to mock data when backend is unreachable
-    const mock = getMockData(path);
-    if (mock !== null) {
-      console.warn(`[MockData] Backend unreachable — serving demo data for: ${path}`);
-      _servingMockData = true;
-      return mock as T;
+    // Fallback to mock data ONLY in development — never serve fake data in production
+    if (__DEV__) {
+      const mock = getMockData(path);
+      if (mock !== null) {
+        console.warn(`[MockData] Backend unreachable — serving demo data for: ${path}`);
+        _servingMockData = true;
+        return mock as T;
+      }
     }
     throw err;
   }

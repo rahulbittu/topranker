@@ -369,8 +369,9 @@ function setupErrorHandler(app: express.Application) {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
     port,
+    "0.0.0.0",
     () => {
-      log(`express server serving on port ${port}`);
+      log(`express server serving on port ${port} (0.0.0.0)`);
     },
   );
 
