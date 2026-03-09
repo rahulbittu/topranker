@@ -334,15 +334,18 @@ function setupErrorHandler(app: express.Application) {
   app.use("/api", apiRateLimiter);
   app.use(perfMonitor);
 
-  // X-Response-Time header — measures request duration (Sprint 118)
+  // X-Response-Time header — set before response is sent (Sprint 118)
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = process.hrtime();
-    res.on("finish", () => {
-      if (res.headersSent) return;
-      const [seconds, nanoseconds] = process.hrtime(start);
-      const durationMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
-      res.setHeader("X-Response-Time", `${durationMs}ms`);
-    });
+    const originalEnd = res.end;
+    res.end = function (...args: any[]) {
+      if (!res.headersSent) {
+        const [seconds, nanoseconds] = process.hrtime(start);
+        const durationMs = (seconds * 1000 + nanoseconds / 1e6).toFixed(2);
+        res.setHeader("X-Response-Time", `${durationMs}ms`);
+      }
+      return originalEnd.apply(res, args);
+    } as any;
     next();
   });
 
