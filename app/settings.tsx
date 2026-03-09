@@ -243,7 +243,7 @@ export default function SettingsScreen() {
               icon="person-outline"
               label="Edit Profile"
               sublabel={user.displayName || user.email}
-              onPress={() => router.push("/(tabs)/profile")}
+              onPress={() => router.push("/edit-profile")}
             />
           )}
         </View>

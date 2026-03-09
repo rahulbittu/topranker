@@ -660,6 +660,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   }));
 
+  app.put("/api/members/me", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { displayName, username } = req.body;
+    const updates: { displayName?: string; username?: string } = {};
+
+    if (displayName !== undefined) {
+      if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
+        return res.status(400).json({ error: "displayName must be 1-50 characters" });
+      }
+      updates.displayName = displayName;
+    }
+
+    if (username !== undefined) {
+      if (typeof username !== "string" || !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+        return res.status(400).json({ error: "username must be 3-30 alphanumeric or underscore characters" });
+      }
+      updates.username = username;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const { updateMemberProfile } = await import("./storage");
+    const updated = await updateMemberProfile(req.user!.id, updates);
+    if (!updated) return res.status(404).json({ error: "Member not found" });
+
+    return res.json({ data: updated });
+  }));
+
   app.get("/api/members/:username", wrapAsync(async (req: Request, res: Response) => {
     const { getMemberByUsername } = await import("./storage");
     const member = await getMemberByUsername(req.params.username as string);

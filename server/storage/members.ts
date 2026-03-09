@@ -301,6 +301,18 @@ export async function getSeasonalRatingCounts(memberId: string) {
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
 }
 
+export async function updateMemberProfile(
+  memberId: string,
+  updates: { displayName?: string; username?: string }
+): Promise<any> {
+  const updateData: Record<string, any> = {};
+  if (updates.displayName !== undefined) updateData.displayName = updates.displayName;
+  if (updates.username !== undefined) updateData.username = updates.username;
+  if (Object.keys(updateData).length === 0) return null;
+  const [updated] = await db.update(members).set(updateData).where(eq(members.id, memberId)).returning();
+  return updated;
+}
+
 export async function updatePushToken(memberId: string, pushToken: string): Promise<void> {
   await db
     .update(members)

@@ -6,7 +6,7 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Platform, ActivityIndicator, TextInput, Switch, Alert,
+  Platform, ActivityIndicator, TextInput, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -341,63 +341,22 @@ export function TierRewardsSection({ tier }: { tier: CredibilityTier }) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  NotificationPreferences                                           */
+/*  NotificationSettingsLink                                          */
 /* ------------------------------------------------------------------ */
 
-export function NotificationPreferences({
-  notifRatingUpdates, notifChallengeResults, notifWeeklyDigest,
-  saveNotifPref,
-}: {
-  notifRatingUpdates: boolean;
-  notifChallengeResults: boolean;
-  notifWeeklyDigest: boolean;
-  saveNotifPref: (key: string, value: boolean) => void;
-}) {
+export function NotificationSettingsLink() {
   return (
-    <View style={s.notifCard}>
-      <View style={s.notifHeader}>
-        <Ionicons name="notifications-outline" size={16} color={Colors.text} />
-        <Text style={s.notifHeaderText}>Notifications</Text>
-      </View>
-      <View style={s.notifRow}>
-        <View style={s.notifLabelWrap}>
-          <Text style={s.notifLabel}>Rating updates</Text>
-          <Text style={s.notifDesc}>When someone rates a business you own</Text>
-        </View>
-        <Switch
-          value={notifRatingUpdates}
-          onValueChange={(v) => saveNotifPref("ratingUpdates", v)}
-          trackColor={{ false: Colors.border, true: AMBER }}
-          thumbColor="#fff"
-        />
-      </View>
-      <View style={s.notifSep} />
-      <View style={s.notifRow}>
-        <View style={s.notifLabelWrap}>
-          <Text style={s.notifLabel}>Challenge results</Text>
-          <Text style={s.notifDesc}>Challenger competition updates</Text>
-        </View>
-        <Switch
-          value={notifChallengeResults}
-          onValueChange={(v) => saveNotifPref("challengeResults", v)}
-          trackColor={{ false: Colors.border, true: AMBER }}
-          thumbColor="#fff"
-        />
-      </View>
-      <View style={s.notifSep} />
-      <View style={s.notifRow}>
-        <View style={s.notifLabelWrap}>
-          <Text style={s.notifLabel}>Weekly digest</Text>
-          <Text style={s.notifDesc}>Weekly email with top rankings</Text>
-        </View>
-        <Switch
-          value={notifWeeklyDigest}
-          onValueChange={(v) => saveNotifPref("weeklyDigest", v)}
-          trackColor={{ false: Colors.border, true: AMBER }}
-          thumbColor="#fff"
-        />
-      </View>
-    </View>
+    <TouchableOpacity
+      style={s.notifLinkCard}
+      onPress={() => router.push("/settings")}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Manage notification preferences"
+    >
+      <Ionicons name="notifications-outline" size={14} color={AMBER} />
+      <Text style={s.notifLinkText}>Notification Preferences</Text>
+      <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+    </TouchableOpacity>
   );
 }
 
@@ -834,22 +793,16 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingTop: 10, paddingBottom: 4,
   },
 
-  // Notification Preferences
-  notifCard: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.border,
-    padding: 16, marginTop: 16, gap: 0,
+  // Notification Settings Link
+  notifLinkCard: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 14, marginHorizontal: 20, marginBottom: 12,
   },
-  notifHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
-  notifHeaderText: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  notifRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingVertical: 6,
+  notifLinkText: {
+    flex: 1, fontSize: 14, fontWeight: "600", color: AMBER,
+    fontFamily: "DMSans_600SemiBold",
   },
-  notifLabelWrap: { flex: 1, marginRight: 12 },
-  notifLabel: { fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
-  notifDesc: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 2 },
-  notifSep: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
 
   // Legal Links
   legalLinks: {

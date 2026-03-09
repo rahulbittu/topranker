@@ -299,6 +299,7 @@ function RootLayoutNav() {
       <Stack.Screen name="saved" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
       <Stack.Screen name="referral" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
       <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade", animationDuration: 300 }} />
       <Stack.Screen name="auth/login" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
       <Stack.Screen name="auth/signup" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />

@@ -21,6 +21,7 @@ export {
   getSeasonalRatingCounts,
   getAdminMemberList,
   getMemberCount,
+  updateMemberProfile,
   updatePushToken,
   updateNotificationPrefs,
 } from "./members";
