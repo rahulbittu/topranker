@@ -23,6 +23,7 @@ import { registerAdminPromotionRoutes } from "./routes-admin-promotion";
 import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit";
 import { registerAdminClaimVerificationRoutes } from "./routes-admin-claims-verification";
 import { registerAdminReputationRoutes } from "./routes-admin-reputation";
+import { registerAdminModerationRoutes } from "./routes-admin-moderation";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -438,6 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRateLimitRoutes(app);
   registerAdminClaimVerificationRoutes(app);
   registerAdminReputationRoutes(app);
+  registerAdminModerationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
