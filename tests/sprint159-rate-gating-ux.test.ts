@@ -12,24 +12,28 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Rate gating error messages", () => {
+  const hookSrc = fs.readFileSync(
+    path.resolve(__dirname, "../lib/hooks/useRatingSubmit.ts"),
+    "utf-8"
+  );
   const rateSrc = fs.readFileSync(
     path.resolve(__dirname, "../app/rate/[id].tsx"),
     "utf-8"
   );
 
   it("shows friendly message for already-rated-today", () => {
-    expect(rateSrc).toContain("You've already rated this place today");
-    expect(rateSrc).toContain("Come back tomorrow");
+    expect(hookSrc).toContain("You've already rated this place today");
+    expect(hookSrc).toContain("Come back tomorrow");
   });
 
   it("shows friendly message for account-too-new", () => {
-    expect(rateSrc).toContain("needs a few more days");
-    expect(rateSrc).toContain("prevent fake reviews");
+    expect(hookSrc).toContain("needs a few more days");
+    expect(hookSrc).toContain("prevent fake reviews");
   });
 
   it("shows friendly message for suspended accounts", () => {
-    expect(rateSrc).toContain("suspended");
-    expect(rateSrc).toContain("contact support");
+    expect(hookSrc).toContain("suspended");
+    expect(hookSrc).toContain("contact support");
   });
 
   it("has auto-dismiss timer for error banner", () => {

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Platform, ActivityIndicator, useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -9,9 +9,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withSequence, withDelay, Easing, FadeIn, FadeInDown, FadeInUp,
+  withDelay, Easing, FadeIn,
 } from "react-native-reanimated";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { pct } from "@/lib/style-helpers";
 import {
@@ -22,19 +22,14 @@ import {
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
-import { apiRequest } from "@/lib/query-client";
 import { Confetti } from "@/components/Confetti";
-import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
-import { setRatingImpact } from "@/lib/rating-impact";
-import * as ImagePicker from "expo-image-picker";
-import { Image } from "expo-image";
 import {
-  CircleScorePicker, CircleScoreLabels, ProgressBar, StepIndicator,
-  DishPill, RatingConfirmation,
+  CircleScorePicker, ProgressBar, StepIndicator, RatingConfirmation,
 } from "@/components/rate/SubComponents";
+import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
-import { getBadgeById, type Badge } from "@/lib/badges";
-import { awardBadgeApi } from "@/lib/api";
+import type { Badge } from "@/lib/badges";
+import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
 
 type RatingStep = 1 | 2;
 
@@ -44,7 +39,6 @@ export default function RateScreen() {
   const circleSize = Math.min(56, (screenWidth - 80) / 5 - 8);
   const { id: slug, dish: dishContext } = useLocalSearchParams<{ id: string; dish?: string }>();
   const { user } = useAuth();
-  const qc = useQueryClient();
 
   const { data: bizData, isLoading } = useQuery({
     queryKey: ["business", slug],
@@ -68,7 +62,6 @@ export default function RateScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
 
-  // Auto-dismiss error banner after 8 seconds
   useEffect(() => {
     if (submitError) {
       const timer = setTimeout(() => setSubmitError(""), 8000);
@@ -104,12 +97,10 @@ export default function RateScreen() {
     transform: [{ scale: confirmScale.value }],
     opacity: confirmScale.value,
   }));
-
   const rankStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: rankSlide.value }],
     opacity: rankSlide.value === 30 ? 0 : 1,
   }));
-
   const tierBarStyle = useAnimatedStyle(() => ({
     width: pct(tierProgress.value),
   }));
@@ -118,7 +109,6 @@ export default function RateScreen() {
     if (showConfirm) {
       confirmScale.value = withSpring(1, { damping: 12, stiffness: 120 });
       rankSlide.value = withDelay(300, withSpring(0, { damping: 14 }));
-
       const userScore = user?.credibilityScore || 10;
       const currentTier = getCredibilityTier(userScore);
       const range = TIER_SCORE_RANGES[currentTier];
@@ -152,98 +142,17 @@ export default function RateScreen() {
     }
   };
 
-  const submitMutation = useMutation({
-    mutationFn: async () => {
-      if (!business) throw new Error("Business not found");
-      const dishName = selectedDish || (dishInput.trim() || undefined);
-      const res = await apiRequest("POST", "/api/ratings", {
-        businessId: business.id,
-        q1Score,
-        q2Score,
-        q3Score,
-        wouldReturn,
-        dishName: dishName || undefined,
-        note: note.trim() || undefined,
-      });
-      return res.json();
-    },
-    // Optimistic update — instant UI feedback before server confirms
-    onMutate: async () => {
-      await qc.cancelQueries({ queryKey: ["business", slug] });
-      const prev = qc.getQueryData(["business", slug]);
-      if (prev && typeof prev === "object" && "totalRatings" in (prev as any)) {
-        qc.setQueryData(["business", slug], (old: any) => ({
-          ...old,
-          totalRatings: (old?.totalRatings ?? 0) + 1,
-        }));
-      }
-      return { prev };
-    },
-    onError: (err: Error, _vars: void, context: { prev?: unknown } | undefined) => {
-      // Rollback optimistic update
-      if (context?.prev) {
-        qc.setQueryData(["business", slug], context.prev);
-      }
-      const msg = err.message || "";
-      if (msg.includes("Failed to fetch") || msg.includes("Network")) {
-        setSubmitError("No internet connection. Please check your network and try again.");
-      } else if (msg.includes("401")) {
-        setSubmitError("Your session has expired. Please sign in again.");
-      } else if (msg.includes("Already rated today") || msg.includes("already rated")) {
-        setSubmitError("You've already rated this place today. Come back tomorrow to rate again!");
-      } else if (msg.includes("3+ days") || msg.includes("days old")) {
-        setSubmitError("Your account needs a few more days before you can rate. This helps us prevent fake reviews.");
-      } else if (msg.includes("suspended") || msg.includes("banned")) {
-        setSubmitError("Your account has been suspended. Please contact support for more information.");
-      } else {
-        setSubmitError(msg || "Failed to submit rating. Please try again.");
-      }
-    },
-    onSettled: () => {
-      // Always refetch to get accurate server state
-      qc.invalidateQueries({ queryKey: ["business", slug] });
-    },
-    onSuccess: (responseData: any) => {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Store rank impact for business detail banner (60s TTL)
-      if (responseData?.data?.prevRank && responseData?.data?.newRank && slug) {
-        setRatingImpact(slug, responseData.data.prevRank, responseData.data.newRank);
-      }
-      // SSE handles leaderboard/search/challengers invalidation; profile needs explicit
-      qc.invalidateQueries({ queryKey: ["profile"] });
-      setShowConfirm(true);
-      hapticRatingSuccess();
-      setTimeout(() => hapticConfetti(), 300);
-
-      // Check for milestone and streak badges earned by this rating
-      const milestoneBadgeMap: Record<number, string> = {
-        1: "first-taste", 5: "getting-started", 10: "ten-strong",
-        25: "quarter-century", 50: "half-century", 100: "centurion",
-        250: "rating-machine", 500: "legendary-judge",
-      };
-      const streakBadgeMap: Record<number, string> = {
-        3: "three-day-streak", 7: "week-warrior",
-        14: "two-week-streak", 30: "monthly-devotion",
-      };
-      const profileData = qc.getQueryData<{
-        totalRatings?: number;
-        currentStreak?: number;
-      }>(["profile"]);
-      const newTotal = (profileData?.totalRatings ?? 0) + 1;
-      const newStreak = (profileData?.currentStreak ?? 0) + 1;
-
-      const milestoneBadgeId = milestoneBadgeMap[newTotal];
-      const streakBadgeId = streakBadgeMap[newStreak];
-      const badgeId = milestoneBadgeId || streakBadgeId;
-
-      if (badgeId) {
-        const badge = getBadgeById(badgeId);
-        if (badge) {
-          setTimeout(() => setToastBadge(badge), 1500);
-          awardBadgeApi(badge.id, badge.category).catch(() => {});
-        }
-      }
-    },
+  const submitMutation = useRatingSubmit({
+    slug,
+    businessId: business?.id,
+    q1Score, q2Score, q3Score,
+    wouldReturn,
+    selectedDish,
+    dishInput,
+    note,
+    onSuccess: () => setShowConfirm(true),
+    onBadgeEarned: (badge) => setToastBadge(badge),
+    setSubmitError,
   });
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
@@ -262,12 +171,7 @@ export default function RateScreen() {
       <View style={[styles.container, styles.centeredPadded, { paddingTop: topPad }]}>
         <Ionicons name="alert-circle-outline" size={48} color={Colors.textTertiary} />
         <Text style={styles.signInPromptText}>Business not found</Text>
-        <TouchableOpacity
-          style={styles.signInPromptButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-        >
+        <TouchableOpacity style={styles.signInPromptButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.primaryButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -279,12 +183,7 @@ export default function RateScreen() {
       <View style={[styles.container, styles.centeredPadded, { paddingTop: topPad }]}>
         <Ionicons name="lock-closed-outline" size={48} color={Colors.textTertiary} />
         <Text style={styles.signInPromptText}>Sign in to rate businesses</Text>
-        <TouchableOpacity
-          style={styles.signInPromptButton}
-          onPress={() => router.replace("/auth/login")}
-          accessibilityRole="button"
-          accessibilityLabel="Sign in to rate businesses"
-        >
+        <TouchableOpacity style={styles.signInPromptButton} onPress={() => router.replace("/auth/login")} accessibilityRole="button" accessibilityLabel="Sign in to rate businesses">
           <Text style={styles.primaryButtonText}>Sign In</Text>
         </TouchableOpacity>
       </View>
@@ -305,16 +204,12 @@ export default function RateScreen() {
     community: "city", city: "trusted", trusted: "top", top: null,
   };
   const nextTier = nextTierMap[currentTier];
-  const range = TIER_SCORE_RANGES[currentTier];
-  const tierPercent = Math.min(100, ((userScore - range.min) / (range.max - range.min)) * 100);
 
   if (showConfirm) {
     return (
       <View style={[styles.container, { paddingTop: topPad }]}>
         <Confetti show={showConfirm} />
-        {toastBadge && (
-          <BadgeToast badge={toastBadge} onDismiss={() => setToastBadge(null)} />
-        )}
+        {toastBadge && <BadgeToast badge={toastBadge} onDismiss={() => setToastBadge(null)} />}
         <RatingConfirmation
           business={business}
           rawScore={rawScore}
@@ -356,247 +251,8 @@ export default function RateScreen() {
   };
 
   const goBack = () => {
-    if (step > 1) {
-      setStep(1);
-    } else {
-      router.back();
-    }
-  };
-
-  const renderStepContent = () => {
-    switch (step) {
-      case 1:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
-            {/* Dish context banner (Sprint 168) */}
-            {dishContext && (
-              <View style={styles.dishContextBanner}>
-                <Text style={styles.dishContextText}>
-                  You're rating {business.name} for their <Text style={{ fontWeight: "700" }}>{dishContext}</Text>
-                </Text>
-              </View>
-            )}
-            {/* Q1: Quality */}
-            <View style={styles.compactQuestion}>
-              <Text style={styles.compactLabel}>{q1Label}</Text>
-              <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
-            </View>
-
-            {/* Q2: Value */}
-            <View style={styles.compactQuestion}>
-              <Text style={styles.compactLabel}>Value for Money</Text>
-              <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
-            </View>
-
-            {/* Q3: Service */}
-            <View style={styles.compactQuestion}>
-              <Text style={styles.compactLabel}>{q3Label}</Text>
-              <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
-            </View>
-
-            {/* Would Return */}
-            <View style={styles.compactQuestion}>
-              <Text style={styles.compactLabel}>{returnLabel}</Text>
-              <View style={styles.yesNoRow}>
-                <TouchableOpacity
-                  style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setWouldReturn(true);
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Yes, would return"
-                  accessibilityState={{ selected: wouldReturn === true }}
-                >
-                  <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />
-                  <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>YES</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    setWouldReturn(false);
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="No, would not return"
-                  accessibilityState={{ selected: wouldReturn === false }}
-                >
-                  <Ionicons name="close-circle" size={24} color={wouldReturn === false ? "#fff" : Colors.textTertiary} />
-                  <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Animated.View>
-        );
-
-      case 2:
-        return (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step2" accessibilityRole="summary">
-            <View style={styles.stepHeader}>
-              <Text style={styles.stepTitle}>Almost done!</Text>
-              <Text style={styles.stepSubtitle}>Optional extras — skip or add details</Text>
-            </View>
-
-            {/* Dish selection */}
-            {existingDishes.length > 0 && (
-              <View>
-                <Text style={styles.compactLabel}>Top Dish</Text>
-                <View style={styles.dishPillsWrap}>
-                  {existingDishes.map(dish => (
-                    <DishPill
-                      key={dish.id}
-                      dish={dish}
-                      selected={selectedDish === dish.name}
-                      onPress={() => {
-                        setSelectedDish(selectedDish === dish.name ? "" : dish.name);
-                        setDishInput("");
-                      }}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {!selectedDish && (
-              <View style={styles.dishInputWrap}>
-                <TextInput
-                  style={styles.dishInput}
-                  placeholder="Type a dish name (optional)..."
-                  placeholderTextColor={Colors.textTertiary}
-                  value={dishInput}
-                  onChangeText={handleDishSearch}
-                  maxLength={80}
-                />
-                {dishSearching && (
-                  <ActivityIndicator size="small" color={Colors.gold} style={{ marginTop: 8 }} />
-                )}
-                {dishSearchResults.length > 0 && !dishSearching && (
-                  <View style={styles.dishSuggestions}>
-                    {dishSearchResults.map(d => (
-                      <TouchableOpacity
-                        key={d.id}
-                        style={styles.dishSuggestionItem}
-                        onPress={() => {
-                          setSelectedDish(d.name);
-                          setDishInput("");
-                          setDishSearchResults([]);
-                        }}
-                      >
-                        <Text style={styles.dishSuggestionText}>{d.name}</Text>
-                        <Text style={styles.dishSuggestionCount}>{d.voteCount} votes</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {selectedDish ? (
-              <View style={styles.dishSelectedDisplay}>
-                <Ionicons name="restaurant" size={16} color={Colors.gold} />
-                <Text style={styles.dishSelectedText}>{selectedDish}</Text>
-                <TouchableOpacity onPress={() => setSelectedDish("")}>
-                  <Ionicons name="close" size={18} color={Colors.textTertiary} />
-                </TouchableOpacity>
-              </View>
-            ) : null}
-
-            {/* Quick Note */}
-            <View style={styles.noteInputWrap}>
-              <TextInput
-                style={[styles.noteInput, { minHeight: 60 }]}
-                placeholder="Quick note (optional)..."
-                placeholderTextColor={Colors.textTertiary}
-                value={note}
-                onChangeText={t => t.length <= 160 && setNote(t)}
-                multiline
-                maxLength={160}
-              />
-              <Text style={[
-                styles.noteCounter,
-                note.length > 140 && styles.noteCounterWarn,
-                note.length >= 160 && styles.noteCounterMax,
-              ]}>
-                {note.length}/160
-              </Text>
-            </View>
-
-            {/* Photo Upload */}
-            <View style={styles.photoSection}>
-              {photoUri ? (
-                <View style={styles.photoPreview}>
-                  <Image source={{ uri: photoUri }} style={styles.photoImage} contentFit="cover" />
-                  <TouchableOpacity
-                    style={styles.photoRemove}
-                    onPress={() => setPhotoUri(null)}
-                    hitSlop={8}
-                  >
-                    <Ionicons name="close-circle" size={24} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.photoAddBtn}
-                  onPress={async () => {
-                    const result = await ImagePicker.launchImageLibraryAsync({
-                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                      allowsEditing: true,
-                      aspect: [4, 3],
-                      quality: 0.8,
-                    });
-                    if (!result.canceled && result.assets[0]) {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setPhotoUri(result.assets[0].uri);
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="camera-outline" size={20} color={Colors.textTertiary} />
-                  <Text style={styles.photoAddText}>Add photo</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Score summary */}
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryTitle}>YOUR RATING</Text>
-              <View style={styles.summaryGrid}>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryItemVal}>{q1Score}</Text>
-                  <Text style={styles.summaryItemLabel}>Quality</Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryItemVal}>{q2Score}</Text>
-                  <Text style={styles.summaryItemLabel}>Value</Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Text style={styles.summaryItemVal}>{q3Score}</Text>
-                  <Text style={styles.summaryItemLabel}>Service</Text>
-                </View>
-                <View style={styles.summaryItem}>
-                  <Ionicons
-                    name={wouldReturn ? "checkmark-circle" : "close-circle"}
-                    size={20}
-                    color={wouldReturn ? Colors.green : Colors.red}
-                  />
-                  <Text style={styles.summaryItemLabel}>Return</Text>
-                </View>
-              </View>
-              <View style={styles.summaryScoreRow}>
-                <View style={[styles.tierDot, { backgroundColor: tierColor }]} />
-                <Text style={styles.summaryWeightLabel}>
-                  {TIER_INFLUENCE_LABELS[userTier]}
-                </Text>
-                <Text style={[styles.summaryWeightVal, { color: Colors.gold }]}>
-                  {weightedScore.toFixed(1)}
-                </Text>
-              </View>
-            </View>
-          </Animated.View>
-        );
-    }
+    if (step > 1) setStep(1);
+    else router.back();
   };
 
   return (
@@ -617,17 +273,68 @@ export default function RateScreen() {
       </View>
 
       <ScrollView style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
-        {renderStepContent()}
+        {step === 1 ? (
+          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
+            {dishContext && (
+              <View style={styles.dishContextBanner}>
+                <Text style={styles.dishContextText}>
+                  You're rating {business.name} for their <Text style={{ fontWeight: "700" }}>{dishContext}</Text>
+                </Text>
+              </View>
+            )}
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{q1Label}</Text>
+              <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
+            </View>
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>Value for Money</Text>
+              <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
+            </View>
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{q3Label}</Text>
+              <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
+            </View>
+            <View style={styles.compactQuestion}>
+              <Text style={styles.compactLabel}>{returnLabel}</Text>
+              <View style={styles.yesNoRow}>
+                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWouldReturn(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
+                  <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />
+                  <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>YES</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWouldReturn(false); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="No, would not return" accessibilityState={{ selected: wouldReturn === false }}>
+                  <Ionicons name="close-circle" size={24} color={wouldReturn === false ? "#fff" : Colors.textTertiary} />
+                  <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Animated.View>
+        ) : (
+          <RatingExtrasStep
+            existingDishes={existingDishes}
+            selectedDish={selectedDish}
+            setSelectedDish={setSelectedDish}
+            dishInput={dishInput}
+            handleDishSearch={handleDishSearch}
+            dishSearching={dishSearching}
+            dishSearchResults={dishSearchResults}
+            setDishSearchResults={setDishSearchResults}
+            note={note}
+            setNote={setNote}
+            photoUri={photoUri}
+            setPhotoUri={setPhotoUri}
+            q1Score={q1Score}
+            q2Score={q2Score}
+            q3Score={q3Score}
+            wouldReturn={wouldReturn}
+            userTier={userTier}
+            tierColor={tierColor}
+            weightedScore={weightedScore}
+          />
+        )}
       </ScrollView>
 
       {!!submitError && (
-        <TouchableOpacity
-          style={styles.errorBanner}
-          onPress={() => setSubmitError("")}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Dismiss error"
-        >
+        <TouchableOpacity style={styles.errorBanner} onPress={() => setSubmitError("")} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Dismiss error">
           <Ionicons name="alert-circle" size={16} color={Colors.red} />
           <Text style={styles.errorBannerText}>{submitError}</Text>
           <Ionicons name="close" size={14} color={Colors.textTertiary} />
@@ -638,45 +345,22 @@ export default function RateScreen() {
         {step === 2 && (
           <TouchableOpacity
             style={[styles.skipBtn, submitMutation.isPending && { opacity: 0.5 }]}
-            onPress={() => {
-              setSelectedDish("");
-              setDishInput("");
-              setNote("");
-              setSubmitError("");
-              submitMutation.mutate();
-            }}
-            activeOpacity={0.7}
-            disabled={submitMutation.isPending}
-            accessibilityRole="button"
-            accessibilityLabel="Skip extras and submit rating"
+            onPress={() => { setSelectedDish(""); setDishInput(""); setNote(""); setSubmitError(""); submitMutation.mutate(); }}
+            activeOpacity={0.7} disabled={submitMutation.isPending}
+            accessibilityRole="button" accessibilityLabel="Skip extras and submit rating"
           >
             <Text style={styles.skipBtnText}>Skip & Submit</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            styles.primaryButtonFlex,
-            !canProceed() && styles.primaryButtonDisabled,
-          ]}
-          onPress={goNext}
-          activeOpacity={0.8}
-          disabled={!canProceed() || submitMutation.isPending}
-          testID="next-step"
-          accessibilityRole="button"
-          accessibilityLabel={step === 2 ? "Submit rating" : "Next step"}
+          style={[styles.primaryButton, styles.primaryButtonFlex, !canProceed() && styles.primaryButtonDisabled]}
+          onPress={goNext} activeOpacity={0.8} disabled={!canProceed() || submitMutation.isPending}
+          testID="next-step" accessibilityRole="button" accessibilityLabel={step === 2 ? "Submit rating" : "Next step"}
         >
           <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
-            {submitMutation.isPending
-              ? "Submitting..."
-              : step === 2
-                ? "Submit Rating"
-                : "Next"
-            }
+            {submitMutation.isPending ? "Submitting..." : step === 2 ? "Submit Rating" : "Next"}
           </Text>
-          {step === 1 && canProceed() && (
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
-          )}
+          {step === 1 && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
     </View>
@@ -687,7 +371,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   centered: { alignItems: "center", justifyContent: "center" },
   centeredPadded: { alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
-  errorText: { color: Colors.text, textAlign: "center", marginTop: 40, fontFamily: "DMSans_400Regular" },
   signInPromptText: { color: Colors.text, textAlign: "center", marginTop: 16, fontFamily: "DMSans_400Regular" },
   signInPromptButton: {
     backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
@@ -695,7 +378,6 @@ const styles = StyleSheet.create({
     marginTop: 16, width: "100%",
   },
   navSpacer: { width: 36 },
-
   navBar: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 16, paddingBottom: 4, height: 44,
@@ -704,20 +386,6 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
-  stepIndicator: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
-  },
-  stepIndicatorOf: { color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-
-  progressContainer: {
-    flexDirection: "row", gap: 4, paddingHorizontal: 20, marginTop: 8,
-  },
-  progressDot: {
-    flex: 1, height: 3, borderRadius: 2, backgroundColor: Colors.border,
-  },
-  progressDotComplete: { backgroundColor: Colors.gold },
-  progressDotCurrent: { backgroundColor: Colors.textTertiary },
-
   businessHeader: { paddingHorizontal: 20, marginTop: 16, marginBottom: 8 },
   rateLabel: {
     fontSize: 11, fontWeight: "600" as const, color: Colors.textTertiary,
@@ -727,29 +395,19 @@ const styles = StyleSheet.create({
     fontSize: 24, fontWeight: "700" as const, color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, marginTop: 2,
   },
-
   stepArea: { flex: 1, paddingHorizontal: 20 },
   stepAreaContent: { paddingVertical: 8 },
-
   stepContent: { gap: 20 },
   compactQuestion: { gap: 8 },
   compactLabel: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
     fontFamily: "DMSans_600SemiBold",
   },
-  stepHeader: { gap: 4 },
-  stepNumber: {
-    fontSize: 32, fontWeight: "700" as const, color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -1,
+  dishContextBanner: {
+    backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 10,
+    padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center",
   },
-  stepTitle: {
-    fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
-  },
-  stepSubtitle: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-
+  dishContextText: { fontSize: 13, color: "#111" },
   yesNoRow: { flexDirection: "row", gap: 12 },
   yesNoBtn: {
     flex: 1, alignItems: "center", justifyContent: "center",
@@ -763,129 +421,24 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold", letterSpacing: 1,
   },
   yesNoTextActive: { color: "#fff" },
-
-  dishPillsWrap: {
-    flexDirection: "row", flexWrap: "wrap", gap: 8,
-  },
-
-  dishContextBanner: {
-    backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 10,
-    padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center",
-  },
-  dishContextText: { fontSize: 13, color: "#111" },
-  dishInputWrap: { gap: 4 },
-  dishInput: {
-    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,
-    fontSize: 15, color: Colors.text, fontFamily: "DMSans_400Regular",
-  },
-  dishSuggestions: {
-    backgroundColor: Colors.surface, borderRadius: 10,
-    overflow: "hidden", ...Colors.cardShadow,
-  },
-  dishSuggestionItem: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  dishSuggestionText: {
-    fontSize: 14, color: Colors.text, fontFamily: "DMSans_500Medium",
-  },
-  dishSuggestionCount: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  dishSelectedDisplay: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.goldFaint, paddingHorizontal: 14, paddingVertical: 10,
-    borderRadius: 12,
-  },
-  dishSelectedText: {
-    fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold", flex: 1,
-  },
-
-  noteInputWrap: { gap: 4 },
-  noteInput: {
-    backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,
-    fontSize: 15, color: Colors.text, fontFamily: "DMSans_400Regular",
-    minHeight: 100,
-    textAlignVertical: "top" as const,
-  },
-  noteCounter: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    textAlign: "right",
-  },
-  noteCounterWarn: { color: Colors.gold },
-  noteCounterMax: { color: Colors.red },
-
-  // Photo upload
-  photoSection: { marginTop: 4 },
-  photoAddBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 12, paddingVertical: 16,
-    borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
-  },
-  photoAddText: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  photoPreview: { borderRadius: 12, overflow: "hidden", position: "relative" },
-  photoImage: { width: "100%", height: 160, borderRadius: 12 },
-  photoRemove: {
-    position: "absolute", top: 8, right: 8,
-    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3, shadowRadius: 2,
-  },
-
-  summaryCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16, gap: 12,
-    ...Colors.cardShadow,
-  },
-  summaryTitle: {
-    fontSize: 10, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "DMSans_700Bold", letterSpacing: 1.5,
-  },
-  summaryGrid: { flexDirection: "row", justifyContent: "space-around" },
-  summaryItem: { alignItems: "center", gap: 4 },
-  summaryItemVal: {
-    fontSize: 22, fontWeight: "700" as const, color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-  summaryItemLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  summaryScoreRow: {
-    flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center",
-    paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  summaryWeightLabel: {
-    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  summaryWeightVal: {
-    fontSize: 16, fontWeight: "700" as const, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  tierDot: { width: 8, height: 8, borderRadius: 4 },
-
   bottomBar: {
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: 20, paddingTop: 12,
     borderTopWidth: 1, borderTopColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  skipBtn: {
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  skipBtnText: {
-    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
-  },
+  skipBtn: { paddingHorizontal: 16, paddingVertical: 14 },
+  skipBtnText: { fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   primaryButton: {
     backgroundColor: Colors.text, borderRadius: 14, paddingVertical: 16,
     alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 6,
   },
   primaryButtonFlex: { flex: 1 },
-  primaryButtonDisabled: {
-    backgroundColor: Colors.surfaceRaised,
-  },
+  primaryButtonDisabled: { backgroundColor: Colors.surfaceRaised },
   primaryButtonText: {
     fontSize: 16, fontWeight: "700" as const, color: "#FFFFFF", fontFamily: "DMSans_700Bold",
   },
   primaryButtonTextDisabled: { color: Colors.textTertiary },
-
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.redFaint, borderRadius: 10, padding: 12,
@@ -894,5 +447,4 @@ const styles = StyleSheet.create({
   errorBannerText: {
     fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium", flex: 1,
   },
-
 });
