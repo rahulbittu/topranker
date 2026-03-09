@@ -21,7 +21,7 @@ import {
 } from "./storage";
 import { fetchAndStorePhotos, searchNearbyRestaurants, normalizeCategory } from "./google-places";
 import { getPerfStats } from "./perf-monitor";
-import { getFunnelStats, getRecentEvents, getRateGateStats } from "./analytics";
+import { getFunnelStats, getRecentEvents, getRateGateStats, getHourlyStats, getDailyStats, getActiveUserStats, getBetaConversionFunnel } from "./analytics";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
 import { getAllFlags } from "../lib/feature-flags";
@@ -350,6 +350,40 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data: dashboard });
   }));
 
+  // ── Sprint 199: Time-Series Analytics ─────────────────────
+  app.get("/api/admin/analytics/hourly", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const hours = Math.min(168, Math.max(1, parseInt(req.query.hours as string) || 24));
+      return res.json({ data: getHourlyStats(hours) });
+  }));
+
+  app.get("/api/admin/analytics/daily", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const days = Math.min(90, Math.max(1, parseInt(req.query.days as string) || 7));
+      return res.json({ data: getDailyStats(days) });
+  }));
+
+  // ── Sprint 199: Active Users ──────────────────────────────
+  app.get("/api/admin/analytics/active-users", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      return res.json({ data: getActiveUserStats() });
+  }));
+
+  // ── Sprint 199: Beta Conversion Funnel ────────────────────
+  app.get("/api/admin/analytics/beta-funnel", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const { getBetaInviteStats } = await import("./storage");
+      const funnel = getBetaConversionFunnel();
+      const inviteStats = await getBetaInviteStats();
+      return res.json({
+        data: {
+          ...funnel,
+          inviteTracking: {
+            total: inviteStats.total,
+            joined: inviteStats.joined,
+            pending: inviteStats.pending,
+          },
+          generatedAt: new Date().toISOString(),
+        },
+      });
+  }));
+
   // ── Sprint 183: Auto-Flagged Moderation Queue ──────────────
   app.get("/api/admin/moderation-queue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
     const { getAutoFlaggedRatings } = await import("./storage/ratings");
@@ -476,6 +510,10 @@ export function registerAdminRoutes(app: Express) {
 
       // Sprint 197: Track invite in database
       await createBetaInvite({ email, displayName, referralCode, invitedBy: req.user?.email });
+
+      // Sprint 199: Track in analytics funnel
+      const { trackEvent } = await import("./analytics");
+      trackEvent("beta_invite_sent", req.user?.id, { email });
 
       return res.json({ data: { sent: true, email } });
   }));

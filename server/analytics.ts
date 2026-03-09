@@ -25,7 +25,13 @@ export type FunnelEvent =
   | "rating_rejected_duplicate"
   | "rating_rejected_suspended"
   | "rating_rejected_validation"
-  | "rating_rejected_unknown";
+  | "rating_rejected_unknown"
+  // Sprint 199: Beta conversion events
+  | "beta_invite_sent"
+  | "beta_join_page_view"
+  | "beta_signup_completed"
+  | "beta_first_rating"
+  | "beta_referral_shared";
 
 interface FunnelEntry {
   event: FunnelEvent;
@@ -140,4 +146,133 @@ export function stopFlush() {
     clearInterval(flushInterval);
     flushInterval = null;
   }
+}
+
+// ── Sprint 199: Time-Bucketed Analytics ─────────────────────
+
+/** Get events bucketed by hour for the last N hours */
+export function getHourlyStats(hours = 24): Array<{
+  hour: string;
+  events: number;
+  byType: Record<string, number>;
+}> {
+  const now = Date.now();
+  const cutoff = now - hours * 60 * 60 * 1000;
+  const filtered = buffer.filter((e) => e.timestamp >= cutoff);
+
+  const buckets = new Map<string, { events: number; byType: Record<string, number> }>();
+
+  for (const entry of filtered) {
+    const d = new Date(entry.timestamp);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:00`;
+    if (!buckets.has(key)) {
+      buckets.set(key, { events: 0, byType: {} });
+    }
+    const bucket = buckets.get(key)!;
+    bucket.events++;
+    bucket.byType[entry.event] = (bucket.byType[entry.event] || 0) + 1;
+  }
+
+  return Array.from(buckets.entries())
+    .map(([hour, data]) => ({ hour, ...data }))
+    .sort((a, b) => a.hour.localeCompare(b.hour));
+}
+
+/** Get daily stats for the last N days */
+export function getDailyStats(days = 7): Array<{
+  date: string;
+  events: number;
+  uniqueUsers: number;
+  byType: Record<string, number>;
+}> {
+  const now = Date.now();
+  const cutoff = now - days * 24 * 60 * 60 * 1000;
+  const filtered = buffer.filter((e) => e.timestamp >= cutoff);
+
+  const buckets = new Map<string, { events: number; users: Set<string>; byType: Record<string, number> }>();
+
+  for (const entry of filtered) {
+    const d = new Date(entry.timestamp);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, { events: 0, users: new Set(), byType: {} });
+    }
+    const bucket = buckets.get(key)!;
+    bucket.events++;
+    if (entry.userId) bucket.users.add(entry.userId);
+    bucket.byType[entry.event] = (bucket.byType[entry.event] || 0) + 1;
+  }
+
+  return Array.from(buckets.entries())
+    .map(([date, data]) => ({ date, events: data.events, uniqueUsers: data.users.size, byType: data.byType }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ── Sprint 199: Active User Tracking ────────────────────────
+
+const activeUsers = new Map<string, number>(); // userId → lastSeen timestamp
+
+/** Record user activity (call on each authenticated request) */
+export function recordUserActivity(userId: string) {
+  activeUsers.set(userId, Date.now());
+}
+
+/** Get active user counts by time window */
+export function getActiveUserStats(): {
+  last1h: number;
+  last24h: number;
+  last7d: number;
+  last30d: number;
+} {
+  const now = Date.now();
+  let last1h = 0, last24h = 0, last7d = 0, last30d = 0;
+
+  for (const [, lastSeen] of activeUsers) {
+    const age = now - lastSeen;
+    if (age < 60 * 60 * 1000) last1h++;
+    if (age < 24 * 60 * 60 * 1000) last24h++;
+    if (age < 7 * 24 * 60 * 60 * 1000) last7d++;
+    if (age < 30 * 24 * 60 * 60 * 1000) last30d++;
+  }
+
+  return { last1h, last24h, last7d, last30d };
+}
+
+// ── Sprint 199: Beta Conversion Funnel ──────────────────────
+
+/** Get beta-specific conversion funnel */
+export function getBetaConversionFunnel(): {
+  invitesSent: number;
+  joinPageViews: number;
+  signups: number;
+  firstRatings: number;
+  referralsShared: number;
+  conversionRates: {
+    inviteToView: string;
+    viewToSignup: string;
+    signupToRating: string;
+    overallInviteToRating: string;
+  };
+} {
+  const invitesSent = buffer.filter((e) => e.event === "beta_invite_sent").length;
+  const joinPageViews = buffer.filter((e) => e.event === "beta_join_page_view").length;
+  const signups = buffer.filter((e) => e.event === "beta_signup_completed").length;
+  const firstRatings = buffer.filter((e) => e.event === "beta_first_rating").length;
+  const referralsShared = buffer.filter((e) => e.event === "beta_referral_shared").length;
+
+  const pct = (n: number, d: number) => d > 0 ? ((n / d) * 100).toFixed(1) + "%" : "N/A";
+
+  return {
+    invitesSent,
+    joinPageViews,
+    signups,
+    firstRatings,
+    referralsShared,
+    conversionRates: {
+      inviteToView: pct(joinPageViews, invitesSent),
+      viewToSignup: pct(signups, joinPageViews),
+      signupToRating: pct(firstRatings, signups),
+      overallInviteToRating: pct(firstRatings, invitesSent),
+    },
+  };
 }
