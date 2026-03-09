@@ -1,9 +1,8 @@
 import { Platform } from "react-native";
-import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
-// AuthSession used only for makeRedirectUri, WebBrowser for the actual OAuth flow
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
 
 // Complete auth session for native platforms
 if (Platform.OS !== "web") {
@@ -121,38 +120,36 @@ async function signInWithGoogleWeb(): Promise<string> {
   });
 }
 
-// ── Native: expo-auth-session OAuth flow ─────────────────────────
-
-const discovery = {
-  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
-  tokenEndpoint: "https://oauth2.googleapis.com/token",
-  userInfoEndpoint: "https://www.googleapis.com/oauth2/v3/userinfo",
-};
+// ── Native: OAuth via in-app browser ─────────────────────────────
 
 async function signInWithGoogleNative(): Promise<string> {
-  // Use Expo's auth proxy so redirect URI is always https://auth.expo.io
-  const redirectUri = AuthSession.makeRedirectUri({
-    useProxy: true,
-  });
+  // For iOS/Android in Expo Go, we need an iOS client ID from GCP
+  // which allows custom scheme redirects (com.googleusercontent.apps.*)
+  const iosClientId = GOOGLE_IOS_CLIENT_ID;
 
-  console.log("[Google Auth] Redirect URI:", redirectUri);
+  if (!iosClientId) {
+    // Fallback: use web client ID with manual redirect through our server
+    return signInWithGoogleViaServer();
+  }
+
+  // The iOS client ID's reversed ID is the redirect scheme
+  // e.g., client ID "123-abc.apps.googleusercontent.com" → scheme "com.googleusercontent.apps.123-abc"
+  const reversedClientId = iosClientId.split(".").reverse().join(".");
+  const redirectUri = `${reversedClientId}:/oauthredirect`;
 
   const authUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?` +
-    `client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}` +
+    `client_id=${encodeURIComponent(iosClientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUri)}` +
     `&response_type=token` +
     `&scope=${encodeURIComponent("openid profile email")}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri, {
-    useProxy: true,
-  } as any);
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
   if (result.type !== "success" || !result.url) {
     throw new Error("Google sign-in cancelled");
   }
 
-  // Extract access_token from the redirect URL fragment
   const fragment = result.url.split("#")[1] || "";
   const params = new URLSearchParams(fragment);
   const accessToken = params.get("access_token");
@@ -164,18 +161,44 @@ async function signInWithGoogleNative(): Promise<string> {
   return accessToken;
 }
 
+// Fallback: redirect through our own server for OAuth
+async function signInWithGoogleViaServer(): Promise<string> {
+  const { apiFetch } = await import("./queryClient");
+
+  // Get the API base URL
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || "";
+  const authUrl = `${apiUrl}/api/auth/google/mobile-start?client_id=${encodeURIComponent(GOOGLE_CLIENT_ID)}`;
+
+  const result = await WebBrowser.openAuthSessionAsync(
+    authUrl,
+    "topranker://google-auth"
+  );
+
+  if (result.type !== "success" || !result.url) {
+    throw new Error("Google sign-in cancelled");
+  }
+
+  // Extract token from redirect URL
+  const url = new URL(result.url);
+  const accessToken = url.searchParams.get("token") || url.hash?.split("access_token=")[1]?.split("&")[0];
+
+  if (!accessToken) {
+    throw new Error("No token received");
+  }
+
+  return accessToken;
+}
+
 // ── Public API ───────────────────────────────────────────────────
 
 export function isGoogleAuthAvailable(): boolean {
-  return !!GOOGLE_CLIENT_ID;
+  if (Platform.OS === "web") return !!GOOGLE_CLIENT_ID;
+  return !!(GOOGLE_IOS_CLIENT_ID || GOOGLE_CLIENT_ID);
 }
 
 export async function signInWithGoogle(): Promise<string> {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error("Google Client ID not configured");
-  }
-
   if (Platform.OS === "web") {
+    if (!GOOGLE_CLIENT_ID) throw new Error("Google Client ID not configured");
     return signInWithGoogleWeb();
   }
 
