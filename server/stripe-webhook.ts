@@ -56,10 +56,92 @@ const STATUS_MAP: Record<string, string> = {
   "charge.refunded": "refunded",
 };
 
+// Sprint 176: Subscription event types
+const SUBSCRIPTION_EVENTS = new Set([
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
+  "invoice.payment_failed",
+  "checkout.session.completed",
+]);
+
 /**
  * Process a Stripe event — usable from both the webhook handler and admin replay.
  */
+/**
+ * Sprint 176: Handle subscription lifecycle events.
+ */
+async function processSubscriptionEvent(event: StripeEvent): Promise<{ updated: boolean }> {
+  const obj = event.data.object;
+  const metadata = obj.metadata || {};
+  const businessId = metadata.businessId;
+
+  if (!businessId) {
+    whLog.warn(`Subscription event ${event.type} missing businessId in metadata`);
+    return { updated: false };
+  }
+
+  const { updateBusinessSubscription } = await import("./storage");
+
+  if (event.type === "checkout.session.completed") {
+    // Checkout completed — extract subscription ID and customer ID
+    const subscriptionId = (obj as any).subscription;
+    const customerId = (obj as any).customer;
+    if (subscriptionId && customerId) {
+      await updateBusinessSubscription(businessId, {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        subscriptionStatus: "active",
+      });
+      whLog.info(`Subscription activated for business ${businessId}: ${subscriptionId}`);
+      return { updated: true };
+    }
+  }
+
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
+    const status = (obj as any).status; // active, past_due, canceled, trialing
+    const periodEnd = (obj as any).current_period_end;
+    const cancelAtPeriodEnd = (obj as any).cancel_at_period_end;
+
+    const mappedStatus = cancelAtPeriodEnd ? "cancelled"
+      : status === "active" ? "active"
+      : status === "past_due" ? "past_due"
+      : status === "canceled" ? "cancelled"
+      : status === "trialing" ? "trialing"
+      : "none";
+
+    await updateBusinessSubscription(businessId, {
+      subscriptionStatus: mappedStatus,
+      subscriptionPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
+    });
+    whLog.info(`Subscription updated for business ${businessId}: ${mappedStatus}`);
+    return { updated: true };
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    await updateBusinessSubscription(businessId, {
+      subscriptionStatus: "cancelled",
+      stripeSubscriptionId: null,
+    });
+    whLog.info(`Subscription cancelled for business ${businessId}`);
+    return { updated: true };
+  }
+
+  if (event.type === "invoice.payment_failed") {
+    await updateBusinessSubscription(businessId, { subscriptionStatus: "past_due" });
+    whLog.info(`Subscription past_due for business ${businessId}`);
+    return { updated: true };
+  }
+
+  return { updated: false };
+}
+
 export async function processStripeEvent(event: StripeEvent): Promise<{ updated: boolean }> {
+  // Sprint 176: Route subscription events to subscription handler
+  if (SUBSCRIPTION_EVENTS.has(event.type)) {
+    return processSubscriptionEvent(event);
+  }
+
   const newStatus = STATUS_MAP[event.type];
   if (!newStatus) {
     whLog.info(`Ignoring event type: ${event.type}`);

@@ -59,6 +59,25 @@ export async function getBusinessById(id: string): Promise<Business | undefined>
   return business;
 }
 
+// Sprint 176: Update subscription fields on a business
+export async function updateBusinessSubscription(
+  businessId: string,
+  updates: {
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string | null;
+    subscriptionStatus?: string;
+    subscriptionPeriodEnd?: Date;
+  },
+): Promise<void> {
+  const setData: Record<string, any> = {};
+  if (updates.stripeCustomerId !== undefined) setData.stripeCustomerId = updates.stripeCustomerId;
+  if (updates.stripeSubscriptionId !== undefined) setData.stripeSubscriptionId = updates.stripeSubscriptionId;
+  if (updates.subscriptionStatus !== undefined) setData.subscriptionStatus = updates.subscriptionStatus;
+  if (updates.subscriptionPeriodEnd !== undefined) setData.subscriptionPeriodEnd = updates.subscriptionPeriodEnd;
+  if (Object.keys(setData).length === 0) return;
+  await db.update(businesses).set(setData).where(eq(businesses.id, businessId));
+}
+
 export async function getBusinessesByIds(ids: string[]): Promise<Business[]> {
   if (ids.length === 0) return [];
   return db

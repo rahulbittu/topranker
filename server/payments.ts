@@ -101,6 +101,111 @@ export async function createDashboardProPayment(params: {
   });
 }
 
+// ── Subscription Checkout (Sprint 176) ───────────────────
+
+interface SubscriptionCheckout {
+  id: string;
+  url: string | null; // Stripe Checkout URL for redirect
+  status: "pending" | "succeeded";
+}
+
+export async function createDashboardProSubscription(params: {
+  businessId: string;
+  businessName: string;
+  customerEmail: string;
+  userId: string;
+  stripeCustomerId?: string;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<SubscriptionCheckout> {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+
+  if (stripeKey) {
+    try {
+      const stripe = require("stripe")(stripeKey);
+
+      // Create or reuse Stripe customer
+      let customerId = params.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: params.customerEmail,
+          metadata: { userId: params.userId, businessId: params.businessId },
+        });
+        customerId = customer.id;
+      }
+
+      // Create Checkout Session for subscription
+      const session = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Dashboard Pro: ${params.businessName}`,
+              description: "Advanced analytics and business insights — monthly subscription",
+            },
+            unit_amount: PRICING.dashboardPro.amountCents,
+            recurring: { interval: "month" },
+          },
+          quantity: 1,
+        }],
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        metadata: {
+          type: "dashboard_pro",
+          businessId: params.businessId,
+          userId: params.userId,
+        },
+        subscription_data: {
+          metadata: {
+            type: "dashboard_pro",
+            businessId: params.businessId,
+            userId: params.userId,
+          },
+        },
+      });
+
+      return {
+        id: session.id,
+        url: session.url,
+        status: "pending",
+      };
+    } catch (err: any) {
+      payLog.error("Stripe subscription error:", err.message);
+      throw new Error("Subscription checkout failed");
+    }
+  }
+
+  // Development: mock subscription
+  payLog.info(`Mock subscription: $49/mo | Dashboard Pro: ${params.businessName}`);
+  return {
+    id: `mock_cs_${Date.now()}`,
+    url: null,
+    status: "succeeded",
+  };
+}
+
+export async function cancelSubscription(stripeSubscriptionId: string): Promise<{ cancelAtPeriodEnd: boolean }> {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+
+  if (stripeKey) {
+    try {
+      const stripe = require("stripe")(stripeKey);
+      const sub = await stripe.subscriptions.update(stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
+      return { cancelAtPeriodEnd: sub.cancel_at_period_end };
+    } catch (err: any) {
+      payLog.error("Stripe cancel error:", err.message);
+      throw new Error("Subscription cancellation failed");
+    }
+  }
+
+  payLog.info(`Mock cancel subscription: ${stripeSubscriptionId}`);
+  return { cancelAtPeriodEnd: true };
+}
+
 export async function createFeaturedPlacementPayment(params: {
   businessId: string;
   businessName: string;

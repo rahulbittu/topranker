@@ -140,25 +140,30 @@ export function registerBusinessRoutes(app: Express) {
     const topDish = dishes.length > 0 ? dishes[0] : null;
     const ratingTrend = rankHistory.map((h: any) => h.score);
 
-    return res.json({
-      data: {
-        totalRatings,
-        avgScore,
-        rankPosition,
-        rankDelta,
-        wouldReturnPct,
-        topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
-        ratingTrend,
-        recentRatings: ratings.map((r: any) => ({
-          id: r.id,
-          user: r.memberName || "Anonymous",
-          score: parseFloat(r.rawScore),
-          tier: r.memberTier || "community",
-          note: r.note,
-          date: r.createdAt,
-        })),
-      },
-    });
+    // Sprint 176: Subscription tier determines data depth
+    const isPro = business.subscriptionStatus === "active" || business.subscriptionStatus === "trialing" || isAdmin;
+
+    const baseData = {
+      totalRatings,
+      avgScore,
+      rankPosition,
+      rankDelta,
+      wouldReturnPct,
+      topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+      ratingTrend: isPro ? ratingTrend : ratingTrend.slice(-7), // Free: 7 days, Pro: full history
+      recentRatings: (isPro ? ratings : ratings.slice(0, 3)).map((r: any) => ({
+        id: r.id,
+        user: r.memberName || "Anonymous",
+        score: parseFloat(r.rawScore),
+        tier: r.memberTier || "community",
+        note: isPro ? r.note : undefined, // Notes are Pro-only
+        date: r.createdAt,
+      })),
+      subscriptionStatus: business.subscriptionStatus || "none",
+      isPro,
+    };
+
+    return res.json({ data: baseData });
   }));
 
   app.get("/api/businesses/:id/rank-history", wrapAsync(async (req: Request, res: Response) => {

@@ -34,6 +34,7 @@ export {
   getTrendingBusinesses,
   getBusinessBySlug,
   getBusinessById,
+  updateBusinessSubscription,
   getBusinessesByIds,
   searchBusinesses,
   getAllCategories,

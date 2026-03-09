@@ -85,6 +85,11 @@ export const businesses = pgTable(
     ownerId: varchar("owner_id").references(() => members.id),
     isClaimed: boolean("is_claimed").notNull().default(false),
     claimedAt: timestamp("claimed_at"),
+    // Sprint 176: Business Pro subscription
+    stripeCustomerId: text("stripe_customer_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    subscriptionStatus: text("subscription_status").default("none"), // none, active, past_due, cancelled, trialing
+    subscriptionPeriodEnd: timestamp("subscription_period_end"),
     isActive: boolean("is_active").notNull().default(true),
     inChallenger: boolean("in_challenger").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
