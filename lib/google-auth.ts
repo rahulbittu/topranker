@@ -130,9 +130,9 @@ const discovery = {
 };
 
 async function signInWithGoogleNative(): Promise<string> {
+  // Use Expo's auth proxy so redirect URI is always https://auth.expo.io
   const redirectUri = AuthSession.makeRedirectUri({
-    scheme: "topranker",
-    path: "google-auth",
+    useProxy: true,
   });
 
   console.log("[Google Auth] Redirect URI:", redirectUri);
@@ -144,7 +144,9 @@ async function signInWithGoogleNative(): Promise<string> {
     `&response_type=token` +
     `&scope=${encodeURIComponent("openid profile email")}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri, {
+    useProxy: true,
+  } as any);
 
   if (result.type !== "success" || !result.url) {
     throw new Error("Google sign-in cancelled");
