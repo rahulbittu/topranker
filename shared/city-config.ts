@@ -123,6 +123,27 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     launchDate: "2026-03-09",
     minBusinesses: 40,
   },
+  // Phase 4 — North Carolina expansion (Sprint 248)
+  Charlotte: {
+    name: "Charlotte",
+    state: "North Carolina",
+    stateCode: "NC",
+    region: "Piedmont",
+    timezone: "America/New_York",
+    coordinates: { lat: 35.2271, lng: -80.8431 },
+    status: "planned",
+    minBusinesses: 40,
+  },
+  Raleigh: {
+    name: "Raleigh",
+    state: "North Carolina",
+    stateCode: "NC",
+    region: "Research Triangle",
+    timezone: "America/New_York",
+    coordinates: { lat: 35.7796, lng: -78.6382 },
+    status: "planned",
+    minBusinesses: 30,
+  },
 } as const;
 
 /** Get all active city names */

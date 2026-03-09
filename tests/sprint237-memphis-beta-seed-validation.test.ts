@@ -94,17 +94,18 @@ describe("Memphis beta promotion — runtime", () => {
     expect(planned).not.toContain("Memphis");
   });
 
-  it("getPlannedCities is empty (Nashville promoted to beta in Sprint 241)", () => {
+  it("getPlannedCities includes Charlotte and Raleigh (Sprint 248)", () => {
     const planned = getPlannedCities();
-    expect(planned).toEqual([]);
+    expect(planned).toContain("Charlotte");
+    expect(planned).toContain("Raleigh");
   });
 
-  it("getCityStats reflects 4 beta, 0 planned", () => {
+  it("getCityStats reflects 4 beta, 2 planned", () => {
     const stats = getCityStats();
     expect(stats.beta).toBe(4); // OKC, NOLA, Memphis, Nashville
-    expect(stats.planned).toBe(0);
+    expect(stats.planned).toBe(2); // Charlotte, Raleigh
     expect(stats.active).toBe(5);
-    expect(stats.total).toBe(9);
+    expect(stats.total).toBe(11);
   });
 });
 
@@ -266,13 +267,14 @@ describe("Seed validator — runtime", () => {
     expect(cats).toContain("pizza");
   });
 
-  it("getValidStateCodes returns array with 4 entries", () => {
+  it("getValidStateCodes returns array with 5 entries", () => {
     const codes = getValidStateCodes();
-    expect(codes.length).toBe(4);
+    expect(codes.length).toBe(5);
     expect(codes).toContain("TX");
     expect(codes).toContain("TN");
     expect(codes).toContain("OK");
     expect(codes).toContain("LA");
+    expect(codes).toContain("NC");
   });
 });
 
@@ -299,8 +301,8 @@ describe("Integration — Sprint 237", () => {
     expect(betaCities).toContain("Nashville");
   });
 
-  it("city-config total remains 9", () => {
+  it("city-config total is 11", () => {
     const stats = getCityStats();
-    expect(stats.total).toBe(9);
+    expect(stats.total).toBe(11);
   });
 });

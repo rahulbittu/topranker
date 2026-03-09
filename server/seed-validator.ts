@@ -31,7 +31,7 @@ const VALID_CATEGORIES = [
   "fine_dining", "food_truck", "deli", "bbq", "seafood", "pizza",
 ];
 
-const VALID_STATE_CODES = ["TX", "OK", "LA", "TN"];
+const VALID_STATE_CODES = ["TX", "OK", "LA", "TN", "NC"];
 
 export function validateSeedBusiness(biz: SeedBusiness): { valid: boolean; errors: string[] } {
   const errors: string[] = [];

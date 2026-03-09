@@ -66,8 +66,8 @@ describe("New Orleans seed data — server/seed-cities.ts", () => {
     expect(src).toContain("...NOLA_BUSINESSES");
   });
 
-  it("mentions 8 cities", () => {
-    expect(src).toContain("8 cities"); // Sprint 234: Memphis + Nashville added
+  it("mentions 10 cities", () => {
+    expect(src).toContain("10 cities"); // Sprint 248: Charlotte + Raleigh added
   });
 });
 

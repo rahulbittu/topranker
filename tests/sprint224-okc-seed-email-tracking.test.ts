@@ -165,8 +165,8 @@ describe("Integration wiring", () => {
     expect(src).toContain("...OKC_BUSINESSES");
   });
 
-  it("seedCities mentions 8 cities", () => {
+  it("seedCities mentions 10 cities", () => {
     const src = readFile("server/seed-cities.ts");
-    expect(src).toContain("8 cities"); // Sprint 234: Memphis + Nashville added
+    expect(src).toContain("10 cities"); // Sprint 248: Charlotte + Raleigh added
   });
 });

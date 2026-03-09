@@ -2,7 +2,7 @@
  * Multi-City Seed Script
  * Owner: Priya Sharma (Backend Architect) + Cole (City Growth Lead)
  *
- * Seeds Austin, Houston, San Antonio, Fort Worth, Oklahoma City, New Orleans, Memphis, and Nashville with realistic businesses.
+ * Seeds Austin, Houston, San Antonio, Fort Worth, Oklahoma City, New Orleans, Memphis, Nashville, Charlotte, and Raleigh with realistic businesses.
  * Run this AFTER the main seed has populated Dallas.
  * Usage: npx tsx server/seed-cities.ts
  */
@@ -127,6 +127,32 @@ const NASHVILLE_BUSINESSES: SeedBusiness[] = [
   { name: "Barista Parlor", slug: "barista-parlor-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 267, description: "Nashville's craft coffee pioneer. Industrial chic spaces.", priceRange: "$$", phone: "(615) 712-9766", address: "519 Gallatin Ave, Nashville, TN", lat: "36.1740", lng: "-86.7560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
 ];
 
+const CHARLOTTE_BUSINESSES: SeedBusiness[] = [
+  { name: "Midwood Smokehouse", slug: "midwood-smokehouse-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bbq", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 512, description: "Texas-style BBQ meets Carolina tradition. Brisket and pulled pork perfection.", priceRange: "$$", phone: "(704) 295-4227", address: "1401 Central Ave, Charlotte, NC", lat: "35.2180", lng: "-80.8190", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+  { name: "Haberdish", slug: "haberdish-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Southern sharing plates in the NoDa arts district.", priceRange: "$$$", phone: "(704) 817-7768", address: "3106 N Davidson St, Charlotte, NC", lat: "35.2450", lng: "-80.8120", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+  { name: "Optimist Hall", slug: "optimist-hall-charlotte", city: "Charlotte", neighborhood: "South End", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 398, description: "Historic textile mill turned food hall with 20+ vendors.", priceRange: "$$", phone: "(704) 603-0400", address: "1115 N Brevard St, Charlotte, NC", lat: "35.2320", lng: "-80.8330", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+  { name: "The Asbury", slug: "the-asbury-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 4, rankDelta: 0, totalRatings: 356, description: "Farm-to-table Southern fine dining in the Dunhill Hotel.", priceRange: "$$$$", phone: "(704) 342-1193", address: "237 N Tryon St, Charlotte, NC", lat: "35.2280", lng: "-80.8430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+  { name: "Not Just Coffee", slug: "not-just-coffee-charlotte", city: "Charlotte", neighborhood: "South End", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Charlotte's original specialty coffee roaster.", priceRange: "$$", phone: "(704) 831-7799", address: "224 E 7th St, Charlotte, NC", lat: "35.2260", lng: "-80.8390", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+  { name: "Mac's Speed Shop", slug: "macs-speed-shop-charlotte", city: "Charlotte", neighborhood: "South End", category: "bbq", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 5, rankDelta: 0, totalRatings: 423, description: "BBQ and bikes. Legendary pulled pork and craft beer selection.", priceRange: "$$", phone: "(704) 522-6227", address: "2511 South Blvd, Charlotte, NC", lat: "35.2080", lng: "-80.8570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+  { name: "Amelie's French Bakery", slug: "amelies-french-bakery-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "24-hour French bakery and cafe. Charlotte institution.", priceRange: "$", phone: "(704) 376-1781", address: "2424 N Davidson St, Charlotte, NC", lat: "35.2410", lng: "-80.8140", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+  { name: "The Broken Spoke", slug: "broken-spoke-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bar", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Dive bar meets craft cocktails in Plaza Midwood.", priceRange: "$$", phone: "(704) 375-2882", address: "2416 Central Ave, Charlotte, NC", lat: "35.2185", lng: "-80.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+  { name: "Leah & Louise", slug: "leah-and-louise-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 6, rankDelta: 0, totalRatings: 289, description: "Modern juke joint with Southern and global soul food.", priceRange: "$$$", phone: "(704) 343-1010", address: "301 E 7th St, Charlotte, NC", lat: "35.2275", lng: "-80.8370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+  { name: "Sunflour Baking Company", slug: "sunflour-baking-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Scratch-made pastries and brunch in the NoDa arts scene.", priceRange: "$$", phone: "(704) 741-0398", address: "220 E 36th St, Charlotte, NC", lat: "35.2440", lng: "-80.8160", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+];
+
+const RALEIGH_BUSINESSES: SeedBusiness[] = [
+  { name: "Beasley's Chicken + Honey", slug: "beasleys-chicken-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Ashley Christensen's fried chicken temple. James Beard winner.", priceRange: "$$", phone: "(919) 322-0127", address: "237 S Wilmington St, Raleigh, NC", lat: "35.7760", lng: "-78.6380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "Poole's Diner", slug: "pooles-diner-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 456, description: "Farm-to-fork pioneer in a retro 1940s diner space.", priceRange: "$$$", phone: "(919) 832-4477", address: "426 S McDowell St, Raleigh, NC", lat: "35.7740", lng: "-78.6400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+  { name: "The Pit Authentic Barbecue", slug: "the-pit-bbq-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "bbq", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Whole-hog Eastern NC barbecue in the Warehouse District.", priceRange: "$$", phone: "(919) 890-4500", address: "328 W Davie St, Raleigh, NC", lat: "35.7720", lng: "-78.6430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+  { name: "Brewery Bhavana", slug: "brewery-bhavana-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 378, description: "Brewery, bookstore, dim sum parlor, and flower shop. All in one.", priceRange: "$$", phone: "(919) 829-9998", address: "218 S Blount St, Raleigh, NC", lat: "35.7755", lng: "-78.6360", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+  { name: "Jolie", slug: "jolie-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "French-inspired neighborhood bistro in Five Points.", priceRange: "$$$", phone: "(919) 896-8783", address: "620 Glenwood Ave, Raleigh, NC", lat: "35.7870", lng: "-78.6470", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+  { name: "Sitti", slug: "sitti-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "restaurant", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Lebanese cuisine on Glenwood South. Raleigh's Mediterranean gem.", priceRange: "$$", phone: "(919) 239-4070", address: "137 S Wilmington St, Raleigh, NC", lat: "35.7770", lng: "-78.6375", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+  { name: "Videri Chocolate Factory", slug: "videri-chocolate-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "Bean-to-bar chocolate factory with cafe. Raleigh sweet spot.", priceRange: "$$", phone: "(919) 831-1180", address: "327 W Davie St, Raleigh, NC", lat: "35.7718", lng: "-78.6428", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+  { name: "La Farm Bakery", slug: "la-farm-bakery-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "bakery", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan French bakery. Best bread in the Triangle.", priceRange: "$$", phone: "(919) 657-0657", address: "4248 NW Cary Pkwy, Raleigh, NC", lat: "35.8010", lng: "-78.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+  { name: "Clyde Cooper's Barbecue", slug: "clyde-coopers-bbq-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bbq", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 423, description: "Eastern NC BBQ since 1938. Raleigh's oldest barbecue joint.", priceRange: "$", phone: "(919) 832-7614", address: "109 E Davie St, Raleigh, NC", lat: "35.7730", lng: "-78.6370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+  { name: "Hummingbird", slug: "hummingbird-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Coffee and cocktails with Raleigh rooftop views.", priceRange: "$$", phone: "(919) 301-1749", address: "223 S Wilmington St, Raleigh, NC", lat: "35.7758", lng: "-78.6378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+];
+
 const ALL_CITY_BUSINESSES = [
   ...AUSTIN_BUSINESSES,
   ...HOUSTON_BUSINESSES,
@@ -136,10 +162,12 @@ const ALL_CITY_BUSINESSES = [
   ...NOLA_BUSINESSES,
   ...MEMPHIS_BUSINESSES,
   ...NASHVILLE_BUSINESSES,
+  ...CHARLOTTE_BUSINESSES,
+  ...RALEIGH_BUSINESSES,
 ];
 
 export async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 8 cities...`);
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 10 cities...`);
 
   let seeded = 0;
   for (const biz of ALL_CITY_BUSINESSES) {
@@ -177,7 +205,7 @@ export async function seedCities() {
   }
 
   console.log(`\nSeeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10), Memphis (10), Nashville (10)");
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10), Memphis (10), Nashville (10), Charlotte (10), Raleigh (10)");
 }
 
 // Run directly if executed as script

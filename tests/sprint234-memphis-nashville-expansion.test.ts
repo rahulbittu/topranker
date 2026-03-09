@@ -206,14 +206,14 @@ describe("City config — Memphis and Nashville", () => {
     const planned = getPlannedCities();
     expect(planned).not.toContain("Memphis"); // Sprint 237: promoted to beta
     expect(planned).not.toContain("Nashville"); // Sprint 241: promoted to beta
-    expect(planned.length).toBe(0);
+    expect(planned.length).toBe(2); // Sprint 248: Charlotte + Raleigh are planned
   });
 
-  it("getCityStats shows 0 planned, 4 beta, 9 total", () => {
+  it("getCityStats shows 2 planned, 4 beta, 11 total", () => {
     const stats = getCityStats();
-    expect(stats.planned).toBe(0); // All planned cities promoted
+    expect(stats.planned).toBe(2); // Sprint 248: Charlotte + Raleigh
     expect(stats.beta).toBe(4); // OKC, NOLA, Memphis, Nashville
-    expect(stats.total).toBe(9);
+    expect(stats.total).toBe(11);
   });
 });
 
@@ -389,14 +389,14 @@ describe("Integration wiring — Sprint 234", () => {
     expect(src).toContain("...NASHVILLE_BUSINESSES");
   });
 
-  it("seedCities mentions 8 cities", () => {
+  it("seedCities mentions 10 cities", () => {
     const src = readFile("server/seed-cities.ts");
-    expect(src).toContain("8 cities");
+    expect(src).toContain("10 cities");
   });
 
-  it("city-config has 9 total cities", () => {
+  it("city-config has 11 total cities", () => {
     const stats = getCityStats();
-    expect(stats.total).toBe(9);
+    expect(stats.total).toBe(11);
   });
 
   it("expansion-pipeline uses log.tag", () => {
