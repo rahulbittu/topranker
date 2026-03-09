@@ -61,12 +61,15 @@ describe("Sprint 123 — Admin Dashboard Conversion Funnel", () => {
 // ── Business Sharing ────────────────────────────────────────────────
 describe("Sprint 123 — Business Social Sharing", () => {
   const businessPath = path.resolve(__dirname, "..", "app", "business", "[id].tsx");
+  const subComponentsPath = path.resolve(__dirname, "..", "components", "business", "SubComponents.tsx");
 
   it("business/[id].tsx exists", () => {
     expect(fs.existsSync(businessPath)).toBe(true);
   });
 
-  const source = fs.readFileSync(businessPath, "utf-8");
+  // After Sprint 143 extraction, sharing code lives in SubComponents.tsx
+  const source = fs.readFileSync(businessPath, "utf-8") +
+    (fs.existsSync(subComponentsPath) ? fs.readFileSync(subComponentsPath, "utf-8") : "");
 
   it("contains share-outline icon", () => {
     expect(source).toContain("share-outline");

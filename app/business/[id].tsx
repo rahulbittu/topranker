@@ -4,21 +4,14 @@ import {
   Platform, Linking, Share, useWindowDimensions,
   NativeScrollEvent, NativeSyntheticEvent, RefreshControl, Alert,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, type ApiDish } from "@/lib/api";
-import {
-  getCategoryDisplay, getRankDisplay,
-  getRankConfidence, RANK_CONFIDENCE_LABELS,
-  TIER_INFLUENCE_LABELS, TIER_COLORS, type CredibilityTier,
-} from "@/lib/data";
-import { formatReturnRate, formatCompact } from "@/lib/style-helpers";
+import { type CredibilityTier } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
@@ -28,19 +21,17 @@ import { getShareUrl, getShareText } from "@/lib/sharing";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
-  SubScoreBar, DistributionChart, RatingRow, ActionButton,
-  CollapsibleReviews, AnimatedScore, DishPill,
+  ActionButton, CollapsibleReviews, DishPill,
   RatingDistribution, RankHistoryChart,
   OpeningHoursCard, LocationCard,
+  HeroCarousel, BusinessNameCard, QuickStatsBar,
+  RankConfidenceIndicator, ScoreCard, TrustExplainerCard,
+  SubScoresCard, YourRatingCard,
   type MappedRating, type RankHistoryPoint,
 } from "@/components/business/SubComponents";
-import { evaluateBusinessBadges, getBusinessBadgeCount, type BusinessBadgeContext } from "@/lib/badges";
-import { BadgeRowCompact, BadgeSummary } from "@/components/profile/BadgeGrid";
-import ScoreCountUp from "@/components/animations/ScoreCountUp";
-import RankMovementPulse from "@/components/animations/RankMovementPulse";
+import { evaluateBusinessBadges, type BusinessBadgeContext } from "@/lib/badges";
+import { BadgeRowCompact } from "@/components/profile/BadgeGrid";
 import { SlideUpView } from "@/components/animations/SlideUpView";
-
-const HERO_HEIGHT = 280;
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -164,8 +155,18 @@ export default function BusinessProfileScreen() {
       Analytics.shareBusiness(business.slug, "share_sheet");
     } catch {}
   };
+  const handleToggleBookmark = () => {
+    if (business) {
+      toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
 
   const openingHoursText = business.openingHours?.weekday_text;
+
+  // Compute user's own rating if logged in
+  const myRating = user && profile ? ratings.find(r => r.memberId === user.id) : undefined;
+  const myTier = (profile?.credibilityTier || "community") as CredibilityTier;
 
   return (
     <View style={styles.screenContainer}>
@@ -180,141 +181,41 @@ export default function BusinessProfileScreen() {
         ]}
       >
         {/* Hero Image Carousel */}
-        <View style={styles.heroImageContainer}>
-          {photoUrls.length > 0 ? (
-            <ScrollView
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={onHeroScroll}
-              scrollEventThrottle={16}
-            >
-              {photoUrls.map((url, i) => (
-                  <SafeImage
-                    key={i}
-                    uri={url}
-                    style={[styles.heroImage, { width: screenWidth }]}
-                    contentFit="cover"
-                    category={business.category}
-                    fallbackText={business.name.charAt(0).toUpperCase()}
-                  />
-              ))}
-            </ScrollView>
-          ) : (
-            <LinearGradient colors={[BRAND.colors.amber, BRAND.colors.amberDark]} style={[styles.heroImage, styles.heroImagePlaceholder, { width: screenWidth }]}>
-              <Text style={styles.heroPlaceholderInitial}>
-                {business.name.charAt(0).toUpperCase()}
-              </Text>
-            </LinearGradient>
-          )}
-
-          {photoUrls.length > 1 && (
-            <View style={styles.heroDotContainer}>
-              {photoUrls.map((_, i) => (
-                <View key={i} style={[styles.heroDot, i === heroPhotoIdx ? styles.heroDotActive : styles.heroDotInactive]} />
-              ))}
-            </View>
-          )}
-
-          <View style={[styles.navBar, { paddingTop: topPad + 8 }]}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.navBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
-              <Ionicons name="chevron-back" size={20} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.navBtnGroup}>
-              <TouchableOpacity
-                style={styles.navBtn}
-                onPress={() => { if (business) { toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } }}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={saved ? "Remove from saved" : "Save this business"}
-              >
-                <Ionicons name={saved ? "bookmark" : "bookmark-outline"} size={16} color={saved ? BRAND.colors.amber : "#fff"} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.navBtn} onPress={handleShare} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share this business">
-                <Ionicons name="share-outline" size={16} color="#fff" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <HeroCarousel
+          photoUrls={photoUrls}
+          heroPhotoIdx={heroPhotoIdx}
+          screenWidth={screenWidth}
+          businessName={business.name}
+          category={business.category}
+          saved={saved}
+          topPad={topPad}
+          onHeroScroll={onHeroScroll}
+          onBack={() => router.back()}
+          onToggleBookmark={handleToggleBookmark}
+          onShare={handleShare}
+        />
 
         {/* Business Name Card */}
-        <View style={styles.nameCard}>
-          <View style={styles.nameRow}>
-            <Text style={styles.businessName}>{business.name}</Text>
-            {business.isClaimed && (
-              <Ionicons name="checkmark-circle" size={18} color={Colors.blue} />
-            )}
-          </View>
-          <Text style={styles.businessMeta}>
-            {getCategoryDisplay(business.category).emoji} {getCategoryDisplay(business.category).label}{business.neighborhood ? ` \u00B7 ${business.neighborhood}` : ""} {"\u00B7"} {business.city}
-          </Text>
-          <View style={styles.nameCardRow}>
-            {business.isOpenNow !== undefined && (
-              <View style={[
-                styles.openBadge,
-                business.isOpenNow ? styles.openBadgeOpen : styles.openBadgeClosed,
-              ]}>
-                <View style={[styles.openDot, { backgroundColor: business.isOpenNow ? Colors.green : Colors.red }]} />
-                <Text style={[styles.openBadgeText, { color: business.isOpenNow ? Colors.green : Colors.red }]}>
-                  {business.isOpenNow ? "OPEN NOW" : "CLOSED"}
-                </Text>
-              </View>
-            )}
-            {business.priceRange && <Text style={styles.priceText}>{business.priceRange}</Text>}
-          </View>
-        </View>
+        <BusinessNameCard
+          name={business.name}
+          isClaimed={business.isClaimed}
+          category={business.category}
+          neighborhood={business.neighborhood}
+          city={business.city}
+          isOpenNow={business.isOpenNow}
+          priceRange={business.priceRange}
+        />
 
         {/* Quick Stats Bar */}
-        <View style={styles.statsBar}>
-          <View style={styles.statItem}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Text style={styles.statValue}>{getRankDisplay(business.rank)}</Text>
-              <RankMovementPulse delta={business.rankDelta ?? 0} size={24} />
-            </View>
-            <Text style={styles.statLabel}>Rank</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{business.ratingCount.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Ratings</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              {formatReturnRate(ratings.filter(r => r.wouldReturn).length, ratings.length)}
-            </Text>
-            <Text style={styles.statLabel}>Would Return</Text>
-          </View>
-          {ratings.length > 0 && (
-            <>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{ratings.length}</Text>
-                <Text style={styles.statLabel}>Reviews</Text>
-              </View>
-            </>
-          )}
-        </View>
+        <QuickStatsBar
+          rank={business.rank}
+          rankDelta={business.rankDelta}
+          ratingCount={business.ratingCount}
+          ratings={ratings}
+        />
 
         {/* Ranking Confidence Indicator */}
-        {(() => {
-          const confidence = getRankConfidence(business.ratingCount, business.category);
-          if (confidence === "strong") return null;
-          const { label, description } = RANK_CONFIDENCE_LABELS[confidence];
-          const confidenceColor = confidence === "provisional" ? Colors.textTertiary
-            : confidence === "early" ? BRAND.colors.amber : Colors.green;
-          return (
-            <View style={styles.confidenceBadge}>
-              <Ionicons
-                name={confidence === "provisional" ? "hourglass-outline" : "trending-up-outline"}
-                size={14}
-                color={confidenceColor}
-              />
-              <Text style={[styles.confidenceLabel, { color: confidenceColor }]}>{label}</Text>
-              <Text style={styles.confidenceDesc}>{description}</Text>
-            </View>
-          );
-        })()}
+        <RankConfidenceIndicator ratingCount={business.ratingCount} category={business.category} />
 
         {/* Business Badges — CVO owned */}
         {(() => {
@@ -349,82 +250,24 @@ export default function BusinessProfileScreen() {
           <View style={styles.sectionDivider} />
 
           {/* Score */}
-          <View style={styles.scoreCard}>
-            <ScoreCountUp
-              targetValue={business.weightedScore}
-              duration={1000}
-              decimalPlaces={1}
-              style={styles.scoreNumber}
-            />
-            <Text style={styles.scoreLabel}>Weighted Score</Text>
-            <View style={styles.scoreMetaRow}>
-              <Text style={styles.scoreMetaItem}>{business.ratingCount.toLocaleString()} ratings</Text>
-              <Text style={styles.scoreMetaItem}>{getRankDisplay(business.rank)}</Text>
-              {business.googleRating && (
-                <View style={styles.googleRow}>
-                  <MaterialCommunityIcons name="google" size={10} color={Colors.textTertiary} />
-                  <Text style={styles.scoreMetaItem}>{business.googleRating.toFixed(1)}</Text>
-                </View>
-              )}
-            </View>
-          </View>
+          <ScoreCard
+            weightedScore={business.weightedScore}
+            ratingCount={business.ratingCount}
+            rank={business.rank}
+            googleRating={business.googleRating}
+          />
 
           {/* Trust Explainer */}
-          <SlideUpView delay={100} distance={20}>
-          <View style={styles.trustCard}>
-            <View style={styles.trustCardHeader}>
-              <Ionicons name="shield-checkmark" size={16} color={Colors.green} />
-              <Text style={styles.trustCardTitle}>About This Ranking</Text>
-            </View>
-            <Text style={styles.trustCardBody}>
-              {(() => {
-                const conf = getRankConfidence(business.ratingCount, business.category);
-                if (conf === "provisional" || conf === "early") {
-                  return `Based on ${business.ratingCount} rating${business.ratingCount !== 1 ? "s" : ""} so far. This ranking will stabilize as more community members contribute. Each rating is weighted by the rater's credibility.`;
-                }
-                return `Calculated from ${business.ratingCount.toLocaleString()} community ratings, weighted by each rater's credibility. Higher-credibility members have more influence, making this ranking resistant to spam and manipulation.`;
-              })()}
-            </Text>
-            <View style={styles.trustCardStats}>
-              <View style={styles.trustStat}>
-                <Text style={styles.trustStatValue}>{business.ratingCount.toLocaleString()}</Text>
-                <Text style={styles.trustStatLabel}>Weighted Ratings</Text>
-              </View>
-              <View style={styles.trustStat}>
-                <Text style={styles.trustStatValue}>{business.weightedScore.toFixed(1)}</Text>
-                <Text style={styles.trustStatLabel}>Community Score</Text>
-              </View>
-              {ratings.length > 0 && (
-                <View style={styles.trustStat}>
-                  <Text style={styles.trustStatValue}>
-                    {formatReturnRate(ratings.filter(r => r.wouldReturn).length, ratings.length)}
-                  </Text>
-                  <Text style={styles.trustStatLabel}>Would Return</Text>
-                </View>
-              )}
-            </View>
-          </View>
-          </SlideUpView>
+          <TrustExplainerCard
+            ratingCount={business.ratingCount}
+            weightedScore={business.weightedScore}
+            category={business.category}
+            ratings={ratings}
+          />
 
           {/* Sub-scores */}
           {ratings.length > 0 && (
-            <SlideUpView delay={200} distance={20}>
-            <View style={styles.subScoresCard}>
-              <SubScoreBar label="Quality" value={avgQ1} />
-              <SubScoreBar label="Value" value={avgQ2} />
-              <SubScoreBar label="Service" value={avgQ3} />
-              <View style={styles.returnRateRow}>
-                <Ionicons
-                  name="refresh-circle"
-                  size={14}
-                  color={Colors.green}
-                />
-                <Text style={styles.returnRateText}>
-                  {Math.round((ratings.filter(r => r.wouldReturn).length / ratings.length) * 100)}% would return
-                </Text>
-              </View>
-            </View>
-            </SlideUpView>
+            <SubScoresCard avgQ1={avgQ1} avgQ2={avgQ2} avgQ3={avgQ3} ratings={ratings} />
           )}
 
           {/* Rating Distribution — Anti-fraud transparency */}
@@ -460,50 +303,7 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Your Previous Rating — Sprint 129 */}
-          {(() => {
-            if (!user || !profile) return null;
-            const myRating = ratings.find(r => r.memberId === user.id);
-            if (!myRating) return null;
-            const tier = (profile.credibilityTier || "community") as CredibilityTier;
-            const ratedDate = new Date(myRating.createdAt);
-            const daysAgo = Math.floor((Date.now() - ratedDate.getTime()) / (1000 * 60 * 60 * 24));
-            return (
-              <View style={styles.yourRatingCard}>
-                <View style={styles.yourRatingHeader}>
-                  <Ionicons name="star" size={14} color={BRAND.colors.amber} />
-                  <Text style={styles.yourRatingTitle}>Your Rating</Text>
-                  <Text style={styles.yourRatingDate}>
-                    {daysAgo === 0 ? "Today" : daysAgo === 1 ? "Yesterday" : `${daysAgo}d ago`}
-                  </Text>
-                </View>
-                <View style={styles.yourRatingScores}>
-                  <View style={styles.yourRatingScoreItem}>
-                    <Text style={styles.yourRatingScoreValue}>{myRating.q1}</Text>
-                    <Text style={styles.yourRatingScoreLabel}>Quality</Text>
-                  </View>
-                  <View style={styles.yourRatingScoreItem}>
-                    <Text style={styles.yourRatingScoreValue}>{myRating.q2}</Text>
-                    <Text style={styles.yourRatingScoreLabel}>Value</Text>
-                  </View>
-                  <View style={styles.yourRatingScoreItem}>
-                    <Text style={styles.yourRatingScoreValue}>{myRating.q3}</Text>
-                    <Text style={styles.yourRatingScoreLabel}>Service</Text>
-                  </View>
-                  <View style={styles.yourRatingScoreItem}>
-                    <Ionicons
-                      name={myRating.wouldReturn ? "checkmark-circle" : "close-circle"}
-                      size={16}
-                      color={myRating.wouldReturn ? Colors.green : Colors.red}
-                    />
-                    <Text style={styles.yourRatingScoreLabel}>Return</Text>
-                  </View>
-                </View>
-                <Text style={styles.yourRatingInfluence}>
-                  {TIER_INFLUENCE_LABELS[tier]} · Score {myRating.rawScore.toFixed(1)}
-                </Text>
-              </View>
-            );
-          })()}
+          {myRating && <YourRatingCard myRating={myRating} tier={myTier} />}
 
           {/* Rate Button — gated: active after 3+ days */}
           {user ? (() => {
@@ -651,7 +451,6 @@ const styles = StyleSheet.create({
   },
   notFoundText: { fontSize: 18, color: Colors.text, fontWeight: "600" },
   notFoundTextSpaced: { marginTop: 12 },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   backLink: { fontSize: 14, color: Colors.gold, fontWeight: "500" },
   backLinkButton: { marginTop: 8 },
   retryButton: {
@@ -669,194 +468,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  heroImageContainer: { height: HERO_HEIGHT, position: "relative" },
-  heroImage: { height: HERO_HEIGHT },
-  heroDotContainer: {
-    flexDirection: "row", justifyContent: "center", gap: 5,
-    position: "absolute", bottom: 10, left: 0, right: 0, zIndex: 5,
-  },
-  heroDot: { width: 7, height: 7, borderRadius: 4 },
-  heroDotActive: { backgroundColor: BRAND.colors.amber },
-  heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
-  heroImagePlaceholder: {
-    backgroundColor: BRAND.colors.amber,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  heroPlaceholderInitial: {
-    fontSize: 48,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-
-  navBar: {
-    position: "absolute", top: 0, left: 0, right: 0,
-    flexDirection: "row", justifyContent: "space-between",
-    paddingHorizontal: 14, zIndex: 10,
-  },
-  navBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    alignItems: "center", justifyContent: "center",
-  },
-  navBtnGroup: {
-    flexDirection: "row", gap: 8,
-  },
-
-  nameCard: {
-    backgroundColor: Colors.surface, marginHorizontal: 14, marginTop: -24,
-    borderRadius: 16, padding: 16, gap: 4,
-    ...Colors.cardShadow,
-  },
-  businessName: {
-    fontSize: 24, fontWeight: "700", color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
-  },
-  businessMeta: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  nameCardRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
-  openBadge: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 99,
-  },
-  openBadgeOpen: {
-    backgroundColor: `${Colors.green}12`,
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  openBadgeClosed: {
-    backgroundColor: `${Colors.red}12`,
-  },
-  openDot: {
-    width: 6, height: 6, borderRadius: 3,
-  },
-  openBadgeText: {
-    fontSize: 10, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
-  },
-  priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  statsBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: Colors.surface,
-    marginHorizontal: 16,
-    marginTop: -8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statItem: { alignItems: "center", gap: 2 },
-  statValue: {
-    fontSize: 18, fontWeight: "700", color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
-  },
-  statLabel: {
-    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
-    textTransform: "uppercase", letterSpacing: 0.5,
-  },
-  statDivider: {
-    width: 1, height: 30, backgroundColor: Colors.border,
-  },
-
-  confidenceBadge: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    marginHorizontal: 16, marginTop: 8,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8,
-  },
-  confidenceLabel: {
-    fontSize: 12, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
-  },
-  confidenceDesc: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    flex: 1,
-  },
-
-  scoreCard: {
-    backgroundColor: Colors.surface, borderRadius: 16,
-    padding: 20, alignItems: "center", gap: 4,
-    ...Colors.cardShadow,
-  },
-  scoreNumber: {
-    fontSize: 48, fontWeight: "900", color: Colors.gold,
-    fontFamily: "PlayfairDisplay_900Black", letterSpacing: -1.5,
-  },
-  scoreLabel: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
-  scoreMetaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
-  scoreMetaItem: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
-  googleRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-
-  trustCard: {
-    backgroundColor: `${Colors.green}08`,
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: `${Colors.green}20`,
-  },
-  trustCardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  trustCardTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  trustCardBody: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_400Regular",
-    lineHeight: 18,
-  },
-  trustCardStats: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: `${Colors.green}15`,
-  },
-  trustStat: {
-    alignItems: "center",
-    gap: 2,
-  },
-  trustStatValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-  trustStatLabel: {
-    fontSize: 9,
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_400Regular",
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.5,
-  },
-
-  subScoresCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
-    ...Colors.cardShadow,
-  },
-  returnRateRow: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingTop: 6, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  returnRateText: {
-    ...TYPOGRAPHY.ui.label, color: Colors.textSecondary,
-  },
-
   actionBar: {
     flexDirection: "row", justifyContent: "space-around",
     paddingVertical: 12,
@@ -868,34 +479,6 @@ const styles = StyleSheet.create({
 
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 
-  yourRatingCard: {
-    backgroundColor: `${BRAND.colors.amber}08`, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: `${BRAND.colors.amber}20`, gap: 10, marginBottom: 12,
-  },
-  yourRatingHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-  },
-  yourRatingTitle: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1,
-  },
-  yourRatingDate: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  yourRatingScores: {
-    flexDirection: "row", justifyContent: "space-around",
-  },
-  yourRatingScoreItem: {
-    alignItems: "center", gap: 2,
-  },
-  yourRatingScoreValue: {
-    fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  yourRatingScoreLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  yourRatingInfluence: {
-    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", textAlign: "center",
-  },
   rateButton: {
     backgroundColor: BRAND.colors.amber, borderRadius: 14, paddingVertical: 15,
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
@@ -936,7 +519,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10, alignItems: "center",
   },
   claimBtnText: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-
 
   reportLink: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",

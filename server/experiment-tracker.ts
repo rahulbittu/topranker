@@ -48,6 +48,28 @@ export interface OutcomeStats {
   conversionRates: Record<string, { variant: string; action: string; rate: number }[]>;
 }
 
+export type DashboardRecommendation =
+  | "treatment_winning"
+  | "control_winning"
+  | "inconclusive"
+  | "insufficient_data";
+
+export interface VariantDashboard {
+  variant: string;
+  exposures: number;
+  outcomes: number;
+  conversionRate: number; // percentage 0-100
+  byAction: Record<string, number>;
+}
+
+export interface ExperimentDashboard {
+  experimentId: string;
+  totalExposures: number;
+  variants: VariantDashboard[];
+  confidence: "sufficient_data" | "insufficient_data";
+  recommendation: DashboardRecommendation;
+}
+
 // ─── In-Memory Stores ────────────────────────────────────────
 
 const exposures: ExperimentExposure[] = [];
@@ -236,6 +258,89 @@ export function getUserExperiments(userId: string): string[] {
   return exposures
     .filter((e) => e.userId === userId)
     .map((e) => e.experimentId);
+}
+
+// ─── Dashboard Computation ───────────────────────────────
+
+/**
+ * Compute a dashboard summary for a given experiment.
+ * Includes per-variant conversion rates, confidence indicator, and recommendation.
+ *
+ * Recommendation logic:
+ * - If total exposures < 100 → "insufficient_data"
+ * - If treatment conversion > control by more than 5 percentage points → "treatment_winning"
+ * - If control conversion > treatment by more than 5 percentage points → "control_winning"
+ * - Otherwise → "inconclusive"
+ *
+ * Sprint 143: Experiment Results Dashboard
+ */
+export function computeExperimentDashboard(experimentId: string): ExperimentDashboard {
+  const expStats = getExposureStats(experimentId);
+  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
+  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
+
+  // Build per-variant stats
+  const variantMap = new Map<string, { exposures: number; outcomes: number; byAction: Record<string, number> }>();
+
+  for (const e of filteredExposures) {
+    if (!variantMap.has(e.variant)) {
+      variantMap.set(e.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    variantMap.get(e.variant)!.exposures += 1;
+  }
+
+  for (const o of filteredOutcomes) {
+    if (!variantMap.has(o.variant)) {
+      variantMap.set(o.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    const v = variantMap.get(o.variant)!;
+    v.outcomes += 1;
+    v.byAction[o.action] = (v.byAction[o.action] || 0) + 1;
+  }
+
+  const variants: VariantDashboard[] = [];
+  for (const [variant, data] of variantMap.entries()) {
+    variants.push({
+      variant,
+      exposures: data.exposures,
+      outcomes: data.outcomes,
+      conversionRate: data.exposures > 0 ? (data.outcomes / data.exposures) * 100 : 0,
+      byAction: data.byAction,
+    });
+  }
+
+  // Determine confidence and recommendation
+  const totalExposures = expStats.total;
+  let confidence: ExperimentDashboard["confidence"] = "sufficient_data";
+  let recommendation: DashboardRecommendation = "inconclusive";
+
+  if (totalExposures < 100) {
+    confidence = "insufficient_data";
+    recommendation = "insufficient_data";
+  } else {
+    const controlVariant = variants.find((v) => v.variant === "control");
+    const treatmentVariant = variants.find((v) => v.variant === "treatment");
+
+    const controlRate = controlVariant?.conversionRate ?? 0;
+    const treatmentRate = treatmentVariant?.conversionRate ?? 0;
+    const diff = treatmentRate - controlRate;
+
+    if (diff > 5) {
+      recommendation = "treatment_winning";
+    } else if (diff < -5) {
+      recommendation = "control_winning";
+    } else {
+      recommendation = "inconclusive";
+    }
+  }
+
+  return {
+    experimentId,
+    totalExposures,
+    variants,
+    confidence,
+    recommendation,
+  };
 }
 
 // ─── Reset (for testing) ─────────────────────────────────────

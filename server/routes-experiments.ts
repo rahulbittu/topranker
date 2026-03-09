@@ -16,7 +16,7 @@ import { apiRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { log } from "./logger";
 import { hashString } from "@shared/hash";
-import { trackExposure, getExposureStats, getOutcomeStats } from "./experiment-tracker";
+import { trackExposure, getExposureStats, getOutcomeStats, computeExperimentDashboard } from "./experiment-tracker";
 import { isAdminEmail } from "@shared/admin";
 import { requireAuth } from "./middleware";
 
@@ -197,6 +197,7 @@ export function registerExperimentRoutes(app: Express): void {
             description: exp.description,
             exposure: getExposureStats(exp.id),
             outcomes: getOutcomeStats(exp.id),
+            dashboard: computeExperimentDashboard(exp.id),
           }));
 
         return res.json({ data: allStats });
@@ -214,6 +215,7 @@ export function registerExperimentRoutes(app: Express): void {
           active: experiment.active,
           exposure: getExposureStats(experimentId),
           outcomes: getOutcomeStats(experimentId),
+          dashboard: computeExperimentDashboard(experimentId),
         },
       });
   }));
