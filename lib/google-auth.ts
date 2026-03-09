@@ -136,6 +136,7 @@ async function signInWithGoogleNative(): Promise<string> {
     scopes: ["openid", "profile", "email"],
     redirectUri,
     responseType: AuthSession.ResponseType.Token,
+    usePKCE: false,
   });
 
   const result = await request.promptAsync(discovery);
