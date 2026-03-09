@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useCity } from "@/lib/city-context";
 import { AppLogo } from "@/components/Logo";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
+import { Analytics } from "@/lib/analytics";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
@@ -65,6 +66,11 @@ export default function SignupScreen() {
         ...(referralParam ? { referralCode: referralParam } : {}),
       });
       setShowWelcome(true);
+      // Sprint 202: Track beta signup with referral
+      Analytics.signupComplete("email");
+      if (referralParam) {
+        Analytics.betaSignupWithReferral(referralParam);
+      }
     } catch (err: any) {
       const msg = err.message || "Signup failed";
       if (msg.includes("400")) {

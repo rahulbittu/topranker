@@ -48,6 +48,7 @@ export default function ReferralScreen() {
         message: `Join me on TopRanker — the app where your restaurant opinions actually matter. Trust-weighted rankings, not fake reviews.\n\nUse my code: ${referralCode}\n\n${referralLink}`,
       });
       Analytics.shareBusiness("referral", "share_sheet");
+      Analytics.betaReferralShare("share_sheet");
     } catch {}
   };
 

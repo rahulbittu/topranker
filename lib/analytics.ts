@@ -79,7 +79,13 @@ export type AnalyticsEvent =
 
   // Settings
   | "settings_open"
-  | "city_change";
+  | "city_change"
+
+  // Sprint 202: Beta tracking
+  | "beta_join_page_view"
+  | "beta_join_cta_tap"
+  | "beta_signup_with_referral"
+  | "beta_referral_share";
 
 interface EventProperties {
   [key: string]: string | number | boolean | undefined;
@@ -223,4 +229,17 @@ export const Analytics = {
 
   loginComplete: (method: string) =>
     track("login_complete", { method }),
+
+  // Sprint 202: Beta tracking
+  betaJoinPageView: (referralCode?: string) =>
+    track("beta_join_page_view", { referral_code: referralCode || "none" }),
+
+  betaJoinCtaTap: (referralCode?: string) =>
+    track("beta_join_cta_tap", { referral_code: referralCode || "none" }),
+
+  betaSignupWithReferral: (referralCode: string) =>
+    track("beta_signup_with_referral", { referral_code: referralCode }),
+
+  betaReferralShare: (method: string) =>
+    track("beta_referral_share", { method }),
 };

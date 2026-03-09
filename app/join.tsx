@@ -14,6 +14,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { AppLogo } from "@/components/Logo";
 import { useAuth } from "@/lib/auth-context";
+import { Analytics } from "@/lib/analytics";
 
 const AMBER = BRAND.colors.amber;
 
@@ -24,6 +25,11 @@ export default function JoinScreen() {
   const [referralCode] = useState(ref || "");
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
+  // Sprint 202: Track join page view
+  useEffect(() => {
+    Analytics.betaJoinPageView(referralCode);
+  }, []);
+
   // If already logged in, go to home
   useEffect(() => {
     if (user) {
@@ -32,6 +38,7 @@ export default function JoinScreen() {
   }, [user]);
 
   const handleJoin = () => {
+    Analytics.betaJoinCtaTap(referralCode);
     router.push(`/auth/signup${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`);
   };
 
