@@ -17,6 +17,7 @@ import { registerQrRoutes } from "./routes-qr";
 import { registerNotificationRoutes } from "./routes-notifications";
 import { registerReferralRoutes } from "./routes-referrals";
 import { registerUnsubscribeRoutes } from "./routes-unsubscribe";
+import { registerWebhookRoutes } from "./routes-webhooks";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -426,6 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRoutes(app);
   registerExperimentRoutes(app);
   registerUnsubscribeRoutes(app);
+  registerWebhookRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
