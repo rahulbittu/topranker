@@ -13,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
+import { BRAND } from "@/constants/brand";
 import { pct } from "@/lib/style-helpers";
 import {
   TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS, TIER_SCORE_RANGES,
@@ -31,7 +32,8 @@ import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
 
-type RatingStep = 1 | 2;
+type RatingStep = 0 | 1 | 2;
+type VisitType = "dine_in" | "delivery" | "takeaway";
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
@@ -49,7 +51,8 @@ export default function RateScreen() {
   const business = bizData?.business;
   const existingDishes = bizData?.dishes || [];
 
-  const [step, setStep] = useState<RatingStep>(1);
+  const [step, setStep] = useState<RatingStep>(0);
+  const [visitType, setVisitType] = useState<VisitType | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [toastBadge, setToastBadge] = useState<Badge | null>(null);
   const [q1Score, setQ1Score] = useState(0);
@@ -147,6 +150,7 @@ export default function RateScreen() {
     businessId: business?.id,
     q1Score, q2Score, q3Score,
     wouldReturn,
+    visitType,
     selectedDish,
     dishInput,
     note,
@@ -191,9 +195,21 @@ export default function RateScreen() {
   }
 
   const category = business.category || "restaurant";
-  const q1Label = getQ1Label(category);
-  const q3Label = getQ3Label(category);
   const returnLabel = getWouldReturnLabel(category);
+
+  // Dimension gating based on visit type (Rating Integrity Phase 1a)
+  const getDimensionLabels = () => {
+    switch (visitType) {
+      case "delivery":
+        return { q1Label: "Food Quality", q2Label: "Packaging Quality", q3Label: "Value for Money" };
+      case "takeaway":
+        return { q1Label: "Food Quality", q2Label: "Wait Time Accuracy", q3Label: "Value for Money" };
+      case "dine_in":
+      default:
+        return { q1Label: "Food Quality", q2Label: "Service", q3Label: "Vibe & Atmosphere" };
+    }
+  };
+  const { q1Label, q2Label, q3Label } = getDimensionLabels();
 
   const prevRank = business.rank ?? 1;
   const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
@@ -234,6 +250,7 @@ export default function RateScreen() {
 
   const canProceed = (): boolean => {
     switch (step) {
+      case 0: return visitType !== null;
       case 1: return q1Score > 0 && q2Score > 0 && q3Score > 0 && wouldReturn !== null;
       case 2: return true;
       default: return false;
@@ -241,7 +258,10 @@ export default function RateScreen() {
   };
 
   const goNext = () => {
-    if (step < 2) {
+    if (step === 0) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setStep(1);
+    } else if (step === 1) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setStep(2);
     } else {
@@ -251,21 +271,22 @@ export default function RateScreen() {
   };
 
   const goBack = () => {
-    if (step > 1) setStep(1);
+    if (step === 2) setStep(1);
+    else if (step === 1) setStep(0);
     else router.back();
   };
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={step > 1 ? "Previous step" : "Go back"}>
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={step > 0 ? "Previous step" : "Go back"}>
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <StepIndicator step={step - 1} total={2} />
+        <StepIndicator step={step} total={3} />
         <View style={styles.navSpacer} />
       </View>
 
-      <ProgressBar step={step - 1} total={2} />
+      <ProgressBar step={step} total={3} />
 
       <View style={styles.businessHeader}>
         <Text style={styles.rateLabel}>RATE</Text>
@@ -273,7 +294,32 @@ export default function RateScreen() {
       </View>
 
       <ScrollView style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
-        {step === 1 ? (
+        {step === 0 ? (
+          <Animated.View entering={FadeIn.duration(300)} style={styles.visitTypeContainer} key="step0">
+            <Text style={styles.visitTypeTitle}>How did you experience {business.name}?</Text>
+            {([
+              { type: "dine_in" as VisitType, icon: "\uD83C\uDF7D\uFE0F", label: "Dined In", desc: "I ate at the restaurant" },
+              { type: "delivery" as VisitType, icon: "\uD83D\uDEF5", label: "Delivery", desc: "I ordered delivery" },
+              { type: "takeaway" as VisitType, icon: "\uD83D\uDCE6", label: "Takeaway", desc: "I picked up my order" },
+            ]).map((opt) => (
+              <TouchableOpacity
+                key={opt.type}
+                style={[styles.visitTypeCard, visitType === opt.type && styles.visitTypeCardSelected]}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setVisitType(opt.type); }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${opt.label}: ${opt.desc}`}
+                accessibilityState={{ selected: visitType === opt.type }}
+              >
+                <Text style={styles.visitTypeIcon}>{opt.icon}</Text>
+                <View>
+                  <Text style={styles.visitTypeLabel}>{opt.label}</Text>
+                  <Text style={styles.visitTypeDesc}>{opt.desc}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </Animated.View>
+        ) : step === 1 ? (
           <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
             {dishContext && (
               <View style={styles.dishContextBanner}>
@@ -287,7 +333,7 @@ export default function RateScreen() {
               <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
             </View>
             <View style={styles.compactQuestion}>
-              <Text style={styles.compactLabel}>Value for Money</Text>
+              <Text style={styles.compactLabel}>{q2Label}</Text>
               <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
             </View>
             <View style={styles.compactQuestion}>
@@ -360,7 +406,7 @@ export default function RateScreen() {
           <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
             {submitMutation.isPending ? "Submitting..." : step === 2 ? "Submit Rating" : "Next"}
           </Text>
-          {step === 1 && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
+          {(step === 0 || step === 1) && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
     </View>
@@ -446,5 +492,48 @@ const styles = StyleSheet.create({
   },
   errorBannerText: {
     fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium", flex: 1,
+  },
+  visitTypeContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: "center" as const,
+  },
+  visitTypeTitle: {
+    fontSize: 22,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    textAlign: "center" as const,
+    marginBottom: 32,
+    fontFamily: "DMSans_700Bold",
+  },
+  visitTypeCard: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    padding: 20,
+    borderRadius: 16,
+    backgroundColor: Colors.surface,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  visitTypeCardSelected: {
+    borderColor: BRAND.colors.amber,
+    backgroundColor: "rgba(196, 154, 26, 0.08)",
+  },
+  visitTypeIcon: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  visitTypeLabel: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: Colors.text,
+    fontFamily: "DMSans_700Bold",
+  },
+  visitTypeDesc: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    marginTop: 2,
+    fontFamily: "DMSans_400Regular",
   },
 });

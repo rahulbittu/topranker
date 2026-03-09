@@ -10,6 +10,8 @@ import { setRatingImpact } from "@/lib/rating-impact";
 import { getBadgeById, type Badge } from "@/lib/badges";
 import { awardBadgeApi } from "@/lib/api";
 
+type VisitType = "dine_in" | "delivery" | "takeaway";
+
 interface UseRatingSubmitOptions {
   slug: string;
   businessId?: string;
@@ -17,6 +19,7 @@ interface UseRatingSubmitOptions {
   q2Score: number;
   q3Score: number;
   wouldReturn: boolean | null;
+  visitType: VisitType | null;
   selectedDish: string;
   dishInput: string;
   note: string;
@@ -30,6 +33,7 @@ export function useRatingSubmit({
   businessId,
   q1Score, q2Score, q3Score,
   wouldReturn,
+  visitType,
   selectedDish,
   dishInput,
   note,
@@ -49,6 +53,7 @@ export function useRatingSubmit({
         q2Score,
         q3Score,
         wouldReturn,
+        visitType: visitType || undefined,
         dishName: dishName || undefined,
         note: note.trim() || undefined,
       });
