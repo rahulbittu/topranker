@@ -393,6 +393,10 @@ function setupErrorHandler(app: express.Application) {
   recalculateAllDishBoards();
   const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1000);
 
+  // Sprint 175: Weekly digest push notification scheduler
+  const { startWeeklyDigestScheduler } = await import("./notification-triggers");
+  const weeklyDigestTimeout = startWeeklyDigestScheduler();
+
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -409,6 +413,7 @@ function setupErrorHandler(app: express.Application) {
     logger.info(`${signal} received. Starting graceful shutdown...`);
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
+    clearTimeout(weeklyDigestTimeout);
 
     server.close(() => {
       logger.info("HTTP server closed");

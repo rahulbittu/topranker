@@ -232,6 +232,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       trackEvent("first_rating", memberId);
       trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
 
+      // Sprint 175: Push notification on tier upgrade
+      if (result.tierUpgraded && req.user!.pushToken) {
+        const { notifyTierUpgrade } = await import("./push");
+        notifyTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch(() => {});
+      }
+
       const userExperiments = getUserExperiments(String(memberId));
       for (const expId of userExperiments) {
         trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);

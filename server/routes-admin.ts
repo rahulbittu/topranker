@@ -127,6 +127,26 @@ export function registerAdminRoutes(app: Express) {
             }).catch(() => {});
           }
         }
+
+        // Sprint 175: Push notification for claim decisions
+        if (member?.pushToken) {
+          const { sendPushNotification } = await import("./push");
+          if (status === "approved") {
+            sendPushNotification(
+              [member.pushToken],
+              `Claim approved: ${business?.name}`,
+              "You're now the verified owner. Access your dashboard to see analytics.",
+              { screen: "business" },
+            ).catch(() => {});
+          } else {
+            sendPushNotification(
+              [member.pushToken],
+              `Claim update: ${business?.name}`,
+              "Your claim could not be verified. Contact support for next steps.",
+              { screen: "profile" },
+            ).catch(() => {});
+          }
+        }
       }
 
       return res.json({ data: updated });
