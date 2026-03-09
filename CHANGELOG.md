@@ -2,6 +2,170 @@
 
 All notable changes to TopRanker are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Sprint 154] - 2026-03-09
+### Fixed
+- **Railway 502** — server bound IPv6 only on Railway; restored `host: "0.0.0.0"` for IPv4 binding
+- **Mock data production leak** — `apiFetch()` served fake data on any network error; gated mock fallback behind `__DEV__` guard
+### Added
+- Railway build configuration (`nixpacks.toml`, `.node-version`, `railway.toml`)
+- Google OAuth native flow with dual ID/access token verification
+
+## [Sprint 153] - 2026-03-08
+### Fixed
+- **5 UI/backend truthfulness mismatches** — systematic audit of every user-facing claim against actual behavior
+- Push notifications sent without checking user preference opt-in; now gated on preference lookup
+- GDPR deletion requests stored in volatile in-memory Map; migrated to `deletionRequests` DB table with Drizzle queries
+- Business claim UI falsely said "Auto-verified business"; changed to "Reviewed by our team"
+- Privacy policy and SECURITY.md falsely claimed AES-256 encryption at rest; removed until implemented
+### Changed
+- Real-time rating copy updated to "Ratings update shortly after submission" (honest about SSE latency)
+- 2117 tests across 92 files
+
+## [Sprint 152] - 2026-03-08
+### Fixed
+- Email change copy claimed verification when none existed; replaced with "Your email will be updated immediately" plus confirmation dialog
+- Avatar upload storage path clarified to use file storage abstraction consistently (`storageClient.upload` / `getPublicUrl`)
+### Added
+- Dynamic version display from package.json via `app-constants.ts` (replaces hardcoded "1.0.0")
+- 2 regression guard tests validating UI copy matches backend behavior
+
+## [Sprint 151] - 2026-03-08
+### Added
+- **FileStorage abstraction** (`server/file-storage.ts`) — Strategy pattern with LocalFileStorage (dev) and R2FileStorage (production via env var)
+- Email change endpoint (`PUT /api/members/me/email`) with duplicate checking and rate limiting
+### Changed
+- Avatar upload rewritten to stream through FileStorage instead of base64-encoding; response payload reduced from ~300KB to ~200 bytes
+- Removed dead notification state from profile.tsx (~40 lines of unused code)
+- 2087 tests across 90 files
+
+## [Sprint 150] - 2026-03-08
+### Added
+- **Avatar upload** — `POST /api/members/me/avatar` with 2MB limit, MIME validation, multer middleware
+- Photo picker (web) with FileReader base64 preview and camera overlay badge
+- SLT Backlog Meeting (Sprint 150) — Q2 roadmap: revenue readiness, R2 avatar migration, referral program
+- Architectural Audit #14: A- grade, 2 P1 findings (base64 storage, notification state cleanup)
+### Changed
+- Edit profile screen polish: loading/success/error states, disabled save during submission
+
+## [Sprint 149] - 2026-03-08
+### Added
+- **Edit profile screen** (`app/edit-profile.tsx`) — display name, username editing with avatar placeholder
+- `PUT /api/members/me` endpoint with validation for profile field updates
+- `updateMemberProfile` storage function via Drizzle ORM
+### Changed
+- Notification preferences unified: removed inline profile toggles, single source of truth in settings
+- 2049 tests across 88 files
+
+## [Sprint 148] - 2026-03-08
+### Added
+- **Settings notification sync** — 6 notification keys persisted to DB via jsonb column on members table
+- `updateNotificationPrefs` storage function with JSON merge update
+- Comprehensive backend setup guide (`docs/SETUP.md`)
+### Changed
+- GET/PUT notification-preferences endpoints expanded from 3 to 6 keys with server-side persistence
+- Settings toggles fire-and-forget PUT with optimistic local state
+- 2031 tests across 87 files
+
+## [Sprint 147] - 2026-03-08
+### Fixed
+- Search returned static results regardless of input; now filters by query, city, category, and description
+### Added
+- Community reviews section on challenger VS cards (reviewer name, stars, timestamp, review text)
+- Profile tier progression UI redesign with progress bars, tier badges, and influence score display
+
+## [Sprint 146] - 2026-03-08
+### Added
+- SLT Backlog Meeting (Sprint 145) — prioritized production observability and deployment for Sprints 146-150
+- Architectural Audit #13 — validated experiment framework data flows and SubComponents decomposition
+- 20 experiment HTTP pipeline tests (full lifecycle: assignment, exposure, outcome, dashboard)
+- 15 freshness boundary audit tests proving zero uncovered tier-emitting paths
+### Fixed
+- MapView IntersectionObserver crash on tab navigation (try-catch around map initialization)
+- Mock business photos replaced with Unsplash food photography URLs
+- 2010 tests across 86 files (crossed 2000 milestone)
+
+## [Sprint 145] - 2026-03-08
+### Added
+- **HTTP-level freshness integration tests** (22 tests) — proves FRESH endpoints return corrected tier at the request-response level
+- Real Wilson score confidence intervals replacing approximate implementation; 6 correctness tests against known statistical values
+### Changed
+- Business SubComponents.tsx decomposed from 1023 LOC monolith into 15 individual component files (all under 300 LOC) with 43 LOC barrel re-export
+- 1975 tests across 84 files
+
+## [Sprint 144] - 2026-03-08
+### Added
+- **3 A/B experiments activated** — `confidence_tooltip`, `trust_signal_style` (text labels vs icon-only), `personalized_weight` (tier-based vote weight display)
+- Personalized weight experiment wired into challenger page via `useExperiment` hook
+- Trust signal style experiment wired into business detail SubComponents
+- 24 E2E experiment pipeline tests (assignment through dashboard recommendation)
+### Changed
+- MapView extracted from search.tsx (907 to 713 LOC, -21%)
+- 1947 tests across 83 files
+
+## [Sprint 143] - 2026-03-08
+### Added
+- **Experiment dashboard with Wilson score CIs** — `computeExperimentDashboard` with automated recommendations (significant/promising/inconclusive/underperforming)
+- 26 behavioral freshness tests and 38 core-loop boundary tests
+### Changed
+- Challenger.tsx extracted from 944 to 482 LOC via SubComponents pattern
+- Business/[id].tsx extracted from 951 to 533 LOC via SubComponents pattern
+- 1899 tests across 81 files
+
+## [Sprint 142] - 2026-03-08
+### Added
+- **Tier semantics documentation** (`docs/TIER-SEMANTICS.md`) — formal FRESH vs SNAPSHOT contract for all 19 tier-touching paths
+- `TIER_SEMANTICS` machine-readable constant with structural enforcement tests
+- 28 E2E product path tests proving the core loop (rating, tier promotion, vote weight, challenger, account lifecycle)
+- Experiment tracker (`server/experiment-tracker.ts`) with enrollment, exposure, outcome tracking, and metrics dashboard endpoint
+### Changed
+- 1815 tests across 78 files
+
+## [Sprint 141] - 2026-03-08
+### Added
+- **GitHub Actions CI/CD pipeline** — tests, TypeScript check, file size limits, type cast counts, @types audit (all blocking)
+- Automated health check script (`scripts/arch-health-check.sh`) replacing manual audit recurring findings
+- Cumulative audit scorecard (`scripts/audit-scorecard.md`) with escalation rules
+- Tier path audit covering all 19 code paths; 4 gaps fixed (public profile, GDPR export, admin members, passport.deserializeUser)
+### Changed
+- `requireAuth` extracted to `server/middleware.ts`, `hashString` to `shared/hash.ts` (dedup)
+- @types packages moved from dependencies to devDependencies
+- 1722 tests across 75 files
+
+## [Sprint 140] - 2026-03-08
+### Added
+- SLT Backlog Meeting (Sprint 140) — reviewed Sprints 135-139, set priorities for 141-145
+- Architectural Audit #12: A- grade (up from B+), 0 Critical/High, 3 new P2/P3 findings
+- Tier staleness integrated into live `recalculateCredibilityScore` — zero drift window on rating submission and profile load
+- 21 wrapAsync verification tests proving error propagation, response shape consistency, and no stack trace leaks
+
+## [Sprint 139] - 2026-03-08
+### Changed
+- **wrapAsync applied to all 5 route files** — 60 handlers wrapped, 60+ catch blocks removed
+- Animation components integrated into Rankings (staggered FadeInView), Profile (ScoreCountUp), and Business Detail (RankMovementPulse)
+### Added
+- Tier staleness detection module (`server/tier-staleness.ts`) — `isTierStale`, `checkAndRefreshTier`, `findStaleTierMembers`, `refreshStaleTiers`
+- 1570 tests across 71 files
+
+## [Sprint 138] - 2026-03-08
+### Added
+- **Shared credibility module** (`shared/credibility.ts`) — single source of truth for `getVoteWeight`, `getCredibilityTier`, `getTierFromScore`; client and server re-export
+- `wrapAsync` middleware (`server/wrap-async.ts`) — Express async handler wrapper with headersSent protection
+- 6 animation components (ScoreCountUp, RankMovementPulse, EmptyStateAnimation, FadeInView, SlideUpView, LottieWrapper)
+- Haptic pattern library (`lib/haptic-patterns.ts`) and audio engine (`lib/audio-engine.ts`)
+- Screen fade transitions in `_layout.tsx`
+### Changed
+- 1554 tests across 70 files
+
+## [Sprint 137] - 2026-03-08
+### Added
+- 100 storage-layer tests for credibility engine formulas (members.ts) and anomaly detection (ratings.ts)
+- Server-side experiment assignment (`server/routes-experiments.ts`) with DJB2 hash bucketing parity
+- Payment rate limiting (20 req/min) and admin rate limiting (30 req/min) with independent key prefixes
+### Changed
+- Profile.tsx extracted from 1073 to 671 LOC (6 components moved to SubComponents)
+- Input sanitization applied to 8 unsanitized query/body params across routes
+- 1488 tests across 67 files
+
 ## [Sprint 136] - 2026-03-08
 ### Fixed
 - **Core-loop: Pioneer rate N+1 query** — replaced O(N) loop (201 queries for 200 ratings) with single correlated subquery in `storage/members.ts`

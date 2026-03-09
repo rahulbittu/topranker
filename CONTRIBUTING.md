@@ -68,7 +68,7 @@ Import from `constants/brand.ts` — never hardcode color values.
 
 ### Running Tests
 ```bash
-npm test              # Run all tests (currently 1323 across 62 files, <1s)
+npm test              # Run all tests (currently 2117 across 92 files, <2s)
 npm run test:watch    # Watch mode for development
 ```
 

@@ -56,7 +56,11 @@ auth/login.tsx      -> Login/Signup
 ```
 server/
   index.ts          -> App entry, CORS, static serving, Vite dev proxy
-  routes.ts         -> All API route handlers
+  routes.ts         -> Core API route handlers
+  routes-admin.ts   -> Admin endpoints (claims, flags, users, analytics)
+  routes-payments.ts -> Payment & subscription endpoints
+  routes-badges.ts  -> Badge award & progress endpoints
+  routes-experiments.ts -> A/B experiment CRUD & exposure tracking
   storage.ts        -> Database operations (Drizzle queries)
   auth.ts           -> Passport strategies, registration, Google OAuth
   config.ts         -> Env var validation, typed config object
@@ -82,7 +86,7 @@ The backend uses a pluggable pattern for external services:
 
 ## Database Schema
 
-### 13 Tables
+### 20 Tables
 ```sql
 members              -- User accounts, credibility scores, tiers
 businesses           -- Restaurant/business listings, scores, ranks
@@ -97,6 +101,13 @@ qr_scans             -- QR code scan tracking
 rating_flags         -- Flagged/reported ratings
 member_badges        -- Achievement badges
 credibility_penalties -- Score penalties for bad behavior
+analytics_events     -- Event tracking for dashboards and funnels
+categories           -- Business category taxonomy
+category_suggestions -- User-submitted category proposals
+deletion_requests    -- GDPR deletion queue with 30-day grace period
+featured_placements  -- Paid featured business placements
+webhook_events       -- Inbound/outbound webhook log
+sessions             -- Express session store (connect-pg-simple)
 ```
 
 ### Key Relationships
@@ -183,14 +194,9 @@ User opens app -> GET /api/leaderboard?city=Dallas&category=restaurant
 
 ## Testing Strategy
 
-### Current Coverage (70 tests)
-| Area | Tests | File |
-|------|-------|------|
-| Credibility scoring | 24 | `tests/credibility.test.ts` |
-| Auth validation | 16 | `tests/auth-validation.test.ts` |
-| Tier perks | 15 | `tests/tier-perks.test.ts` |
-| Admin whitelist | 8 | `tests/admin.test.ts` |
-| Env config | 7 | `tests/config.test.ts` |
+### Current Coverage (2117 tests across 92 files, <2s execution)
+
+The test suite covers credibility scoring, auth validation, tier perks, admin logic, env config, API endpoint integration, A/B experiment pipelines, tier freshness contracts (FRESH vs SNAPSHOT), GDPR deletion flows, payment processing, badge awards, and SSE real-time updates.
 
 ### Testing Principles (CEO Mandate)
 - No code ships without testing
@@ -215,8 +221,21 @@ Original PRD specified 6 screens. Sprint 52 collapsed to 2 screens after CEO fee
 ### ADR-5: Temporal Decay over Simple Average
 Business scores use temporal decay so recent ratings matter more. A restaurant that improved 6 months ago shouldn't be held back by ratings from 2 years ago. Decay is linear with configurable thresholds.
 
+## Additional Systems
+
+### A/B Testing Framework
+`lib/ab-testing.ts` provides deterministic user bucketing via `shared/hash.ts`. The experiment tracker (`server/experiment-tracker.ts`) records exposures and outcomes, computes Wilson score confidence intervals, and powers the experiment dashboard. Active experiments are managed through `routes-experiments.ts`.
+
+### SSE Real-Time Updates
+`hooks/use-realtime.ts` establishes Server-Sent Event connections for live leaderboard and challenge updates. The server pushes rank changes and vote events without polling. SSE connections are hardened with reconnection backoff and auth token validation.
+
+### GDPR Deletion
+Deletion requests enter a 30-day grace period stored in the `deletion_requests` table. During the grace period, members can cancel. After expiry, a background job permanently purges all member data (ratings, badges, photos, credibility history). The flow is integration-tested end-to-end.
+
 ## Audit Cadence
 - **Every 5 sprints**: Full architectural audit
 - **Output**: `docs/audits/ARCH-AUDIT-N.md`
 - **Pipeline**: CRITICAL -> P0 next sprint, HIGH -> P1 within 2 sprints
-- **Last audit**: Sprint 55 (2 CRITICAL, 5 HIGH, 4 MEDIUM, 4 LOW)
+- **Last audit**: Arch Audit #12 at Sprint 140 (A-), 0 Critical, 0 High
+- **Grade trajectory**: C+ -> A+ -> B+ -> A+ -> B+ -> A-
+- **Automated checks**: `scripts/arch-health-check.sh` covers file sizes, type casts, @types, test count, duplications

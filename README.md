@@ -35,7 +35,7 @@ npm test
 | Database | PostgreSQL | 13 tables via Drizzle ORM |
 | Auth | Passport.js | Local + Google OAuth strategies |
 | State | React Query | Server state management |
-| Testing | Vitest | 1323 tests, <1s execution |
+| Testing | Vitest | 2117 tests across 92 files, <2s execution |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system design.
 
@@ -155,13 +155,13 @@ npm test              # Run all tests
 npm run test:watch    # Watch mode
 ```
 
-1323 tests across 62 files, including:
+2117 tests across 92 files, including:
 - `credibility.test.ts` — Credibility scoring, tiers, vote weights, temporal decay (24 tests)
 - `tier-perks.test.ts` — Gamification perks engine (15 tests)
 - `admin.test.ts` — Admin email whitelist (8 tests)
 - `config.test.ts` — Environment config validation (7 tests)
 - `auth-validation.test.ts` — Auth input validation, rate gating (16 tests)
-- ...and 57 more test files covering security, analytics, GDPR, notifications, API versioning, and more
+- ...and 87 more test files covering security, analytics, GDPR, notifications, API versioning, and more
 
 ## Brand System
 
@@ -179,7 +179,7 @@ npm run test:watch    # Watch mode
 - [API Reference](docs/API.md) — Endpoint specifications
 - [Contributing](CONTRIBUTING.md) — Development workflow, coding standards
 - [Changelog](CHANGELOG.md) — Version history
-- Sprint docs: `docs/sprints/SPRINT-N-*.md` (135 sprints)
+- Sprint docs: `docs/sprints/SPRINT-N-*.md` (154 sprints)
 - Retrospectives: `docs/retros/RETRO-N-*.md`
 - Audits: `docs/audits/ARCH-AUDIT-N.md` (every 5 sprints)
 - Process: `docs/process/BACKLOG-REFINEMENT.md`
