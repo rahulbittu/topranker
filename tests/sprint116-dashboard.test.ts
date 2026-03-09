@@ -149,7 +149,7 @@ describe("Admin Analytics Dashboard Endpoint", () => {
 
 // ── 4. Push Notification Preference Sync ────────────────────────────
 describe("Push Notification Preference Sync", () => {
-  const routesPath = path.resolve(__dirname, "..", "server/routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server/routes-members.ts");
 
   it("notification preferences PUT endpoint exists", () => {
     const content = fs.readFileSync(routesPath, "utf-8");

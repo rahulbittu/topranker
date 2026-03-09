@@ -119,7 +119,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
   });
 
   it("GET /api/members/:username calls checkAndRefreshTier (Sprint 141 fix)", () => {
-    const src = readFile("server/routes.ts");
+    const src = readFile("server/routes-members.ts");
     // Find the username route handler and verify it contains the freshness call
     const usernameRouteMatch = src.match(
       /api\/members\/:username[\s\S]{0,500}checkAndRefreshTier/
@@ -128,7 +128,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
   });
 
   it("GET /api/account/export calls checkAndRefreshTier (Sprint 141 fix)", () => {
-    const src = readFile("server/routes.ts");
+    const src = readFile("server/routes-auth.ts");
     const exportMatch = src.match(
       /api\/account\/export[\s\S]{0,800}checkAndRefreshTier/
     );
@@ -136,7 +136,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
   });
 
   it("GET /api/members/me calls recalculateCredibilityScore + checkAndRefreshTier", () => {
-    const src = readFile("server/routes.ts");
+    const src = readFile("server/routes-members.ts");
     const meMatch = src.match(
       /api\/members\/me[\s\S]{0,500}recalculateCredibilityScore[\s\S]{0,300}checkAndRefreshTier/
     );

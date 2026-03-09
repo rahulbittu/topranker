@@ -1,54 +1,38 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "node:http";
-import passport from "passport";
-import { setupAuth, registerMember, authenticateGoogleUser } from "./auth";
+import { setupAuth } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
 import { handleBadgeShare } from "./badge-share";
-import { sendWelcomeEmail } from "./email";
 import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
 import { registerBadgeRoutes } from "./routes-badges";
 import { registerExperimentRoutes } from "./routes-experiments";
+import { registerAuthRoutes } from "./routes-auth";
+import { registerMemberRoutes } from "./routes-members";
+import { registerBusinessRoutes } from "./routes-businesses";
+import { registerDishRoutes } from "./routes-dishes";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
 import {
   getLeaderboard,
-  getBusinessBySlug,
-  getBusinessById,
   getBusinessesByIds,
-  getBusinessRatings,
-  getBusinessDishes,
   searchDishes,
   submitRating,
-  getMemberById,
-  getMemberRatings,
   getActiveChallenges,
-  recalculateCredibilityScore,
-  searchBusinesses,
   getAllCategories,
-  getBusinessPhotos,
   getBusinessPhotosMap,
   getMemberPayments,
   getActiveFeaturedInCity,
-  getMemberImpact,
-  getSeasonalRatingCounts,
-  getMemberBadges,
 } from "./storage";
-import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
-import { registerDishRoutes } from "./routes-dishes";
-import { authRateLimiter } from "./rate-limiter";
-import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
+import { sanitizeString, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
 import { getUserExperiments, trackOutcome } from "./experiment-tracker";
-import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
 import { requireAuth } from "./middleware";
-import { fileStorage } from "./file-storage";
-import crypto from "node:crypto";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -144,240 +128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.on("close", cleanup);
   });
 
-  app.post("/api/auth/signup", authRateLimiter, wrapAsync(async (req: Request, res: Response) => {
-    try {
-      const { password, city } = req.body;
-      const displayName = sanitizeString(req.body.displayName, 100);
-      const username = sanitizeString(req.body.username, 50);
-      const email = sanitizeEmail(req.body.email);
+  // ── Auth + Account/GDPR Routes (extracted to routes-auth.ts, Sprint 171) ──
+  registerAuthRoutes(app);
 
-      if (!displayName || !username || !email || !password) {
-        return res.status(400).json({ error: "All fields are required" });
-      }
-
-      if (password.length < 8) {
-        return res.status(400).json({ error: "Password must be at least 8 characters" });
-      }
-      if (!/\d/.test(password)) {
-        return res.status(400).json({ error: "Password must contain at least one number" });
-      }
-
-      const member = await registerMember({ displayName, username, email, password, city });
-
-      // Fire-and-forget welcome email (don't block signup on email delivery)
-      sendWelcomeEmail({
-        email: member.email,
-        displayName: member.displayName,
-        city: member.city,
-        username: member.username,
-      }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
-
-      trackEvent("signup_completed", member.id);
-
-      req.login(
-        {
-          id: member.id,
-          displayName: member.displayName,
-          username: member.username,
-          email: member.email,
-          city: member.city,
-          credibilityScore: member.credibilityScore,
-          credibilityTier: member.credibilityTier,
-        },
-        (err) => {
-          if (err) return res.status(500).json({ error: "Login failed after signup" });
-          return res.status(201).json({ data: req.user });
-        },
-      );
-    } catch (err: any) {
-      return res.status(400).json({ error: err.message });
-    }
-  }));
-
-  app.post("/api/auth/login", authRateLimiter, (req: Request, res: Response, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return res.status(500).json({ error: "Internal server error" });
-      if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
-
-      req.login(user, (loginErr) => {
-        if (loginErr) return res.status(500).json({ error: "Login failed" });
-        return res.json({ data: user });
-      });
-    })(req, res, next);
-  });
-
-  app.post("/api/auth/google", authRateLimiter, wrapAsync(async (req: Request, res: Response) => {
-    try {
-      const { idToken } = req.body;
-      if (!idToken) {
-        return res.status(400).json({ error: "ID token is required" });
-      }
-
-      const member = await authenticateGoogleUser(idToken);
-
-      req.login(
-        {
-          id: member.id,
-          displayName: member.displayName,
-          username: member.username,
-          email: member.email,
-          city: member.city,
-          credibilityScore: member.credibilityScore,
-          credibilityTier: member.credibilityTier,
-        },
-        (err) => {
-          if (err) return res.status(500).json({ error: "Login failed" });
-          return res.json({ data: req.user });
-        },
-      );
-    } catch (err: any) {
-      return res.status(400).json({ error: err.message });
-    }
-  }));
-
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    req.logout((err) => {
-      if (err) return res.status(500).json({ error: "Logout failed" });
-      return res.json({ data: { message: "Logged out" } });
-    });
-  });
-
-  app.get("/api/auth/me", (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      return res.json({ data: null });
-    }
-    return res.json({ data: req.user });
-  });
-
-  // ── GDPR / CCPA Data Export (Portability) ───────────────────
-  // Compliance (Jordan Blake): Right-to-data-portability per GDPR Art. 20
-  // Returns all user data in machine-readable JSON format
-  app.get("/api/account/export", wrapAsync(async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    const userId = req.user!.id;
-    const [profile, ratings, impact, seasonal, badges] = await Promise.all([
-      getMemberById(userId),
-      getMemberRatings(userId, 1, 10000),
-      getMemberImpact(userId),
-      getSeasonalRatingCounts(userId),
-      getMemberBadges(userId),
-    ]);
-
-    // Tier freshness guard (Sprint 141): ensure exported data reflects correct tier
-    const freshExportTier = profile
-      ? checkAndRefreshTier(profile.credibilityTier, profile.credibilityScore)
-      : null;
-
-    const exportData = {
-      exportDate: new Date().toISOString(),
-      format: "GDPR Art. 20 compliant",
-      profile: profile ? {
-        displayName: profile.displayName,
-        username: profile.username,
-        email: profile.email,
-        city: profile.city,
-        credibilityScore: profile.credibilityScore,
-        credibilityTier: freshExportTier,
-        totalRatings: profile.totalRatings,
-        joinedAt: profile.joinedAt,
-        lastActive: profile.lastActive,
-      } : null,
-      ratings: ratings || [],
-      impact: impact || null,
-      seasonalActivity: seasonal || [],
-      badges: badges || [],
-    };
-
-    res.setHeader("Content-Disposition", `attachment; filename="topranker-data-export-${userId}.json"`);
-    return res.json({ data: exportData });
-  }));
-
-  // ── GDPR / CCPA Account Deletion Request ────────────────────
-  // Compliance (Jordan Blake): Right-to-deletion with 30-day grace period
-  // per GDPR Art. 17 and CCPA §1798.105. User can cancel by logging in.
-  app.delete("/api/account", wrapAsync(async (req: Request, res: Response) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    // Mark account for deletion with 30-day grace period
-    const deletionDate = new Date();
-    deletionDate.setDate(deletionDate.getDate() + 30);
-
-    // Log the deletion request
-    log.tag("AccountDeletion").info(
-      `Deletion requested for user ${req.user!.id}, scheduled for ${deletionDate.toISOString()}`
-    );
-
-    return res.json({
-      data: {
-        message: "Account scheduled for deletion",
-        deletionDate: deletionDate.toISOString(),
-        gracePeriodDays: 30,
-        note: "You can cancel this request by logging in within 30 days.",
-      },
-    });
-  }));
-
-  // ── GDPR Deletion Grace Period ──────────────────────────────
-  // Compliance (Jordan Blake): Schedule deletion with 30-day grace period
-  app.post("/api/account/schedule-deletion", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const request = await scheduleDeletion(userId, 30);
-
-    log.tag("GDPR").info(
-      `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
-    );
-
-    return res.json({
-      data: {
-        message: "Account deletion scheduled",
-        scheduledAt: request.scheduledAt.toISOString(),
-        deleteAt: request.deleteAt.toISOString(),
-        gracePeriodDays: 30,
-        status: request.status,
-        note: "You can cancel this request by checking your deletion status within 30 days.",
-      },
-    });
-  }));
-
-  // Cancel pending account deletion — GDPR grace period cancellation
-  // Compliance (Jordan Blake): Allow users to cancel within 30-day grace period
-  app.post("/api/account/cancel-deletion", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const cancelled = await cancelDeletion(userId);
-
-    if (!cancelled) {
-      return res.status(404).json({ error: "No pending deletion request found" });
-    }
-
-    log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
-
-    return res.json({
-      data: { cancelled: true },
-    });
-  }));
-
-  // Get current deletion status for authenticated user
-  app.get("/api/account/deletion-status", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const userId = req.user!.id;
-    const status = await getDeletionStatus(userId);
-
-    if (!status) {
-      return res.json({ data: { hasPendingDeletion: false } });
-    }
-
-    return res.json({
-      data: {
-        hasPendingDeletion: status.status === "pending",
-        scheduledAt: status.scheduledAt.toISOString(),
-        deleteAt: status.deleteAt.toISOString(),
-        status: status.status,
-      },
-    });
-  }));
-
+  // ── Leaderboard + Featured ──────────────────────────────────
   app.get("/api/leaderboard", wrapAsync(async (req: Request, res: Response) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || "restaurant";
@@ -392,14 +146,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
-  // Active featured businesses for a city — used by FeaturedSection
   app.get("/api/featured", wrapAsync(async (req: Request, res: Response) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const placements = await getActiveFeaturedInCity(city);
     if (placements.length === 0) {
       return res.json({ data: [] });
     }
-    // Batch-resolve business details (Sprint 164: N+1 → 2 queries)
     const bizIds = placements.map((p) => p.businessId);
     const [bizList, photoMap] = await Promise.all([
       getBusinessesByIds(bizIds),
@@ -433,144 +185,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
-  app.get("/api/businesses/search", wrapAsync(async (req: Request, res: Response) => {
-    const query = sanitizeString(req.query.q, 200);
-    const city = sanitizeString(req.query.city, 100) || "Dallas";
-    const category = sanitizeString(req.query.category, 50) || undefined;
-    const bizList = await searchBusinesses(query, city, category);
-    const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
-    const data = bizList.map(b => ({
-      ...b,
-      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
-    }));
-    return res.json({ data });
-  }));
-
-  app.get("/api/businesses/:slug", wrapAsync(async (req: Request, res: Response) => {
-    const business = await getBusinessBySlug(req.params.slug as string);
-    if (!business) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    let [{ ratings }, dishList, photos] = await Promise.all([
-      getBusinessRatings(business.id, 1, 20),
-      getBusinessDishes(business.id, 5),
-      getBusinessPhotos(business.id),
-    ]);
-
-    // On-demand: if business has a Google Place ID but no photos, fetch them
-    if (photos.length === 0 && business.googlePlaceId) {
-      try {
-        const count = await fetchAndStorePhotos(business.id, business.googlePlaceId);
-        if (count > 0) {
-          photos = await getBusinessPhotos(business.id);
-        }
-      } catch {
-        // Non-fatal — continue with fallback
-      }
-    }
-
-    const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
-
-    return res.json({ data: { ...business, photoUrls, recentRatings: ratings, dishes: dishList } });
-  }));
-
-  app.get("/api/businesses/:id/ratings", wrapAsync(async (req: Request, res: Response) => {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page as string) || 20));
-    const data = await getBusinessRatings(req.params.id as string, page, perPage);
-    return res.json({ data });
-  }));
-
-  // ── Business Claims ────────────────────────────────────────
-  app.post("/api/businesses/:slug/claim", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const business = await getBusinessBySlug(req.params.slug as string);
-    if (!business) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-    const role = sanitizeString(req.body.role, 100);
-    const phone = sanitizeString(req.body.phone, 20);
-    if (!role || role.length === 0) {
-      return res.status(400).json({ error: "Role is required" });
-    }
-
-    // Check for existing claim
-    const { getClaimByMemberAndBusiness, submitClaim } = await import("./storage");
-    const existing = await getClaimByMemberAndBusiness(req.user!.id, business.id);
-    if (existing) {
-      return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
-    }
-
-    const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
-    const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
-
-    // Send email notifications (non-blocking)
-    const { sendClaimConfirmationEmail, sendClaimAdminNotification } = await import("./email");
-    sendClaimConfirmationEmail({
-      email: req.user!.email || "",
-      displayName: req.user!.displayName || "User",
-      businessName: business.name,
-    }).catch(() => {});
-    sendClaimAdminNotification({
-      businessName: business.name,
-      claimantName: req.user!.displayName || "Unknown",
-      claimantEmail: req.user!.email || "",
-    }).catch(() => {});
-
-    return res.json({ data: { id: claim.id, status: claim.status } });
-  }));
-
-  // ── Business Dashboard Analytics ─────────────────────────
-  app.get("/api/businesses/:slug/dashboard", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const business = await getBusinessBySlug(req.params.slug as string);
-    if (!business) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-
-    const { getRankHistory, getBusinessDishes } = await import("./storage");
-    const [{ ratings, total }, rankHistory, dishes] = await Promise.all([
-      getBusinessRatings(business.id, 1, 10),
-      getRankHistory(business.id, 49), // 7 weeks
-      getBusinessDishes(business.id, 5),
-    ]);
-
-    // Compute aggregates
-    const totalRatings = business.totalRatings || 0;
-    const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
-    const rankPosition = business.rankPosition || 0;
-    const rankDelta = business.rankDelta || 0;
-
-    // Would-return percentage from ratings that have wouldReturn field
-    const returners = ratings.filter((r: any) => r.wouldReturn === true).length;
-    const returnTotal = ratings.filter((r: any) => r.wouldReturn !== null && r.wouldReturn !== undefined).length;
-    const wouldReturnPct = returnTotal > 0 ? Math.round((returners / returnTotal) * 100) : 0;
-
-    // Top dish
-    const topDish = dishes.length > 0 ? dishes[0] : null;
-
-    // Rating trend from rank history
-    const ratingTrend = rankHistory.map((h: any) => h.score);
-
-    return res.json({
-      data: {
-        totalRatings,
-        avgScore,
-        rankPosition,
-        rankDelta,
-        wouldReturnPct,
-        topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
-        ratingTrend,
-        recentRatings: ratings.map((r: any) => ({
-          id: r.id,
-          user: r.memberName || "Anonymous",
-          score: parseFloat(r.rawScore),
-          tier: r.memberTier || "community",
-          note: r.note,
-          date: r.createdAt,
-        })),
-      },
-    });
-  }));
+  // ── Business Routes (extracted to routes-businesses.ts, Sprint 171) ──
+  registerBusinessRoutes(app);
 
   // ── Payment Routes (extracted to routes-payments.ts) ────────
   registerPaymentRoutes(app);
@@ -586,6 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Dish Leaderboard Routes (extracted to routes-dishes.ts) ──
   registerDishRoutes(app);
 
+  // ── Rating Submission ──────────────────────────────────────
   app.post("/api/ratings", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
@@ -601,23 +218,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const memberId = req.user!.id;
       const result = await submitRating(memberId, parsed.data);
 
-      // Live tier staleness guard (Sprint 140): after rating submission triggers
-      // recalculateCredibilityScore, verify the returned tier is consistent with
-      // the new score. If stale, correct it in the response and persist the fix.
       const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
       if (verifiedTier !== result.newTier) {
         result.newTier = verifiedTier;
         result.tierUpgraded = verifiedTier !== req.user!.credibilityTier;
       }
 
-      // Broadcast real-time update so other clients refresh rankings
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { businessId: parsed.data.businessId });
       broadcast("challenger_updated", { businessId: parsed.data.businessId });
       trackEvent("first_rating", memberId);
       trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
 
-      // Sprint 142: Track rating as outcome for any active experiments the user is in
       const userExperiments = getUserExperiments(String(memberId));
       for (const expId of userExperiments) {
         trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
@@ -644,189 +256,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  // ── Avatar Upload ──────────────────────────────────────────
-  // Accepts multipart form data with an "avatar" file field.
-  // Files are stored via the file-storage abstraction (local in dev, R2/S3 in prod).
-  // The avatarUrl persisted to DB is always a file path/URL — never a data URL.
-  app.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-    const MAX_SIZE = 2 * 1024 * 1024; // 2 MB
+  // ── Member Routes (extracted to routes-members.ts, Sprint 171) ──
+  registerMemberRoutes(app);
 
-    let fileBuffer: Buffer;
-    let contentType: string;
-
-    // Only accept multipart form data uploads
-    const isMultipart = (req.headers["content-type"] || "").includes("multipart/form-data");
-
-    if (!isMultipart) {
-      return res.status(400).json({
-        error: "Avatar upload requires multipart/form-data with an 'avatar' file field.",
-      });
-    }
-
-    // Express doesn't parse multipart natively. We read the raw file from
-    // req.file if multer (or similar) middleware is mounted, otherwise we
-    // fall back to reading the raw body chunks ourselves.
-    const file = (req as any).file as
-      | { buffer: Buffer; mimetype: string; size: number }
-      | undefined;
-
-    if (!file) {
-      return res.status(400).json({
-        error: "No file found in multipart request. Send an 'avatar' field.",
-      });
-    }
-
-    if (!ALLOWED_TYPES.includes(file.mimetype)) {
-      return res.status(400).json({
-        error: `Unsupported image type: ${file.mimetype}. Allowed: ${ALLOWED_TYPES.join(", ")}`,
-      });
-    }
-
-    if (file.size > MAX_SIZE) {
-      return res.status(413).json({ error: "Image exceeds 2 MB limit" });
-    }
-
-    fileBuffer = file.buffer;
-    contentType = file.mimetype;
-
-    // Generate a unique key: avatars/<memberId>-<random>.<ext>
-    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
-    const uniqueId = crypto.randomBytes(8).toString("hex");
-    const key = `avatars/${req.user!.id}-${uniqueId}.${ext}`;
-
-    // Upload via the storage abstraction and persist the URL
-    const avatarUrl = await fileStorage.upload(key, fileBuffer, contentType);
-
-    const { updateMemberAvatar } = await import("./storage");
-    const updated = await updateMemberAvatar(req.user!.id, avatarUrl);
-    if (!updated) {
-      return res.status(404).json({ error: "Member not found" });
-    }
-
-    return res.json({ data: { avatarUrl: updated.avatarUrl } });
-  }));
-
-  app.get("/api/members/me", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const member = await getMemberById(req.user!.id);
-    if (!member) return res.status(404).json({ error: "Member not found" });
-
-    const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
-    // Live staleness verification (Sprint 140): ensure returned tier matches score
-    const tier = checkAndRefreshTier(computedTier, score);
-    const { ratings, total } = await getMemberRatings(member.id);
-    const { getSeasonalRatingCounts } = await import("./storage");
-    const seasonal = await getSeasonalRatingCounts(member.id);
-
-    const daysActive = Math.floor(
-      (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
-    );
-
-    return res.json({
-      data: {
-        id: member.id,
-        displayName: member.displayName,
-        username: member.username,
-        email: member.email,
-        city: member.city,
-        avatarUrl: member.avatarUrl,
-        credibilityScore: score,
-        credibilityTier: tier,
-        totalRatings: member.totalRatings,
-        totalCategories: member.totalCategories,
-        distinctBusinesses: member.distinctBusinesses,
-        isFoundingMember: member.isFoundingMember,
-        joinedAt: member.joinedAt,
-        daysActive,
-        ratingVariance: parseFloat(member.ratingVariance),
-        credibilityBreakdown: breakdown,
-        ratingHistory: ratings,
-        ...seasonal,
-      },
-    });
-  }));
-
-  // ── Email Change ─────────────────────────────────────────
-  app.put("/api/members/me/email", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { email } = req.body;
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Email is required" });
-    }
-
-    // Basic email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: "Invalid email format" });
-    }
-
-    try {
-      const { updateMemberEmail } = await import("./storage");
-      const updated = await updateMemberEmail(req.user!.id, email);
-      if (!updated) {
-        return res.status(404).json({ error: "Member not found" });
-      }
-
-      log.tag("EmailChange").info(
-        `Email changed for user ${req.user!.id} to ${email}`
-      );
-
-      return res.json({ data: { email: updated.email } });
-    } catch (err: any) {
-      if (err.message === "Email already in use") {
-        return res.status(409).json({ error: "Email already in use" });
-      }
-      throw err;
-    }
-  }));
-
-  app.put("/api/members/me", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { displayName, username } = req.body;
-    const updates: { displayName?: string; username?: string } = {};
-
-    if (displayName !== undefined) {
-      if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
-        return res.status(400).json({ error: "displayName must be 1-50 characters" });
-      }
-      updates.displayName = displayName;
-    }
-
-    if (username !== undefined) {
-      if (typeof username !== "string" || !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
-        return res.status(400).json({ error: "username must be 3-30 alphanumeric or underscore characters" });
-      }
-      updates.username = username;
-    }
-
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: "No valid fields to update" });
-    }
-
-    const { updateMemberProfile } = await import("./storage");
-    const updated = await updateMemberProfile(req.user!.id, updates);
-    if (!updated) return res.status(404).json({ error: "Member not found" });
-
-    return res.json({ data: updated });
-  }));
-
-  app.get("/api/members/:username", wrapAsync(async (req: Request, res: Response) => {
-    const { getMemberByUsername } = await import("./storage");
-    const member = await getMemberByUsername(req.params.username as string);
-    if (!member) return res.status(404).json({ error: "Member not found" });
-
-    // Tier freshness guard (Sprint 141): ensure public profile returns correct tier
-    const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
-
-    return res.json({
-      data: {
-        displayName: member.displayName,
-        username: member.username,
-        credibilityTier: freshTier,
-        totalRatings: member.totalRatings,
-        joinedAt: member.joinedAt,
-      },
-    });
-  }));
-
+  // ── Challengers ─────────────────────────────────────────────
   app.get("/api/challengers/active", wrapAsync(async (req: Request, res: Response) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || undefined;
@@ -847,67 +280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
-  app.get("/api/businesses/:id/rank-history", wrapAsync(async (req: Request, res: Response) => {
-    const { getRankHistory } = await import("./storage");
-    const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30));
-    const data = await getRankHistory(req.params.id as string, days);
-    return res.json({ data });
-  }));
-
-  app.get("/api/members/me/impact", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { getMemberImpact } = await import("./storage");
-    const data = await getMemberImpact(req.user!.id);
-    return res.json({ data });
-  }));
-
-  // Push token storage
-  app.post("/api/members/me/push-token", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { pushToken } = req.body;
-    if (!pushToken || typeof pushToken !== "string") {
-      return res.status(400).json({ error: "pushToken is required" });
-    }
-    const { updatePushToken } = await import("./storage");
-    await updatePushToken(req.user!.id, pushToken);
-    return res.json({ ok: true });
-  }));
-
-  // ── Notification Preferences ─────────────────────────────────
-  app.get("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { getMemberById } = await import("./storage");
-    const member = await getMemberById(req.user!.id);
-    const stored = (member?.notificationPrefs as Record<string, boolean>) || {};
-    const prefs = {
-      ratingResponses: true,
-      tierUpgrades: true,
-      challengerResults: true,
-      newChallengers: true,
-      weeklyDigest: false,
-      marketingEmails: false,
-      ...stored,
-    };
-    return res.json({ data: prefs });
-  }));
-
-  app.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const {
-      ratingResponses, tierUpgrades, challengerResults,
-      newChallengers, weeklyDigest, marketingEmails,
-    } = req.body;
-    const prefs: Record<string, boolean> = {
-      ratingResponses: ratingResponses !== false,
-      tierUpgrades: tierUpgrades !== false,
-      challengerResults: challengerResults !== false,
-      newChallengers: newChallengers !== false,
-      weeklyDigest: weeklyDigest === true,
-      marketingEmails: marketingEmails === true,
-    };
-    const { updateNotificationPrefs } = await import("./storage");
-    const saved = await updateNotificationPrefs(req.user!.id, prefs);
-    log.tag("Notifications").info(`Preferences updated for user ${req.user!.id}: ${JSON.stringify(saved)}`);
-    return res.json({ data: saved });
-  }));
-
-  // Category Suggestions
+  // ── Category Suggestions ────────────────────────────────────
   app.post("/api/category-suggestions", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -927,33 +300,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
-  // Photo proxy for Google Places photos
+  // ── Misc Routes ─────────────────────────────────────────────
   app.get("/api/photos/proxy", wrapAsync(handlePhotoProxy));
-
-  // Stripe webhook — async payment status updates
   app.post("/api/webhook/stripe", wrapAsync(handleStripeWebhook));
 
-  // Payment history for authenticated member
   app.get("/api/payments/history", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
     const payments = await getMemberPayments(req.user!.id, limit);
     return res.json({ data: payments });
   }));
 
-  // Deploy webhook (GitHub push → auto-rebuild)
   app.post("/api/webhook/deploy", wrapAsync(handleWebhook));
   app.get("/api/deploy/status", wrapAsync(handleDeployStatus));
-
-  // Badge share-by-link — server-rendered OG meta for social previews
   app.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
 
-  // ── Badge Routes (extracted to routes-badges.ts) ───────────
+  // ── Extracted Route Modules ─────────────────────────────────
   registerBadgeRoutes(app);
-
-  // ── Admin Routes (extracted to routes-admin.ts) ─────────────
   registerAdminRoutes(app);
-
-  // ── Experiment Routes (extracted to routes-experiments.ts) ──
   registerExperimentRoutes(app);
 
   const httpServer = createServer(app);

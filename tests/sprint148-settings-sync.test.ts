@@ -20,7 +20,7 @@ import path from "path";
 // ── 1. Server Endpoint Tests ────────────────────────────────────────
 
 describe("Server notification preferences endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-members.ts");
   let routesSource: string;
 
   beforeEach(() => {
@@ -181,7 +181,7 @@ describe("Client-server notification key parity", () => {
       "utf-8"
     );
     const routesSource = fs.readFileSync(
-      path.resolve(__dirname, "..", "server", "routes.ts"),
+      path.resolve(__dirname, "..", "server", "routes-members.ts"),
       "utf-8"
     );
 

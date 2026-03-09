@@ -62,7 +62,7 @@ describe("Edit profile screen", () => {
 // ── 2. PUT /api/members/me Endpoint ─────────────────────────────────
 
 describe("PUT /api/members/me endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-members.ts");
   let routesSource: string;
 
   beforeEach(() => {

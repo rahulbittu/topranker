@@ -190,9 +190,9 @@ describe("GDPR Deletion Grace Period Module", () => {
 
 // ── 3. GDPR Deletion API Endpoints ──────────────────────────────────
 describe("GDPR Deletion API Endpoints", () => {
-  const routesPath = path.resolve(__dirname, "..", "server/routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server/routes-auth.ts");
 
-  it("routes.ts imports scheduleDeletion from gdpr", () => {
+  it("routes-auth.ts imports scheduleDeletion from gdpr", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
     expect(content).toContain("scheduleDeletion, getDeletionStatus");
     expect(content).toContain("from \"./gdpr\"");

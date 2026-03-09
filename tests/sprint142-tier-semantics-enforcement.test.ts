@@ -33,6 +33,8 @@ function readSource(relPath: string): string {
 // ---------------------------------------------------------------------------
 describe("FRESH path enforcement — checkAndRefreshTier is called on every user-facing tier response", () => {
   const routesSrc = readSource("server/routes.ts");
+  const routesMembersSrc = readSource("server/routes-members.ts");
+  const routesAuthSrc = readSource("server/routes-auth.ts");
   const routesAdminSrc = readSource("server/routes-admin.ts");
   const authSrc = readSource("server/auth.ts");
   const memberStorageSrc = readSource("server/storage/members.ts");
@@ -53,21 +55,21 @@ describe("FRESH path enforcement — checkAndRefreshTier is called on every user
 
     it("GET /api/members/me calls recalculateCredibilityScore then checkAndRefreshTier", () => {
       // Must call recalculate first, then checkAndRefreshTier
-      const match = routesSrc.match(
+      const match = routesMembersSrc.match(
         /app\.get\(["']\/api\/members\/me["'][\s\S]{0,800}recalculateCredibilityScore[\s\S]{0,400}checkAndRefreshTier\(/
       );
       expect(match).not.toBeNull();
     });
 
     it("GET /api/members/:username calls checkAndRefreshTier", () => {
-      const match = routesSrc.match(
+      const match = routesMembersSrc.match(
         /api\/members\/:username[\s\S]{0,500}checkAndRefreshTier\(/
       );
       expect(match).not.toBeNull();
     });
 
     it("GET /api/account/export calls checkAndRefreshTier", () => {
-      const match = routesSrc.match(
+      const match = routesAuthSrc.match(
         /api\/account\/export[\s\S]{0,800}checkAndRefreshTier\(/
       );
       expect(match).not.toBeNull();
@@ -279,8 +281,8 @@ describe("Cross-file tier consistency audit", () => {
     expect(deserializeBlock![0]).toContain("credibilityTier: freshTier");
   });
 
-  it("routes.ts /api/members/me returns tier from checkAndRefreshTier, not raw recalculate result", () => {
-    const src = readSource("server/routes.ts");
+  it("routes-members.ts /api/members/me returns tier from checkAndRefreshTier, not raw recalculate result", () => {
+    const src = readSource("server/routes-members.ts");
     // Should assign checkAndRefreshTier result to a variable and use that in the response
     const meHandler = src.match(
       /api\/members\/me[\s\S]{0,1500}credibilityTier:\s*tier/
@@ -288,16 +290,16 @@ describe("Cross-file tier consistency audit", () => {
     expect(meHandler).not.toBeNull();
   });
 
-  it("routes.ts /api/members/:username returns freshTier, not member.credibilityTier", () => {
-    const src = readSource("server/routes.ts");
+  it("routes-members.ts /api/members/:username returns freshTier, not member.credibilityTier", () => {
+    const src = readSource("server/routes-members.ts");
     const usernameHandler = src.match(
       /api\/members\/:username[\s\S]{0,800}credibilityTier:\s*freshTier/
     );
     expect(usernameHandler).not.toBeNull();
   });
 
-  it("routes.ts /api/account/export returns freshExportTier, not profile.credibilityTier", () => {
-    const src = readSource("server/routes.ts");
+  it("routes-auth.ts /api/account/export returns freshExportTier, not profile.credibilityTier", () => {
+    const src = readSource("server/routes-auth.ts");
     const exportHandler = src.match(
       /api\/account\/export[\s\S]{0,1200}credibilityTier:\s*freshExportTier/
     );

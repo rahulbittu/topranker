@@ -1,0 +1,162 @@
+/**
+ * Business routes — extracted from routes.ts (Sprint 171)
+ *
+ * Endpoints:
+ * - GET  /api/businesses/search
+ * - GET  /api/businesses/:slug
+ * - GET  /api/businesses/:id/ratings
+ * - POST /api/businesses/:slug/claim
+ * - GET  /api/businesses/:slug/dashboard
+ * - GET  /api/businesses/:id/rank-history
+ */
+
+import type { Express, Request, Response } from "express";
+import { log } from "./logger";
+import {
+  getBusinessBySlug, getBusinessRatings, getBusinessDishes,
+  searchBusinesses, getBusinessPhotos, getBusinessPhotosMap,
+} from "./storage";
+import { fetchAndStorePhotos } from "./google-places";
+import { sanitizeString } from "./sanitize";
+import { wrapAsync } from "./wrap-async";
+import { requireAuth } from "./middleware";
+
+export function registerBusinessRoutes(app: Express) {
+  app.get("/api/businesses/search", wrapAsync(async (req: Request, res: Response) => {
+    const query = sanitizeString(req.query.q, 200);
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || undefined;
+    const bizList = await searchBusinesses(query, city, category);
+    const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+    const data = bizList.map(b => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+    }));
+    return res.json({ data });
+  }));
+
+  app.get("/api/businesses/:slug", wrapAsync(async (req: Request, res: Response) => {
+    const business = await getBusinessBySlug(req.params.slug as string);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    let [{ ratings }, dishList, photos] = await Promise.all([
+      getBusinessRatings(business.id, 1, 20),
+      getBusinessDishes(business.id, 5),
+      getBusinessPhotos(business.id),
+    ]);
+
+    if (photos.length === 0 && business.googlePlaceId) {
+      try {
+        const count = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+        if (count > 0) {
+          photos = await getBusinessPhotos(business.id);
+        }
+      } catch {
+        // Non-fatal — continue with fallback
+      }
+    }
+
+    const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
+
+    return res.json({ data: { ...business, photoUrls, recentRatings: ratings, dishes: dishList } });
+  }));
+
+  app.get("/api/businesses/:id/ratings", wrapAsync(async (req: Request, res: Response) => {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page as string) || 20));
+    const data = await getBusinessRatings(req.params.id as string, page, perPage);
+    return res.json({ data });
+  }));
+
+  // ── Business Claims ────────────────────────────────────────
+  app.post("/api/businesses/:slug/claim", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const business = await getBusinessBySlug(req.params.slug as string);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const role = sanitizeString(req.body.role, 100);
+    const phone = sanitizeString(req.body.phone, 20);
+    if (!role || role.length === 0) {
+      return res.status(400).json({ error: "Role is required" });
+    }
+
+    const { getClaimByMemberAndBusiness, submitClaim } = await import("./storage");
+    const existing = await getClaimByMemberAndBusiness(req.user!.id, business.id);
+    if (existing) {
+      return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
+    }
+
+    const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
+    const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
+
+    const { sendClaimConfirmationEmail, sendClaimAdminNotification } = await import("./email");
+    sendClaimConfirmationEmail({
+      email: req.user!.email || "",
+      displayName: req.user!.displayName || "User",
+      businessName: business.name,
+    }).catch(() => {});
+    sendClaimAdminNotification({
+      businessName: business.name,
+      claimantName: req.user!.displayName || "Unknown",
+      claimantEmail: req.user!.email || "",
+    }).catch(() => {});
+
+    return res.json({ data: { id: claim.id, status: claim.status } });
+  }));
+
+  // ── Business Dashboard Analytics ─────────────────────────
+  app.get("/api/businesses/:slug/dashboard", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const business = await getBusinessBySlug(req.params.slug as string);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+
+    const { getRankHistory, getBusinessDishes } = await import("./storage");
+    const [{ ratings, total }, rankHistory, dishes] = await Promise.all([
+      getBusinessRatings(business.id, 1, 10),
+      getRankHistory(business.id, 49),
+      getBusinessDishes(business.id, 5),
+    ]);
+
+    const totalRatings = business.totalRatings || 0;
+    const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
+    const rankPosition = business.rankPosition || 0;
+    const rankDelta = business.rankDelta || 0;
+
+    const returners = ratings.filter((r: any) => r.wouldReturn === true).length;
+    const returnTotal = ratings.filter((r: any) => r.wouldReturn !== null && r.wouldReturn !== undefined).length;
+    const wouldReturnPct = returnTotal > 0 ? Math.round((returners / returnTotal) * 100) : 0;
+
+    const topDish = dishes.length > 0 ? dishes[0] : null;
+    const ratingTrend = rankHistory.map((h: any) => h.score);
+
+    return res.json({
+      data: {
+        totalRatings,
+        avgScore,
+        rankPosition,
+        rankDelta,
+        wouldReturnPct,
+        topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+        ratingTrend,
+        recentRatings: ratings.map((r: any) => ({
+          id: r.id,
+          user: r.memberName || "Anonymous",
+          score: parseFloat(r.rawScore),
+          tier: r.memberTier || "community",
+          note: r.note,
+          date: r.createdAt,
+        })),
+      },
+    });
+  }));
+
+  app.get("/api/businesses/:id/rank-history", wrapAsync(async (req: Request, res: Response) => {
+    const { getRankHistory } = await import("./storage");
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30));
+    const data = await getRankHistory(req.params.id as string, days);
+    return res.json({ data });
+  }));
+}

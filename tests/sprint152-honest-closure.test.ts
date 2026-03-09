@@ -49,7 +49,7 @@ describe("Email change UI honesty", () => {
 describe("Avatar stores URL not data URL", () => {
   it("should use fileStorage in avatar endpoint", () => {
     const routesSource = fs.readFileSync(
-      path.resolve(__dirname, "..", "server", "routes.ts"),
+      path.resolve(__dirname, "..", "server", "routes-members.ts"),
       "utf-8"
     );
     expect(routesSource).toMatch(/fileStorage|file-storage/);
@@ -57,7 +57,7 @@ describe("Avatar stores URL not data URL", () => {
 
   it("should save avatarUrl from file storage upload", () => {
     const routesSource = fs.readFileSync(
-      path.resolve(__dirname, "..", "server", "routes.ts"),
+      path.resolve(__dirname, "..", "server", "routes-members.ts"),
       "utf-8"
     );
     // Avatar endpoint should call fileStorage.upload and save the returned URL
@@ -112,7 +112,7 @@ describe("No overclaim patterns", () => {
 
   it("email change endpoint validates format", () => {
     const routesSource = fs.readFileSync(
-      path.resolve(__dirname, "..", "server", "routes.ts"),
+      path.resolve(__dirname, "..", "server", "routes-members.ts"),
       "utf-8"
     );
     expect(routesSource).toMatch(/email.*@|@.*\.|includes.*@/);

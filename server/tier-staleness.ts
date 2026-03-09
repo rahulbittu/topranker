@@ -74,19 +74,19 @@ export const TIER_SEMANTICS = {
     {
       path: "GET /api/members/me",
       mechanism: "recalculateCredibilityScore + checkAndRefreshTier",
-      file: "server/routes.ts",
+      file: "server/routes-members.ts",
       reason: "Profile page is the primary place users see their tier; must be authoritative",
     },
     {
       path: "GET /api/members/:username",
       mechanism: "checkAndRefreshTier",
-      file: "server/routes.ts",
+      file: "server/routes-members.ts",
       reason: "Public profiles must show correct tier to avoid trust confusion",
     },
     {
       path: "GET /api/account/export",
       mechanism: "checkAndRefreshTier",
-      file: "server/routes.ts",
+      file: "server/routes-auth.ts",
       reason: "GDPR Art. 20 requires accurate data export",
     },
     {

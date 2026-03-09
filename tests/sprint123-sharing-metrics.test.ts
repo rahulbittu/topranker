@@ -111,9 +111,9 @@ describe("Sprint 123 — Business Social Sharing", () => {
 
 // ── GDPR Cancel Deletion ────────────────────────────────────────────
 describe("Sprint 123 — GDPR Cancel Deletion Endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-auth.ts");
 
-  it("routes.ts exists", () => {
+  it("routes-auth.ts exists", () => {
     expect(fs.existsSync(routesPath)).toBe(true);
   });
 

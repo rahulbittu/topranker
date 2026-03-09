@@ -59,7 +59,7 @@ describe("File storage abstraction", () => {
 // ── 2. Avatar Endpoint Uses File Storage ────────────────────────────
 
 describe("Avatar endpoint uses file storage", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-members.ts");
   let routesSource: string;
 
   beforeEach(() => {
@@ -83,7 +83,7 @@ describe("Avatar endpoint uses file storage", () => {
 // ── 3. Email Change Endpoint ────────────────────────────────────────
 
 describe("Email change endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-members.ts");
 
   it("should have PUT endpoint for email change", () => {
     const source = fs.readFileSync(routesPath, "utf-8");

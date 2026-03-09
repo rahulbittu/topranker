@@ -18,7 +18,7 @@ import path from "path";
 // ── 1. Avatar Upload Endpoint ───────────────────────────────────────
 
 describe("Avatar upload endpoint", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-members.ts");
   let routesSource: string;
 
   beforeEach(() => {

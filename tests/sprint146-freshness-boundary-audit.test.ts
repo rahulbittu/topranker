@@ -49,6 +49,8 @@ function extractRoutePatterns(src: string): string[] {
 // ===========================================================================
 describe("1. Enumerate all tier-emitting endpoints", () => {
   const routesSrc = readSource("server/routes.ts");
+  const routesMembersSrc = readSource("server/routes-members.ts");
+  const routesAuthSrc = readSource("server/routes-auth.ts");
   const routesAdminSrc = readSource("server/routes-admin.ts");
   const routesBadgesSrc = readSource("server/routes-badges.ts");
   const routesPaymentsSrc = readSource("server/routes-payments.ts");
@@ -124,7 +126,7 @@ describe("1. Enumerate all tier-emitting endpoints", () => {
     //      on the VERY NEXT authenticated request (auth.ts:94)
 
     // Verify signup uses member.credibilityTier (freshly created, always correct)
-    expect(routesSrc).toMatch(
+    expect(routesAuthSrc).toMatch(
       /api\/auth\/signup[\s\S]{0,1500}credibilityTier:\s*member\.credibilityTier/
     );
 
@@ -306,7 +308,7 @@ describe("5. Serialization paths audit for tier data", () => {
 // ===========================================================================
 describe("6. Business dashboard ratings show memberTier as SNAPSHOT", () => {
   it("GET /businesses/:slug/dashboard returns tier: r.memberTier from joined ratings query", () => {
-    const routesSrc = readSource("server/routes.ts");
+    const routesSrc = readSource("server/routes-businesses.ts");
     // The business dashboard handler maps ratings to include `tier: r.memberTier`
     expect(routesSrc).toMatch(/tier:\s*r\.memberTier\s*\|\|\s*["']community["']/);
   });
@@ -333,6 +335,8 @@ describe("7. TIER_SEMANTICS completeness cross-reference", () => {
   it("every FRESH path in TIER_SEMANTICS has a corresponding checkAndRefreshTier call in source", () => {
     const fileSources: Record<string, string> = {
       "server/routes.ts": readSource("server/routes.ts"),
+      "server/routes-members.ts": readSource("server/routes-members.ts"),
+      "server/routes-auth.ts": readSource("server/routes-auth.ts"),
       "server/routes-admin.ts": readSource("server/routes-admin.ts"),
       "server/auth.ts": readSource("server/auth.ts"),
     };
