@@ -21,6 +21,7 @@ import { registerUnsubscribeRoutes } from "./routes-unsubscribe";
 import { registerWebhookRoutes } from "./routes-webhooks";
 import { registerAdminPromotionRoutes } from "./routes-admin-promotion";
 import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit";
+import { registerAdminClaimVerificationRoutes } from "./routes-admin-claims-verification";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -434,6 +435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerWebhookRoutes(app);
   registerAdminPromotionRoutes(app);
   registerAdminRateLimitRoutes(app);
+  registerAdminClaimVerificationRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
