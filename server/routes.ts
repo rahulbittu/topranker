@@ -27,6 +27,7 @@ import { registerAdminModerationRoutes } from "./routes-admin-moderation";
 import { registerAdminRankingRoutes } from "./routes-admin-ranking";
 import { registerAdminTemplateRoutes } from "./routes-admin-templates";
 import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits";
+import { registerAdminWebSocketRoutes } from "./routes-admin-websocket";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
@@ -448,6 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerOwnerDashboardRoutes(app);
   registerAdminTemplateRoutes(app);
   registerAdminTierLimitRoutes(app);
+  registerAdminWebSocketRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
