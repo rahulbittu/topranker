@@ -6,6 +6,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
 import { BUDGETS } from "../lib/performance-budget";
+import { fireAlert } from "./alerting";
 
 const perfLog = log.tag("Perf");
 
@@ -56,6 +57,14 @@ export function perfMonitor(req: Request, res: Response, next: NextFunction) {
     if (duration > SLOW_THRESHOLD_MS) {
       stats.slowRequests++;
       perfLog.warn(`Slow request: ${route} took ${duration.toFixed(0)}ms`);
+      // Sprint 221: Auto-fire alert on slow requests
+      fireAlert("slow_response", `${route} took ${duration.toFixed(0)}ms (threshold: ${SLOW_THRESHOLD_MS}ms)`, "warning", { route, duration: Math.round(duration) });
+    }
+
+    // Sprint 221: Check memory threshold
+    const heapMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    if (heapMB > 512) {
+      fireAlert("high_memory", `Heap usage: ${heapMB}MB exceeds 512MB threshold`, "warning", { heapMB });
     }
 
     // Set Server-Timing header (only if headers not yet sent)

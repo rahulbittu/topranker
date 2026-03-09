@@ -33,18 +33,7 @@ function buildAllowedOrigins(): Set<string> {
     origins.add(`https://${railwayDomain}`);
   }
 
-  // Replit-specific origins (legacy — remove after migration)
-  const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
-  if (replitDevDomain) {
-    origins.add(`https://${replitDevDomain}`);
-  }
-  const replitDomains = process.env.REPLIT_DOMAINS;
-  if (replitDomains) {
-    replitDomains.split(",").forEach((d) => {
-      const trimmed = d.trim();
-      if (trimmed) origins.add(`https://${trimmed}`);
-    });
-  }
+  // Sprint 221: Replit legacy CORS removed (WON'T FIX — dead code post-Railway migration)
 
   return origins;
 }

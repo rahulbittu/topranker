@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getActiveCities } from "@shared/city-config";
 
 const STORAGE_KEY = "topranker_selected_city";
 const DEFAULT_CITY = "Dallas";
 
-export const SUPPORTED_CITIES = ["Dallas", "Austin", "Houston", "San Antonio", "Fort Worth"] as const;
-export type SupportedCity = (typeof SUPPORTED_CITIES)[number];
+// Sprint 221: Derive from shared city registry (single source of truth)
+export const SUPPORTED_CITIES = getActiveCities() as readonly string[];
+export type SupportedCity = string;
 
 interface CityContextValue {
   city: SupportedCity;
