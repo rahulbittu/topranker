@@ -15,6 +15,7 @@ import { log } from "./logger";
 import {
   getBusinessBySlug, getBusinessRatings, getBusinessDishes,
   searchBusinesses, getBusinessPhotos, getBusinessPhotosMap,
+  autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { sanitizeString } from "./sanitize";
@@ -22,6 +23,24 @@ import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
 
 export function registerBusinessRoutes(app: Express) {
+  // Sprint 184: Autocomplete — lightweight typeahead for search-as-you-type
+  app.get("/api/businesses/autocomplete", wrapAsync(async (req: Request, res: Response) => {
+    const query = sanitizeString(req.query.q, 50);
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    if (!query || query.trim().length === 0) {
+      return res.json({ data: [] });
+    }
+    const suggestions = await autocompleteBusinesses(query, city);
+    return res.json({ data: suggestions });
+  }));
+
+  // Sprint 184: Popular categories — dynamic suggestion chips by city
+  app.get("/api/businesses/popular-categories", wrapAsync(async (req: Request, res: Response) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const categories = await getPopularCategories(city);
+    return res.json({ data: categories });
+  }));
+
   app.get("/api/businesses/search", wrapAsync(async (req: Request, res: Response) => {
     const query = sanitizeString(req.query.q, 200);
     const city = sanitizeString(req.query.city, 100) || "Dallas";

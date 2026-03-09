@@ -103,7 +103,7 @@ export async function searchBusinesses(
         eq(businesses.city, city),
         eq(businesses.isActive, true),
         query
-          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`
+          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q})`
           : undefined,
         ...(category ? [eq(businesses.category, category)] : []),
       ),
@@ -121,6 +121,59 @@ export async function getAllCategories(city: string): Promise<string[]> {
     .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
     .groupBy(businesses.category);
   return rows.map(r => r.category);
+}
+
+/**
+ * Sprint 184: Autocomplete — returns lightweight matches for typeahead.
+ * Searches name, category, and neighborhood. Returns top 6 results with minimal fields.
+ */
+export async function autocompleteBusinesses(
+  query: string,
+  city: string,
+  limit: number = 6,
+): Promise<{ id: string; name: string; slug: string; category: string; neighborhood: string | null }[]> {
+  if (!query || query.trim().length === 0) return [];
+  const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  return db
+    .select({
+      id: businesses.id,
+      name: businesses.name,
+      slug: businesses.slug,
+      category: businesses.category,
+      neighborhood: businesses.neighborhood,
+    })
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.city, city),
+        eq(businesses.isActive, true),
+        sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`,
+      ),
+    )
+    .orderBy(desc(businesses.weightedScore))
+    .limit(limit);
+}
+
+/**
+ * Sprint 184: Popular categories — returns categories with business count, ordered by count.
+ * Used for dynamic suggestion chips on the search screen.
+ */
+export async function getPopularCategories(
+  city: string,
+  limit: number = 8,
+): Promise<{ category: string; count: number }[]> {
+  const rows = await db
+    .select({
+      category: businesses.category,
+      count: count(businesses.id),
+    })
+    .from(businesses)
+    .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
+    .groupBy(businesses.category)
+    .orderBy(desc(count(businesses.id)))
+    .limit(limit);
+  return rows.map(r => ({ category: r.category, count: Number(r.count) }));
 }
 
 export async function recalculateBusinessScore(businessId: string): Promise<number> {

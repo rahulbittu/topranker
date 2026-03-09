@@ -47,6 +47,8 @@ export {
   deleteBusinessPhotos,
   getRankHistory,
   getBusinessRatings,
+  autocompleteBusinesses,
+  getPopularCategories,
 } from "./businesses";
 
 // Ratings

@@ -12,7 +12,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
-import { fetchBusinessSearch, fetchTrending } from "@/lib/api";
+import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, type AutocompleteSuggestion } from "@/lib/api";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 
 import * as Location from "expo-location";
@@ -49,6 +49,30 @@ export default function SearchScreen() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [showDiscoverTip, setShowDiscoverTip] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteSuggestion[]>([]);
+
+  // Load recent searches from storage
+  useEffect(() => {
+    AsyncStorage.getItem("recent_searches").then((val) => {
+      if (val) try { setRecentSearches(JSON.parse(val)); } catch {}
+    });
+  }, []);
+
+  const saveRecentSearch = useCallback((term: string) => {
+    if (!term || term.trim().length < 2) return;
+    setRecentSearches(prev => {
+      const updated = [term, ...prev.filter(s => s.toLowerCase() !== term.toLowerCase())].slice(0, 8);
+      AsyncStorage.setItem("recent_searches", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const clearRecentSearches = useCallback(() => {
+    setRecentSearches([]);
+    AsyncStorage.removeItem("recent_searches");
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem("discover_tip_dismissed").then((val) => {
@@ -56,6 +80,24 @@ export default function SearchScreen() {
     });
   }, []);
 
+  // Autocomplete: fast 150ms debounce for typeahead
+  useEffect(() => {
+    if (query.trim().length < 2) {
+      setAutocompleteResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await fetchAutocomplete(query, city);
+        setAutocompleteResults(results);
+      } catch {
+        setAutocompleteResults([]);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [query, city]);
+
+  // Full search: 300ms debounce
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQuery(query), 300);
     return () => clearTimeout(timer);
@@ -67,17 +109,26 @@ export default function SearchScreen() {
     staleTime: 30000,
   });
 
-  // Track search queries after debounce settles
+  // Track search queries after debounce settles + save to recents
   useEffect(() => {
     if (debouncedQuery.length > 0) {
       Analytics.searchQuery(debouncedQuery, allBusinesses.length);
+      saveRecentSearch(debouncedQuery);
+      setSearchFocused(false); // hide autocomplete once search executes
     }
-  }, [debouncedQuery, allBusinesses.length]);
+  }, [debouncedQuery, allBusinesses.length, saveRecentSearch]);
 
   const { data: trending = [] } = useQuery({
     queryKey: ["trending", city],
     queryFn: () => fetchTrending(city, 3),
     staleTime: 60000,
+  });
+
+  // Sprint 184: Dynamic category suggestions per city
+  const { data: popularCategories = [] } = useQuery({
+    queryKey: ["popular-categories", city],
+    queryFn: () => fetchPopularCategories(city),
+    staleTime: 120000,
   });
 
   const { data: featuredBusinesses = [] } = useQuery<FeaturedBusiness[]>({
@@ -163,20 +214,74 @@ export default function SearchScreen() {
         <Ionicons name="search" size={15} color={Colors.textTertiary} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Restaurants, neighborhoods, dishes..."
+          placeholder="Restaurants, neighborhoods, categories..."
           placeholderTextColor={Colors.textTertiary}
           value={query}
-          onChangeText={setQuery}
+          onChangeText={(t) => { setQuery(t); setSearchFocused(true); }}
+          onFocus={() => setSearchFocused(true)}
           maxLength={100}
-          accessibilityLabel="Search for restaurants, neighborhoods, or dishes"
+          accessibilityLabel="Search for restaurants, neighborhoods, or categories"
           returnKeyType="search"
+          onSubmitEditing={() => setSearchFocused(false)}
         />
         {!!query && (
-          <TouchableOpacity onPress={() => setQuery("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
+          <TouchableOpacity onPress={() => { setQuery(""); setAutocompleteResults([]); }} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search">
             <Ionicons name="close-circle" size={15} color={Colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Sprint 184: Autocomplete dropdown */}
+      {searchFocused && query.length >= 2 && autocompleteResults.length > 0 && (
+        <View style={styles.autocompleteDropdown}>
+          {autocompleteResults.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.autocompleteRow}
+              onPress={() => {
+                router.push({ pathname: "/business/[id]", params: { id: item.slug } });
+                setSearchFocused(false);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Go to ${item.name}`}
+            >
+              <Ionicons name="restaurant-outline" size={14} color={AMBER} />
+              <View style={styles.autocompleteInfo}>
+                <Text style={styles.autocompleteName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.autocompleteMeta} numberOfLines={1}>
+                  {getCategoryDisplay(item.category).emoji} {getCategoryDisplay(item.category).label}
+                  {item.neighborhood ? ` · ${item.neighborhood}` : ""}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Sprint 184: Recent searches — shown when focused with empty query */}
+      {searchFocused && query.length === 0 && recentSearches.length > 0 && (
+        <View style={styles.recentSearchesContainer}>
+          <View style={styles.recentSearchesHeader}>
+            <Text style={styles.recentSearchesTitle}>Recent</Text>
+            <TouchableOpacity onPress={clearRecentSearches} accessibilityRole="button" accessibilityLabel="Clear recent searches">
+              <Text style={styles.recentSearchesClear}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+          {recentSearches.slice(0, 5).map((term) => (
+            <TouchableOpacity
+              key={term}
+              style={styles.recentSearchRow}
+              onPress={() => { setQuery(term); setSearchFocused(false); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Search for ${term}`}
+            >
+              <Ionicons name="time-outline" size={14} color={Colors.textTertiary} />
+              <Text style={styles.recentSearchText}>{term}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* View mode toggle + filters */}
       <View style={styles.controlsRow}>
@@ -361,7 +466,10 @@ export default function SearchScreen() {
               <Text style={styles.emptyText}>No results</Text>
               <Text style={styles.emptySubtext}>Try a different search or filter</Text>
               <View style={styles.suggestionsRow}>
-                {["Tacos", "Italian", "Brunch", "Sushi"].map(s => (
+                {(popularCategories.length > 0
+                  ? popularCategories.slice(0, 6).map(c => c.category)
+                  : ["Tacos", "Italian", "Brunch", "Sushi"]
+                ).map(s => (
                   <TouchableOpacity
                     key={s}
                     style={styles.suggestionChip}
@@ -369,7 +477,9 @@ export default function SearchScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`Search for ${s}`}
                   >
-                    <Text style={styles.suggestionChipText}>{s}</Text>
+                    <Text style={styles.suggestionChipText}>
+                      {getCategoryDisplay(s).emoji} {getCategoryDisplay(s).label || s}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -713,5 +823,48 @@ const styles = StyleSheet.create({
   },
   sortChipTextActive: {
     color: "#fff", fontWeight: "600",
+  },
+
+  // Sprint 184: Autocomplete dropdown
+  autocompleteDropdown: {
+    marginHorizontal: 16, backgroundColor: Colors.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
+    ...Colors.cardShadow, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
+  },
+  autocompleteRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  autocompleteInfo: { flex: 1, gap: 1 },
+  autocompleteName: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  autocompleteMeta: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+
+  // Sprint 184: Recent searches
+  recentSearchesContainer: {
+    marginHorizontal: 16, backgroundColor: Colors.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
+  },
+  recentSearchesHeader: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6,
+  },
+  recentSearchesTitle: {
+    fontSize: 12, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
+  },
+  recentSearchesClear: {
+    fontSize: 11, color: AMBER, fontFamily: "DMSans_600SemiBold",
+  },
+  recentSearchRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingHorizontal: 14, paddingVertical: 9,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  recentSearchText: {
+    fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular",
   },
 });

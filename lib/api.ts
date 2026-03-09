@@ -317,6 +317,29 @@ export async function fetchBusinessSearch(query: string, city: string, category?
   return businesses.map(mapApiBusiness);
 }
 
+export type AutocompleteSuggestion = {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  neighborhood: string | null;
+};
+
+export async function fetchAutocomplete(query: string, city: string): Promise<AutocompleteSuggestion[]> {
+  if (!query || query.trim().length < 2) return [];
+  return apiFetch<AutocompleteSuggestion[]>(
+    `/api/businesses/autocomplete?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`,
+  );
+}
+
+export type PopularCategory = { category: string; count: number };
+
+export async function fetchPopularCategories(city: string): Promise<PopularCategory[]> {
+  return apiFetch<PopularCategory[]>(
+    `/api/businesses/popular-categories?city=${encodeURIComponent(city)}`,
+  );
+}
+
 export async function fetchCategories(city: string = "Dallas"): Promise<string[]> {
   const data = await apiFetch<string[] | { category: string }[]>(`/api/leaderboard/categories?city=${encodeURIComponent(city)}`);
   if (!data || data.length === 0) return [];
