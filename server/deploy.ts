@@ -138,7 +138,7 @@ function sendNotification(title: string, message: string) {
   });
 }
 
-export function handleWebhook(req: Request, res: Response) {
+export async function handleWebhook(req: Request, res: Response) {
   // Verify GitHub signature if secret is configured
   if (!verifySignature(req)) {
     return res.status(403).json({ error: "Invalid signature" });
@@ -175,6 +175,6 @@ export function handleWebhook(req: Request, res: Response) {
   });
 }
 
-export function handleDeployStatus(_req: Request, res: Response) {
+export async function handleDeployStatus(_req: Request, res: Response) {
   res.json(deployStatus);
 }

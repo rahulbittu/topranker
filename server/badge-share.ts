@@ -161,7 +161,7 @@ function generateBadgeHtml(badgeId: string, username: string | null): string {
 </html>`;
 }
 
-export function handleBadgeShare(req: Request, res: Response) {
+export async function handleBadgeShare(req: Request, res: Response) {
   const badgeId = req.params.badgeId as string;
   const username = (req.query.user as string) || null;
 

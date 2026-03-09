@@ -907,10 +907,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Photo proxy for Google Places photos
-  app.get("/api/photos/proxy", handlePhotoProxy);
+  app.get("/api/photos/proxy", wrapAsync(handlePhotoProxy));
 
   // Stripe webhook — async payment status updates
-  app.post("/api/webhook/stripe", handleStripeWebhook);
+  app.post("/api/webhook/stripe", wrapAsync(handleStripeWebhook));
 
   // Payment history for authenticated member
   app.get("/api/payments/history", requireAuth, wrapAsync(async (req: Request, res: Response) => {
@@ -920,11 +920,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Deploy webhook (GitHub push → auto-rebuild)
-  app.post("/api/webhook/deploy", handleWebhook);
-  app.get("/api/deploy/status", handleDeployStatus);
+  app.post("/api/webhook/deploy", wrapAsync(handleWebhook));
+  app.get("/api/deploy/status", wrapAsync(handleDeployStatus));
 
   // Badge share-by-link — server-rendered OG meta for social previews
-  app.get("/share/badge/:badgeId", handleBadgeShare);
+  app.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
 
   // ── Badge Routes (extracted to routes-badges.ts) ───────────
   registerBadgeRoutes(app);

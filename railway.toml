@@ -10,3 +10,10 @@ restartPolicyMaxRetries = 10
 
 [service]
 internalPort = 8080
+
+[checks.web]
+type = "http"
+interval = 30000
+timeout = 5000
+method = "GET"
+path = "/_health"
