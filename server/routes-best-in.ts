@@ -15,6 +15,21 @@ import {
 } from "../shared/best-in-categories";
 import { sanitizeString } from "./sanitize";
 
+/**
+ * Generate sample leaderboard entries for a category.
+ * Returns empty array until real ratings are wired — placeholder for Sprint 264.
+ */
+function generateLeaderboardEntries(_slug: string): Array<{
+  rank: number;
+  businessId: string;
+  businessName: string;
+  weightedScore: number;
+  totalRatings: number;
+}> {
+  // No real ratings yet — return empty to trigger "Not enough ratings" message
+  return [];
+}
+
 export function registerBestInRoutes(app: Express) {
   // GET /api/best-in — list all active categories
   app.get("/api/best-in", wrapAsync(async (req: Request, res: Response) => {
@@ -56,12 +71,16 @@ export function registerBestInRoutes(app: Express) {
     }
     const city = sanitizeString(req.query.city, 100) || category.city;
     const title = getBestInTitle(slug, city);
+    const leaderboard = generateLeaderboardEntries(slug);
+    const message = leaderboard.length === 0
+      ? "Not enough ratings yet. Be one of the first to rate!"
+      : undefined;
     return res.json({
       data: {
-        category,
+        category: { slug: category.slug, displayName: category.displayName, emoji: category.emoji },
         title,
-        city,
-        entries: [], // TODO: wire to storage layer
+        leaderboard,
+        message,
       },
     });
   }));

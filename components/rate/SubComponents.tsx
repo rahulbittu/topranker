@@ -19,6 +19,7 @@ import {
   type CredibilityTier,
 } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
+import { searchCategories, getBestInTitle } from "@/shared/best-in-categories";
 
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
 
@@ -188,6 +189,20 @@ export function RatingConfirmation({
             </Text>
           </View>
         )}
+        {(() => {
+          const ctx = dishContext || business.name;
+          const matches = searchCategories(ctx);
+          if (matches.length === 0) return null;
+          const bestInTitle = getBestInTitle(matches[0].slug);
+          return (
+            <View style={s.bestInRankBanner}>
+              <Text style={s.bestInRankText}>
+                Your rating is helping rank{" "}
+                <Text style={{ fontWeight: "700", color: Colors.gold }}>{bestInTitle}</Text>
+              </Text>
+            </View>
+          );
+        })()}
       </Animated.View>
 
       <Animated.View entering={FadeInUp.delay(600).duration(500)} style={s.tierProgressCard}>
@@ -376,6 +391,11 @@ const s = StyleSheet.create({
     marginTop: -4,
   },
   dishRankText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  bestInRankBanner: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(196,154,26,0.06)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+  },
+  bestInRankText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   doneButton: {
     width: "100%", marginTop: 8, backgroundColor: Colors.text, borderRadius: 14,
     paddingVertical: 16, alignItems: "center", justifyContent: "center",
