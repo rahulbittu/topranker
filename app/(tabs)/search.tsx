@@ -22,6 +22,7 @@ import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
+import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -429,6 +430,9 @@ export default function SearchScreen() {
                   ))}
                 </View>
               )}
+              {/* Best In [City] — Dish Leaderboards (Sprint 167) */}
+              {!debouncedQuery && <DishLeaderboardSection city={city} />}
+
               <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
             </>
           }
