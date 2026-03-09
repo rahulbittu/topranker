@@ -24,6 +24,7 @@ import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit";
 import { registerAdminClaimVerificationRoutes } from "./routes-admin-claims-verification";
 import { registerAdminReputationRoutes } from "./routes-admin-reputation";
 import { registerAdminModerationRoutes } from "./routes-admin-moderation";
+import { registerAdminRankingRoutes } from "./routes-admin-ranking";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
@@ -441,6 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminClaimVerificationRoutes(app);
   registerAdminReputationRoutes(app);
   registerAdminModerationRoutes(app);
+  registerAdminRankingRoutes(app);
   registerOwnerDashboardRoutes(app);
 
   const httpServer = createServer(app);
