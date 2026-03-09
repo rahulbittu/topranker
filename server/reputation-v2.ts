@@ -2,11 +2,24 @@
  * Sprint 239: Member Reputation Scoring v2
  * Multi-signal reputation engine with credibility-weighted tiers.
  * Owner: Sarah Nakamura (Lead Eng)
+ *
+ * IMPORTANT: This is the INTERNAL reputation scoring system (5 tiers: newcomer→authority).
+ * It is SEPARATE from the PRODUCTION credibility tier system (4 tiers: community→top)
+ * defined in shared/credibility.ts which controls vote weights in live rankings.
+ *
+ * ReputationTier feeds into the credibility system as one of many signals,
+ * but does NOT directly determine a member's public-facing CredibilityTier.
  */
 
 import { log } from "./logger";
 
 const repLog = log.tag("ReputationV2");
+
+/**
+ * The 5-tier internal reputation scale. NOT the same as CredibilityTier
+ * (community | city | trusted | top) in shared/credibility.ts.
+ */
+export type ReputationTier = "newcomer" | "contributor" | "trusted" | "expert" | "authority";
 
 interface ReputationSignal {
   name: string;
@@ -27,7 +40,7 @@ export const REPUTATION_SIGNALS: ReputationSignal[] = [
 interface MemberReputation {
   memberId: string;
   score: number;         // 0-100
-  tier: "newcomer" | "contributor" | "trusted" | "expert" | "authority";
+  tier: ReputationTier;
   signals: Record<string, number>;
   calculatedAt: string;
 }

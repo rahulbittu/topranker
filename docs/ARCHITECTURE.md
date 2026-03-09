@@ -86,11 +86,12 @@ The backend uses a pluggable pattern for external services:
 
 ## Database Schema
 
-### 20 Tables
+### 31 Tables
 ```sql
 members              -- User accounts, credibility scores, tiers
 businesses           -- Restaurant/business listings, scores, ranks
 ratings              -- User ratings (3 scores + would-return + note)
+rating_responses     -- Owner responses to ratings (Sprint 177)
 challengers          -- Head-to-head challenge events
 rank_history         -- Historical rank snapshots
 business_claims      -- Business owner claim requests
@@ -104,9 +105,19 @@ credibility_penalties -- Score penalties for bad behavior
 analytics_events     -- Event tracking for dashboards and funnels
 categories           -- Business category taxonomy
 category_suggestions -- User-submitted category proposals
-deletion_requests    -- GDPR deletion queue with 30-day grace period
-featured_placements  -- Paid featured business placements
+payments             -- Payment records (challenger entry, dashboard pro, featured)
 webhook_events       -- Inbound/outbound webhook log
+featured_placements  -- Paid featured business placements
+deletion_requests    -- GDPR deletion queue with 30-day grace period
+dish_leaderboards    -- City-level dish leaderboard definitions (Sprint 166)
+dish_leaderboard_entries -- Business entries in dish leaderboards
+dish_suggestions     -- Community-proposed dish leaderboards
+dish_suggestion_votes -- Votes on dish suggestions
+notifications        -- In-app notification delivery (Sprint 182)
+referrals            -- Referral tracking between members (Sprint 188)
+beta_invites         -- Beta invite tracking (Sprint 197)
+user_activity        -- Persisted active user tracking (Sprint 204)
+beta_feedback        -- Beta feedback collection (Sprint 211)
 sessions             -- Express session store (connect-pg-simple)
 ```
 
@@ -220,6 +231,15 @@ Original PRD specified 6 screens. Sprint 52 collapsed to 2 screens after CEO fee
 
 ### ADR-5: Temporal Decay over Simple Average
 Business scores use temporal decay so recent ratings matter more. A restaurant that improved 6 months ago shouldn't be held back by ratings from 2 years ago. Decay is linear with configurable thresholds.
+
+### Confidence Level Labeling
+Businesses are labeled with a confidence level based on their rating count, surfaced in API responses to provide low-data honesty (Constitution principle #9). The `server/confidence-labeler.ts` module classifies businesses as:
+- **Provisional** (0-2 ratings): Not yet reliable
+- **Early** (3-9 ratings): Emerging signal
+- **Moderate** (10-24 ratings): Growing confidence
+- **Established** (25+ ratings): Reliable score
+
+Only "established" businesses have `isReliable: true`. This prevents users from being misled by scores based on insufficient data.
 
 ## Additional Systems
 
