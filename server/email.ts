@@ -17,37 +17,58 @@ export interface EmailPayload {
   text?: string;
 }
 
+// Sprint 191: Retry with exponential backoff for transient failures
+async function sendWithRetry(payload: EmailPayload, maxRetries: number = 3): Promise<boolean> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: FROM_ADDRESS,
+          to: [payload.to],
+          subject: payload.subject,
+          html: payload.html,
+          text: payload.text,
+        }),
+      });
+
+      if (res.ok) {
+        emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
+        return true;
+      }
+
+      const body = await res.text();
+      // Don't retry 4xx (client errors) except 429 (rate limit)
+      if (res.status < 500 && res.status !== 429) {
+        emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
+        return false;
+      }
+
+      emailLog.warn(`Resend API ${res.status} (attempt ${attempt + 1}/${maxRetries}): ${body.slice(0, 100)}`);
+    } catch (err: any) {
+      emailLog.warn(`Email send error (attempt ${attempt + 1}/${maxRetries}): ${err.message}`);
+    }
+
+    // Exponential backoff: 500ms, 1s, 2s
+    if (attempt < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
+  }
+
+  emailLog.error(`Email to ${payload.to} failed after ${maxRetries} retries`);
+  return false;
+}
+
 export async function sendEmail(payload: EmailPayload): Promise<void> {
   if (!RESEND_API_KEY) {
     emailLog.info(`[DEV] To: ${payload.to} | Subject: ${payload.subject}`);
     return;
   }
-
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: FROM_ADDRESS,
-        to: [payload.to],
-        subject: payload.subject,
-        html: payload.html,
-        text: payload.text,
-      }),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
-    } else {
-      emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
-    }
-  } catch (err: any) {
-    emailLog.error(`Email send failed: ${err.message}`);
-  }
+  await sendWithRetry(payload);
 }
 
 export async function sendWelcomeEmail(params: {

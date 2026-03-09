@@ -9,9 +9,13 @@ import { log as logger } from "./logger";
 import { securityHeaders } from "./security-headers";
 import { apiRateLimiter } from "./rate-limiter";
 import { perfMonitor } from "./perf-monitor";
+import { initErrorTracking } from "./error-tracking";
 
 const app = express();
 const log = console.log;
+
+// Sprint 191: Initialize error tracking early
+initErrorTracking();
 
 declare module "http" {
   interface IncomingMessage {

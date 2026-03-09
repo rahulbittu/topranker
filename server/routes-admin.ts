@@ -284,10 +284,20 @@ export function registerAdminRoutes(app: Express) {
   // ── Performance Stats ─────────────────────────────────────
   app.get("/api/admin/perf", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
       const { getCacheStats } = await import("./redis");
+      const { getErrorStats } = await import("./error-tracking");
       const data = {
         ...getPerfStats(),
         cache: getCacheStats(),
+        errors: getErrorStats(),
       };
+      return res.json({ data });
+  }));
+
+  // ── Sprint 191: Error Log ──────────────────────────────────
+  app.get("/api/admin/errors", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { getRecentServerErrors } = await import("./error-tracking");
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 20);
+      const data = getRecentServerErrors(limit);
       return res.json({ data });
   }));
 
