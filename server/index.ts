@@ -351,6 +351,10 @@ function setupErrorHandler(app: express.Application) {
 
   setupRequestLogging(app);
 
+  // Sprint 180: SSR prerender middleware for bot traffic
+  const { prerenderMiddleware } = await import("./prerender");
+  app.use(prerenderMiddleware);
+
   const server = await registerRoutes(app);
 
   // Startup banner: count registered routes (Sprint 121)

@@ -319,6 +319,7 @@ export function registerAdminRoutes(app: Express) {
           },
           activeConnections: 0,
           featureFlags: flags,
+          prerenderCache: (() => { try { const { getPrerenderCacheStats } = require("./prerender"); return getPrerenderCacheStats(); } catch { return null; } })(),
           generatedAt: new Date().toISOString(),
         },
       });

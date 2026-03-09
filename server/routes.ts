@@ -240,6 +240,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notifyTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch(() => {});
       }
 
+      // Sprint 180: Invalidate prerender cache for affected business
+      try {
+        const { invalidatePrerenderCache } = await import("./prerender");
+        const { getBusinessById } = await import("./storage");
+        const biz = await getBusinessById(parsed.data.businessId);
+        if (biz?.slug) invalidatePrerenderCache("biz", biz.slug);
+      } catch { /* non-critical */ }
+
       const userExperiments = getUserExperiments(String(memberId));
       for (const expId of userExperiments) {
         trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
