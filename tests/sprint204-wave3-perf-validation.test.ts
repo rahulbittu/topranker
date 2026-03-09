@@ -62,16 +62,16 @@ describe("Performance validation — server/perf-monitor.ts", () => {
     expect(src).toContain("healthy: checks.every");
   });
 
-  it("has 200ms avg response budget", () => {
-    expect(src).toContain("budget: 200");
+  it("reads avg budget from shared BUDGETS", () => {
+    expect(src).toContain('BUDGETS.find((b) => b.metric === "api_response_avg")');
   });
 
-  it("has 2000ms max response budget", () => {
-    expect(src).toContain("budget: 2000");
+  it("reads max budget from shared BUDGETS", () => {
+    expect(src).toContain('BUDGETS.find((b) => b.metric === "api_response_max")');
   });
 
-  it("has 5% slow request budget", () => {
-    expect(src).toContain("budget: 5");
+  it("reads slow rate budget from shared BUDGETS", () => {
+    expect(src).toContain('BUDGETS.find((b) => b.metric === "slow_request_rate")');
   });
 });
 

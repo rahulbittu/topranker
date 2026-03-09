@@ -11,9 +11,13 @@ export function requireAuth(req: Request, res: Response, next: Function) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ error: "Authentication required" });
   }
-  // Sprint 199: Track active users on every authenticated request
+  // Sprint 199: Track active users on every authenticated request (in-memory)
+  // Sprint 206: Also persist to DB (non-blocking, lazy import to avoid DB dep at load)
   if (req.user?.id) {
     recordUserActivity(req.user.id);
+    import("./storage/user-activity")
+      .then(({ recordUserActivityDb }) => recordUserActivityDb(req.user!.id))
+      .catch(() => {});
   }
   next();
 }

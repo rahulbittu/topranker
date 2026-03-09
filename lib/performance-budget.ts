@@ -1,21 +1,26 @@
 /**
  * Performance Budget Utility
  * Defines and enforces performance budgets for critical web vitals.
- * Sprint 124
+ * Sprint 124, consolidated Sprint 206
  */
 
 export interface PerformanceBudget {
   metric: string;
   budget: number;
-  unit: "ms" | "kb" | "count";
+  unit: "ms" | "kb" | "%" | "count";
 }
 
-/** Performance budgets for CI enforcement */
+/**
+ * Unified performance budgets — single source of truth.
+ * Server perf-monitor.ts references these values.
+ */
 export const BUDGETS: PerformanceBudget[] = [
   { metric: "ttfb", budget: 200, unit: "ms" },
   { metric: "fcp", budget: 1500, unit: "ms" },
   { metric: "bundle_size", budget: 500, unit: "kb" },
-  { metric: "api_response", budget: 100, unit: "ms" },
+  { metric: "api_response_avg", budget: 200, unit: "ms" },
+  { metric: "api_response_max", budget: 2000, unit: "ms" },
+  { metric: "slow_request_rate", budget: 5, unit: "%" },
 ];
 
 /**

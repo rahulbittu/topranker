@@ -122,7 +122,7 @@ describe("Sprint 124 — Performance Budget Utility", () => {
   it("PerformanceBudget has metric, budget, unit fields", () => {
     expect(source).toContain("metric: string");
     expect(source).toContain("budget: number");
-    expect(source).toContain('unit: "ms" | "kb" | "count"');
+    expect(source).toContain('unit: "ms" | "kb" | "%" | "count"');
   });
 
   it("exports BUDGETS array with ttfb entry", () => {
@@ -138,8 +138,8 @@ describe("Sprint 124 — Performance Budget Utility", () => {
     expect(source).toContain('"bundle_size"');
   });
 
-  it("BUDGETS includes api_response entry", () => {
-    expect(source).toContain('"api_response"');
+  it("BUDGETS includes api_response_avg entry", () => {
+    expect(source).toContain('"api_response_avg"');
   });
 
   it("exports checkBudget function", () => {

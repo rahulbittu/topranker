@@ -91,3 +91,19 @@ jobs:
           else
             echo "SKIP: No tsconfig.json found"
           fi
+
+      - name: Performance budget validation
+        continue-on-error: true
+        run: |
+          node -e "
+            const { BUDGETS } = require('./lib/performance-budget');
+            console.log('Performance budgets defined:');
+            BUDGETS.forEach(b => console.log('  ' + b.metric + ': ' + b.budget + b.unit));
+            const required = ['api_response_avg', 'api_response_max', 'slow_request_rate'];
+            const missing = required.filter(r => !BUDGETS.find(b => b.metric === r));
+            if (missing.length > 0) {
+              console.log('::warning::Missing performance budgets: ' + missing.join(', '));
+              process.exit(1);
+            }
+            console.log('OK: All required performance budgets defined');
+          "

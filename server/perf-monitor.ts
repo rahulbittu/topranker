@@ -5,6 +5,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
+import { BUDGETS } from "../lib/performance-budget";
 
 const perfLog = log.tag("Perf");
 
@@ -66,31 +67,36 @@ export function perfMonitor(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-/** Sprint 204: Performance validation — checks budgets against actuals */
+/** Sprint 204: Performance validation — checks budgets against actuals
+ *  Sprint 206: Now uses shared BUDGETS from lib/performance-budget.ts */
 export function getPerformanceValidation(): {
   healthy: boolean;
   checks: Array<{ name: string; passed: boolean; actual: number; budget: number; unit: string }>;
 } {
+  const avgBudget = BUDGETS.find((b) => b.metric === "api_response_avg")?.budget ?? 200;
+  const maxBudget = BUDGETS.find((b) => b.metric === "api_response_max")?.budget ?? 2000;
+  const slowBudget = BUDGETS.find((b) => b.metric === "slow_request_rate")?.budget ?? 5;
+
   const checks = [
     {
       name: "Avg Response Time",
-      passed: stats.avgDurationMs <= 200,
+      passed: stats.avgDurationMs <= avgBudget,
       actual: Math.round(stats.avgDurationMs),
-      budget: 200,
+      budget: avgBudget,
       unit: "ms",
     },
     {
       name: "Max Response Time",
-      passed: stats.maxDurationMs <= 2000,
+      passed: stats.maxDurationMs <= maxBudget,
       actual: Math.round(stats.maxDurationMs),
-      budget: 2000,
+      budget: maxBudget,
       unit: "ms",
     },
     {
       name: "Slow Request Rate",
-      passed: stats.totalRequests === 0 || (stats.slowRequests / stats.totalRequests) < 0.05,
+      passed: stats.totalRequests === 0 || (stats.slowRequests / stats.totalRequests) < (slowBudget / 100),
       actual: stats.totalRequests > 0 ? Math.round((stats.slowRequests / stats.totalRequests) * 100) : 0,
-      budget: 5,
+      budget: slowBudget,
       unit: "%",
     },
   ];
