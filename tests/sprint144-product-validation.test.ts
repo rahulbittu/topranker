@@ -210,14 +210,24 @@ describe("Component Extraction Integrity", () => {
   it("business/SubComponents.tsx exists and exports components", () => {
     expect(fileExists("components/business/SubComponents.tsx")).toBe(true);
     const src = readFile("components/business/SubComponents.tsx");
-    expect(src).toContain("export function ActionButton");
-    expect(src).toContain("export function CollapsibleReviews");
-    expect(src).toContain("export function HeroCarousel");
-    expect(src).toContain("export function BusinessNameCard");
-    expect(src).toContain("export function QuickStatsBar");
-    expect(src).toContain("export function ScoreCard");
-    expect(src).toContain("export function TrustExplainerCard");
-    expect(src).toContain("export function SubScoresCard");
+    // SubComponents.tsx is now a barrel file that re-exports from individual component files
+    expect(src).toContain("ActionButton");
+    expect(src).toContain("CollapsibleReviews");
+    expect(src).toContain("HeroCarousel");
+    expect(src).toContain("BusinessNameCard");
+    expect(src).toContain("QuickStatsBar");
+    expect(src).toContain("ScoreCard");
+    expect(src).toContain("TrustExplainerCard");
+    expect(src).toContain("SubScoresCard");
+    // Verify individual component files exist
+    expect(fileExists("components/business/ActionButton.tsx")).toBe(true);
+    expect(fileExists("components/business/CollapsibleReviews.tsx")).toBe(true);
+    expect(fileExists("components/business/HeroCarousel.tsx")).toBe(true);
+    expect(fileExists("components/business/BusinessNameCard.tsx")).toBe(true);
+    expect(fileExists("components/business/QuickStatsBar.tsx")).toBe(true);
+    expect(fileExists("components/business/ScoreCard.tsx")).toBe(true);
+    expect(fileExists("components/business/TrustExplainerCard.tsx")).toBe(true);
+    expect(fileExists("components/business/SubScoresCard.tsx")).toBe(true);
   });
 
   it("all extraction source files import from their SubComponents", () => {

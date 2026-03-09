@@ -67,9 +67,10 @@ describe("Sprint 123 — Business Social Sharing", () => {
     expect(fs.existsSync(businessPath)).toBe(true);
   });
 
-  // After Sprint 143 extraction, sharing code lives in SubComponents.tsx
-  const source = fs.readFileSync(businessPath, "utf-8") +
-    (fs.existsSync(subComponentsPath) ? fs.readFileSync(subComponentsPath, "utf-8") : "");
+  // After Sprint 145 decomposition, sharing code lives in individual component files
+  const bizDir = path.resolve(__dirname, "..", "components", "business");
+  const allBizFiles = fs.existsSync(bizDir) ? fs.readdirSync(bizDir).filter(f => f.endsWith(".tsx")).map(f => fs.readFileSync(path.join(bizDir, f), "utf-8")).join("\n") : "";
+  const source = fs.readFileSync(businessPath, "utf-8") + allBizFiles;
 
   it("contains share-outline icon", () => {
     expect(source).toContain("share-outline");

@@ -1,10 +1,11 @@
 /**
- * Unit Tests — Experiment Results Dashboard (Sprint 143)
+ * Unit Tests — Experiment Results Dashboard (Sprint 143 + Sprint 145 Wilson Score)
  * Owner: Sarah Nakamura (Lead Engineer)
  *
  * Covers:
- * - Per-variant conversion rate calculation
- * - Recommendation logic thresholds (treatment_winning, control_winning, inconclusive)
+ * - Wilson score confidence interval computation
+ * - Per-variant conversion rate calculation with confidence intervals
+ * - Recommendation logic using Wilson score intervals
  * - Insufficient data detection when exposures < 100
  * - Per-variant breakdown accuracy (exposures, outcomes, byAction)
  * - Edge cases: no data, single variant, zero outcomes
@@ -16,6 +17,7 @@ import {
   trackOutcome,
   computeExperimentDashboard,
   clearExposures,
+  wilsonScore,
 } from "../server/experiment-tracker";
 
 // ─── Setup ───────────────────────────────────────────────────
@@ -49,6 +51,57 @@ function createOutcomes(
   }
 }
 
+// ─── Wilson Score Function ────────────────────────────────────
+
+describe("wilsonScore computation", () => {
+  it("returns {0, 0, 0} for 0 successes / 0 total", () => {
+    const result = wilsonScore(0, 0);
+    expect(result).toEqual({ lower: 0, upper: 0, center: 0 });
+  });
+
+  it("computes center near 0.5 for 50/100", () => {
+    const result = wilsonScore(50, 100);
+    expect(result.center).toBeCloseTo(0.5, 2);
+    // Interval should be symmetric around ~0.5
+    expect(result.lower).toBeGreaterThan(0.39);
+    expect(result.upper).toBeLessThan(0.61);
+    // Width should be reasonable for n=100
+    expect(result.upper - result.lower).toBeGreaterThan(0.05);
+    expect(result.upper - result.lower).toBeLessThan(0.25);
+  });
+
+  it("shrinks 1/1 away from 1.0 (does not return {1, 1, 1})", () => {
+    const result = wilsonScore(1, 1);
+    expect(result.center).toBeLessThan(1);
+    expect(result.upper).toBeLessThanOrEqual(1);
+    // With n=1, the interval should be very wide
+    expect(result.lower).toBeLessThan(0.5);
+    // Definitely not {1, 1, 1}
+    expect(result).not.toEqual({ lower: 1, upper: 1, center: 1 });
+  });
+
+  it("shrinks 0/1 away from 0.0", () => {
+    const result = wilsonScore(0, 1);
+    expect(result.center).toBeGreaterThan(0);
+    expect(result.lower).toBeGreaterThanOrEqual(0);
+    expect(result.upper).toBeGreaterThan(0.5);
+  });
+
+  it("narrows interval as sample size increases", () => {
+    const small = wilsonScore(5, 10);
+    const large = wilsonScore(500, 1000);
+    // Same proportion (0.5) but larger sample → narrower interval
+    expect(large.upper - large.lower).toBeLessThan(small.upper - small.lower);
+  });
+
+  it("accepts custom z-score parameter", () => {
+    const ci95 = wilsonScore(50, 100, 1.96);
+    const ci99 = wilsonScore(50, 100, 2.576);
+    // 99% CI should be wider than 95% CI
+    expect(ci99.upper - ci99.lower).toBeGreaterThan(ci95.upper - ci95.lower);
+  });
+});
+
 // ─── Conversion Rate Calculation ─────────────────────────────
 
 describe("conversion rate calculation", () => {
@@ -69,6 +122,29 @@ describe("conversion rate calculation", () => {
     expect(treatment).toBeDefined();
     expect(control!.conversionRate).toBe(20); // 10/50 = 20%
     expect(treatment!.conversionRate).toBe(50); // 25/50 = 50%
+  });
+
+  it("includes Wilson confidence intervals on each variant", () => {
+    createExposures("exp_a", "control", 50);
+    createOutcomes("exp_a", "control", 10);
+    createExposures("exp_a", "treatment", 50);
+    createOutcomes("exp_a", "treatment", 25);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    const control = dashboard.variants.find((v) => v.variant === "control");
+    const treatment = dashboard.variants.find((v) => v.variant === "treatment");
+
+    // Control: 10/50 = 0.2 → Wilson center near 0.2
+    expect(control!.confidence).toBeDefined();
+    expect(control!.confidence.center).toBeCloseTo(0.2, 1);
+    expect(control!.confidence.lower).toBeGreaterThan(0);
+    expect(control!.confidence.upper).toBeLessThan(1);
+    expect(control!.confidence.lower).toBeLessThan(control!.confidence.center);
+    expect(control!.confidence.upper).toBeGreaterThan(control!.confidence.center);
+
+    // Treatment: 25/50 = 0.5 → Wilson center near 0.5
+    expect(treatment!.confidence).toBeDefined();
+    expect(treatment!.confidence.center).toBeCloseTo(0.5, 1);
   });
 
   it("returns 0% conversion when no outcomes exist", () => {
@@ -108,83 +184,89 @@ describe("conversion rate calculation", () => {
   });
 });
 
-// ─── Recommendation Logic ────────────────────────────────────
+// ─── Recommendation Logic (Wilson Score) ─────────────────────
 
-describe("recommendation logic thresholds", () => {
-  it("returns treatment_winning when treatment beats control by >5%", () => {
-    // Control: 10/50 = 20%, Treatment: 20/50 = 40% → diff = +20% → treatment_winning
+describe("recommendation logic with Wilson score intervals", () => {
+  it("returns treatment_winning when intervals do not overlap (large sample)", () => {
+    // Large samples with very different rates → non-overlapping Wilson CIs
+    // Control: 20/200 = 10%, Treatment: 120/200 = 60%
+    createExposures("exp_a", "control", 200);
+    createOutcomes("exp_a", "control", 20);
+    createExposures("exp_a", "treatment", 200);
+    createOutcomes("exp_a", "treatment", 120);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    expect(dashboard.recommendation).toBe("treatment_winning");
+  });
+
+  it("returns control_winning when control interval is above treatment (large sample)", () => {
+    // Control: 120/200 = 60%, Treatment: 20/200 = 10%
+    createExposures("exp_a", "control", 200);
+    createOutcomes("exp_a", "control", 120);
+    createExposures("exp_a", "treatment", 200);
+    createOutcomes("exp_a", "treatment", 20);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    expect(dashboard.recommendation).toBe("control_winning");
+  });
+
+  it("returns inconclusive when rates are equal", () => {
+    createExposures("exp_a", "control", 200);
+    createOutcomes("exp_a", "control", 60);
+    createExposures("exp_a", "treatment", 200);
+    createOutcomes("exp_a", "treatment", 60);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    expect(dashboard.recommendation).toBe("inconclusive");
+  });
+
+  it("returns inconclusive when intervals overlap and centers are close", () => {
+    // Control: 50/200 = 25%, Treatment: 54/200 = 27% → centers differ by ~2pp → inconclusive
+    createExposures("exp_a", "control", 200);
+    createOutcomes("exp_a", "control", 50);
+    createExposures("exp_a", "treatment", 200);
+    createOutcomes("exp_a", "treatment", 54);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    expect(dashboard.recommendation).toBe("inconclusive");
+  });
+
+  it("returns promising when intervals overlap but centers differ by >5pp", () => {
+    // With moderate sample sizes, overlapping intervals but meaningful center difference
+    // Control: 30/200 = 15%, Treatment: 50/200 = 25% → centers differ by ~10pp
+    // At n=200, Wilson CI width is ~10pp each, so intervals overlap but centers are >5pp apart
+    createExposures("exp_a", "control", 200);
+    createOutcomes("exp_a", "control", 30);
+    createExposures("exp_a", "treatment", 200);
+    createOutcomes("exp_a", "treatment", 50);
+
+    const dashboard = computeExperimentDashboard("exp_a");
+    // Intervals overlap at n=200, but center diff is meaningful → promising
+    expect(dashboard.recommendation).toBe("promising");
+  });
+
+  it("returns promising for small per-variant samples with large center difference", () => {
+    // 50 per variant (total 100, so not insufficient_data), big rate difference
+    // Control: 10/50 = 20%, Treatment: 20/50 = 40% → intervals overlap at n=50, centers differ by ~20pp
     createExposures("exp_a", "control", 50);
     createOutcomes("exp_a", "control", 10);
     createExposures("exp_a", "treatment", 50);
     createOutcomes("exp_a", "treatment", 20);
 
     const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("treatment_winning");
+    expect(dashboard.recommendation).toBe("promising");
   });
 
-  it("returns control_winning when control beats treatment by >5%", () => {
-    // Control: 20/50 = 40%, Treatment: 10/50 = 20% → diff = -20% → control_winning
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 20);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 10);
+  it("handles only control variant present (treatment defaults to zero CI)", () => {
+    createExposures("exp_a", "control", 120);
+    createOutcomes("exp_a", "control", 30);
 
     const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("control_winning");
-  });
-
-  it("returns inconclusive when difference is exactly 5%", () => {
-    // Control: 20/50 = 40%, Treatment: 22.5/50 = 45% → diff = +5% exactly → inconclusive
-    // We need exact: 50 control, 20 outcomes (40%); 50 treatment, 22 outcomes (44%) → diff = 4% → inconclusive
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 20);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 22); // 44%
-
-    const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("inconclusive");
-  });
-
-  it("returns inconclusive when rates are equal", () => {
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 15);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 15);
-
-    const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("inconclusive");
-  });
-
-  it("returns inconclusive for difference just under 5% threshold", () => {
-    // Control: 25/50 = 50%, Treatment: 27/50 = 54% → diff = 4% → inconclusive
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 25);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 27);
-
-    const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("inconclusive");
-  });
-
-  it("returns treatment_winning for difference just over 5% threshold", () => {
-    // Control: 20/50 = 40%, Treatment: 23/50 = 46% → diff = 6% → treatment_winning
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 20);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 23);
-
-    const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.recommendation).toBe("treatment_winning");
-  });
-
-  it("returns control_winning for negative difference just over 5%", () => {
-    // Control: 23/50 = 46%, Treatment: 20/50 = 40% → diff = -6% → control_winning
-    createExposures("exp_a", "control", 50);
-    createOutcomes("exp_a", "control", 23);
-    createExposures("exp_a", "treatment", 50);
-    createOutcomes("exp_a", "treatment", 20);
-
-    const dashboard = computeExperimentDashboard("exp_a");
+    expect(dashboard.variants).toHaveLength(1);
+    expect(dashboard.variants[0].variant).toBe("control");
+    expect(dashboard.variants[0].conversionRate).toBe(25);
+    // Treatment CI defaults to {0, 0, 0}, control CI center ~0.25
+    // Control lower > treatment upper (0) → control_winning
     expect(dashboard.recommendation).toBe("control_winning");
   });
 });
@@ -284,17 +366,5 @@ describe("per-variant breakdown accuracy", () => {
 
     const dashboard = computeExperimentDashboard("my_experiment");
     expect(dashboard.experimentId).toBe("my_experiment");
-  });
-
-  it("handles experiment with only control variant data", () => {
-    createExposures("exp_a", "control", 120);
-    createOutcomes("exp_a", "control", 30);
-
-    const dashboard = computeExperimentDashboard("exp_a");
-    expect(dashboard.variants).toHaveLength(1);
-    expect(dashboard.variants[0].variant).toBe("control");
-    expect(dashboard.variants[0].conversionRate).toBe(25);
-    // With no treatment, treatment rate is 0, control is 25 → diff = -25 → control_winning
-    expect(dashboard.recommendation).toBe("control_winning");
   });
 });

@@ -192,13 +192,14 @@ describe("Business Detail Typography", () => {
     expect(source).toContain('@/constants/typography');
   });
 
-  it("components/business/SubComponents.tsx imports TYPOGRAPHY", async () => {
+  it("business components import TYPOGRAPHY", async () => {
     const fs = await import("node:fs");
-    const source = fs.readFileSync(
-      new URL("../components/business/SubComponents.tsx", import.meta.url),
-      "utf-8",
-    );
-    expect(source).toContain('import { TYPOGRAPHY }');
-    expect(source).toContain('@/constants/typography');
+    const path = await import("node:path");
+    const bizDir = new URL("../components/business/", import.meta.url).pathname;
+    const allSrc = fs.readdirSync(bizDir)
+      .filter((f: string) => f.endsWith(".tsx") && f !== "SubComponents.tsx")
+      .map((f: string) => fs.readFileSync(path.join(bizDir, f), "utf-8"))
+      .join("\n");
+    expect(allSrc).toContain('TYPOGRAPHY');
   });
 });

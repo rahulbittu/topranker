@@ -483,7 +483,7 @@ describe("Experiment Lifecycle", () => {
     const dashboard = computeExperimentDashboard("e2e_lifecycle");
     expect(dashboard.totalExposures).toBe(120);
     expect(dashboard.confidence).toBe("sufficient_data");
-    expect(["treatment_winning", "control_winning", "inconclusive"]).toContain(
+    expect(["treatment_winning", "control_winning", "promising", "inconclusive"]).toContain(
       dashboard.recommendation,
     );
 

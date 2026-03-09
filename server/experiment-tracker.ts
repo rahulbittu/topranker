@@ -51,14 +51,22 @@ export interface OutcomeStats {
 export type DashboardRecommendation =
   | "treatment_winning"
   | "control_winning"
+  | "promising"
   | "inconclusive"
   | "insufficient_data";
+
+export interface WilsonConfidence {
+  lower: number;
+  upper: number;
+  center: number;
+}
 
 export interface VariantDashboard {
   variant: string;
   exposures: number;
   outcomes: number;
   conversionRate: number; // percentage 0-100
+  confidence: WilsonConfidence;
   byAction: Record<string, number>;
 }
 
@@ -260,17 +268,48 @@ export function getUserExperiments(userId: string): string[] {
     .map((e) => e.experimentId);
 }
 
+// ─── Wilson Score Confidence Interval ─────────────────────
+
+/**
+ * Compute Wilson score confidence interval for a binomial proportion.
+ * Uses the Wilson score interval which corrects for small sample sizes
+ * by shrinking extreme proportions toward the center.
+ *
+ * @param successes - Number of successes (conversions)
+ * @param total - Total number of trials (exposures)
+ * @param z - Z-score for desired confidence level (default 1.96 for 95%)
+ */
+export function wilsonScore(
+  successes: number,
+  total: number,
+  z: number = 1.96,
+): WilsonConfidence {
+  if (total === 0) return { lower: 0, upper: 0, center: 0 };
+  const p = successes / total;
+  const denominator = 1 + (z * z) / total;
+  const center = (p + (z * z) / (2 * total)) / denominator;
+  const margin =
+    (z * Math.sqrt((p * (1 - p)) / total + (z * z) / (4 * total * total))) /
+    denominator;
+  return {
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+    center,
+  };
+}
+
 // ─── Dashboard Computation ───────────────────────────────
 
 /**
  * Compute a dashboard summary for a given experiment.
  * Includes per-variant conversion rates, confidence indicator, and recommendation.
  *
- * Recommendation logic:
+ * Recommendation logic (Wilson score confidence intervals):
  * - If total exposures < 100 → "insufficient_data"
- * - If treatment conversion > control by more than 5 percentage points → "treatment_winning"
- * - If control conversion > treatment by more than 5 percentage points → "control_winning"
- * - Otherwise → "inconclusive"
+ * - If treatment CI lower > control CI upper → "treatment_winning"
+ * - If control CI lower > treatment CI upper → "control_winning"
+ * - If intervals overlap but centers differ by >5pp → "promising"
+ * - If intervals overlap and centers close → "inconclusive"
  *
  * Sprint 143: Experiment Results Dashboard
  */
@@ -300,16 +339,18 @@ export function computeExperimentDashboard(experimentId: string): ExperimentDash
 
   const variants: VariantDashboard[] = [];
   for (const [variant, data] of variantMap.entries()) {
+    const ci = wilsonScore(data.outcomes, data.exposures);
     variants.push({
       variant,
       exposures: data.exposures,
       outcomes: data.outcomes,
       conversionRate: data.exposures > 0 ? (data.outcomes / data.exposures) * 100 : 0,
+      confidence: ci,
       byAction: data.byAction,
     });
   }
 
-  // Determine confidence and recommendation
+  // Determine confidence and recommendation using Wilson score intervals
   const totalExposures = expStats.total;
   let confidence: ExperimentDashboard["confidence"] = "sufficient_data";
   let recommendation: DashboardRecommendation = "inconclusive";
@@ -321,16 +362,44 @@ export function computeExperimentDashboard(experimentId: string): ExperimentDash
     const controlVariant = variants.find((v) => v.variant === "control");
     const treatmentVariant = variants.find((v) => v.variant === "treatment");
 
-    const controlRate = controlVariant?.conversionRate ?? 0;
-    const treatmentRate = treatmentVariant?.conversionRate ?? 0;
-    const diff = treatmentRate - controlRate;
+    const controlCI = controlVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
+    const treatmentCI = treatmentVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
 
-    if (diff > 5) {
-      recommendation = "treatment_winning";
-    } else if (diff < -5) {
-      recommendation = "control_winning";
+    // Check per-variant minimum: each variant needs >= 100 exposures for reliable intervals
+    const controlExposures = controlVariant?.exposures ?? 0;
+    const treatmentExposures = treatmentVariant?.exposures ?? 0;
+
+    if (controlExposures < 100 || treatmentExposures < 100) {
+      // Use Wilson intervals even with fewer per-variant, but check overlap
+      // Non-overlapping intervals → decisive
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        // Intervals overlap — check if centers differ by >5 percentage points
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
     } else {
-      recommendation = "inconclusive";
+      // Both variants have sufficient data — use Wilson intervals for recommendation
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        // Intervals overlap — check if centers differ by >5 percentage points
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
     }
   }
 
