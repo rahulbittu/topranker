@@ -73,6 +73,25 @@ export async function sendPushNotification(
 }
 
 /**
+ * Sprint 182: Create in-app notification record alongside push.
+ * Fire-and-forget — doesn't block push delivery.
+ */
+async function persistNotification(
+  memberId: string,
+  type: string,
+  title: string,
+  body: string,
+  data?: Record<string, string>,
+): Promise<void> {
+  try {
+    const { createNotification } = await import("./storage/notifications");
+    await createNotification({ memberId, type, title, body, data });
+  } catch (err) {
+    pushLog.error(`Failed to persist notification for ${memberId}: ${err}`);
+  }
+}
+
+/**
  * Send a rating response notification to a user.
  */
 export async function notifyRatingResponse(
@@ -88,12 +107,9 @@ export async function notifyRatingResponse(
   if (prefs.ratingResponses === false) return; // user opted out
 
   const truncated = ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply;
-  await sendPushNotification(
-    [userToken],
-    `${businessName} replied to your rating`,
-    truncated,
-    { screen: "business" },
-  );
+  const title = `${businessName} replied to your rating`;
+  await sendPushNotification([userToken], title, truncated, { screen: "business" });
+  persistNotification(userId, "rating_response", title, truncated, { screen: "business" });
 }
 
 /**
@@ -110,12 +126,10 @@ export async function notifyTierUpgrade(
   const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
   if (prefs.tierUpgrades === false) return; // user opted out
 
-  await sendPushNotification(
-    [userToken],
-    "You've been promoted!",
-    `Your credibility just reached ${newTier} tier. Your ratings now carry more weight.`,
-    { screen: "profile" },
-  );
+  const title = "You've been promoted!";
+  const body = `Your credibility just reached ${newTier} tier. Your ratings now carry more weight.`;
+  await sendPushNotification([userToken], title, body, { screen: "profile" });
+  persistNotification(userId, "tier_upgrade", title, body, { screen: "profile" });
 }
 
 /**
@@ -130,20 +144,23 @@ export async function notifyChallengerResult(
   // Before sending, check each user's notification preferences
   const { getMemberById } = await import("./storage/members");
   const filteredTokens: string[] = [];
+  const eligibleFollowerIds: string[] = [];
   for (let i = 0; i < followerIds.length; i++) {
     const member = await getMemberById(followerIds[i]);
     const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
     if (prefs.challengerResults === false) continue; // user opted out
     filteredTokens.push(followerTokens[i]);
+    eligibleFollowerIds.push(followerIds[i]);
   }
   if (filteredTokens.length === 0) return;
 
-  await sendPushNotification(
-    filteredTokens,
-    `${category} Challenge ended`,
-    `${winnerName} wins! See the final results and stats.`,
-    { screen: "challenger" },
-  );
+  const title = `${category} Challenge ended`;
+  const body = `${winnerName} wins! See the final results and stats.`;
+  await sendPushNotification(filteredTokens, title, body, { screen: "challenger" });
+  // Persist for each eligible recipient
+  for (const uid of eligibleFollowerIds) {
+    persistNotification(uid, "challenger_result", title, body, { screen: "challenger" });
+  }
 }
 
 /**
@@ -159,18 +176,21 @@ export async function notifyNewChallenger(
   // Before sending, check each user's notification preferences
   const { getMemberById } = await import("./storage/members");
   const filteredTokens: string[] = [];
+  const eligibleUserIds: string[] = [];
   for (let i = 0; i < cityUserIds.length; i++) {
     const member = await getMemberById(cityUserIds[i]);
     const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
     if (prefs.newChallengers === false) continue; // user opted out
     filteredTokens.push(cityTokens[i]);
+    eligibleUserIds.push(cityUserIds[i]);
   }
   if (filteredTokens.length === 0) return;
 
-  await sendPushNotification(
-    filteredTokens,
-    `New ${category} Challenge`,
-    `${defenderName} vs ${challengerName} — 30 days, weighted votes decide.`,
-    { screen: "challenger" },
-  );
+  const title = `New ${category} Challenge`;
+  const body = `${defenderName} vs ${challengerName} — 30 days, weighted votes decide.`;
+  await sendPushNotification(filteredTokens, title, body, { screen: "challenger" });
+  // Persist for each eligible recipient
+  for (const uid of eligibleUserIds) {
+    persistNotification(uid, "new_challenger", title, body, { screen: "challenger" });
+  }
 }

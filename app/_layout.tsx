@@ -352,15 +352,25 @@ export default function RootLayout() {
     });
 
     // Handle notification taps — navigate to the right screen
+    // Sprint 182: Enhanced deep linking with entity-level navigation
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
       const screen = data?.screen as string | undefined;
-      if (screen === "challenger") {
+      const slug = data?.slug as string | undefined;
+      const id = data?.id as string | undefined;
+
+      if (screen === "business" && slug) {
+        router.push({ pathname: "/business/[id]", params: { id: slug } });
+      } else if (screen === "challenger" && id) {
+        router.push({ pathname: "/(tabs)/challenger", params: { id } });
+      } else if (screen === "challenger") {
         router.push("/(tabs)/challenger");
       } else if (screen === "profile") {
         router.push("/(tabs)/profile");
       } else if (screen === "search") {
         router.push("/(tabs)/search");
+      } else if (screen === "dish" && slug) {
+        router.push({ pathname: "/dish/[slug]", params: { slug } });
       }
     });
 

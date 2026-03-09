@@ -697,3 +697,28 @@ export const insertCategorySuggestionSchema = z.object({
   description: z.string().min(10).max(200),
   vertical: z.enum(["food", "services", "wellness", "entertainment", "retail"]),
 });
+
+// ── In-App Notifications — Sprint 182 ─────────────────────────
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    memberId: varchar("member_id")
+      .notNull()
+      .references(() => members.id),
+    type: text("type").notNull(), // tier_upgrade, claim_decision, challenger_result, new_challenger, rating_response, weekly_digest
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    data: jsonb("data"), // { screen, slug, id } for deep linking
+    read: boolean("read").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_notif_member").on(table.memberId),
+    index("idx_notif_member_read").on(table.memberId, table.read),
+  ],
+);
+
+export type Notification = typeof notifications.$inferSelect;

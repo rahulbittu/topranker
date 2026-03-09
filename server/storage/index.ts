@@ -144,3 +144,12 @@ export {
   getQrScanStats,
   markQrScanConverted,
 } from "./qr";
+
+// In-App Notifications (Sprint 182)
+export {
+  createNotification,
+  getMemberNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  getUnreadNotificationCount,
+} from "./notifications";
