@@ -193,6 +193,7 @@ interface ReviewItem {
   userTier: CredibilityTier;
   rawScore: number;
   businessName: string;
+  comment: string | null;
   createdAt: number;
 }
 
@@ -217,7 +218,13 @@ export const ReviewRow = React.memo(function ReviewRow({ review }: { review: Rev
             <Text style={[styles.reviewTierText, { color: tierBadgeBg }]}>{tierName.toUpperCase()}</Text>
           </View>
         </View>
-        <Text style={styles.reviewBusinessName}>{review.businessName}</Text>
+        <View style={styles.reviewVotedRow}>
+          <Ionicons name="arrow-forward-circle" size={11} color={BRAND.colors.amber} />
+          <Text style={styles.reviewBusinessName}>Voted for {review.businessName}</Text>
+        </View>
+        {review.comment ? (
+          <Text style={styles.reviewComment} numberOfLines={3}>{review.comment}</Text>
+        ) : null}
         <Text style={styles.reviewTime}>{formatTimeAgo(review.createdAt)}</Text>
       </View>
       <Text style={styles.reviewScore}>{review.rawScore.toFixed(1)}</Text>
@@ -228,7 +235,7 @@ export const ReviewRow = React.memo(function ReviewRow({ review }: { review: Rev
 // ─── CommunityReviews ───────────────────────────────────────────────────────
 
 export function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const { data: defenderData } = useQuery({
     queryKey: ["business", challenge.defenderBusiness.slug],
@@ -252,6 +259,7 @@ export function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
         userTier: r.userTier,
         rawScore: r.rawScore,
         businessName: challenge.defenderBusiness.name,
+        comment: r.comment || null,
         createdAt: r.createdAt,
       });
     });
@@ -265,6 +273,7 @@ export function CommunityReviews({ challenge }: { challenge: ApiChallenger }) {
         userTier: r.userTier,
         rawScore: r.rawScore,
         businessName: challenge.challengerBusiness.name,
+        comment: r.comment || null,
         createdAt: r.createdAt,
       });
     });
@@ -513,13 +522,26 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
     letterSpacing: 0.5,
   },
+  reviewVotedRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 4,
+  },
   reviewBusinessName: {
     fontSize: 11,
     color: BRAND.colors.amber,
     fontFamily: "DMSans_500Medium",
   },
+  reviewComment: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
+    lineHeight: 17,
+    marginTop: 2,
+  },
   reviewTime: {
     ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
+    marginTop: 1,
   },
   reviewScore: {
     fontSize: 18,

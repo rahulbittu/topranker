@@ -221,7 +221,22 @@ function getMockData(path: string): unknown | null {
   if (path.startsWith("/api/members/me/impact")) return MOCK_MEMBER_IMPACT;
   if (path.startsWith("/api/members/me")) return MOCK_MEMBER_PROFILE;
   if (path.includes("/rank-history")) return MOCK_RANK_HISTORY;
-  if (path.startsWith("/api/businesses/search")) return MOCK_BUSINESSES.slice(0, 5);
+  if (path.startsWith("/api/businesses/search")) {
+    const urlParams = new URLSearchParams(path.split("?")[1] || "");
+    const q = (urlParams.get("q") || "").toLowerCase().trim();
+    const city = urlParams.get("city") || "";
+    let results = MOCK_BUSINESSES.filter(b => b.isActive);
+    if (city) results = results.filter(b => b.city.toLowerCase() === city.toLowerCase());
+    if (q) {
+      results = results.filter(b =>
+        b.name.toLowerCase().includes(q) ||
+        (b.neighborhood || "").toLowerCase().includes(q) ||
+        (b.category || "").toLowerCase().includes(q) ||
+        (b.description || "").toLowerCase().includes(q)
+      );
+    }
+    return results.slice(0, 20);
+  }
   if (path.startsWith("/api/businesses/")) {
     const slug = path.split("/api/businesses/")[1]?.split("?")[0];
     const biz = MOCK_BUSINESSES.find(b => b.slug === slug) || MOCK_BUSINESSES[0];

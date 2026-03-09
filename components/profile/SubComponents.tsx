@@ -174,50 +174,120 @@ export const PaymentHistoryRow = React.memo(function PaymentHistoryRow({ p }: { 
 });
 
 /* ------------------------------------------------------------------ */
-/*  CredibilityJourney — tier ladder                                  */
+/*  CredibilityJourney — premium horizontal stepper                   */
 /* ------------------------------------------------------------------ */
 
+const JOURNEY_TIERS: CredibilityTier[] = ["community", "city", "trusted", "top"];
+
+const TIER_ICONS: Record<CredibilityTier, React.ComponentProps<typeof Ionicons>["name"]> = {
+  community: "person",
+  city: "star",
+  trusted: "shield-checkmark",
+  top: "trophy",
+};
+
+const TIER_NEXT_HINTS: Record<CredibilityTier, string> = {
+  community: "Rate a few more businesses to reach Regular status",
+  city: "Keep rating consistently to earn Trusted status",
+  trusted: "You're close to the top — maintain quality ratings",
+  top: "You've reached the highest tier!",
+};
+
 export function CredibilityJourney({ currentTier }: { currentTier: CredibilityTier }) {
+  const currentIdx = JOURNEY_TIERS.indexOf(currentTier);
+
   return (
-    <View style={s.tierInfoSection}>
-      <Text style={s.sectionTitle}>Credibility Journey</Text>
-      <View style={s.tierList}>
-        {(["community", "city", "trusted", "top"] as CredibilityTier[]).map((t, idx, arr) => {
-          const tierOrder = arr.indexOf(currentTier);
-          const isCompleted = idx < tierOrder;
-          const isCurrent = t === currentTier;
-          return (
-            <View key={t}>
-              <View style={[s.tierRow, isCurrent && s.tierRowActive]}>
-                <View style={[
-                  s.tierDot,
-                  { backgroundColor: isCompleted || isCurrent ? TIER_COLORS[t] : Colors.border },
-                ]}>
-                  {isCompleted && <Ionicons name="checkmark" size={8} color="#fff" />}
-                </View>
-                <View style={s.tierRowInfo}>
-                  <Text style={[s.tierName, (isCurrent || isCompleted) && { color: Colors.text }]}>
+    <View style={s.journeySection}>
+      <Text style={s.journeySectionTitle}>Credibility Journey</Text>
+
+      {/* Horizontal stepper */}
+      <View style={s.journeyCard}>
+        <View style={s.stepperRow}>
+          {JOURNEY_TIERS.map((t, idx) => {
+            const isCompleted = idx < currentIdx;
+            const isCurrent = idx === currentIdx;
+            const isFuture = idx > currentIdx;
+
+            return (
+              <React.Fragment key={t}>
+                {/* Connector line before (skip first) */}
+                {idx > 0 && (
+                  <View style={[
+                    s.stepperLine,
+                    { backgroundColor: idx <= currentIdx ? AMBER : Colors.border },
+                    idx <= currentIdx && { opacity: 1 },
+                  ]} />
+                )}
+
+                {/* Step circle + label */}
+                <View style={s.stepperStep}>
+                  <View style={[
+                    s.stepperCircle,
+                    isCurrent && s.stepperCircleCurrent,
+                    isCompleted && s.stepperCircleCompleted,
+                    isFuture && s.stepperCircleFuture,
+                  ]}>
+                    {isCompleted ? (
+                      <Ionicons name="checkmark" size={14} color="#fff" />
+                    ) : (
+                      <Ionicons
+                        name={TIER_ICONS[t]}
+                        size={isCurrent ? 16 : 12}
+                        color={isCurrent ? "#fff" : isFuture ? Colors.textTertiary : "#fff"}
+                      />
+                    )}
+                  </View>
+                  <Text style={[
+                    s.stepperLabel,
+                    isCurrent && s.stepperLabelCurrent,
+                    isCompleted && s.stepperLabelCompleted,
+                    isFuture && s.stepperLabelFuture,
+                  ]} numberOfLines={1}>
                     {TIER_DISPLAY_NAMES[t]}
                   </Text>
-                  <Text style={s.tierWeight}>{TIER_INFLUENCE_LABELS[t]}</Text>
+                  <Text style={[
+                    s.stepperRange,
+                    isCurrent && { color: AMBER },
+                  ]}>
+                    {TIER_SCORE_RANGES[t].min}+
+                  </Text>
                 </View>
-                <Text style={s.tierRange}>
-                  {TIER_SCORE_RANGES[t].min}–{TIER_SCORE_RANGES[t].max}
-                </Text>
-                {isCurrent && (
-                  <View style={s.currentBadge}>
-                    <Text style={s.currentBadgeText}>YOU</Text>
-                  </View>
-                )}
-              </View>
-              {idx < arr.length - 1 && (
-                <View style={[s.tierConnector, {
-                  backgroundColor: isCompleted ? TIER_COLORS[t] : Colors.border,
-                }]} />
-              )}
+              </React.Fragment>
+            );
+          })}
+        </View>
+
+        {/* Current tier detail card */}
+        <View style={s.journeyDetailCard}>
+          <View style={s.journeyDetailTop}>
+            <View style={[s.journeyDetailIcon, { backgroundColor: `${AMBER}18` }]}>
+              <Ionicons name={TIER_ICONS[currentTier]} size={20} color={AMBER} />
             </View>
-          );
-        })}
+            <View style={s.journeyDetailInfo}>
+              <Text style={s.journeyDetailTierName}>
+                {TIER_DISPLAY_NAMES[currentTier]}
+              </Text>
+              <Text style={s.journeyDetailInfluence}>
+                {TIER_INFLUENCE_LABELS[currentTier]}
+              </Text>
+            </View>
+            <View style={s.journeyYouBadge}>
+              <Text style={s.journeyYouBadgeText}>CURRENT</Text>
+            </View>
+          </View>
+
+          {/* Next tier hint */}
+          <View style={s.journeyHintRow}>
+            <Ionicons
+              name={currentTier === "top" ? "checkmark-circle" : "arrow-forward-circle"}
+              size={16}
+              color={currentTier === "top" ? Colors.green : AMBER}
+            />
+            <Text style={s.journeyHintText}>
+              {TIER_NEXT_HINTS[currentTier]}
+            </Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -631,30 +701,105 @@ const s = StyleSheet.create({
     textTransform: "capitalize" as const,
   },
 
-  // Credibility Journey
+  // Credibility Journey — premium horizontal stepper
+  journeySection: { gap: 10, marginTop: 8 },
+  journeySectionTitle: {
+    fontSize: 15, fontWeight: "600", color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  journeyCard: {
+    backgroundColor: Colors.surface, borderRadius: 16,
+    padding: 20, gap: 18, ...Colors.cardShadow,
+  },
+  stepperRow: {
+    flexDirection: "row", alignItems: "flex-start",
+    justifyContent: "center", paddingHorizontal: 4,
+  },
+  stepperStep: {
+    alignItems: "center", gap: 6, width: 68,
+  },
+  stepperCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: Colors.border,
+  },
+  stepperCircleCurrent: {
+    backgroundColor: AMBER, width: 40, height: 40, borderRadius: 20,
+    shadowColor: AMBER, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4, shadowRadius: 8, elevation: 6,
+  },
+  stepperCircleCompleted: {
+    backgroundColor: Colors.green,
+  },
+  stepperCircleFuture: {
+    backgroundColor: Colors.surfaceRaised,
+    borderWidth: 2, borderColor: Colors.border,
+  },
+  stepperLine: {
+    height: 3, flex: 1, borderRadius: 1.5,
+    marginTop: 18, marginHorizontal: -2,
+    backgroundColor: Colors.border,
+  },
+  stepperLabel: {
+    fontSize: 10, color: Colors.textTertiary,
+    fontFamily: "DMSans_500Medium", textAlign: "center",
+  },
+  stepperLabelCurrent: {
+    fontSize: 11, color: AMBER, fontFamily: "DMSans_700Bold",
+    fontWeight: "700",
+  },
+  stepperLabelCompleted: {
+    color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  stepperLabelFuture: {
+    color: Colors.textTertiary,
+  },
+  stepperRange: {
+    fontSize: 9, color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
+  },
+  journeyDetailCard: {
+    backgroundColor: `${AMBER}08`, borderRadius: 12,
+    padding: 14, gap: 12,
+    borderWidth: 1, borderColor: `${AMBER}20`,
+  },
+  journeyDetailTop: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+  },
+  journeyDetailIcon: {
+    width: 40, height: 40, borderRadius: 12,
+    alignItems: "center", justifyContent: "center",
+  },
+  journeyDetailInfo: { flex: 1, gap: 2 },
+  journeyDetailTierName: {
+    fontSize: 18, fontWeight: "700", color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.3,
+  },
+  journeyDetailInfluence: {
+    fontSize: 12, color: Colors.textSecondary,
+    fontFamily: "DMSans_400Regular",
+  },
+  journeyYouBadge: {
+    backgroundColor: `${AMBER}20`, borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1, borderColor: `${AMBER}40`,
+  },
+  journeyYouBadgeText: {
+    fontSize: 9, fontWeight: "700", color: AMBER,
+    fontFamily: "DMSans_700Bold", letterSpacing: 0.8,
+  },
+  journeyHintRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingTop: 2,
+  },
+  journeyHintText: {
+    fontSize: 12, color: Colors.textSecondary,
+    fontFamily: "DMSans_500Medium", flex: 1, lineHeight: 17,
+  },
+
+  // Shared styles used by TierRewardsSection
   tierInfoSection: { gap: 10, marginTop: 8 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  tierList: {
-    backgroundColor: Colors.surface, borderRadius: 14,
-    overflow: "hidden", ...Colors.cardShadow,
-  },
-  tierRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  tierRowActive: { backgroundColor: Colors.goldFaint },
-  tierDot: { width: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center" },
-  tierConnector: { width: 2, height: 16, marginLeft: 19, borderRadius: 1 },
-  tierRowInfo: { flex: 1, gap: 1 },
-  tierName: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  tierWeight: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  tierRange: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
-  currentBadge: {
-    backgroundColor: Colors.goldFaint,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-  },
-  currentBadgeText: { fontSize: 8, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
 
   // Tier Perks / Rewards
   perksGrid: {
