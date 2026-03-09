@@ -311,6 +311,16 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* Sprint 213: Feedback Link */}
+        <SectionHeader title="HELP & FEEDBACK" />
+        <View style={styles.card}>
+          <NavigationRow
+            icon="chatbox-ellipses-outline"
+            label="Send Feedback"
+            onPress={() => router.push("/feedback")}
+          />
+        </View>
+
         {/* About */}
         <SectionHeader title="ABOUT" />
         <View style={styles.card}>
