@@ -25,6 +25,7 @@ export {
   updatePushToken,
   updateNotificationPrefs,
   updateMemberAvatar,
+  updateMemberEmail,
 } from "./members";
 
 // Businesses

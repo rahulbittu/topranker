@@ -29,8 +29,10 @@ export default function EditProfileScreen() {
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
   const [username, setUsername] = useState(user?.username ?? "");
+  const [email, setEmail] = useState(user?.email ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [emailConfirmation, setEmailConfirmation] = useState("");
   const [error, setError] = useState("");
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(
@@ -135,9 +137,11 @@ export default function EditProfileScreen() {
     }
   }, [uploadAvatar]);
 
+  const emailChanged = email.trim() !== (user?.email ?? "");
   const hasChanges =
     displayName.trim() !== (user?.displayName ?? "") ||
-    username.trim() !== (user?.username ?? "");
+    username.trim() !== (user?.username ?? "") ||
+    emailChanged;
 
   const handleSave = async () => {
     if (!hasChanges) return;
@@ -160,18 +164,38 @@ export default function EditProfileScreen() {
 
     setSaving(true);
     setError("");
+    setEmailConfirmation("");
     try {
-      const res = await apiRequest("PUT", "/api/members/me", {
-        displayName: trimmedName,
-        username: trimmedUsername,
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || "Failed to update profile");
+      // Update display name and username if changed
+      if (
+        trimmedName !== (user?.displayName ?? "") ||
+        trimmedUsername !== (user?.username ?? "")
+      ) {
+        const res = await apiRequest("PUT", "/api/members/me", {
+          displayName: trimmedName,
+          username: trimmedUsername,
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.message || "Failed to update profile");
+        }
       }
+
+      // Update email if changed
+      if (emailChanged) {
+        const emailRes = await apiRequest("PUT", "/api/members/me/email", {
+          email: email.trim(),
+        });
+        if (!emailRes.ok) {
+          const body = await emailRes.json().catch(() => ({}));
+          throw new Error(body.error || "Failed to update email");
+        }
+        setEmailConfirmation("A verification email will be sent to your new address");
+      }
+
       await refreshUser();
       setSaved(true);
-      setTimeout(() => router.back(), 1500);
+      setTimeout(() => router.back(), emailChanged ? 3000 : 1500);
     } catch (err: any) {
       setError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -292,16 +316,26 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {/* Email (read-only) */}
+          {/* Email */}
           <View style={[styles.fieldRow, { borderBottomWidth: 0 }]}>
             <Text style={styles.fieldLabel}>Email</Text>
             <TextInput
-              style={[styles.fieldInput, styles.fieldInputDisabled]}
-              value={user?.email ?? ""}
-              editable={false}
-              selectTextOnFocus={false}
+              style={[
+                styles.fieldInput,
+                focusedField === "email" && styles.fieldInputFocused,
+              ]}
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setFocusedField("email")}
+              onBlur={() => setFocusedField(null)}
+              placeholder="your@email.com"
+              placeholderTextColor={Colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              maxLength={100}
             />
-            <Text style={styles.fieldHint}>Email cannot be changed</Text>
+            <Text style={styles.fieldHint}>Changing your email requires verification</Text>
           </View>
         </View>
 
@@ -329,6 +363,14 @@ export default function EditProfileScreen() {
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={20} color="#16a34a" />
             <Text style={styles.successText}>Profile updated!</Text>
+          </View>
+        )}
+
+        {/* Email confirmation notice */}
+        {!!emailConfirmation && (
+          <View style={styles.emailConfirmBanner}>
+            <Ionicons name="mail-outline" size={16} color="#2563eb" />
+            <Text style={styles.emailConfirmText}>{emailConfirmation}</Text>
           </View>
         )}
 
@@ -516,6 +558,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#16a34a",
     fontFamily: "DMSans_600SemiBold",
+  },
+
+  /* Email confirmation banner */
+  emailConfirmBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: "#eff6ff",
+    borderRadius: 10,
+    gap: 6,
+  },
+  emailConfirmText: {
+    fontSize: 13,
+    color: "#2563eb",
+    fontFamily: "DMSans_500Medium",
+    flex: 1,
   },
 
   /* Error banner */

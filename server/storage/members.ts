@@ -325,6 +325,13 @@ export async function updateMemberAvatar(memberId: string, avatarUrl: string) {
   return updated;
 }
 
+export async function updateMemberEmail(memberId: string, email: string): Promise<any> {
+  const [existing] = await db.select().from(members).where(eq(members.email, email));
+  if (existing && existing.id !== memberId) throw new Error("Email already in use");
+  const [updated] = await db.update(members).set({ email }).where(eq(members.id, memberId)).returning();
+  return updated;
+}
+
 export async function updateNotificationPrefs(
   memberId: string,
   prefs: Record<string, boolean>,
