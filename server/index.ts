@@ -364,6 +364,13 @@ function setupErrorHandler(app: express.Application) {
   const { seedDatabase } = await import("./seed");
   seedDatabase().catch((err) => logger.error("Seed error:", err));
 
+  // Challenger closure batch job — runs hourly (Sprint 161)
+  const { closeExpiredChallenges } = await import("./storage/challengers");
+  closeExpiredChallenges().catch((err) => logger.error("Initial challenger closure error:", err));
+  const challengerInterval = setInterval(() => {
+    closeExpiredChallenges().catch((err) => logger.error("Challenger closure error:", err));
+  }, 60 * 60 * 1000); // Every hour
+
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -378,6 +385,7 @@ function setupErrorHandler(app: express.Application) {
   // Graceful shutdown
   function gracefulShutdown(signal: string) {
     logger.info(`${signal} received. Starting graceful shutdown...`);
+    clearInterval(challengerInterval);
 
     server.close(() => {
       logger.info("HTTP server closed");

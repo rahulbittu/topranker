@@ -1,6 +1,7 @@
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, lte } from "drizzle-orm";
 import { challengers, businesses } from "@shared/schema";
 import { db } from "../db";
+import { log } from "../logger";
 
 export async function getActiveChallenges(
   city: string,
@@ -78,4 +79,53 @@ export async function updateChallengerVotes(
       })
       .where(eq(challengers.id, c.id));
   }
+}
+
+/**
+ * Close expired challenges — determines winner by weighted votes.
+ * Runs as a batch job (hourly via setInterval in server startup).
+ * Sprint 161 — server-authoritative winner determination.
+ */
+export async function closeExpiredChallenges(): Promise<number> {
+  const now = new Date();
+  const expired = await db
+    .select()
+    .from(challengers)
+    .where(
+      and(
+        eq(challengers.status, "active"),
+        lte(challengers.endDate, now),
+      ),
+    );
+
+  let closed = 0;
+  for (const c of expired) {
+    const challengerVotes = parseFloat(c.challengerWeightedVotes);
+    const defenderVotes = parseFloat(c.defenderWeightedVotes);
+
+    let winnerId: string | null = null;
+    if (challengerVotes > defenderVotes) {
+      winnerId = c.challengerId;
+    } else if (defenderVotes > challengerVotes) {
+      winnerId = c.defenderId;
+    }
+    // Tie: winnerId stays null (draw)
+
+    await db
+      .update(challengers)
+      .set({
+        status: "completed",
+        winnerId,
+      })
+      .where(eq(challengers.id, c.id));
+
+    closed++;
+    log.info(`Challenge ${c.id} closed: winner=${winnerId || "draw"} (${challengerVotes} vs ${defenderVotes})`);
+  }
+
+  if (closed > 0) {
+    log.info(`Closed ${closed} expired challenge(s)`);
+  }
+
+  return closed;
 }
