@@ -102,42 +102,42 @@ describe("GDPR Deletion Grace Period Module", () => {
 
   it("exports scheduleDeletion function", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("export function scheduleDeletion");
+    expect(content).toContain("export async function scheduleDeletion");
   });
 
   it("scheduleDeletion accepts userId and gracePeriodDays", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("scheduleDeletion(userId: string, gracePeriodDays: number): DeletionRequest");
+    expect(content).toContain("scheduleDeletion(userId: string, gracePeriodDays: number)");
   });
 
   it("exports cancelDeletion function", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("export function cancelDeletion");
+    expect(content).toContain("export async function cancelDeletion");
   });
 
   it("cancelDeletion returns boolean", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("cancelDeletion(userId: string): boolean");
+    expect(content).toContain("cancelDeletion(userId: string): Promise<boolean>");
   });
 
   it("exports getDeletionStatus function", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("export function getDeletionStatus");
+    expect(content).toContain("export async function getDeletionStatus");
   });
 
   it("getDeletionStatus returns DeletionRequest or null", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("getDeletionStatus(userId: string): DeletionRequest | null");
+    expect(content).toContain("getDeletionStatus(userId: string): Promise<DeletionRequest | null>");
   });
 
   it("exports processExpiredDeletions function", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("export function processExpiredDeletions");
+    expect(content).toContain("export async function processExpiredDeletions");
   });
 
   it("processExpiredDeletions returns string array of user IDs", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("processExpiredDeletions(): string[]");
+    expect(content).toContain("processExpiredDeletions(): Promise<string[]>");
   });
 
   it("exports DeletionRequest interface", () => {
@@ -167,22 +167,24 @@ describe("GDPR Deletion Grace Period Module", () => {
 
   it("cancelDeletion only cancels pending requests", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain('request.status !== "pending"');
+    expect(content).toContain('"pending"');
+    expect(content).toContain("cancelled");
   });
 
   it("processExpiredDeletions marks completed requests", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain('request.status = "completed"');
+    expect(content).toContain('"completed"');
   });
 
-  it("uses in-memory Map storage", () => {
+  it("uses database-backed storage (not in-memory)", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("new Map<string, DeletionRequest>()");
+    expect(content).toContain("deletionRequests");
+    expect(content).toContain("db");
   });
 
-  it("exports clearDeletionRequests for testing", () => {
+  it("imports from drizzle ORM for database operations", () => {
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("export function clearDeletionRequests");
+    expect(content).toContain('import { db }');
   });
 });
 

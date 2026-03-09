@@ -44,7 +44,7 @@ export default function ClaimBusinessScreen() {
         </View>
         <Text style={styles.successTitle}>Claim Submitted</Text>
         <Text style={styles.successSub}>
-          We'll review your claim for {name || "this business"} within 48 hours. You'll receive an email confirmation at {user.email}.
+          Your claim has been submitted for review. We'll notify you at {user.email} when your claim for {name || "this business"} is approved.
         </Text>
         <TouchableOpacity style={styles.ctaBtn} onPress={() => router.back()} activeOpacity={0.85}>
           <Text style={styles.ctaBtnText}>Back to Business</Text>
@@ -158,7 +158,7 @@ export default function ClaimBusinessScreen() {
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.infoText}>
-              We verify claims by matching your email domain with the business, or by calling the business phone number. Verification typically takes 24-48 hours.
+              Claims are reviewed by our team. You'll be notified when your claim is approved. Review may take several business days.
             </Text>
           </View>
         </View>

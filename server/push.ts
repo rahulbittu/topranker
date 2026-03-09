@@ -76,10 +76,17 @@ export async function sendPushNotification(
  * Send a rating response notification to a user.
  */
 export async function notifyRatingResponse(
+  userId: string,
   userToken: string,
   businessName: string,
   ownerReply: string,
 ): Promise<void> {
+  // Before sending, check user's notification preferences
+  const { getMemberById } = await import("./storage/members");
+  const member = await getMemberById(userId);
+  const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
+  if (prefs.ratingResponses === false) return; // user opted out
+
   const truncated = ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply;
   await sendPushNotification(
     [userToken],
@@ -93,9 +100,16 @@ export async function notifyRatingResponse(
  * Send a tier upgrade notification.
  */
 export async function notifyTierUpgrade(
+  userId: string,
   userToken: string,
   newTier: string,
 ): Promise<void> {
+  // Before sending, check user's notification preferences
+  const { getMemberById } = await import("./storage/members");
+  const member = await getMemberById(userId);
+  const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
+  if (prefs.tierUpgrades === false) return; // user opted out
+
   await sendPushNotification(
     [userToken],
     "You've been promoted!",
@@ -108,12 +122,24 @@ export async function notifyTierUpgrade(
  * Send challenger result notifications to all followers.
  */
 export async function notifyChallengerResult(
+  followerIds: string[],
   followerTokens: string[],
   winnerName: string,
   category: string,
 ): Promise<void> {
+  // Before sending, check each user's notification preferences
+  const { getMemberById } = await import("./storage/members");
+  const filteredTokens: string[] = [];
+  for (let i = 0; i < followerIds.length; i++) {
+    const member = await getMemberById(followerIds[i]);
+    const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
+    if (prefs.challengerResults === false) continue; // user opted out
+    filteredTokens.push(followerTokens[i]);
+  }
+  if (filteredTokens.length === 0) return;
+
   await sendPushNotification(
-    followerTokens,
+    filteredTokens,
     `${category} Challenge ended`,
     `${winnerName} wins! See the final results and stats.`,
     { screen: "challenger" },
@@ -124,13 +150,25 @@ export async function notifyChallengerResult(
  * Send new challenger notification to city subscribers.
  */
 export async function notifyNewChallenger(
+  cityUserIds: string[],
   cityTokens: string[],
   defenderName: string,
   challengerName: string,
   category: string,
 ): Promise<void> {
+  // Before sending, check each user's notification preferences
+  const { getMemberById } = await import("./storage/members");
+  const filteredTokens: string[] = [];
+  for (let i = 0; i < cityUserIds.length; i++) {
+    const member = await getMemberById(cityUserIds[i]);
+    const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
+    if (prefs.newChallengers === false) continue; // user opted out
+    filteredTokens.push(cityTokens[i]);
+  }
+  if (filteredTokens.length === 0) return;
+
   await sendPushNotification(
-    cityTokens,
+    filteredTokens,
     `New ${category} Challenge`,
     `${defenderName} vs ${challengerName} — 30 days, weighted votes decide.`,
     { screen: "challenger" },

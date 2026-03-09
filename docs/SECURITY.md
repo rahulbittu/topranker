@@ -50,7 +50,7 @@ All responses include OWASP-recommended security headers (Sprint 104-105):
 ## Data Protection
 
 - Encryption in transit: TLS 1.3
-- Encryption at rest: AES-256
+- Encryption at rest: managed by database provider
 - Password storage: bcrypt (never plaintext)
 - GDPR cookie consent (web)
 - Privacy policy with CCPA, DPDPA 2023, GDPR rights

@@ -102,7 +102,7 @@ To exercise any right: privacy@topranker.com`,
   {
     title: "7. Data Security",
     body: `We protect your data with:
-- Encryption in transit (TLS 1.3) and at rest (AES-256)
+- Encryption in transit (TLS 1.3). Database encryption at rest managed by hosting provider.
 - Bcrypt password hashing (never stored in plaintext)
 - Session-based authentication with secure HTTP-only cookies
 - Rate limiting on all API endpoints

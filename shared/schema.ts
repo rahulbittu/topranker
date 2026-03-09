@@ -530,6 +530,30 @@ export type Category = typeof categories.$inferSelect;
 export type CategorySuggestionRow = typeof categorySuggestions.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
 
+// ── GDPR Deletion Requests (persistent grace period tracking) ────────
+export const deletionRequests = pgTable(
+  "deletion_requests",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    memberId: varchar("member_id")
+      .notNull()
+      .references(() => members.id),
+    requestedAt: timestamp("requested_at").notNull().defaultNow(),
+    scheduledDeletionAt: timestamp("scheduled_deletion_at").notNull(),
+    cancelledAt: timestamp("cancelled_at"),
+    completedAt: timestamp("completed_at"),
+    status: text("status").notNull().default("pending"), // pending, cancelled, completed
+  },
+  (table) => [
+    index("idx_deletion_member").on(table.memberId),
+    index("idx_deletion_status").on(table.status),
+  ],
+);
+
+export type DeletionRequestRow = typeof deletionRequests.$inferSelect;
+
 export const insertCategorySuggestionSchema = z.object({
   name: z.string().min(2).max(50),
   description: z.string().min(10).max(200),

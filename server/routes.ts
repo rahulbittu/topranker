@@ -322,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Compliance (Jordan Blake): Schedule deletion with 30-day grace period
   app.post("/api/account/schedule-deletion", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const request = scheduleDeletion(userId, 30);
+    const request = await scheduleDeletion(userId, 30);
 
     log.tag("GDPR").info(
       `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
@@ -344,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Compliance (Jordan Blake): Allow users to cancel within 30-day grace period
   app.post("/api/account/cancel-deletion", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const cancelled = cancelDeletion(userId);
+    const cancelled = await cancelDeletion(userId);
 
     if (!cancelled) {
       return res.status(404).json({ error: "No pending deletion request found" });
@@ -360,7 +360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current deletion status for authenticated user
   app.get("/api/account/deletion-status", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const status = getDeletionStatus(userId);
+    const status = await getDeletionStatus(userId);
 
     if (!status) {
       return res.json({ data: { hasPendingDeletion: false } });

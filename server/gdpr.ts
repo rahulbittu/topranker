@@ -1,12 +1,19 @@
 /**
- * GDPR Deletion Grace Period Service — Sprint 117
- * Background job for managing account deletion with a configurable grace period.
+ * GDPR Deletion Grace Period Service — Sprint 117 (DB-backed)
+ * Persistent storage for account deletion grace periods.
  * Owner: Jordan Blake (Compliance), Sarah Nakamura (Lead Engineer)
  *
  * Per GDPR Art. 17 and CCPA §1798.105, users have the right to deletion.
  * This module implements a grace period (default 30 days) during which
  * the user can cancel their deletion request by logging back in.
+ *
+ * Previously used in-memory Map — now backed by deletionRequests table
+ * so requests survive server restarts.
  */
+
+import { db } from "./db";
+import { deletionRequests } from "@shared/schema";
+import { eq, and, lte } from "drizzle-orm";
 
 export interface DeletionRequest {
   userId: string;
@@ -15,48 +22,75 @@ export interface DeletionRequest {
   status: "pending" | "cancelled" | "completed";
 }
 
-// In-memory storage — production would use the database
-const deletionRequests = new Map<string, DeletionRequest>();
-
 /**
  * Schedule an account for deletion with a grace period.
- * If a pending request already exists, it is overwritten with a new schedule.
+ * If a pending request already exists, it is overwritten (cancelled + new one created).
  */
-export function scheduleDeletion(userId: string, gracePeriodDays: number): DeletionRequest {
+export async function scheduleDeletion(userId: string, gracePeriodDays: number): Promise<DeletionRequest> {
   const now = new Date();
   const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1000);
 
-  const request: DeletionRequest = {
-    userId,
-    scheduledAt: now,
-    deleteAt,
-    status: "pending",
-  };
+  // Cancel any existing pending request for this user
+  await db
+    .update(deletionRequests)
+    .set({ status: "cancelled", cancelledAt: now })
+    .where(and(eq(deletionRequests.memberId, userId), eq(deletionRequests.status, "pending")));
 
-  deletionRequests.set(userId, request);
-  return request;
+  // Insert a new pending request
+  const [row] = await db
+    .insert(deletionRequests)
+    .values({
+      memberId: userId,
+      requestedAt: now,
+      scheduledDeletionAt: deleteAt,
+      status: "pending",
+    })
+    .returning();
+
+  return {
+    userId,
+    scheduledAt: row.requestedAt,
+    deleteAt: row.scheduledDeletionAt,
+    status: row.status as "pending",
+  };
 }
 
 /**
  * Cancel a pending deletion request.
  * Returns true if a pending request was found and cancelled, false otherwise.
  */
-export function cancelDeletion(userId: string): boolean {
-  const request = deletionRequests.get(userId);
-  if (!request || request.status !== "pending") {
-    return false;
-  }
-  request.status = "cancelled";
-  deletionRequests.set(userId, request);
-  return true;
+export async function cancelDeletion(userId: string): Promise<boolean> {
+  const now = new Date();
+  const result = await db
+    .update(deletionRequests)
+    .set({ status: "cancelled", cancelledAt: now })
+    .where(and(eq(deletionRequests.memberId, userId), eq(deletionRequests.status, "pending")))
+    .returning();
+
+  return result.length > 0;
 }
 
 /**
  * Get the current deletion status for a user.
- * Returns the DeletionRequest if one exists, or null.
+ * Returns the most recent DeletionRequest if one exists, or null.
  */
-export function getDeletionStatus(userId: string): DeletionRequest | null {
-  return deletionRequests.get(userId) || null;
+export async function getDeletionStatus(userId: string): Promise<DeletionRequest | null> {
+  const rows = await db
+    .select()
+    .from(deletionRequests)
+    .where(eq(deletionRequests.memberId, userId))
+    .orderBy(deletionRequests.requestedAt)
+    .limit(1);
+
+  if (rows.length === 0) return null;
+
+  const row = rows[0];
+  return {
+    userId: row.memberId,
+    scheduledAt: row.requestedAt,
+    deleteAt: row.scheduledDeletionAt,
+    status: row.status as DeletionRequest["status"],
+  };
 }
 
 /**
@@ -64,27 +98,17 @@ export function getDeletionStatus(userId: string): DeletionRequest | null {
  * Marks expired pending requests as "completed" and returns the list of user IDs
  * whose accounts should be purged.
  *
- * In production, this would be called by a cron job or background worker
- * (e.g., Bull queue, node-cron) to periodically sweep expired requests.
+ * Should be called by a cron job or background worker (e.g., node-cron)
+ * to periodically sweep expired requests.
  */
-export function processExpiredDeletions(): string[] {
+export async function processExpiredDeletions(): Promise<string[]> {
   const now = new Date();
-  const expiredUserIds: string[] = [];
 
-  for (const [userId, request] of deletionRequests.entries()) {
-    if (request.status === "pending" && request.deleteAt <= now) {
-      request.status = "completed";
-      deletionRequests.set(userId, request);
-      expiredUserIds.push(userId);
-    }
-  }
+  const completed = await db
+    .update(deletionRequests)
+    .set({ status: "completed", completedAt: now })
+    .where(and(eq(deletionRequests.status, "pending"), lte(deletionRequests.scheduledDeletionAt, now)))
+    .returning();
 
-  return expiredUserIds;
-}
-
-/**
- * Clear all deletion requests (for testing).
- */
-export function clearDeletionRequests(): void {
-  deletionRequests.clear();
+  return completed.map((row) => row.memberId);
 }
