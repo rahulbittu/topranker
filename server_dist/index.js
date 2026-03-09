@@ -469,7 +469,7 @@ var init_db = __esm({
   }
 });
 
-// server/storage/helpers.ts
+// shared/credibility.ts
 function getVoteWeight(credibilityScore) {
   if (credibilityScore >= 600) return 1;
   if (credibilityScore >= 300) return 0.7;
@@ -495,29 +495,119 @@ function getTemporalMultiplier(ratingAgeDays) {
   if (ratingAgeDays <= 365) return 0.45;
   return 0.25;
 }
+var init_credibility = __esm({
+  "shared/credibility.ts"() {
+    "use strict";
+  }
+});
+
+// server/storage/helpers.ts
 var init_helpers = __esm({
   "server/storage/helpers.ts"() {
     "use strict";
     init_db();
+    init_credibility();
+  }
+});
+
+// server/logger.ts
+function shouldLog(level) {
+  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
+}
+function formatMessage(level, tag, message, data) {
+  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
+  const prefix = `${timestamp2} [${level.toUpperCase()}] [${tag}]`;
+  if (data !== void 0) {
+    return `${prefix} ${message} ${typeof data === "string" ? data : JSON.stringify(data)}`;
+  }
+  return `${prefix} ${message}`;
+}
+function createTaggedLogger(tag) {
+  return {
+    debug(message, data) {
+      if (shouldLog("debug")) console.log(formatMessage("debug", tag, message, data));
+    },
+    info(message, data) {
+      if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
+    },
+    warn(message, data) {
+      if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
+    },
+    error(message, data) {
+      if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
+    }
+  };
+}
+var LEVEL_ORDER, MIN_LEVEL, log;
+var init_logger = __esm({
+  "server/logger.ts"() {
+    "use strict";
+    LEVEL_ORDER = {
+      debug: 0,
+      info: 1,
+      warn: 2,
+      error: 3
+    };
+    MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
+    log = {
+      /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
+      tag: createTaggedLogger,
+      // Top-level convenience methods (tag: "Server")
+      debug(message, data) {
+        if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
+      },
+      info(message, data) {
+        if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+      },
+      warn(message, data) {
+        if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
+      },
+      error(message, data) {
+        if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
+      }
+    };
+  }
+});
+
+// server/tier-staleness.ts
+import { eq } from "drizzle-orm";
+function checkAndRefreshTier(storedTier, currentScore) {
+  const expectedTier = getCredibilityTier(currentScore);
+  if (storedTier !== expectedTier) {
+    stalenessLog.info(
+      `Tier drift detected: stored=${storedTier}, expected=${expectedTier} for score=${currentScore}`
+    );
+  }
+  return expectedTier;
+}
+var stalenessLog;
+var init_tier_staleness = __esm({
+  "server/tier-staleness.ts"() {
+    "use strict";
+    init_db();
+    init_schema();
+    init_logger();
+    init_credibility();
+    stalenessLog = log.tag("TierStaleness");
   }
 });
 
 // server/storage/members.ts
-import { eq, and, sql as sql2, count, desc } from "drizzle-orm";
+import { eq as eq2, and, sql as sql2, count, desc } from "drizzle-orm";
 async function getMemberById(id) {
-  const [member] = await db.select().from(members).where(eq(members.id, id));
+  const [member] = await db.select().from(members).where(eq2(members.id, id));
   return member;
 }
 async function getMemberByUsername(username) {
-  const [member] = await db.select().from(members).where(eq(members.username, username));
+  const [member] = await db.select().from(members).where(eq2(members.username, username));
   return member;
 }
 async function getMemberByEmail(email) {
-  const [member] = await db.select().from(members).where(eq(members.email, email));
+  const [member] = await db.select().from(members).where(eq2(members.email, email));
   return member;
 }
 async function getMemberByAuthId(authId) {
-  const [member] = await db.select().from(members).where(eq(members.authId, authId));
+  const [member] = await db.select().from(members).where(eq2(members.authId, authId));
   return member;
 }
 async function getAdminMemberList(limit = 50) {
@@ -544,10 +634,10 @@ async function createMember(data) {
   return member;
 }
 async function updateMemberStats(memberId) {
-  const [ratingCount] = await db.select({ count: count() }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
-  const categoryResult = await db.select({ category: businesses.category }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false))).groupBy(businesses.category);
-  const distinctBizResult = await db.select({ bizId: ratings.businessId }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false))).groupBy(ratings.businessId);
-  const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+  const [ratingCount] = await db.select({ count: count() }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false)));
+  const categoryResult = await db.select({ category: businesses.category }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false))).groupBy(businesses.category);
+  const distinctBizResult = await db.select({ bizId: ratings.businessId }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false))).groupBy(ratings.businessId);
+  const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false)));
   let variance = 0;
   if (memberRatings.length > 1) {
     const scores = memberRatings.map((r) => parseFloat(r.rawScore));
@@ -561,7 +651,7 @@ async function updateMemberStats(memberId) {
     distinctBusinesses: distinctBizResult.length,
     ratingVariance: variance.toFixed(3),
     lastActive: /* @__PURE__ */ new Date()
-  }).where(eq(members.id, memberId));
+  }).where(eq2(members.id, memberId));
 }
 async function recalculateCredibilityScore(memberId) {
   const member = await getMemberById(memberId);
@@ -573,7 +663,7 @@ async function recalculateCredibilityScore(memberId) {
     (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
   );
   const age = Math.min(daysActive * 0.5, 100);
-  const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+  const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false)));
   let varianceBonus = 0;
   if (memberRatings.length >= 5) {
     const scores = memberRatings.map((r) => parseFloat(r.rawScore));
@@ -602,7 +692,7 @@ async function recalculateCredibilityScore(memberId) {
   const earlyReviewCount = Number(pioneerResult?.early_ratings ?? 0);
   const pioneerRate = totalMemberRatings > 0 ? earlyReviewCount / totalMemberRatings : 0;
   const helpfulness = Math.round(pioneerRate * 100);
-  const penaltyResult = await db.select({ total: sql2`COALESCE(SUM(${credibilityPenalties.finalPenalty}), 0)` }).from(credibilityPenalties).where(eq(credibilityPenalties.memberId, memberId));
+  const penaltyResult = await db.select({ total: sql2`COALESCE(SUM(${credibilityPenalties.finalPenalty}), 0)` }).from(credibilityPenalties).where(eq2(credibilityPenalties.memberId, memberId));
   const totalPenalties = Number(penaltyResult[0]?.total ?? 0);
   const rawScore = base + volume + diversity + age + varianceBonus + helpfulness - totalPenalties;
   const score = Math.max(10, Math.min(1e3, Math.round(rawScore)));
@@ -613,7 +703,7 @@ async function recalculateCredibilityScore(memberId) {
     const sqDiffs = scores.map((s) => (s - mean) ** 2);
     ratingVariance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
   }
-  const tier = getTierFromScore(
+  const gateTier = getTierFromScore(
     score,
     member.totalRatings,
     member.totalCategories,
@@ -621,7 +711,9 @@ async function recalculateCredibilityScore(memberId) {
     ratingVariance,
     member.activeFlagCount
   );
-  await db.update(members).set({ credibilityScore: score, credibilityTier: tier }).where(eq(members.id, memberId));
+  const stalenessCheckedTier = checkAndRefreshTier(member.credibilityTier, score);
+  const tier = gateTier;
+  await db.update(members).set({ credibilityScore: score, credibilityTier: tier }).where(eq2(members.id, memberId));
   return {
     score,
     tier,
@@ -658,8 +750,8 @@ async function getMemberRatings(memberId, page = 1, perPage = 20) {
     createdAt: ratings.createdAt,
     businessName: businesses.name,
     businessSlug: businesses.slug
-  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(sql2`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count() }).from(ratings).where(eq(ratings.memberId, memberId));
+  }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(eq2(ratings.memberId, memberId)).orderBy(sql2`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count() }).from(ratings).where(eq2(ratings.memberId, memberId));
   return { ratings: ratingsResult, total: totalResult.count };
 }
 async function getSeasonalRatingCounts(memberId) {
@@ -668,8 +760,8 @@ async function getSeasonalRatingCounts(memberId) {
     cnt: count()
   }).from(ratings).where(
     and(
-      eq(ratings.memberId, memberId),
-      eq(ratings.isFlagged, false)
+      eq2(ratings.memberId, memberId),
+      eq2(ratings.isFlagged, false)
     )
   ).groupBy(sql2`EXTRACT(MONTH FROM ${ratings.createdAt})`);
   let spring = 0, summer = 0, fall = 0, winter = 0;
@@ -683,7 +775,7 @@ async function getSeasonalRatingCounts(memberId) {
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
 }
 async function updatePushToken(memberId, pushToken) {
-  await db.update(members).set({ pushToken }).where(eq(members.id, memberId));
+  await db.update(members).set({ pushToken }).where(eq2(members.id, memberId));
 }
 async function getMemberImpact(memberId) {
   const memberRatings = await db.select({
@@ -691,10 +783,10 @@ async function getMemberImpact(memberId) {
     businessName: businesses.name,
     businessSlug: businesses.slug,
     rankDelta: businesses.rankDelta
-  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(
+  }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(
     and(
-      eq(ratings.memberId, memberId),
-      eq(ratings.isFlagged, false)
+      eq2(ratings.memberId, memberId),
+      eq2(ratings.isFlagged, false)
     )
   ).groupBy(ratings.businessId, businesses.name, businesses.slug, businesses.rankDelta);
   const lastRatingRows = await db.select({
@@ -703,7 +795,7 @@ async function getMemberImpact(memberId) {
     rawScore: ratings.rawScore,
     weight: ratings.weight,
     ratedAt: ratings.createdAt
-  }).from(ratings).innerJoin(businesses, eq(ratings.businessId, businesses.id)).where(eq(ratings.memberId, memberId)).orderBy(desc(ratings.createdAt)).limit(1);
+  }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(eq2(ratings.memberId, memberId)).orderBy(desc(ratings.createdAt)).limit(1);
   const lastRating = lastRatingRows.length > 0 ? {
     businessName: lastRatingRows[0].businessName,
     businessSlug: lastRatingRows[0].businessSlug,
@@ -724,35 +816,36 @@ var init_members = __esm({
     init_schema();
     init_db();
     init_helpers();
+    init_tier_staleness();
   }
 });
 
 // server/storage/businesses.ts
-import { eq as eq2, and as and2, desc as desc2, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
+import { eq as eq3, and as and2, desc as desc2, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
 async function getLeaderboard(city, category, limit = 50) {
   return db.select().from(businesses).where(
     and2(
-      eq2(businesses.city, city),
-      eq2(businesses.category, category),
-      eq2(businesses.isActive, true)
+      eq3(businesses.city, city),
+      eq3(businesses.category, category),
+      eq3(businesses.isActive, true)
     )
   ).orderBy(asc(businesses.rankPosition)).limit(limit);
 }
 async function getTrendingBusinesses(city, limit = 3) {
   return db.select().from(businesses).where(
     and2(
-      eq2(businesses.city, city),
-      eq2(businesses.isActive, true),
+      eq3(businesses.city, city),
+      eq3(businesses.isActive, true),
       sql3`${businesses.rankDelta} > 0`
     )
   ).orderBy(desc2(businesses.rankDelta)).limit(limit);
 }
 async function getBusinessBySlug(slug) {
-  const [business] = await db.select().from(businesses).where(eq2(businesses.slug, slug));
+  const [business] = await db.select().from(businesses).where(eq3(businesses.slug, slug));
   return business;
 }
 async function getBusinessById(id) {
-  const [business] = await db.select().from(businesses).where(eq2(businesses.id, id));
+  const [business] = await db.select().from(businesses).where(eq3(businesses.id, id));
   return business;
 }
 async function searchBusinesses(query, city, category, limit = 20) {
@@ -760,17 +853,17 @@ async function searchBusinesses(query, city, category, limit = 20) {
   const q = "%" + sanitized.toLowerCase() + "%";
   return db.select().from(businesses).where(
     and2(
-      eq2(businesses.city, city),
-      eq2(businesses.isActive, true),
+      eq3(businesses.city, city),
+      eq3(businesses.isActive, true),
       query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})` : void 0,
-      ...category ? [eq2(businesses.category, category)] : []
+      ...category ? [eq3(businesses.category, category)] : []
     )
   ).orderBy(desc2(businesses.weightedScore)).limit(limit);
 }
 async function getAllCategories(city) {
   const rows = await db.select({
     category: businesses.category
-  }).from(businesses).where(and2(eq2(businesses.city, city), eq2(businesses.isActive, true))).groupBy(businesses.category);
+  }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category);
   return rows.map((r) => r.category);
 }
 async function recalculateBusinessScore(businessId) {
@@ -782,13 +875,13 @@ async function recalculateBusinessScore(businessId) {
     autoFlagged: ratings.autoFlagged
   }).from(ratings).where(
     and2(
-      eq2(ratings.businessId, businessId),
-      eq2(ratings.isFlagged, false),
-      eq2(ratings.autoFlagged, false)
+      eq3(ratings.businessId, businessId),
+      eq3(ratings.isFlagged, false),
+      eq3(ratings.autoFlagged, false)
     )
   );
   if (allRatings.length === 0) {
-    await db.update(businesses).set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(businesses.id, businessId));
+    await db.update(businesses).set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: /* @__PURE__ */ new Date() }).where(eq3(businesses.id, businessId));
     return 0;
   }
   let totalWeightedScore = 0;
@@ -811,7 +904,7 @@ async function recalculateBusinessScore(businessId) {
     rawAvgScore: rawAvg.toFixed(2),
     totalRatings: allRatings.length,
     updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq2(businesses.id, businessId));
+  }).where(eq3(businesses.id, businessId));
   return score;
 }
 async function recalculateRanks(city, category) {
@@ -833,7 +926,7 @@ async function recalculateRanks(city, category) {
   `);
 }
 async function getBusinessPhotos(businessId) {
-  const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq2(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
+  const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq3(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
   return rows.map((r) => r.photoUrl);
 }
 async function getBusinessPhotosMap(businessIds) {
@@ -869,12 +962,12 @@ async function getBusinessesWithoutPhotos(city, limit = 50) {
     name: businesses.name,
     googlePlaceId: businesses.googlePlaceId,
     city: businesses.city
-  }).from(businesses).leftJoin(businessPhotos, eq2(businesses.id, businessPhotos.businessId)).where(
+  }).from(businesses).leftJoin(businessPhotos, eq3(businesses.id, businessPhotos.businessId)).where(
     and2(
-      eq2(businesses.isActive, true),
+      eq3(businesses.isActive, true),
       sql3`${businesses.googlePlaceId} IS NOT NULL`,
       sql3`${businessPhotos.id} IS NULL`,
-      ...city ? [eq2(businesses.city, city)] : []
+      ...city ? [eq3(businesses.city, city)] : []
     )
   ).limit(limit);
   return rows.map((r) => ({
@@ -885,7 +978,7 @@ async function getBusinessesWithoutPhotos(city, limit = 50) {
   }));
 }
 async function deleteBusinessPhotos(businessId) {
-  await db.delete(businessPhotos).where(eq2(businessPhotos.businessId, businessId));
+  await db.delete(businessPhotos).where(eq3(businessPhotos.businessId, businessId));
 }
 async function getRankHistory(businessId, days = 30) {
   const cutoff = /* @__PURE__ */ new Date();
@@ -896,7 +989,7 @@ async function getRankHistory(businessId, days = 30) {
     score: rankHistory.weightedScore
   }).from(rankHistory).where(
     and2(
-      eq2(rankHistory.businessId, businessId),
+      eq3(rankHistory.businessId, businessId),
       gte2(rankHistory.snapshotDate, cutoff.toISOString().split("T")[0])
     )
   ).orderBy(asc(rankHistory.snapshotDate));
@@ -930,8 +1023,8 @@ async function getBusinessRatings(businessId, page = 1, perPage = 20) {
     memberName: members2.displayName,
     memberTier: members2.credibilityTier,
     memberAvatarUrl: members2.avatarUrl
-  }).from(ratings).innerJoin(members2, eq2(ratings.memberId, members2.id)).where(and2(eq2(ratings.businessId, businessId), eq2(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and2(eq2(ratings.businessId, businessId), eq2(ratings.isFlagged, false)));
+  }).from(ratings).innerJoin(members2, eq3(ratings.memberId, members2.id)).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false)));
   return { ratings: ratingsResult, total: totalResult.count };
 }
 var init_businesses = __esm({
@@ -944,13 +1037,13 @@ var init_businesses = __esm({
 });
 
 // server/storage/challengers.ts
-import { eq as eq3, and as and3, sql as sql4 } from "drizzle-orm";
+import { eq as eq4, and as and3, sql as sql4 } from "drizzle-orm";
 async function getActiveChallenges(city, category) {
   const challengerRows = await db.select().from(challengers).where(
     and3(
-      eq3(challengers.status, "active"),
-      eq3(challengers.city, city),
-      ...category ? [eq3(challengers.category, category)] : []
+      eq4(challengers.status, "active"),
+      eq4(challengers.city, city),
+      ...category ? [eq4(challengers.category, category)] : []
     )
   );
   if (challengerRows.length === 0) return [];
@@ -970,24 +1063,24 @@ async function getActiveChallenges(city, category) {
 }
 async function updateChallengerVotes(businessId, weightedScore) {
   const asChallenger = await db.select().from(challengers).where(
-    and3(eq3(challengers.challengerId, businessId), eq3(challengers.status, "active"))
+    and3(eq4(challengers.challengerId, businessId), eq4(challengers.status, "active"))
   );
   for (const c of asChallenger) {
     const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       challengerWeightedVotes: newVotes.toFixed(3),
       totalVotes: sql4`${challengers.totalVotes} + 1`
-    }).where(eq3(challengers.id, c.id));
+    }).where(eq4(challengers.id, c.id));
   }
   const asDefender = await db.select().from(challengers).where(
-    and3(eq3(challengers.defenderId, businessId), eq3(challengers.status, "active"))
+    and3(eq4(challengers.defenderId, businessId), eq4(challengers.status, "active"))
   );
   for (const c of asDefender) {
     const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       defenderWeightedVotes: newVotes.toFixed(3),
       totalVotes: sql4`${challengers.totalVotes} + 1`
-    }).where(eq3(challengers.id, c.id));
+    }).where(eq4(challengers.id, c.id));
   }
 }
 var init_challengers = __esm({
@@ -999,24 +1092,24 @@ var init_challengers = __esm({
 });
 
 // server/storage/ratings.ts
-import { eq as eq4, and as and4, sql as sql5, count as count3, gte as gte3 } from "drizzle-orm";
+import { eq as eq5, and as and4, sql as sql5, count as count3, gte as gte3 } from "drizzle-orm";
 async function detectAnomalies(member, business, rawScore) {
   const flags = [];
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
   const [recentCount] = await db.select({ count: count3() }).from(ratings).where(
     and4(
-      eq4(ratings.memberId, member.id),
+      eq5(ratings.memberId, member.id),
       gte3(ratings.createdAt, oneHourAgo)
     )
   );
   if (recentCount.count > 5) flags.push("burst_velocity");
   if (member.totalRatings >= 10) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq4(ratings.memberId, member.id));
+    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq5(ratings.memberId, member.id));
     const fiveStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) >= 4.8).length;
     if (fiveStarCount / memberRatings.length > 0.9) flags.push("perfect_score_pattern");
   }
   if (rawScore <= 1.5 && member.totalRatings >= 5) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq4(ratings.memberId, member.id));
+    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq5(ratings.memberId, member.id));
     const oneStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) <= 1.5).length;
     if (oneStarCount / memberRatings.length > 0.6) flags.push("one_star_bomber");
   }
@@ -1031,9 +1124,9 @@ async function detectAnomalies(member, business, rawScore) {
   }
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  const [newAcctRatings] = await db.select({ count: count3() }).from(ratings).innerJoin(members, eq4(ratings.memberId, members.id)).where(
+  const [newAcctRatings] = await db.select({ count: count3() }).from(ratings).innerJoin(members, eq5(ratings.memberId, members.id)).where(
     and4(
-      eq4(ratings.businessId, business.id),
+      eq5(ratings.businessId, business.id),
       gte3(ratings.createdAt, oneDayAgo),
       gte3(members.joinedAt, thirtyDaysAgo)
     )
@@ -1057,8 +1150,8 @@ async function submitRating(memberId, data) {
   today.setHours(0, 0, 0, 0);
   const [existingToday] = await db.select({ count: count3() }).from(ratings).where(
     and4(
-      eq4(ratings.memberId, memberId),
-      eq4(ratings.businessId, data.businessId),
+      eq5(ratings.memberId, memberId),
+      eq5(ratings.businessId, data.businessId),
       gte3(ratings.createdAt, today)
     )
   );
@@ -1092,21 +1185,21 @@ async function submitRating(memberId, data) {
       memberId,
       businessId: data.businessId
     });
-    await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq4(dishes.id, data.dishId));
+    await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq5(dishes.id, data.dishId));
   } else if (data.newDishName) {
     const normalized = data.newDishName.toLowerCase().trim();
     const words = normalized.split(/\s+/);
     if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
       const existing = await db.select().from(dishes).where(
         and4(
-          eq4(dishes.businessId, data.businessId),
-          eq4(dishes.nameNormalized, normalized)
+          eq5(dishes.businessId, data.businessId),
+          eq5(dishes.nameNormalized, normalized)
         )
       );
       let dishId;
       if (existing.length > 0) {
         dishId = existing[0].id;
-        await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq4(dishes.id, dishId));
+        await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq5(dishes.id, dishId));
       } else {
         const [newDish] = await db.insert(dishes).values({
           businessId: data.businessId,
@@ -1144,7 +1237,7 @@ async function submitRating(memberId, data) {
   await updateChallengerVotes(data.businessId, weighted);
   if (data.qrScanId) {
     const { qrScans: qrScans2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    await db.update(qrScans2).set({ converted: true }).where(eq4(qrScans2.id, data.qrScanId));
+    await db.update(qrScans2).set({ converted: true }).where(eq5(qrScans2.id, data.qrScanId));
   }
   const updatedBusiness = await getBusinessById(data.businessId);
   const newRank = updatedBusiness?.rankPosition ?? null;
@@ -1180,9 +1273,9 @@ var init_ratings = __esm({
 });
 
 // server/storage/dishes.ts
-import { eq as eq5, and as and5, desc as desc3, sql as sql6 } from "drizzle-orm";
+import { eq as eq6, and as and5, desc as desc3, sql as sql6 } from "drizzle-orm";
 async function getBusinessDishes(businessId, limit = 5) {
-  return db.select().from(dishes).where(and5(eq5(dishes.businessId, businessId), eq5(dishes.isActive, true))).orderBy(desc3(dishes.voteCount)).limit(limit);
+  return db.select().from(dishes).where(and5(eq6(dishes.businessId, businessId), eq6(dishes.isActive, true))).orderBy(desc3(dishes.voteCount)).limit(limit);
 }
 async function searchDishes(businessId, query) {
   const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
@@ -1191,16 +1284,16 @@ async function searchDishes(businessId, query) {
   }
   let results = await db.select().from(dishes).where(
     and5(
-      eq5(dishes.businessId, businessId),
-      eq5(dishes.isActive, true),
+      eq6(dishes.businessId, businessId),
+      eq6(dishes.isActive, true),
       sql6`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
     )
   ).orderBy(desc3(dishes.voteCount)).limit(5);
   if (results.length < 3) {
     const containsResults = await db.select().from(dishes).where(
       and5(
-        eq5(dishes.businessId, businessId),
-        eq5(dishes.isActive, true),
+        eq6(dishes.businessId, businessId),
+        eq6(dishes.isActive, true),
         sql6`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
       )
     ).orderBy(desc3(dishes.voteCount)).limit(5);
@@ -1222,10 +1315,10 @@ var init_dishes = __esm({
 });
 
 // server/storage/categories.ts
-import { eq as eq6, desc as desc4 } from "drizzle-orm";
+import { eq as eq7, desc as desc4 } from "drizzle-orm";
 async function getDbCategories(activeOnly = true) {
   if (activeOnly) {
-    return db.select().from(categories).where(eq6(categories.isActive, true));
+    return db.select().from(categories).where(eq7(categories.isActive, true));
   }
   return db.select().from(categories);
 }
@@ -1239,10 +1332,10 @@ async function createCategorySuggestion(data) {
   return suggestion;
 }
 async function getPendingSuggestions() {
-  return db.select().from(categorySuggestions).where(eq6(categorySuggestions.status, "pending")).orderBy(desc4(categorySuggestions.voteCount));
+  return db.select().from(categorySuggestions).where(eq7(categorySuggestions.status, "pending")).orderBy(desc4(categorySuggestions.voteCount));
 }
 async function reviewSuggestion(id, status, reviewedBy) {
-  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq6(categorySuggestions.id, id)).returning();
+  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq7(categorySuggestions.id, id)).returning();
   return updated;
 }
 var init_categories = __esm({
@@ -1254,12 +1347,12 @@ var init_categories = __esm({
 });
 
 // server/storage/badges.ts
-import { eq as eq7, and as and6, count as count4, desc as desc5 } from "drizzle-orm";
+import { eq as eq8, and as and6, count as count4, desc as desc5 } from "drizzle-orm";
 async function getMemberBadges(memberId) {
-  return db.select().from(memberBadges).where(eq7(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
+  return db.select().from(memberBadges).where(eq8(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
 }
 async function getMemberBadgeCount(memberId) {
-  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(eq7(memberBadges.memberId, memberId));
+  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(eq8(memberBadges.memberId, memberId));
   return Number(result?.cnt ?? 0);
 }
 async function awardBadge(memberId, badgeId, badgeFamily) {
@@ -1271,11 +1364,11 @@ async function awardBadge(memberId, badgeId, badgeFamily) {
   }
 }
 async function hasBadge(memberId, badgeId) {
-  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(and6(eq7(memberBadges.memberId, memberId), eq7(memberBadges.badgeId, badgeId)));
+  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(and6(eq8(memberBadges.memberId, memberId), eq8(memberBadges.badgeId, badgeId)));
   return Number(result?.cnt ?? 0) > 0;
 }
 async function getEarnedBadgeIds(memberId) {
-  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq7(memberBadges.memberId, memberId));
+  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq8(memberBadges.memberId, memberId));
   return rows.map((r) => r.badgeId);
 }
 async function getBadgeLeaderboard(limit = 20) {
@@ -1286,7 +1379,7 @@ async function getBadgeLeaderboard(limit = 20) {
     avatarUrl: members.avatarUrl,
     credibilityTier: members.credibilityTier,
     badgeCount: count4(memberBadges.id)
-  }).from(memberBadges).innerJoin(members, eq7(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc5(count4(memberBadges.id))).limit(limit);
+  }).from(memberBadges).innerJoin(members, eq8(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc5(count4(memberBadges.id))).limit(limit);
 }
 var init_badges = __esm({
   "server/storage/badges.ts"() {
@@ -1297,7 +1390,7 @@ var init_badges = __esm({
 });
 
 // server/storage/payments.ts
-import { eq as eq8, and as and7, desc as desc6, sql as sql7, count as count5, sum } from "drizzle-orm";
+import { eq as eq9, and as and7, desc as desc6, sql as sql7, count as count5, sum } from "drizzle-orm";
 async function createPaymentRecord(params) {
   const [payment] = await db.insert(payments).values({
     memberId: params.memberId,
@@ -1312,35 +1405,35 @@ async function createPaymentRecord(params) {
   return payment;
 }
 async function getPaymentById(id) {
-  const [payment] = await db.select().from(payments).where(eq8(payments.id, id)).limit(1);
+  const [payment] = await db.select().from(payments).where(eq9(payments.id, id)).limit(1);
   return payment ?? null;
 }
 async function updatePaymentStatus(id, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq8(payments.id, id)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq9(payments.id, id)).returning();
   return updated ?? null;
 }
 async function updatePaymentStatusByStripeId(stripePaymentIntentId, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq8(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq9(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
   return updated ?? null;
 }
 async function getMemberPayments(memberId, limit = 20) {
-  return db.select().from(payments).where(eq8(payments.memberId, memberId)).orderBy(desc6(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq9(payments.memberId, memberId)).orderBy(desc6(payments.createdAt)).limit(limit);
 }
 async function getBusinessPayments(businessId, limit = 20) {
-  return db.select().from(payments).where(eq8(payments.businessId, businessId)).orderBy(desc6(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq9(payments.businessId, businessId)).orderBy(desc6(payments.createdAt)).limit(limit);
 }
 async function getRevenueMetrics() {
   const byTypeRows = await db.select({
     type: payments.type,
     count: count5(),
     revenue: sum(payments.amount)
-  }).from(payments).where(eq8(payments.status, "succeeded")).groupBy(payments.type);
+  }).from(payments).where(eq9(payments.status, "succeeded")).groupBy(payments.type);
   const [activeRow] = await db.select({ count: count5() }).from(payments).where(
     and7(
-      eq8(payments.status, "succeeded")
+      eq9(payments.status, "succeeded")
     )
   );
-  const [cancelledRow] = await db.select({ count: count5() }).from(payments).where(eq8(payments.status, "cancelled"));
+  const [cancelledRow] = await db.select({ count: count5() }).from(payments).where(eq9(payments.status, "cancelled"));
   const typeMap = {
     challenger_entry: { count: 0, revenue: 0 },
     dashboard_pro: { count: 0, revenue: 0 },
@@ -1365,7 +1458,7 @@ async function getRevenueByMonth(months = 6) {
     month: sql7`strftime('%Y-%m', ${payments.createdAt})`,
     revenue: sql7`COALESCE(SUM(${payments.amount}), 0)`,
     count: sql7`COUNT(*)`
-  }).from(payments).where(eq8(payments.status, "succeeded")).groupBy(sql7`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql7`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
+  }).from(payments).where(eq9(payments.status, "succeeded")).groupBy(sql7`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql7`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
   return results.map((r) => ({
     month: String(r.month),
     revenue: Number(r.revenue),
@@ -1381,7 +1474,7 @@ var init_payments = __esm({
 });
 
 // server/storage/webhook-events.ts
-import { eq as eq9, desc as desc7 } from "drizzle-orm";
+import { eq as eq10, desc as desc7 } from "drizzle-orm";
 async function logWebhookEvent(params) {
   const [event] = await db.insert(webhookEvents).values({
     source: params.source,
@@ -1394,14 +1487,14 @@ async function logWebhookEvent(params) {
   return event;
 }
 async function markWebhookProcessed(id, error) {
-  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq9(webhookEvents.id, id));
+  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq10(webhookEvents.id, id));
 }
 async function getWebhookEventById(id) {
-  const [event] = await db.select().from(webhookEvents).where(eq9(webhookEvents.id, id)).limit(1);
+  const [event] = await db.select().from(webhookEvents).where(eq10(webhookEvents.id, id)).limit(1);
   return event ?? null;
 }
 async function getRecentWebhookEvents(source, limit = 50) {
-  return db.select().from(webhookEvents).where(eq9(webhookEvents.source, source)).orderBy(desc7(webhookEvents.createdAt)).limit(limit);
+  return db.select().from(webhookEvents).where(eq10(webhookEvents.source, source)).orderBy(desc7(webhookEvents.createdAt)).limit(limit);
 }
 var init_webhook_events = __esm({
   "server/storage/webhook-events.ts"() {
@@ -1412,7 +1505,7 @@ var init_webhook_events = __esm({
 });
 
 // server/storage/featured-placements.ts
-import { eq as eq10, and as and8, gt, lte, desc as desc8 } from "drizzle-orm";
+import { eq as eq11, and as and8, gt, lte, desc as desc8 } from "drizzle-orm";
 async function createFeaturedPlacement(params) {
   const startsAt = /* @__PURE__ */ new Date();
   const expiresAt = new Date(startsAt.getTime() + FEATURED_DURATION_DAYS * 24 * 60 * 60 * 1e3);
@@ -1430,8 +1523,8 @@ async function getActiveFeaturedInCity(city) {
   const now = /* @__PURE__ */ new Date();
   return db.select().from(featuredPlacements).where(
     and8(
-      eq10(featuredPlacements.city, city),
-      eq10(featuredPlacements.status, "active"),
+      eq11(featuredPlacements.city, city),
+      eq11(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
   ).orderBy(desc8(featuredPlacements.createdAt));
@@ -1440,8 +1533,8 @@ async function getBusinessFeaturedStatus(businessId) {
   const now = /* @__PURE__ */ new Date();
   const [placement] = await db.select().from(featuredPlacements).where(
     and8(
-      eq10(featuredPlacements.businessId, businessId),
-      eq10(featuredPlacements.status, "active"),
+      eq11(featuredPlacements.businessId, businessId),
+      eq11(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
   ).orderBy(desc8(featuredPlacements.createdAt)).limit(1);
@@ -1450,8 +1543,8 @@ async function getBusinessFeaturedStatus(businessId) {
 async function expireFeaturedByPayment(paymentId) {
   const [updated] = await db.update(featuredPlacements).set({ status: "cancelled" }).where(
     and8(
-      eq10(featuredPlacements.paymentId, paymentId),
-      eq10(featuredPlacements.status, "active")
+      eq11(featuredPlacements.paymentId, paymentId),
+      eq11(featuredPlacements.status, "active")
     )
   ).returning();
   return updated ?? null;
@@ -1460,7 +1553,7 @@ async function expireOldPlacements() {
   const now = /* @__PURE__ */ new Date();
   const result = await db.update(featuredPlacements).set({ status: "expired" }).where(
     and8(
-      eq10(featuredPlacements.status, "active"),
+      eq11(featuredPlacements.status, "active"),
       lte(featuredPlacements.expiresAt, now)
     )
   ).returning();
@@ -1477,7 +1570,7 @@ var init_featured_placements = __esm({
 });
 
 // server/storage/claims.ts
-import { eq as eq11, and as and9, count as count6, desc as desc9 } from "drizzle-orm";
+import { eq as eq12, and as and9, count as count6, desc as desc9 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
@@ -1485,8 +1578,8 @@ async function submitClaim(businessId, memberId, verificationMethod) {
 async function getClaimByMemberAndBusiness(memberId, businessId) {
   const [claim] = await db.select().from(businessClaims).where(
     and9(
-      eq11(businessClaims.memberId, memberId),
-      eq11(businessClaims.businessId, businessId)
+      eq12(businessClaims.memberId, memberId),
+      eq12(businessClaims.businessId, businessId)
     )
   );
   return claim;
@@ -1501,14 +1594,14 @@ async function getPendingClaims() {
     verificationMethod: businessClaims.verificationMethod,
     status: businessClaims.status,
     submittedAt: businessClaims.submittedAt
-  }).from(businessClaims).leftJoin(businesses, eq11(businessClaims.businessId, businesses.id)).leftJoin(members, eq11(businessClaims.memberId, members.id)).where(eq11(businessClaims.status, "pending")).orderBy(desc9(businessClaims.submittedAt));
+  }).from(businessClaims).leftJoin(businesses, eq12(businessClaims.businessId, businesses.id)).leftJoin(members, eq12(businessClaims.memberId, members.id)).where(eq12(businessClaims.status, "pending")).orderBy(desc9(businessClaims.submittedAt));
 }
 async function reviewClaim(id, status, reviewedBy) {
-  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq11(businessClaims.id, id)).returning();
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq12(businessClaims.id, id)).returning();
   return updated ?? null;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count6() }).from(businessClaims).where(eq11(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count6() }).from(businessClaims).where(eq12(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -1520,14 +1613,14 @@ async function getPendingFlags() {
     aiFraudProbability: ratingFlags.aiFraudProbability,
     status: ratingFlags.status,
     createdAt: ratingFlags.createdAt
-  }).from(ratingFlags).leftJoin(members, eq11(ratingFlags.flaggerId, members.id)).where(eq11(ratingFlags.status, "pending")).orderBy(desc9(ratingFlags.createdAt));
+  }).from(ratingFlags).leftJoin(members, eq12(ratingFlags.flaggerId, members.id)).where(eq12(ratingFlags.status, "pending")).orderBy(desc9(ratingFlags.createdAt));
 }
 async function reviewFlag(id, status, reviewedBy) {
-  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq11(ratingFlags.id, id)).returning();
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq12(ratingFlags.id, id)).returning();
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count6() }).from(ratingFlags).where(eq11(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count6() }).from(ratingFlags).where(eq12(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -1629,65 +1722,6 @@ var init_storage = __esm({
     init_webhook_events();
     init_featured_placements();
     init_claims();
-  }
-});
-
-// server/logger.ts
-function shouldLog(level) {
-  return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
-}
-function formatMessage(level, tag, message, data) {
-  const timestamp2 = (/* @__PURE__ */ new Date()).toISOString();
-  const prefix = `${timestamp2} [${level.toUpperCase()}] [${tag}]`;
-  if (data !== void 0) {
-    return `${prefix} ${message} ${typeof data === "string" ? data : JSON.stringify(data)}`;
-  }
-  return `${prefix} ${message}`;
-}
-function createTaggedLogger(tag) {
-  return {
-    debug(message, data) {
-      if (shouldLog("debug")) console.log(formatMessage("debug", tag, message, data));
-    },
-    info(message, data) {
-      if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
-    },
-    warn(message, data) {
-      if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
-    },
-    error(message, data) {
-      if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
-    }
-  };
-}
-var LEVEL_ORDER, MIN_LEVEL, log;
-var init_logger = __esm({
-  "server/logger.ts"() {
-    "use strict";
-    LEVEL_ORDER = {
-      debug: 0,
-      info: 1,
-      warn: 2,
-      error: 3
-    };
-    MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
-    log = {
-      /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
-      tag: createTaggedLogger,
-      // Top-level convenience methods (tag: "Server")
-      debug(message, data) {
-        if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
-      },
-      info(message, data) {
-        if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
-      },
-      warn(message, data) {
-        if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
-      },
-      error(message, data) {
-        if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
-      }
-    };
   }
 });
 
@@ -2716,6 +2750,7 @@ var config = {
 };
 
 // server/auth.ts
+init_tier_staleness();
 function setupAuth(app2) {
   const PgStore = connectPgSimple(session);
   app2.use(
@@ -2778,6 +2813,7 @@ function setupAuth(app2) {
       if (!member) {
         return done(null, false);
       }
+      const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
       done(null, {
         id: member.id,
         displayName: member.displayName,
@@ -2785,7 +2821,7 @@ function setupAuth(app2) {
         email: member.email,
         city: member.city,
         credibilityScore: member.credibilityScore,
-        credibilityTier: member.credibilityTier
+        credibilityTier: freshTier
       });
     } catch (err) {
       done(err);
@@ -2843,8 +2879,8 @@ async function authenticateGoogleUser(idToken) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq12 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq12(members2.id, member.id));
+    const { eq: eq13 } = await import("drizzle-orm");
+    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq13(members2.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -3209,6 +3245,29 @@ function isAdminEmail(email) {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
+// server/sanitize.ts
+function stripHtml(input) {
+  return input.replace(/<[^>]*>/g, "").trim();
+}
+function sanitizeString(input, maxLength = 500) {
+  if (typeof input !== "string") return "";
+  return stripHtml(input).slice(0, maxLength).trim();
+}
+function sanitizeNumber(input, min, max, fallback) {
+  const num = Number(input);
+  if (isNaN(num)) return fallback;
+  return Math.min(max, Math.max(min, num));
+}
+function sanitizeEmail(input) {
+  if (typeof input !== "string") return "";
+  const trimmed = input.toLowerCase().trim();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : "";
+}
+function sanitizeSlug(input) {
+  if (typeof input !== "string") return "";
+  return input.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 100);
+}
+
 // server/routes-admin.ts
 init_storage();
 
@@ -3389,6 +3448,8 @@ function getAllFlags() {
 }
 
 // lib/data.ts
+init_credibility();
+init_credibility();
 var CATEGORY_CONFIDENCE_THRESHOLDS = {
   fast_food: { provisional: 3, early: 8, established: 20 },
   casual_dining: { provisional: 3, early: 8, established: 20 },
@@ -3407,582 +3468,6 @@ var CATEGORY_CONFIDENCE_THRESHOLDS = {
   food_hall: { provisional: 5, early: 12, established: 30 }
 };
 var DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
-
-// server/routes-admin.ts
-function requireAuth(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
-function requireAdmin(req, res, next) {
-  if (!isAdminEmail(req.user?.email)) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-function registerAdminRoutes(app2) {
-  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { status } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-      }
-      const { reviewSuggestion: reviewSuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const updated = await reviewSuggestion2(req.params.id, status, req.user.id);
-      if (!updated) {
-        return res.status(404).json({ error: "Suggestion not found" });
-      }
-      return res.json({ data: updated });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
-      await seedCities2();
-      return res.json({ data: { message: "Cities seeded successfully" } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const city = req.body.city;
-      const limit = Math.min(50, parseInt(req.body.limit) || 20);
-      const businesses2 = await getBusinessesWithoutPhotos(city, limit);
-      if (businesses2.length === 0) {
-        return res.json({ data: { message: "All businesses already have photos", fetched: 0 } });
-      }
-      let totalFetched = 0;
-      const results = [];
-      for (const biz of businesses2) {
-        const count7 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
-        totalFetched += count7;
-        results.push({ name: biz.name, photos: count7 });
-      }
-      return res.json({
-        data: {
-          message: `Fetched photos for ${businesses2.length} businesses`,
-          fetched: totalFetched,
-          results
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/claims", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const data = await getPendingClaims();
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { status } = req.body;
-      if (!["approved", "rejected"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
-      }
-      const updated = await reviewClaim(req.params.id, status, req.user.id);
-      if (!updated) return res.status(404).json({ error: "Claim not found" });
-      return res.json({ data: updated });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/claims/count", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const count7 = await getClaimCount();
-      return res.json({ data: { count: count7 } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/flags", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const data = await getPendingFlags();
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { status } = req.body;
-      if (!["confirmed", "dismissed"].includes(status)) {
-        return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
-      }
-      const updated = await reviewFlag(req.params.id, status, req.user.id);
-      if (!updated) return res.status(404).json({ error: "Flag not found" });
-      return res.json({ data: updated });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/flags/count", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const count7 = await getFlagCount();
-      return res.json({ data: { count: count7 } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/members", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-      const data = await getAdminMemberList(limit);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/members/count", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const count7 = await getMemberCount();
-      return res.json({ data: { count: count7 } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/webhooks", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const source = req.query.source || "stripe";
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-      const events = await getRecentWebhookEvents(source, limit);
-      return res.json({ data: events });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const event = await getWebhookEventById(req.params.id);
-      if (!event) return res.status(404).json({ error: "Webhook event not found" });
-      const { processStripeEvent: processStripeEvent2 } = await Promise.resolve().then(() => (init_stripe_webhook(), stripe_webhook_exports));
-      if (event.source === "stripe" && event.payload) {
-        await processStripeEvent2(event.payload);
-        await markWebhookProcessed(event.id);
-        return res.json({ data: { id: event.id, replayed: true } });
-      }
-      return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/perf", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      const data = getPerfStats();
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/revenue", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { getRevenueMetrics: getRevenueMetrics2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const metrics = await getRevenueMetrics2();
-      return res.json({ data: metrics });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/analytics", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      const data = {
-        funnel: getFunnelStats(),
-        recentEvents: getRecentEvents(20)
-      };
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      const stats2 = getFunnelStats();
-      const recent = getRecentEvents(50);
-      const signups = stats2.signup_completed || 0;
-      const pageViews = stats2.page_view || 0;
-      const firstRatings = stats2.first_rating || 0;
-      const challengerEntries = stats2.challenger_entered || 0;
-      const dashboardSubs = stats2.dashboard_pro_subscribed || 0;
-      const dashboard = {
-        overview: {
-          totalEvents: Object.values(stats2).reduce((a, b) => a + b, 0),
-          uniqueEventTypes: Object.keys(stats2).length
-        },
-        funnel: {
-          pageViews,
-          signups,
-          firstRatings,
-          challengerEntries,
-          dashboardSubs,
-          signupRate: pageViews > 0 ? (signups / pageViews * 100).toFixed(1) + "%" : "N/A",
-          ratingRate: signups > 0 ? (firstRatings / signups * 100).toFixed(1) + "%" : "N/A"
-        },
-        recentActivity: recent.slice(0, 10),
-        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      return res.json({ data: dashboard });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/metrics", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      const uptime = process.uptime();
-      const memoryUsage = process.memoryUsage().heapUsed;
-      const nodeVersion = process.version;
-      const requestCount = getRequestLogs().length;
-      const errorCount = getRecentErrors().length;
-      return res.json({
-        data: {
-          uptime: Math.floor(uptime),
-          memoryUsage,
-          nodeVersion,
-          requestCount,
-          errorCount
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      const mem = process.memoryUsage();
-      const cpu = process.cpuUsage();
-      const flags = getAllFlags();
-      return res.json({
-        data: {
-          uptime: Math.floor(process.uptime()),
-          memory: {
-            heapUsed: mem.heapUsed,
-            heapTotal: mem.heapTotal,
-            rss: mem.rss
-          },
-          nodeVersion: process.version,
-          platform: process.platform,
-          cpuUsage: {
-            user: cpu.user,
-            system: cpu.system
-          },
-          activeConnections: 0,
-          featureFlags: flags,
-          generatedAt: (/* @__PURE__ */ new Date()).toISOString()
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, async (_req, res) => {
-    try {
-      return res.json({
-        data: {
-          thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
-          defaults: DEFAULT_THRESHOLDS
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
-      const { getRevenueByMonth: getRevenueByMonth2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const data = await getRevenueByMonth2(months);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-}
-
-// server/routes-payments.ts
-init_storage();
-init_email();
-
-// server/sse.ts
-var clients = /* @__PURE__ */ new Set();
-function addClient(res) {
-  clients.add(res);
-  res.on("close", () => {
-    clients.delete(res);
-  });
-}
-function broadcast(type, payload = {}) {
-  const event = { type, payload, timestamp: Date.now() };
-  const data = `data: ${JSON.stringify(event)}
-
-`;
-  for (const client of clients) {
-    try {
-      client.write(data);
-    } catch {
-      clients.delete(client);
-    }
-  }
-}
-
-// server/routes-payments.ts
-init_logger();
-
-// server/sanitize.ts
-function stripHtml(input) {
-  return input.replace(/<[^>]*>/g, "").trim();
-}
-function sanitizeString(input, maxLength = 500) {
-  if (typeof input !== "string") return "";
-  return stripHtml(input).slice(0, maxLength).trim();
-}
-function sanitizeNumber(input, min, max, fallback) {
-  const num = Number(input);
-  if (isNaN(num)) return fallback;
-  return Math.min(max, Math.max(min, num));
-}
-function sanitizeEmail(input) {
-  if (typeof input !== "string") return "";
-  const trimmed = input.toLowerCase().trim();
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed) ? trimmed : "";
-}
-function sanitizeSlug(input) {
-  if (typeof input !== "string") return "";
-  return input.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 100);
-}
-
-// server/routes-payments.ts
-function requireAuth2(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
-function registerPaymentRoutes(app2) {
-  app2.post("/api/payments/challenger", requireAuth2, async (req, res) => {
-    try {
-      const businessName = sanitizeString(req.body.businessName, 100);
-      const slug = sanitizeSlug(req.body.slug);
-      if (!businessName || !slug) {
-        return res.status(400).json({ error: "businessName and slug are required" });
-      }
-      const business = await getBusinessBySlug(slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      const { createChallengerPayment: createChallengerPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
-      const payment = await createChallengerPayment2({
-        challengerId: business.id,
-        businessName,
-        customerEmail: req.user.email || "",
-        userId: req.user.id
-      });
-      await createPaymentRecord({
-        memberId: req.user.id,
-        businessId: business.id,
-        type: "challenger_entry",
-        amount: payment.amount,
-        stripePaymentIntentId: payment.id,
-        status: payment.status,
-        metadata: payment.metadata
-      });
-      sendPaymentReceiptEmail({
-        email: req.user.email || "",
-        displayName: req.user.displayName || "Member",
-        type: "challenger_entry",
-        amount: payment.amount,
-        businessName,
-        paymentId: payment.id
-      }).catch(() => {
-      });
-      return res.json({ data: payment });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/payments/dashboard-pro", requireAuth2, async (req, res) => {
-    try {
-      const slug = sanitizeSlug(req.body.slug);
-      if (!slug) {
-        return res.status(400).json({ error: "slug is required" });
-      }
-      const business = await getBusinessBySlug(slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      const { createDashboardProPayment: createDashboardProPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
-      const payment = await createDashboardProPayment2({
-        businessId: business.id,
-        businessName: business.name,
-        customerEmail: req.user.email || "",
-        userId: req.user.id
-      });
-      await createPaymentRecord({
-        memberId: req.user.id,
-        businessId: business.id,
-        type: "dashboard_pro",
-        amount: payment.amount,
-        stripePaymentIntentId: payment.id,
-        status: payment.status,
-        metadata: payment.metadata
-      });
-      sendPaymentReceiptEmail({
-        email: req.user.email || "",
-        displayName: req.user.displayName || "Member",
-        type: "dashboard_pro",
-        amount: payment.amount,
-        businessName: business.name,
-        paymentId: payment.id
-      }).catch(() => {
-      });
-      return res.json({ data: payment });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/payments/featured", requireAuth2, async (req, res) => {
-    try {
-      const slug = sanitizeSlug(req.body.slug);
-      if (!slug) {
-        return res.status(400).json({ error: "slug is required" });
-      }
-      const business = await getBusinessBySlug(slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      const { createFeaturedPlacementPayment: createFeaturedPlacementPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
-      const payment = await createFeaturedPlacementPayment2({
-        businessId: business.id,
-        businessName: business.name,
-        city: business.city,
-        customerEmail: req.user.email || "",
-        userId: req.user.id
-      });
-      const paymentRecord = await createPaymentRecord({
-        memberId: req.user.id,
-        businessId: business.id,
-        type: "featured_placement",
-        amount: payment.amount,
-        stripePaymentIntentId: payment.id,
-        status: payment.status,
-        metadata: payment.metadata
-      });
-      if (payment.status === "succeeded") {
-        await createFeaturedPlacement({
-          businessId: business.id,
-          paymentId: paymentRecord.id,
-          city: business.city
-        });
-        broadcast("featured_updated", { businessId: business.id, city: business.city });
-      }
-      sendPaymentReceiptEmail({
-        email: req.user.email || "",
-        displayName: req.user.displayName || "Member",
-        type: "featured_placement",
-        amount: payment.amount,
-        businessName: business.name,
-        paymentId: payment.id
-      }).catch(() => {
-      });
-      return res.json({ data: payment });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/payments/cancel", requireAuth2, async (req, res) => {
-    try {
-      const { paymentId } = req.body;
-      if (!paymentId) {
-        return res.status(400).json({ error: "paymentId is required" });
-      }
-      const existing = await getPaymentById(paymentId);
-      if (!existing) {
-        return res.status(404).json({ error: "Payment not found" });
-      }
-      if (existing.memberId !== req.user.id) {
-        return res.status(403).json({ error: "Not authorized to cancel this payment" });
-      }
-      const updated = await updatePaymentStatus(paymentId, "cancelled");
-      if (existing.type === "featured_placement") {
-        await expireFeaturedByPayment(paymentId).catch(() => {
-        });
-        broadcast("featured_updated", { cancelled: true });
-      }
-      log.info(`Payment ${paymentId} cancelled by ${req.user.id}`);
-      return res.json({ data: { id: updated.id, status: "cancelled" } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-}
-
-// server/routes-badges.ts
-init_storage();
-init_logger();
-function requireAuth3(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
-function registerBadgeRoutes(app2) {
-  app2.get("/api/members/:id/badges", async (req, res) => {
-    try {
-      const memberId = req.params.id;
-      const badges = await getMemberBadges(memberId);
-      return res.json({ data: badges });
-    } catch (err) {
-      log.error(`Failed to fetch member badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badges" });
-    }
-  });
-  app2.post("/api/badges/award", requireAuth3, async (req, res) => {
-    try {
-      const memberId = req.user.id;
-      const { badgeId, badgeFamily } = req.body;
-      if (!badgeId || !badgeFamily) {
-        return res.status(400).json({ error: "badgeId and badgeFamily are required" });
-      }
-      const result = await awardBadge(memberId, badgeId, badgeFamily);
-      return res.json({ data: result, awarded: result !== null });
-    } catch (err) {
-      log.error(`Failed to award badge: ${err.message}`);
-      return res.status(500).json({ error: "Failed to award badge" });
-    }
-  });
-  app2.get("/api/badges/earned", requireAuth3, async (req, res) => {
-    try {
-      const memberId = req.user.id;
-      const badgeIds = await getEarnedBadgeIds(memberId);
-      const badgeCount = badgeIds.length;
-      return res.json({ data: { badgeIds, badgeCount } });
-    } catch (err) {
-      log.error(`Failed to fetch earned badges: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch earned badges" });
-    }
-  });
-  app2.get("/api/badges/leaderboard", async (req, res) => {
-    try {
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-      const data = await getBadgeLeaderboard(limit);
-      return res.json({ data });
-    } catch (err) {
-      log.error(`Failed to fetch badge leaderboard: ${err.message}`);
-      return res.status(500).json({ error: "Failed to fetch badge leaderboard" });
-    }
-  });
-}
-
-// server/routes.ts
-init_stripe_webhook();
-init_logger();
-init_storage();
-init_schema();
 
 // server/rate-limiter.ts
 init_logger();
@@ -4022,10 +3507,12 @@ var DEFAULT_OPTIONS = {
 function rateLimiter(options = {}) {
   const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
   const store = options.store || defaultStore;
+  const keyPrefix = options.keyPrefix || "global";
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
+    const key = `${keyPrefix}:${ip}`;
     const now = Date.now();
-    store.increment(ip, windowMs).then(({ count: count7, resetAt }) => {
+    store.increment(key, windowMs).then(({ count: count7, resetAt }) => {
       res.setHeader("X-RateLimit-Limit", String(maxRequests));
       res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count7)));
       res.setHeader("X-RateLimit-Reset", String(Math.ceil(resetAt / 1e3)));
@@ -4043,8 +3530,760 @@ function rateLimiter(options = {}) {
     });
   };
 }
-var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10 });
-var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100 });
+var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10, keyPrefix: "auth" });
+var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100, keyPrefix: "api" });
+var paymentRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 20, keyPrefix: "payments" });
+var adminRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: "admin" });
+
+// server/wrap-async.ts
+init_logger();
+function wrapAsync(fn) {
+  return (req, res, next) => {
+    fn(req, res, next).catch((err) => {
+      log.error(`Unhandled route error: ${req.method} ${req.path}`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message || "Internal Server Error" });
+      }
+    });
+  };
+}
+
+// server/routes-admin.ts
+init_tier_staleness();
+
+// server/middleware.ts
+function requireAuth(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  next();
+}
+
+// server/routes-admin.ts
+function requireAdmin(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminRoutes(app2) {
+  app2.use("/api/admin", adminRateLimiter);
+  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { status } = req.body;
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+    }
+    const { reviewSuggestion: reviewSuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const updated = await reviewSuggestion2(req.params.id, status, req.user.id);
+    if (!updated) {
+      return res.status(404).json({ error: "Suggestion not found" });
+    }
+    return res.json({ data: updated });
+  }));
+  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
+    await seedCities2();
+    return res.json({ data: { message: "Cities seeded successfully" } });
+  }));
+  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.body.city, 100) || void 0;
+    const limit = Math.min(50, parseInt(req.body.limit) || 20);
+    const businesses2 = await getBusinessesWithoutPhotos(city, limit);
+    if (businesses2.length === 0) {
+      return res.json({ data: { message: "All businesses already have photos", fetched: 0 } });
+    }
+    let totalFetched = 0;
+    const results = [];
+    for (const biz of businesses2) {
+      const count7 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
+      totalFetched += count7;
+      results.push({ name: biz.name, photos: count7 });
+    }
+    return res.json({
+      data: {
+        message: `Fetched photos for ${businesses2.length} businesses`,
+        fetched: totalFetched,
+        results
+      }
+    });
+  }));
+  app2.get("/api/admin/claims", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const data = await getPendingClaims();
+    return res.json({ data });
+  }));
+  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { status } = req.body;
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
+    }
+    const updated = await reviewClaim(req.params.id, status, req.user.id);
+    if (!updated) return res.status(404).json({ error: "Claim not found" });
+    return res.json({ data: updated });
+  }));
+  app2.get("/api/admin/claims/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const count7 = await getClaimCount();
+    return res.json({ data: { count: count7 } });
+  }));
+  app2.get("/api/admin/flags", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const data = await getPendingFlags();
+    return res.json({ data });
+  }));
+  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { status } = req.body;
+    if (!["confirmed", "dismissed"].includes(status)) {
+      return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
+    }
+    const updated = await reviewFlag(req.params.id, status, req.user.id);
+    if (!updated) return res.status(404).json({ error: "Flag not found" });
+    return res.json({ data: updated });
+  }));
+  app2.get("/api/admin/flags/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const count7 = await getFlagCount();
+    return res.json({ data: { count: count7 } });
+  }));
+  app2.get("/api/admin/members", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const data = await getAdminMemberList(limit);
+    const freshData = data.map((m) => ({
+      ...m,
+      credibilityTier: checkAndRefreshTier(m.credibilityTier, m.credibilityScore)
+    }));
+    return res.json({ data: freshData });
+  }));
+  app2.get("/api/admin/members/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const count7 = await getMemberCount();
+    return res.json({ data: { count: count7 } });
+  }));
+  app2.get("/api/admin/webhooks", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const source = sanitizeString(req.query.source, 50) || "stripe";
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const events = await getRecentWebhookEvents(source, limit);
+    return res.json({ data: events });
+  }));
+  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const event = await getWebhookEventById(req.params.id);
+    if (!event) return res.status(404).json({ error: "Webhook event not found" });
+    const { processStripeEvent: processStripeEvent2 } = await Promise.resolve().then(() => (init_stripe_webhook(), stripe_webhook_exports));
+    if (event.source === "stripe" && event.payload) {
+      await processStripeEvent2(event.payload);
+      await markWebhookProcessed(event.id);
+      return res.json({ data: { id: event.id, replayed: true } });
+    }
+    return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
+  }));
+  app2.get("/api/admin/perf", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const data = getPerfStats();
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/revenue", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { getRevenueMetrics: getRevenueMetrics2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const metrics = await getRevenueMetrics2();
+    return res.json({ data: metrics });
+  }));
+  app2.get("/api/admin/analytics", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const data = {
+      funnel: getFunnelStats(),
+      recentEvents: getRecentEvents(20)
+    };
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const stats2 = getFunnelStats();
+    const recent = getRecentEvents(50);
+    const signups = stats2.signup_completed || 0;
+    const pageViews = stats2.page_view || 0;
+    const firstRatings = stats2.first_rating || 0;
+    const challengerEntries = stats2.challenger_entered || 0;
+    const dashboardSubs = stats2.dashboard_pro_subscribed || 0;
+    const dashboard = {
+      overview: {
+        totalEvents: Object.values(stats2).reduce((a, b) => a + b, 0),
+        uniqueEventTypes: Object.keys(stats2).length
+      },
+      funnel: {
+        pageViews,
+        signups,
+        firstRatings,
+        challengerEntries,
+        dashboardSubs,
+        signupRate: pageViews > 0 ? (signups / pageViews * 100).toFixed(1) + "%" : "N/A",
+        ratingRate: signups > 0 ? (firstRatings / signups * 100).toFixed(1) + "%" : "N/A"
+      },
+      recentActivity: recent.slice(0, 10),
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    return res.json({ data: dashboard });
+  }));
+  app2.get("/api/admin/metrics", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const uptime = process.uptime();
+    const memoryUsage = process.memoryUsage().heapUsed;
+    const nodeVersion = process.version;
+    const requestCount = getRequestLogs().length;
+    const errorCount = getRecentErrors().length;
+    return res.json({
+      data: {
+        uptime: Math.floor(uptime),
+        memoryUsage,
+        nodeVersion,
+        requestCount,
+        errorCount
+      }
+    });
+  }));
+  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const mem = process.memoryUsage();
+    const cpu = process.cpuUsage();
+    const flags = getAllFlags();
+    return res.json({
+      data: {
+        uptime: Math.floor(process.uptime()),
+        memory: {
+          heapUsed: mem.heapUsed,
+          heapTotal: mem.heapTotal,
+          rss: mem.rss
+        },
+        nodeVersion: process.version,
+        platform: process.platform,
+        cpuUsage: {
+          user: cpu.user,
+          system: cpu.system
+        },
+        activeConnections: 0,
+        featureFlags: flags,
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      }
+    });
+  }));
+  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    return res.json({
+      data: {
+        thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
+        defaults: DEFAULT_THRESHOLDS
+      }
+    });
+  }));
+  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
+    const { getRevenueByMonth: getRevenueByMonth2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const data = await getRevenueByMonth2(months);
+    return res.json({ data });
+  }));
+}
+
+// server/routes-payments.ts
+init_storage();
+init_email();
+
+// server/sse.ts
+var clients = /* @__PURE__ */ new Set();
+function addClient(res) {
+  clients.add(res);
+  res.on("close", () => {
+    clients.delete(res);
+  });
+}
+function broadcast(type, payload = {}) {
+  const event = { type, payload, timestamp: Date.now() };
+  const data = `data: ${JSON.stringify(event)}
+
+`;
+  for (const client of clients) {
+    try {
+      client.write(data);
+    } catch {
+      clients.delete(client);
+    }
+  }
+}
+
+// server/routes-payments.ts
+init_logger();
+function registerPaymentRoutes(app2) {
+  app2.use("/api/payments", paymentRateLimiter);
+  app2.post("/api/payments/challenger", requireAuth, wrapAsync(async (req, res) => {
+    const businessName = sanitizeString(req.body.businessName, 100);
+    const slug = sanitizeSlug(req.body.slug);
+    if (!businessName || !slug) {
+      return res.status(400).json({ error: "businessName and slug are required" });
+    }
+    const business = await getBusinessBySlug(slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { createChallengerPayment: createChallengerPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+    const payment = await createChallengerPayment2({
+      challengerId: business.id,
+      businessName,
+      customerEmail: req.user.email || "",
+      userId: req.user.id
+    });
+    await createPaymentRecord({
+      memberId: req.user.id,
+      businessId: business.id,
+      type: "challenger_entry",
+      amount: payment.amount,
+      stripePaymentIntentId: payment.id,
+      status: payment.status,
+      metadata: payment.metadata
+    });
+    sendPaymentReceiptEmail({
+      email: req.user.email || "",
+      displayName: req.user.displayName || "Member",
+      type: "challenger_entry",
+      amount: payment.amount,
+      businessName,
+      paymentId: payment.id
+    }).catch(() => {
+    });
+    return res.json({ data: payment });
+  }));
+  app2.post("/api/payments/dashboard-pro", requireAuth, wrapAsync(async (req, res) => {
+    const slug = sanitizeSlug(req.body.slug);
+    if (!slug) {
+      return res.status(400).json({ error: "slug is required" });
+    }
+    const business = await getBusinessBySlug(slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { createDashboardProPayment: createDashboardProPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+    const payment = await createDashboardProPayment2({
+      businessId: business.id,
+      businessName: business.name,
+      customerEmail: req.user.email || "",
+      userId: req.user.id
+    });
+    await createPaymentRecord({
+      memberId: req.user.id,
+      businessId: business.id,
+      type: "dashboard_pro",
+      amount: payment.amount,
+      stripePaymentIntentId: payment.id,
+      status: payment.status,
+      metadata: payment.metadata
+    });
+    sendPaymentReceiptEmail({
+      email: req.user.email || "",
+      displayName: req.user.displayName || "Member",
+      type: "dashboard_pro",
+      amount: payment.amount,
+      businessName: business.name,
+      paymentId: payment.id
+    }).catch(() => {
+    });
+    return res.json({ data: payment });
+  }));
+  app2.post("/api/payments/featured", requireAuth, wrapAsync(async (req, res) => {
+    const slug = sanitizeSlug(req.body.slug);
+    if (!slug) {
+      return res.status(400).json({ error: "slug is required" });
+    }
+    const business = await getBusinessBySlug(slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { createFeaturedPlacementPayment: createFeaturedPlacementPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+    const payment = await createFeaturedPlacementPayment2({
+      businessId: business.id,
+      businessName: business.name,
+      city: business.city,
+      customerEmail: req.user.email || "",
+      userId: req.user.id
+    });
+    const paymentRecord = await createPaymentRecord({
+      memberId: req.user.id,
+      businessId: business.id,
+      type: "featured_placement",
+      amount: payment.amount,
+      stripePaymentIntentId: payment.id,
+      status: payment.status,
+      metadata: payment.metadata
+    });
+    if (payment.status === "succeeded") {
+      await createFeaturedPlacement({
+        businessId: business.id,
+        paymentId: paymentRecord.id,
+        city: business.city
+      });
+      broadcast("featured_updated", { businessId: business.id, city: business.city });
+    }
+    sendPaymentReceiptEmail({
+      email: req.user.email || "",
+      displayName: req.user.displayName || "Member",
+      type: "featured_placement",
+      amount: payment.amount,
+      businessName: business.name,
+      paymentId: payment.id
+    }).catch(() => {
+    });
+    return res.json({ data: payment });
+  }));
+  app2.post("/api/payments/cancel", requireAuth, wrapAsync(async (req, res) => {
+    const { paymentId } = req.body;
+    if (!paymentId) {
+      return res.status(400).json({ error: "paymentId is required" });
+    }
+    const existing = await getPaymentById(paymentId);
+    if (!existing) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+    if (existing.memberId !== req.user.id) {
+      return res.status(403).json({ error: "Not authorized to cancel this payment" });
+    }
+    const updated = await updatePaymentStatus(paymentId, "cancelled");
+    if (existing.type === "featured_placement") {
+      await expireFeaturedByPayment(paymentId).catch(() => {
+      });
+      broadcast("featured_updated", { cancelled: true });
+    }
+    log.info(`Payment ${paymentId} cancelled by ${req.user.id}`);
+    return res.json({ data: { id: updated.id, status: "cancelled" } });
+  }));
+}
+
+// server/routes-badges.ts
+init_storage();
+function registerBadgeRoutes(app2) {
+  app2.get("/api/members/:id/badges", wrapAsync(async (req, res) => {
+    const memberId = req.params.id;
+    const badges = await getMemberBadges(memberId);
+    return res.json({ data: badges });
+  }));
+  app2.post("/api/badges/award", requireAuth, wrapAsync(async (req, res) => {
+    const memberId = req.user.id;
+    const { badgeId, badgeFamily } = req.body;
+    if (!badgeId || !badgeFamily) {
+      return res.status(400).json({ error: "badgeId and badgeFamily are required" });
+    }
+    const result = await awardBadge(memberId, badgeId, badgeFamily);
+    return res.json({ data: result, awarded: result !== null });
+  }));
+  app2.get("/api/badges/earned", requireAuth, wrapAsync(async (req, res) => {
+    const memberId = req.user.id;
+    const badgeIds = await getEarnedBadgeIds(memberId);
+    const badgeCount = badgeIds.length;
+    return res.json({ data: { badgeIds, badgeCount } });
+  }));
+  app2.get("/api/badges/leaderboard", wrapAsync(async (req, res) => {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const data = await getBadgeLeaderboard(limit);
+    return res.json({ data });
+  }));
+}
+
+// server/routes-experiments.ts
+init_logger();
+
+// shared/hash.ts
+function hashString(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) + hash + str.charCodeAt(i) >>> 0;
+  }
+  return hash;
+}
+
+// server/experiment-tracker.ts
+init_logger();
+var trackerLog = log.tag("ExperimentTracker");
+var exposures = [];
+var outcomes = [];
+function trackExposure(userId, experimentId, variant, context) {
+  const existing = exposures.find(
+    (e) => e.userId === userId && e.experimentId === experimentId
+  );
+  if (existing) {
+    trackerLog.info(
+      `Skipping duplicate exposure: user=${userId} experiment=${experimentId}`
+    );
+    return;
+  }
+  const exposure = {
+    userId,
+    experimentId,
+    variant,
+    exposedAt: Date.now(),
+    context
+  };
+  exposures.push(exposure);
+  trackerLog.info(
+    `Exposure recorded: user=${userId} experiment=${experimentId} variant=${variant} context=${context}`
+  );
+}
+function getExposureStats(experimentId) {
+  const filtered = exposures.filter((e) => e.experimentId === experimentId);
+  if (filtered.length === 0) {
+    return {
+      total: 0,
+      byVariant: {},
+      uniqueUsers: 0,
+      firstExposure: null,
+      lastExposure: null
+    };
+  }
+  const byVariant = {};
+  const userSet = /* @__PURE__ */ new Set();
+  let firstExposure = Infinity;
+  let lastExposure = -Infinity;
+  for (const e of filtered) {
+    byVariant[e.variant] = (byVariant[e.variant] || 0) + 1;
+    userSet.add(e.userId);
+    if (e.exposedAt < firstExposure) firstExposure = e.exposedAt;
+    if (e.exposedAt > lastExposure) lastExposure = e.exposedAt;
+  }
+  return {
+    total: filtered.length,
+    byVariant,
+    uniqueUsers: userSet.size,
+    firstExposure,
+    lastExposure
+  };
+}
+function trackOutcome(userId, experimentId, action, value) {
+  const exposure = exposures.find(
+    (e) => e.userId === userId && e.experimentId === experimentId
+  );
+  if (!exposure) {
+    trackerLog.info(
+      `No exposure found for user=${userId} experiment=${experimentId}, skipping outcome`
+    );
+    return;
+  }
+  const outcome = {
+    userId,
+    experimentId,
+    variant: exposure.variant,
+    action,
+    value,
+    recordedAt: Date.now()
+  };
+  outcomes.push(outcome);
+  trackerLog.info(
+    `Outcome recorded: user=${userId} experiment=${experimentId} variant=${exposure.variant} action=${action}`
+  );
+}
+function getOutcomeStats(experimentId) {
+  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
+  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
+  const byAction = {};
+  const byVariant = {};
+  for (const o of filteredOutcomes) {
+    byAction[o.action] = (byAction[o.action] || 0) + 1;
+    if (!byVariant[o.variant]) {
+      byVariant[o.variant] = { total: 0, byAction: {}, uniqueUsers: /* @__PURE__ */ new Set() };
+    }
+    byVariant[o.variant].total += 1;
+    byVariant[o.variant].byAction[o.action] = (byVariant[o.variant].byAction[o.action] || 0) + 1;
+    byVariant[o.variant].uniqueUsers.add(o.userId);
+  }
+  const byVariantSerialized = {};
+  for (const [variant, data] of Object.entries(byVariant)) {
+    byVariantSerialized[variant] = {
+      total: data.total,
+      byAction: data.byAction,
+      uniqueUsers: data.uniqueUsers.size
+    };
+  }
+  const conversionRates = {};
+  const allActions = Object.keys(byAction);
+  for (const variant of Object.keys(byVariant)) {
+    const variantExposureCount = filteredExposures.filter((e) => e.variant === variant).length;
+    if (variantExposureCount === 0) continue;
+    conversionRates[variant] = allActions.map((action) => ({
+      variant,
+      action,
+      rate: (byVariant[variant].byAction[action] || 0) / variantExposureCount * 100
+    }));
+  }
+  return {
+    total: filteredOutcomes.length,
+    byAction,
+    byVariant: byVariantSerialized,
+    conversionRates
+  };
+}
+function getUserExperiments(userId) {
+  return exposures.filter((e) => e.userId === userId).map((e) => e.experimentId);
+}
+function computeExperimentDashboard(experimentId) {
+  const expStats = getExposureStats(experimentId);
+  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
+  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
+  const variantMap = /* @__PURE__ */ new Map();
+  for (const e of filteredExposures) {
+    if (!variantMap.has(e.variant)) {
+      variantMap.set(e.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    variantMap.get(e.variant).exposures += 1;
+  }
+  for (const o of filteredOutcomes) {
+    if (!variantMap.has(o.variant)) {
+      variantMap.set(o.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    const v = variantMap.get(o.variant);
+    v.outcomes += 1;
+    v.byAction[o.action] = (v.byAction[o.action] || 0) + 1;
+  }
+  const variants = [];
+  for (const [variant, data] of variantMap.entries()) {
+    variants.push({
+      variant,
+      exposures: data.exposures,
+      outcomes: data.outcomes,
+      conversionRate: data.exposures > 0 ? data.outcomes / data.exposures * 100 : 0,
+      byAction: data.byAction
+    });
+  }
+  const totalExposures = expStats.total;
+  let confidence = "sufficient_data";
+  let recommendation = "inconclusive";
+  if (totalExposures < 100) {
+    confidence = "insufficient_data";
+    recommendation = "insufficient_data";
+  } else {
+    const controlVariant = variants.find((v) => v.variant === "control");
+    const treatmentVariant = variants.find((v) => v.variant === "treatment");
+    const controlRate = controlVariant?.conversionRate ?? 0;
+    const treatmentRate = treatmentVariant?.conversionRate ?? 0;
+    const diff = treatmentRate - controlRate;
+    if (diff > 5) {
+      recommendation = "treatment_winning";
+    } else if (diff < -5) {
+      recommendation = "control_winning";
+    } else {
+      recommendation = "inconclusive";
+    }
+  }
+  return {
+    experimentId,
+    totalExposures,
+    variants,
+    confidence,
+    recommendation
+  };
+}
+
+// server/routes-experiments.ts
+var expLog = log.tag("Experiments");
+var experiments = {
+  confidence_tooltip: {
+    id: "confidence_tooltip",
+    description: "Show info icon tooltip on confidence badge vs no tooltip",
+    active: true,
+    variants: [
+      { id: "control", weight: 50 },
+      { id: "treatment", weight: 50 }
+    ]
+  },
+  trust_signal_style: {
+    id: "trust_signal_style",
+    description: "Text labels instead of icons for trust signals",
+    active: false,
+    variants: [
+      { id: "control", weight: 50 },
+      { id: "treatment", weight: 50 }
+    ]
+  },
+  personalized_weight: {
+    id: "personalized_weight",
+    description: "Personalized weight display vs static 'How Voting Works'",
+    active: false,
+    variants: [
+      { id: "control", weight: 50 },
+      { id: "treatment", weight: 50 }
+    ]
+  }
+};
+function assignVariant(userId, experimentId) {
+  const experiment = experiments[experimentId];
+  if (!experiment || !experiment.active) {
+    return { variant: "control", isDefault: true };
+  }
+  const key = `${userId}:${experimentId}`;
+  const bucket = hashString(key) % 100;
+  let cumulative = 0;
+  for (const v of experiment.variants) {
+    cumulative += v.weight;
+    if (bucket < cumulative) {
+      return { variant: v.id, isDefault: false };
+    }
+  }
+  return { variant: experiment.variants[0].id, isDefault: false };
+}
+function registerExperimentRoutes(app2) {
+  app2.get("/api/experiments", apiRateLimiter, wrapAsync((_req, res) => {
+    const active = Object.values(experiments).filter((exp) => exp.active).map((exp) => ({
+      id: exp.id,
+      description: exp.description,
+      variants: exp.variants.map((v) => v.id)
+    }));
+    return res.json({ data: active });
+  }));
+  app2.get("/api/experiments/assign", apiRateLimiter, wrapAsync((req, res) => {
+    const experimentId = req.query.experimentId;
+    if (!experimentId) {
+      return res.status(400).json({ error: "experimentId query parameter is required" });
+    }
+    const isAuthenticated = req.isAuthenticated && req.isAuthenticated();
+    const userId = isAuthenticated ? req.user.id : null;
+    if (!userId) {
+      return res.json({
+        data: {
+          experimentId,
+          variant: "control",
+          isDefault: true
+        }
+      });
+    }
+    const { variant, isDefault } = assignVariant(String(userId), experimentId);
+    const context = req.query.context || "api";
+    trackExposure(String(userId), experimentId, variant, context);
+    expLog.info(`Assigned ${experimentId}=${variant} for user ${userId}`);
+    return res.json({
+      data: {
+        experimentId,
+        variant,
+        isDefault
+      }
+    });
+  }));
+  app2.get("/api/admin/experiments/metrics", requireAuth, wrapAsync((req, res) => {
+    if (!isAdminEmail(req.user?.email)) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const experimentId = req.query.experimentId;
+    if (!experimentId) {
+      const allStats = Object.values(experiments).filter((exp) => exp.active).map((exp) => ({
+        experimentId: exp.id,
+        description: exp.description,
+        exposure: getExposureStats(exp.id),
+        outcomes: getOutcomeStats(exp.id),
+        dashboard: computeExperimentDashboard(exp.id)
+      }));
+      return res.json({ data: allStats });
+    }
+    const experiment = experiments[experimentId];
+    if (!experiment) {
+      return res.status(404).json({ error: `Experiment '${experimentId}' not found` });
+    }
+    return res.json({
+      data: {
+        experimentId: experiment.id,
+        description: experiment.description,
+        active: experiment.active,
+        exposure: getExposureStats(experimentId),
+        outcomes: getOutcomeStats(experimentId),
+        dashboard: computeExperimentDashboard(experimentId)
+      }
+    });
+  }));
+}
+
+// server/routes.ts
+init_stripe_webhook();
+init_logger();
+init_storage();
+init_schema();
 
 // server/gdpr.ts
 var deletionRequests = /* @__PURE__ */ new Map();
@@ -4074,12 +4313,7 @@ function getDeletionStatus(userId) {
 }
 
 // server/routes.ts
-function requireAuth4(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
-  }
-  next();
-}
+init_tier_staleness();
 async function registerRoutes(app2) {
   setupAuth(app2);
   app2.use("/api", (req, res, next) => {
@@ -4160,7 +4394,7 @@ async function registerRoutes(app2) {
     };
     req.on("close", cleanup);
   });
-  app2.post("/api/auth/signup", authRateLimiter, async (req, res) => {
+  app2.post("/api/auth/signup", authRateLimiter, wrapAsync(async (req, res) => {
     try {
       const { password, city } = req.body;
       const displayName = sanitizeString(req.body.displayName, 100);
@@ -4201,7 +4435,7 @@ async function registerRoutes(app2) {
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
-  });
+  }));
   app2.post("/api/auth/login", authRateLimiter, (req, res, next) => {
     passport2.authenticate("local", (err, user, info) => {
       if (err) return res.status(500).json({ error: "Internal server error" });
@@ -4212,7 +4446,7 @@ async function registerRoutes(app2) {
       });
     })(req, res, next);
   });
-  app2.post("/api/auth/google", authRateLimiter, async (req, res) => {
+  app2.post("/api/auth/google", authRateLimiter, wrapAsync(async (req, res) => {
     try {
       const { idToken } = req.body;
       if (!idToken) {
@@ -4237,7 +4471,7 @@ async function registerRoutes(app2) {
     } catch (err) {
       return res.status(400).json({ error: err.message });
     }
-  });
+  }));
   app2.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) return res.status(500).json({ error: "Logout failed" });
@@ -4250,322 +4484,267 @@ async function registerRoutes(app2) {
     }
     return res.json({ data: req.user });
   });
-  app2.get("/api/account/export", async (req, res) => {
+  app2.get("/api/account/export", wrapAsync(async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Authentication required" });
     }
-    try {
-      const userId = req.user.id;
-      const [profile, ratings3, impact, seasonal, badges] = await Promise.all([
-        getMemberById(userId),
-        getMemberRatings(userId, 1, 1e4),
-        getMemberImpact(userId),
-        getSeasonalRatingCounts(userId),
-        getMemberBadges(userId)
-      ]);
-      const exportData = {
-        exportDate: (/* @__PURE__ */ new Date()).toISOString(),
-        format: "GDPR Art. 20 compliant",
-        profile: profile ? {
-          displayName: profile.displayName,
-          username: profile.username,
-          email: profile.email,
-          city: profile.city,
-          credibilityScore: profile.credibilityScore,
-          credibilityTier: profile.credibilityTier,
-          totalRatings: profile.totalRatings,
-          joinedAt: profile.joinedAt,
-          lastActive: profile.lastActive
-        } : null,
-        ratings: ratings3 || [],
-        impact: impact || null,
-        seasonalActivity: seasonal || [],
-        badges: badges || []
-      };
-      res.setHeader("Content-Disposition", `attachment; filename="topranker-data-export-${userId}.json"`);
-      return res.json({ data: exportData });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.delete("/api/account", async (req, res) => {
+    const userId = req.user.id;
+    const [profile, ratings3, impact, seasonal, badges] = await Promise.all([
+      getMemberById(userId),
+      getMemberRatings(userId, 1, 1e4),
+      getMemberImpact(userId),
+      getSeasonalRatingCounts(userId),
+      getMemberBadges(userId)
+    ]);
+    const freshExportTier = profile ? checkAndRefreshTier(profile.credibilityTier, profile.credibilityScore) : null;
+    const exportData = {
+      exportDate: (/* @__PURE__ */ new Date()).toISOString(),
+      format: "GDPR Art. 20 compliant",
+      profile: profile ? {
+        displayName: profile.displayName,
+        username: profile.username,
+        email: profile.email,
+        city: profile.city,
+        credibilityScore: profile.credibilityScore,
+        credibilityTier: freshExportTier,
+        totalRatings: profile.totalRatings,
+        joinedAt: profile.joinedAt,
+        lastActive: profile.lastActive
+      } : null,
+      ratings: ratings3 || [],
+      impact: impact || null,
+      seasonalActivity: seasonal || [],
+      badges: badges || []
+    };
+    res.setHeader("Content-Disposition", `attachment; filename="topranker-data-export-${userId}.json"`);
+    return res.json({ data: exportData });
+  }));
+  app2.delete("/api/account", wrapAsync(async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Authentication required" });
     }
-    try {
-      const deletionDate = /* @__PURE__ */ new Date();
-      deletionDate.setDate(deletionDate.getDate() + 30);
-      log.tag("AccountDeletion").info(
-        `Deletion requested for user ${req.user.id}, scheduled for ${deletionDate.toISOString()}`
-      );
-      return res.json({
-        data: {
-          message: "Account scheduled for deletion",
-          deletionDate: deletionDate.toISOString(),
-          gracePeriodDays: 30,
-          note: "You can cancel this request by logging in within 30 days."
+    const deletionDate = /* @__PURE__ */ new Date();
+    deletionDate.setDate(deletionDate.getDate() + 30);
+    log.tag("AccountDeletion").info(
+      `Deletion requested for user ${req.user.id}, scheduled for ${deletionDate.toISOString()}`
+    );
+    return res.json({
+      data: {
+        message: "Account scheduled for deletion",
+        deletionDate: deletionDate.toISOString(),
+        gracePeriodDays: 30,
+        note: "You can cancel this request by logging in within 30 days."
+      }
+    });
+  }));
+  app2.post("/api/account/schedule-deletion", requireAuth, wrapAsync(async (req, res) => {
+    const userId = req.user.id;
+    const request = scheduleDeletion(userId, 30);
+    log.tag("GDPR").info(
+      `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
+    );
+    return res.json({
+      data: {
+        message: "Account deletion scheduled",
+        scheduledAt: request.scheduledAt.toISOString(),
+        deleteAt: request.deleteAt.toISOString(),
+        gracePeriodDays: 30,
+        status: request.status,
+        note: "You can cancel this request by checking your deletion status within 30 days."
+      }
+    });
+  }));
+  app2.post("/api/account/cancel-deletion", requireAuth, wrapAsync(async (req, res) => {
+    const userId = req.user.id;
+    const cancelled = cancelDeletion(userId);
+    if (!cancelled) {
+      return res.status(404).json({ error: "No pending deletion request found" });
+    }
+    log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
+    return res.json({
+      data: { cancelled: true }
+    });
+  }));
+  app2.get("/api/account/deletion-status", requireAuth, wrapAsync(async (req, res) => {
+    const userId = req.user.id;
+    const status = getDeletionStatus(userId);
+    if (!status) {
+      return res.json({ data: { hasPendingDeletion: false } });
+    }
+    return res.json({
+      data: {
+        hasPendingDeletion: status.status === "pending",
+        scheduledAt: status.scheduledAt.toISOString(),
+        deleteAt: status.deleteAt.toISOString(),
+        status: status.status
+      }
+    });
+  }));
+  app2.get("/api/leaderboard", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || "restaurant";
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const bizList = await getLeaderboard(city, category, limit);
+    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const data = bizList.map((b) => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+    }));
+    return res.json({ data });
+  }));
+  app2.get("/api/featured", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const placements = await getActiveFeaturedInCity(city);
+    if (placements.length === 0) {
+      return res.json({ data: [] });
+    }
+    const featured = await Promise.all(
+      placements.map(async (p) => {
+        const biz = await getBusinessById(p.businessId);
+        if (!biz) return null;
+        const photoMap = await getBusinessPhotosMap([biz.id]);
+        return {
+          id: biz.id,
+          name: biz.name,
+          slug: biz.slug,
+          category: biz.category,
+          photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || void 0,
+          weightedScore: biz.weightedScore || 0,
+          tagline: biz.tagline || `Top ${biz.category} in ${city}`,
+          totalRatings: biz.totalRatings || 0,
+          expiresAt: p.expiresAt
+        };
+      })
+    );
+    return res.json({ data: featured.filter(Boolean) });
+  }));
+  app2.get("/api/leaderboard/categories", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const data = await getAllCategories(city);
+    return res.json({ data });
+  }));
+  app2.get("/api/businesses/search", wrapAsync(async (req, res) => {
+    const query = sanitizeString(req.query.q, 200);
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || void 0;
+    const bizList = await searchBusinesses(query, city, category);
+    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const data = bizList.map((b) => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+    }));
+    return res.json({ data });
+  }));
+  app2.get("/api/businesses/:slug", wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    let [{ ratings: ratings3 }, dishList, photos] = await Promise.all([
+      getBusinessRatings(business.id, 1, 20),
+      getBusinessDishes(business.id, 5),
+      getBusinessPhotos(business.id)
+    ]);
+    if (photos.length === 0 && business.googlePlaceId) {
+      try {
+        const count7 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+        if (count7 > 0) {
+          photos = await getBusinessPhotos(business.id);
         }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/account/schedule-deletion", requireAuth4, async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const request = scheduleDeletion(userId, 30);
-      log.tag("GDPR").info(
-        `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
-      );
-      return res.json({
-        data: {
-          message: "Account deletion scheduled",
-          scheduledAt: request.scheduledAt.toISOString(),
-          deleteAt: request.deleteAt.toISOString(),
-          gracePeriodDays: 30,
-          status: request.status,
-          note: "You can cancel this request by checking your deletion status within 30 days."
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/account/cancel-deletion", requireAuth4, async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const cancelled = cancelDeletion(userId);
-      if (!cancelled) {
-        return res.status(404).json({ error: "No pending deletion request found" });
+      } catch {
       }
-      log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
-      return res.json({
-        data: { cancelled: true }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
     }
-  });
-  app2.get("/api/account/deletion-status", requireAuth4, async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const status = getDeletionStatus(userId);
-      if (!status) {
-        return res.json({ data: { hasPendingDeletion: false } });
+    const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
+    return res.json({ data: { ...business, photoUrls, recentRatings: ratings3, dishes: dishList } });
+  }));
+  app2.get("/api/businesses/:id/ratings", wrapAsync(async (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page) || 20));
+    const data = await getBusinessRatings(req.params.id, page, perPage);
+    return res.json({ data });
+  }));
+  app2.post("/api/businesses/:slug/claim", requireAuth, wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const role = sanitizeString(req.body.role, 100);
+    const phone = sanitizeString(req.body.phone, 20);
+    if (!role || role.length === 0) {
+      return res.status(400).json({ error: "Role is required" });
+    }
+    const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const existing = await getClaimByMemberAndBusiness2(req.user.id, business.id);
+    if (existing) {
+      return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
+    }
+    const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
+    const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
+    const { sendClaimConfirmationEmail: sendClaimConfirmationEmail2, sendClaimAdminNotification: sendClaimAdminNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+    sendClaimConfirmationEmail2({
+      email: req.user.email || "",
+      displayName: req.user.displayName || "User",
+      businessName: business.name
+    }).catch(() => {
+    });
+    sendClaimAdminNotification2({
+      businessName: business.name,
+      claimantName: req.user.displayName || "Unknown",
+      claimantEmail: req.user.email || ""
+    }).catch(() => {
+    });
+    return res.json({ data: { id: claim.id, status: claim.status } });
+  }));
+  app2.get("/api/businesses/:slug/dashboard", requireAuth, wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { getRankHistory: getRankHistory2, getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const [{ ratings: ratings3, total }, rankHistory2, dishes2] = await Promise.all([
+      getBusinessRatings(business.id, 1, 10),
+      getRankHistory2(business.id, 49),
+      // 7 weeks
+      getBusinessDishes2(business.id, 5)
+    ]);
+    const totalRatings = business.totalRatings || 0;
+    const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
+    const rankPosition = business.rankPosition || 0;
+    const rankDelta = business.rankDelta || 0;
+    const returners = ratings3.filter((r) => r.wouldReturn === true).length;
+    const returnTotal = ratings3.filter((r) => r.wouldReturn !== null && r.wouldReturn !== void 0).length;
+    const wouldReturnPct = returnTotal > 0 ? Math.round(returners / returnTotal * 100) : 0;
+    const topDish = dishes2.length > 0 ? dishes2[0] : null;
+    const ratingTrend = rankHistory2.map((h) => h.score);
+    return res.json({
+      data: {
+        totalRatings,
+        avgScore,
+        rankPosition,
+        rankDelta,
+        wouldReturnPct,
+        topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+        ratingTrend,
+        recentRatings: ratings3.map((r) => ({
+          id: r.id,
+          user: r.memberName || "Anonymous",
+          score: parseFloat(r.rawScore),
+          tier: r.memberTier || "community",
+          note: r.note,
+          date: r.createdAt
+        }))
       }
-      return res.json({
-        data: {
-          hasPendingDeletion: status.status === "pending",
-          scheduledAt: status.scheduledAt.toISOString(),
-          deleteAt: status.deleteAt.toISOString(),
-          status: status.status
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/leaderboard", async (req, res) => {
-    try {
-      const city = req.query.city || "Dallas";
-      const category = req.query.category || "restaurant";
-      const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-      const bizList = await getLeaderboard(city, category, limit);
-      const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-      const data = bizList.map((b) => ({
-        ...b,
-        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
-      }));
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/featured", async (req, res) => {
-    try {
-      const city = req.query.city || "Dallas";
-      const placements = await getActiveFeaturedInCity(city);
-      if (placements.length === 0) {
-        return res.json({ data: [] });
-      }
-      const featured = await Promise.all(
-        placements.map(async (p) => {
-          const biz = await getBusinessById(p.businessId);
-          if (!biz) return null;
-          const photoMap = await getBusinessPhotosMap([biz.id]);
-          return {
-            id: biz.id,
-            name: biz.name,
-            slug: biz.slug,
-            category: biz.category,
-            photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || void 0,
-            weightedScore: biz.weightedScore || 0,
-            tagline: biz.tagline || `Top ${biz.category} in ${city}`,
-            totalRatings: biz.totalRatings || 0,
-            expiresAt: p.expiresAt
-          };
-        })
-      );
-      return res.json({ data: featured.filter(Boolean) });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/leaderboard/categories", async (req, res) => {
-    try {
-      const city = req.query.city || "Dallas";
-      const data = await getAllCategories(city);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/businesses/search", async (req, res) => {
-    try {
-      const query = sanitizeString(req.query.q, 200);
-      const city = req.query.city || "Dallas";
-      const category = req.query.category;
-      const bizList = await searchBusinesses(query, city, category);
-      const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-      const data = bizList.map((b) => ({
-        ...b,
-        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
-      }));
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/businesses/:slug", async (req, res) => {
-    try {
-      const business = await getBusinessBySlug(req.params.slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      let [{ ratings: ratings3 }, dishList, photos] = await Promise.all([
-        getBusinessRatings(business.id, 1, 20),
-        getBusinessDishes(business.id, 5),
-        getBusinessPhotos(business.id)
-      ]);
-      if (photos.length === 0 && business.googlePlaceId) {
-        try {
-          const count7 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
-          if (count7 > 0) {
-            photos = await getBusinessPhotos(business.id);
-          }
-        } catch {
-        }
-      }
-      const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
-      return res.json({ data: { ...business, photoUrls, recentRatings: ratings3, dishes: dishList } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/businesses/:id/ratings", async (req, res) => {
-    try {
-      const page = Math.max(1, parseInt(req.query.page) || 1);
-      const perPage = Math.min(50, Math.max(1, parseInt(req.query.per_page) || 20));
-      const data = await getBusinessRatings(req.params.id, page, perPage);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/businesses/:slug/claim", requireAuth4, async (req, res) => {
-    try {
-      const business = await getBusinessBySlug(req.params.slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      const role = sanitizeString(req.body.role, 100);
-      const phone = sanitizeString(req.body.phone, 20);
-      if (!role || role.length === 0) {
-        return res.status(400).json({ error: "Role is required" });
-      }
-      const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const existing = await getClaimByMemberAndBusiness2(req.user.id, business.id);
-      if (existing) {
-        return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
-      }
-      const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
-      const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
-      const { sendClaimConfirmationEmail: sendClaimConfirmationEmail2, sendClaimAdminNotification: sendClaimAdminNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
-      sendClaimConfirmationEmail2({
-        email: req.user.email || "",
-        displayName: req.user.displayName || "User",
-        businessName: business.name
-      }).catch(() => {
-      });
-      sendClaimAdminNotification2({
-        businessName: business.name,
-        claimantName: req.user.displayName || "Unknown",
-        claimantEmail: req.user.email || ""
-      }).catch(() => {
-      });
-      return res.json({ data: { id: claim.id, status: claim.status } });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/businesses/:slug/dashboard", requireAuth4, async (req, res) => {
-    try {
-      const business = await getBusinessBySlug(req.params.slug);
-      if (!business) {
-        return res.status(404).json({ error: "Business not found" });
-      }
-      const { getRankHistory: getRankHistory2, getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const [{ ratings: ratings3, total }, rankHistory2, dishes2] = await Promise.all([
-        getBusinessRatings(business.id, 1, 10),
-        getRankHistory2(business.id, 49),
-        // 7 weeks
-        getBusinessDishes2(business.id, 5)
-      ]);
-      const totalRatings = business.totalRatings || 0;
-      const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
-      const rankPosition = business.rankPosition || 0;
-      const rankDelta = business.rankDelta || 0;
-      const returners = ratings3.filter((r) => r.wouldReturn === true).length;
-      const returnTotal = ratings3.filter((r) => r.wouldReturn !== null && r.wouldReturn !== void 0).length;
-      const wouldReturnPct = returnTotal > 0 ? Math.round(returners / returnTotal * 100) : 0;
-      const topDish = dishes2.length > 0 ? dishes2[0] : null;
-      const ratingTrend = rankHistory2.map((h) => h.score);
-      return res.json({
-        data: {
-          totalRatings,
-          avgScore,
-          rankPosition,
-          rankDelta,
-          wouldReturnPct,
-          topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
-          ratingTrend,
-          recentRatings: ratings3.map((r) => ({
-            id: r.id,
-            user: r.memberName || "Anonymous",
-            score: parseFloat(r.rawScore),
-            tier: r.memberTier || "community",
-            note: r.note,
-            date: r.createdAt
-          }))
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+    });
+  }));
   registerPaymentRoutes(app2);
-  app2.get("/api/dishes/search", async (req, res) => {
-    try {
-      const businessId = req.query.business_id;
-      const query = sanitizeString(req.query.q, 200);
-      if (!businessId) return res.status(400).json({ error: "business_id required" });
-      const data = await searchDishes(businessId, query);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/ratings", requireAuth4, async (req, res) => {
+  app2.get("/api/dishes/search", wrapAsync(async (req, res) => {
+    const businessId = req.query.business_id;
+    const query = sanitizeString(req.query.q, 200);
+    if (!businessId) return res.status(400).json({ error: "business_id required" });
+    const data = await searchDishes(businessId, query);
+    return res.json({ data });
+  }));
+  app2.post("/api/ratings", requireAuth, wrapAsync(async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -4574,9 +4753,18 @@ async function registerRoutes(app2) {
       parsed.data.score = sanitizeNumber(parsed.data.score, 1, 5, 3);
       const memberId = req.user.id;
       const result = await submitRating(memberId, parsed.data);
+      const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
+      if (verifiedTier !== result.newTier) {
+        result.newTier = verifiedTier;
+        result.tierUpgraded = verifiedTier !== req.user.credibilityTier;
+      }
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
       trackEvent("first_rating", memberId);
+      const userExperiments = getUserExperiments(String(memberId));
+      for (const expId of userExperiments) {
+        trackOutcome(String(memberId), expId, "rated", parsed.data.score);
+      }
       return res.status(201).json({ data: result });
     } catch (err) {
       if (err.message.includes("3+ days")) {
@@ -4590,189 +4778,144 @@ async function registerRoutes(app2) {
       }
       return res.status(400).json({ error: err.message });
     }
-  });
-  app2.get("/api/members/me", requireAuth4, async (req, res) => {
-    try {
-      const member = await getMemberById(req.user.id);
-      if (!member) return res.status(404).json({ error: "Member not found" });
-      const { score, tier, breakdown } = await recalculateCredibilityScore(member.id);
-      const { ratings: ratings3, total } = await getMemberRatings(member.id);
-      const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const seasonal = await getSeasonalRatingCounts2(member.id);
-      const daysActive = Math.floor(
-        (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
-      );
-      return res.json({
-        data: {
-          id: member.id,
-          displayName: member.displayName,
-          username: member.username,
-          email: member.email,
-          city: member.city,
-          avatarUrl: member.avatarUrl,
-          credibilityScore: score,
-          credibilityTier: tier,
-          totalRatings: member.totalRatings,
-          totalCategories: member.totalCategories,
-          distinctBusinesses: member.distinctBusinesses,
-          isFoundingMember: member.isFoundingMember,
-          joinedAt: member.joinedAt,
-          daysActive,
-          ratingVariance: parseFloat(member.ratingVariance),
-          credibilityBreakdown: breakdown,
-          ratingHistory: ratings3,
-          ...seasonal
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/members/:username", async (req, res) => {
-    try {
-      const { getMemberByUsername: getMemberByUsername2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const member = await getMemberByUsername2(req.params.username);
-      if (!member) return res.status(404).json({ error: "Member not found" });
-      return res.json({
-        data: {
-          displayName: member.displayName,
-          username: member.username,
-          credibilityTier: member.credibilityTier,
-          totalRatings: member.totalRatings,
-          joinedAt: member.joinedAt
-        }
-      });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/challengers/active", async (req, res) => {
-    try {
-      const city = req.query.city || "Dallas";
-      const category = req.query.category;
-      const data = await getActiveChallenges(city, category);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/trending", async (req, res) => {
-    try {
-      const { getTrendingBusinesses: getTrendingBusinesses2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const city = req.query.city || "Dallas";
-      const limit = Math.min(10, Math.max(1, parseInt(req.query.limit) || 3));
-      const bizList = await getTrendingBusinesses2(city, limit);
-      const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-      const data = bizList.map((b) => ({
-        ...b,
-        photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
-      }));
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/businesses/:id/rank-history", async (req, res) => {
-    try {
-      const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
-      const data = await getRankHistory2(req.params.id, days);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/members/me/impact", requireAuth4, async (req, res) => {
-    try {
-      const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const data = await getMemberImpact2(req.user.id);
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/members/me/push-token", requireAuth4, async (req, res) => {
-    try {
-      const { pushToken } = req.body;
-      if (!pushToken || typeof pushToken !== "string") {
-        return res.status(400).json({ error: "pushToken is required" });
+  }));
+  app2.get("/api/members/me", requireAuth, wrapAsync(async (req, res) => {
+    const member = await getMemberById(req.user.id);
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
+    const tier = checkAndRefreshTier(computedTier, score);
+    const { ratings: ratings3, total } = await getMemberRatings(member.id);
+    const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const seasonal = await getSeasonalRatingCounts2(member.id);
+    const daysActive = Math.floor(
+      (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
+    );
+    return res.json({
+      data: {
+        id: member.id,
+        displayName: member.displayName,
+        username: member.username,
+        email: member.email,
+        city: member.city,
+        avatarUrl: member.avatarUrl,
+        credibilityScore: score,
+        credibilityTier: tier,
+        totalRatings: member.totalRatings,
+        totalCategories: member.totalCategories,
+        distinctBusinesses: member.distinctBusinesses,
+        isFoundingMember: member.isFoundingMember,
+        joinedAt: member.joinedAt,
+        daysActive,
+        ratingVariance: parseFloat(member.ratingVariance),
+        credibilityBreakdown: breakdown,
+        ratingHistory: ratings3,
+        ...seasonal
       }
-      const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      await updatePushToken2(req.user.id, pushToken);
-      return res.json({ ok: true });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.get("/api/members/me/notification-preferences", requireAuth4, async (req, res) => {
-    try {
-      const prefs = {
-        ratingUpdates: true,
-        challengeResults: true,
-        weeklyDigest: false,
-        ...req.user.notificationPrefs || {}
-      };
-      return res.json({ data: prefs });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.put("/api/members/me/notification-preferences", requireAuth4, async (req, res) => {
-    try {
-      const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
-      const prefs = {
-        ratingUpdates: ratingUpdates !== false,
-        challengeResults: challengeResults !== false,
-        weeklyDigest: weeklyDigest === true
-      };
-      req.user.notificationPrefs = prefs;
-      log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(prefs)}`);
-      return res.json({ data: prefs });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
-  app2.post("/api/category-suggestions", requireAuth4, async (req, res) => {
-    try {
-      const parsed = insertCategorySuggestionSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
+    });
+  }));
+  app2.get("/api/members/:username", wrapAsync(async (req, res) => {
+    const { getMemberByUsername: getMemberByUsername2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const member = await getMemberByUsername2(req.params.username);
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
+    return res.json({
+      data: {
+        displayName: member.displayName,
+        username: member.username,
+        credibilityTier: freshTier,
+        totalRatings: member.totalRatings,
+        joinedAt: member.joinedAt
       }
-      const { createCategorySuggestion: createCategorySuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const suggestion = await createCategorySuggestion2({
-        ...parsed.data,
-        suggestedBy: req.user.id
-      });
-      return res.status(201).json({ data: suggestion });
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
+    });
+  }));
+  app2.get("/api/challengers/active", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || void 0;
+    const data = await getActiveChallenges(city, category);
+    return res.json({ data });
+  }));
+  app2.get("/api/trending", wrapAsync(async (req, res) => {
+    const { getTrendingBusinesses: getTrendingBusinesses2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit) || 3));
+    const bizList = await getTrendingBusinesses2(city, limit);
+    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const data = bizList.map((b) => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+    }));
+    return res.json({ data });
+  }));
+  app2.get("/api/businesses/:id/rank-history", wrapAsync(async (req, res) => {
+    const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
+    const data = await getRankHistory2(req.params.id, days);
+    return res.json({ data });
+  }));
+  app2.get("/api/members/me/impact", requireAuth, wrapAsync(async (req, res) => {
+    const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const data = await getMemberImpact2(req.user.id);
+    return res.json({ data });
+  }));
+  app2.post("/api/members/me/push-token", requireAuth, wrapAsync(async (req, res) => {
+    const { pushToken } = req.body;
+    if (!pushToken || typeof pushToken !== "string") {
+      return res.status(400).json({ error: "pushToken is required" });
     }
-  });
-  app2.get("/api/category-suggestions", async (req, res) => {
-    try {
-      const { getPendingSuggestions: getPendingSuggestions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-      const data = await getPendingSuggestions2();
-      return res.json({ data });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
+    const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    await updatePushToken2(req.user.id, pushToken);
+    return res.json({ ok: true });
+  }));
+  app2.get("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
+    const prefs = {
+      ratingUpdates: true,
+      challengeResults: true,
+      weeklyDigest: false,
+      ...req.user.notificationPrefs || {}
+    };
+    return res.json({ data: prefs });
+  }));
+  app2.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
+    const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
+    const prefs = {
+      ratingUpdates: ratingUpdates !== false,
+      challengeResults: challengeResults !== false,
+      weeklyDigest: weeklyDigest === true
+    };
+    req.user.notificationPrefs = prefs;
+    log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(prefs)}`);
+    return res.json({ data: prefs });
+  }));
+  app2.post("/api/category-suggestions", requireAuth, wrapAsync(async (req, res) => {
+    const parsed = insertCategorySuggestionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.errors[0].message });
     }
-  });
+    const { createCategorySuggestion: createCategorySuggestion2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const suggestion = await createCategorySuggestion2({
+      ...parsed.data,
+      suggestedBy: req.user.id
+    });
+    return res.status(201).json({ data: suggestion });
+  }));
+  app2.get("/api/category-suggestions", wrapAsync(async (req, res) => {
+    const { getPendingSuggestions: getPendingSuggestions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const data = await getPendingSuggestions2();
+    return res.json({ data });
+  }));
   app2.get("/api/photos/proxy", handlePhotoProxy);
   app2.post("/api/webhook/stripe", handleStripeWebhook);
-  app2.get("/api/payments/history", requireAuth4, async (req, res) => {
-    try {
-      const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
-      const payments2 = await getMemberPayments(req.user.id, limit);
-      return res.json({ data: payments2 });
-    } catch (err) {
-      return res.status(500).json({ error: err.message });
-    }
-  });
+  app2.get("/api/payments/history", requireAuth, wrapAsync(async (req, res) => {
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const payments2 = await getMemberPayments(req.user.id, limit);
+    return res.json({ data: payments2 });
+  }));
   app2.post("/api/webhook/deploy", handleWebhook);
   app2.get("/api/deploy/status", handleDeployStatus);
   app2.get("/share/badge/:badgeId", handleBadgeShare);
   registerBadgeRoutes(app2);
   registerAdminRoutes(app2);
+  registerExperimentRoutes(app2);
   const httpServer = createServer(app2);
   return httpServer;
 }
