@@ -17,6 +17,7 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { Analytics } from "@/lib/analytics";
+import { getRatingImpact, clearRatingImpact } from "@/lib/rating-impact";
 import { getShareUrl, getShareText } from "@/lib/sharing";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
@@ -76,6 +77,21 @@ export default function BusinessProfileScreen() {
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [ratingImpact, setRatingImpactState] = useState<{ prevRank: number; newRank: number } | null>(null);
+
+  // Check for recent rating impact (60s TTL)
+  React.useEffect(() => {
+    if (slug) {
+      const impact = getRatingImpact(slug);
+      if (impact && impact.prevRank !== impact.newRank) {
+        setRatingImpactState({ prevRank: impact.prevRank, newRank: impact.newRank });
+        clearRatingImpact(slug);
+        // Auto-dismiss after 10 seconds
+        const timer = setTimeout(() => setRatingImpactState(null), 10000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [slug, data]);
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -213,6 +229,16 @@ export default function BusinessProfileScreen() {
           ratingCount={business.ratingCount}
           ratings={ratings}
         />
+
+        {/* Your Rating Impact Banner — 10s auto-dismiss */}
+        {ratingImpact && (
+          <View style={styles.impactBanner}>
+            <Ionicons name={ratingImpact.newRank < ratingImpact.prevRank ? "trending-up" : "trending-down"} size={18} color="#fff" />
+            <Text style={styles.impactBannerText}>
+              Your rating moved this from #{ratingImpact.prevRank} to #{ratingImpact.newRank}
+            </Text>
+          </View>
+        )}
 
         {/* Ranking Confidence Indicator */}
         <RankConfidenceIndicator ratingCount={business.ratingCount} category={business.category} />
@@ -439,6 +465,14 @@ export default function BusinessProfileScreen() {
 
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: Colors.background },
+  impactBanner: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: "#1B5E20", marginHorizontal: 16, marginTop: 8,
+    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+  },
+  impactBannerText: {
+    color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
+  },
   badgeSection: {
     paddingHorizontal: 16, paddingVertical: 10, gap: 8,
   },

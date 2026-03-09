@@ -25,6 +25,7 @@ import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { apiRequest } from "@/lib/query-client";
 import { Confetti } from "@/components/Confetti";
 import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
+import { setRatingImpact } from "@/lib/rating-impact";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
 import {
@@ -188,8 +189,12 @@ export default function RateScreen() {
       // Always refetch to get accurate server state
       qc.invalidateQueries({ queryKey: ["business", slug] });
     },
-    onSuccess: () => {
+    onSuccess: (responseData: any) => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Store rank impact for business detail banner (60s TTL)
+      if (responseData?.data?.prevRank && responseData?.data?.newRank && slug) {
+        setRatingImpact(slug, responseData.data.prevRank, responseData.data.newRank);
+      }
       // SSE handles leaderboard/search/challengers invalidation; profile needs explicit
       qc.invalidateQueries({ queryKey: ["profile"] });
       setShowConfirm(true);

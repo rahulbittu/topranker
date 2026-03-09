@@ -23,11 +23,11 @@ interface SSEEvent {
 }
 
 const INVALIDATION_MAP: Record<string, string[][]> = {
-  ranking_updated: [["/api/leaderboard"], ["/api/trending"]],
-  rating_submitted: [["/api/leaderboard"], ["/api/businesses"], ["/api/trending"]],
-  challenger_updated: [["/api/challengers"]],
-  business_updated: [["/api/businesses"], ["/api/leaderboard"]],
-  featured_updated: [["/api/featured"]],
+  ranking_updated: [["leaderboard"], ["trending"]],
+  rating_submitted: [["leaderboard"], ["business"], ["trending"], ["challengers"]],
+  challenger_updated: [["challengers"]],
+  business_updated: [["business"], ["leaderboard"]],
+  featured_updated: [["featured"]],
 };
 
 export function useRealtimeEvents() {
@@ -39,8 +39,9 @@ export function useRealtimeEvents() {
     if (typeof EventSource === "undefined") {
       // Fallback: aggressive polling for native where EventSource isn't available
       const interval = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey: ["/api/leaderboard"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/challengers"] });
+        queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+        queryClient.invalidateQueries({ queryKey: ["challengers"] });
+        queryClient.invalidateQueries({ queryKey: ["trending"] });
       }, 15000);
       return () => clearInterval(interval);
     }
