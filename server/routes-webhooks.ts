@@ -15,6 +15,7 @@ import {
   trackEmailBounced,
   trackEmailFailed,
 } from "./email-tracking";
+import { getTrackingIdFromResend } from "./email-id-mapping";
 
 function verifySignature(payload: string, signature: string, secret: string): boolean {
   const expected = crypto
@@ -45,9 +46,9 @@ export function registerWebhookRoutes(app: Express) {
       data: { email_id: string; to?: string[]; [key: string]: unknown };
     };
 
-    // TODO: Map Resend's email_id to our internal tracking event ID via tags or headers.
-    // For now we use email_id as-is.
-    const eventId = data.email_id;
+    // Resolve Resend's email_id to our internal tracking ID if a mapping exists
+    const trackingId = getTrackingIdFromResend(data.email_id) || data.email_id;
+    const eventId = trackingId;
 
     log.info(`Resend webhook: ${type} for email ${eventId}`);
 

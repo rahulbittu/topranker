@@ -8,6 +8,7 @@ import { registerAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
 import { registerBadgeRoutes } from "./routes-badges";
 import { registerExperimentRoutes } from "./routes-experiments";
+import { registerAdminExperimentRoutes } from "./routes-admin-experiments";
 import { registerAuthRoutes } from "./routes-auth";
 import { registerMemberRoutes } from "./routes-members";
 import { registerBusinessRoutes } from "./routes-businesses";
@@ -426,6 +427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerBadgeRoutes(app);
   registerAdminRoutes(app);
   registerExperimentRoutes(app);
+  registerAdminExperimentRoutes(app);
   registerUnsubscribeRoutes(app);
   registerWebhookRoutes(app);
 
