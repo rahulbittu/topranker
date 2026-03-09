@@ -4,7 +4,7 @@
  * Owner: Leo Hernandez (Frontend)
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -136,18 +136,35 @@ const RECENT_ACTIVITY = [
   { id: "5", text: "Featured placement purchased — $49", time: "31m ago" },
 ];
 
+// Sprint 207: Auto-refresh interval (60s)
+const AUTO_REFRESH_INTERVAL_MS = 60_000;
+
 export default function AdminDashboard() {
   const [lastRefresh, setLastRefresh] = useState<string>(
     new Date().toLocaleTimeString()
   );
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const { data, loading, refetch } = useDashboardData();
   const betaFunnel = useBetaFunnel();
   const activeUsers = useActiveUsers();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleRefresh = () => {
     setLastRefresh(new Date().toLocaleTimeString());
     refetch();
   };
+
+  // Sprint 207: Auto-refresh effect
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => {
+        handleRefresh();
+      }, AUTO_REFRESH_INTERVAL_MS);
+    }
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [autoRefresh]);
 
   // Build live stat cards from API data when available
   const liveCards: StatCard[] = data
@@ -171,7 +188,16 @@ export default function AdminDashboard() {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Analytics Dashboard</Text>
-        <Text style={styles.subtitle}>Last updated: {lastRefresh}</Text>
+        <Text style={styles.subtitle}>Last updated: {lastRefresh}{autoRefresh ? " (auto)" : ""}</Text>
+        <TouchableOpacity
+          onPress={() => setAutoRefresh(!autoRefresh)}
+          accessibilityRole="button"
+          accessibilityLabel={autoRefresh ? "Disable auto-refresh" : "Enable auto-refresh"}
+        >
+          <Text style={styles.autoRefreshToggle}>
+            Auto-refresh: {autoRefresh ? "ON" : "OFF"}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.statsGrid}>
@@ -423,6 +449,12 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.ui.caption.fontSize,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  autoRefreshToggle: {
+    fontSize: TYPOGRAPHY.ui.caption.fontSize,
+    fontWeight: "600",
+    color: BRAND.colors.amber,
+    marginTop: 4,
   },
   betaInviteStats: {
     flexDirection: "row",

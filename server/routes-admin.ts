@@ -410,6 +410,26 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ policy: DATA_RETENTION_POLICY });
   }));
 
+  // ── Sprint 207: Analytics Data Export ──────────────────────
+  app.get("/api/admin/analytics/export", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { getPersistedDailyStats, getPersistedEventCounts } = await import("./storage/analytics");
+      const days = Math.min(365, Math.max(1, parseInt(req.query.days as string) || 90));
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const [dailyStats, eventCounts] = await Promise.all([
+        getPersistedDailyStats(days),
+        getPersistedEventCounts(since),
+      ]);
+      const format = req.query.format || "json";
+      if (format === "csv") {
+        const csvHeader = "date,events\n";
+        const csvRows = dailyStats.map(d => `${d.date},${d.events}`).join("\n");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename=analytics-export-${days}d.csv`);
+        return res.send(csvHeader + csvRows);
+      }
+      return res.json({ data: { days, dailyStats, eventCounts, exportedAt: new Date().toISOString() } });
+  }));
+
   // ── Sprint 183: Auto-Flagged Moderation Queue ──────────────
   app.get("/api/admin/moderation-queue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
     const { getAutoFlaggedRatings } = await import("./storage/ratings");
