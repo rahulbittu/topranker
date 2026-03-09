@@ -167,10 +167,12 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
+        {__DEV__ && (
         <View style={styles.demoHint}>
           <Ionicons name="information-circle-outline" size={14} color={Colors.textTertiary} />
           <Text style={styles.demoHintText}>Demo: alex@demo.com / demo123</Text>
         </View>
+        )}
 
         <View style={styles.browseHint}>
           <Text style={styles.browseHintText}>

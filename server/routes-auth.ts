@@ -64,6 +64,10 @@ export function registerAuthRoutes(app: Express) {
         }
       }
 
+      // Sprint 197: Mark beta invite as joined
+      const { markBetaInviteJoined } = await import("./storage");
+      markBetaInviteJoined(email, member.id).catch(() => {}); // Non-blocking, OK if not a beta invite
+
       // Sprint 186: Send verification email + welcome email
       const { generateEmailVerificationToken } = await import("./storage");
       const verificationToken = await generateEmailVerificationToken(member.id);

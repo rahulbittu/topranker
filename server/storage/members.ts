@@ -1,4 +1,4 @@
-import { eq, and, ne, sql, count, gte, desc } from "drizzle-orm";
+import { eq, and, ne, sql, count, countDistinct, gte, desc } from "drizzle-orm";
 import {
   members, ratings, businesses, credibilityPenalties,
   type Member,
@@ -81,28 +81,28 @@ export async function createMember(data: {
 }
 
 export async function updateMemberStats(memberId: string): Promise<void> {
-  const [ratingCount] = await db
-    .select({ count: count() })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+  // Sprint 197: Consolidated from 4 queries to 3 parallel (critique feedback)
+  const whereClause = and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false));
 
-  const categoryResult = await db
-    .select({ category: businesses.category })
-    .from(ratings)
-    .innerJoin(businesses, eq(ratings.businessId, businesses.id))
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)))
-    .groupBy(businesses.category);
+  const [statsResult, categoryResult, memberRatings] = await Promise.all([
+    // Aggregate count + distinct businesses in one query
+    db.select({
+      totalRatings: count(),
+      distinctBusinesses: countDistinct(ratings.businessId),
+    }).from(ratings).where(whereClause),
+    // Category count requires business join
+    db.select({ category: businesses.category })
+      .from(ratings)
+      .innerJoin(businesses, eq(ratings.businessId, businesses.id))
+      .where(whereClause)
+      .groupBy(businesses.category),
+    // Raw scores for variance calculation
+    db.select({ rawScore: ratings.rawScore })
+      .from(ratings)
+      .where(whereClause),
+  ]);
 
-  const distinctBizResult = await db
-    .select({ bizId: ratings.businessId })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)))
-    .groupBy(ratings.businessId);
-
-  const memberRatings = await db
-    .select({ rawScore: ratings.rawScore })
-    .from(ratings)
-    .where(and(eq(ratings.memberId, memberId), eq(ratings.isFlagged, false)));
+  const stats = statsResult[0];
 
   let variance = 0;
   if (memberRatings.length > 1) {
@@ -115,9 +115,9 @@ export async function updateMemberStats(memberId: string): Promise<void> {
   await db
     .update(members)
     .set({
-      totalRatings: ratingCount.count,
+      totalRatings: stats.totalRatings,
       totalCategories: categoryResult.length,
-      distinctBusinesses: distinctBizResult.length,
+      distinctBusinesses: stats.distinctBusinesses,
       ratingVariance: variance.toFixed(3),
       lastActive: new Date(),
     })

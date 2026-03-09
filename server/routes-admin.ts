@@ -442,14 +442,14 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data });
   }));
 
-  // ── Beta Invite — Sprint 196 ─────────────────────────────
+  // ── Beta Invite — Sprint 196 + 197 (with tracking) ──────
   app.post("/api/admin/beta-invite", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { sendBetaInviteEmail } = await import("./email");
-      const { getMemberByEmail } = await import("./storage");
+      const { getMemberByEmail, createBetaInvite, getBetaInviteByEmail } = await import("./storage");
 
       const email = sanitizeString(req.body.email, 254);
       const displayName = sanitizeString(req.body.displayName, 100);
-      const referralCode = sanitizeString(req.body.referralCode || "", 50);
+      const referralCode = sanitizeString(req.body.referralCode || "", 50) || "BETA25";
 
       if (!email || !displayName) {
         return res.status(400).json({ error: "email and displayName are required" });
@@ -461,20 +461,36 @@ export function registerAdminRoutes(app: Express) {
         return res.status(409).json({ error: "User already has an account" });
       }
 
+      // Prevent duplicate invites
+      const existingInvite = await getBetaInviteByEmail(email);
+      if (existingInvite) {
+        return res.status(409).json({ error: "Invite already sent to this email" });
+      }
+
       await sendBetaInviteEmail({
         email,
         displayName,
-        referralCode: referralCode || "BETA25",
+        referralCode,
         invitedBy: req.body.invitedBy ? sanitizeString(req.body.invitedBy, 100) : undefined,
       });
+
+      // Sprint 197: Track invite in database
+      await createBetaInvite({ email, displayName, referralCode, invitedBy: req.user?.email });
 
       return res.json({ data: { sent: true, email } });
   }));
 
-  // ── Beta Invite Batch — Sprint 196 ───────────────────────
+  // ── Beta Invite Stats — Sprint 197 ────────────────────────
+  app.get("/api/admin/beta-invites", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const { getBetaInviteStats } = await import("./storage");
+      const stats = await getBetaInviteStats();
+      return res.json({ data: stats });
+  }));
+
+  // ── Beta Invite Batch — Sprint 196 + 197 ───────────────────
   app.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { sendBetaInviteEmail } = await import("./email");
-      const { getMemberByEmail } = await import("./storage");
+      const { getMemberByEmail, createBetaInvite, getBetaInviteByEmail } = await import("./storage");
 
       const invites: Array<{ email: string; displayName: string; referralCode?: string }> = req.body.invites;
       if (!Array.isArray(invites) || invites.length === 0 || invites.length > 25) {
@@ -486,6 +502,7 @@ export function registerAdminRoutes(app: Express) {
       for (const invite of invites) {
         const email = sanitizeString(invite.email, 254);
         const displayName = sanitizeString(invite.displayName, 100);
+        const referralCode = sanitizeString(invite.referralCode || "", 50) || "BETA25";
         if (!email || !displayName) {
           results.push({ email: email || "unknown", status: "skipped", reason: "missing fields" });
           continue;
@@ -495,11 +512,13 @@ export function registerAdminRoutes(app: Express) {
           results.push({ email, status: "skipped", reason: "already registered" });
           continue;
         }
-        await sendBetaInviteEmail({
-          email,
-          displayName,
-          referralCode: sanitizeString(invite.referralCode || "", 50) || "BETA25",
-        });
+        const existingInvite = await getBetaInviteByEmail(email);
+        if (existingInvite) {
+          results.push({ email, status: "skipped", reason: "already invited" });
+          continue;
+        }
+        await sendBetaInviteEmail({ email, displayName, referralCode });
+        await createBetaInvite({ email, displayName, referralCode, invitedBy: req.user?.email });
         results.push({ email, status: "sent" });
       }
 

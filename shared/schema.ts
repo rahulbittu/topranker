@@ -753,3 +753,27 @@ export const referrals = pgTable(
 );
 
 export type Referral = typeof referrals.$inferSelect;
+
+// Sprint 197: Beta invite tracking
+export const betaInvites = pgTable(
+  "beta_invites",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    email: text("email").notNull(),
+    displayName: text("display_name").notNull(),
+    referralCode: text("referral_code").notNull().default("BETA25"),
+    invitedBy: text("invited_by"), // admin who sent the invite
+    status: text("status").notNull().default("sent"), // sent, joined, expired
+    sentAt: timestamp("sent_at").notNull().defaultNow(),
+    joinedAt: timestamp("joined_at"),
+    memberId: varchar("member_id").references(() => members.id), // linked after signup
+  },
+  (table) => [
+    index("idx_beta_invite_email").on(table.email),
+    unique("uq_beta_invite_email").on(table.email),
+  ],
+);
+
+export type BetaInvite = typeof betaInvites.$inferSelect;

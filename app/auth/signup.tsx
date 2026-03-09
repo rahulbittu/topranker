@@ -41,8 +41,12 @@ export default function SignupScreen() {
       setError("Username must be 2-30 characters: letters, numbers, or underscores");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters with a number");
+      return;
+    }
+    if (!/\d/.test(password)) {
+      setError("Password must contain at least one number");
       return;
     }
     if (!agreedToTerms) {

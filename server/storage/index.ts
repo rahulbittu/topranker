@@ -175,3 +175,11 @@ export {
   markAllNotificationsRead,
   getUnreadNotificationCount,
 } from "./notifications";
+
+// Beta Invites (Sprint 197)
+export {
+  createBetaInvite,
+  getBetaInviteByEmail,
+  markBetaInviteJoined,
+  getBetaInviteStats,
+} from "./beta-invites";

@@ -127,8 +127,9 @@ describe("1. Enumerate all tier-emitting endpoints", () => {
 
     // Verify signup uses member.credibilityTier (freshly created, always correct)
     // Sprint 186: Expanded range due to verification token generation between signup and login
+    // Sprint 197: Expanded further — beta invite tracking added between signup and session
     expect(routesAuthSrc).toMatch(
-      /api\/auth\/signup[\s\S]{0,2500}credibilityTier:\s*member\.credibilityTier/
+      /api\/auth\/signup[\s\S]{0,3200}credibilityTier:\s*member\.credibilityTier/
     );
 
     // Verify login goes through passport.authenticate which calls the LocalStrategy
