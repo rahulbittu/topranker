@@ -11,12 +11,23 @@ import { apiRateLimiter } from "./rate-limiter";
 import { perfMonitor } from "./perf-monitor";
 import { initErrorTracking } from "./error-tracking";
 import { cacheHeaders } from "./cache-headers";
+import { setFlushHandler } from "./analytics";
 
 const app = express();
 const log = console.log;
 
 // Sprint 191: Initialize error tracking early
 initErrorTracking();
+
+// Sprint 201: Connect analytics flush to PostgreSQL
+(async () => {
+  try {
+    const { persistAnalyticsEvents } = await import("./storage/analytics");
+    setFlushHandler(persistAnalyticsEvents, 30_000); // Flush every 30s
+  } catch {
+    // DB not available — analytics stays in-memory only
+  }
+})();
 
 declare module "http" {
   interface IncomingMessage {

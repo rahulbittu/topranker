@@ -183,3 +183,11 @@ export {
   markBetaInviteJoined,
   getBetaInviteStats,
 } from "./beta-invites";
+
+// Analytics Persistence (Sprint 201)
+export {
+  persistAnalyticsEvents,
+  getPersistedEventCounts,
+  getPersistedDailyStats,
+  getPersistedEventTotal,
+} from "./analytics";
