@@ -72,6 +72,25 @@ export async function getPersistedDailyStats(
   return rows.map((r) => ({ date: r.date, events: r.count }));
 }
 
+/** Sprint 209: Extended daily stats with per-event-type breakdown */
+export async function getPersistedDailyStatsExtended(
+  days: number,
+): Promise<Array<{ date: string; event: string; count: number }>> {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const rows = await db
+    .select({
+      date: sql<string>`DATE(${analyticsEvents.createdAt})`,
+      event: analyticsEvents.event,
+      count: count(),
+    })
+    .from(analyticsEvents)
+    .where(gte(analyticsEvents.createdAt, since))
+    .groupBy(sql`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event)
+    .orderBy(sql`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event);
+
+  return rows.map((r) => ({ date: r.date, event: r.event, count: r.count }));
+}
+
 /** Get total persisted event count */
 export async function getPersistedEventTotal(): Promise<number> {
   const [result] = await db
