@@ -600,6 +600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast real-time update so other clients refresh rankings
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
       broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
+      broadcast("challenger_updated", { businessId: parsed.data.businessId });
       trackEvent("first_rating", memberId);
 
       // Sprint 142: Track rating as outcome for any active experiments the user is in
