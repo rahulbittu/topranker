@@ -1,18 +1,20 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Platform, Share,
+  View, Text, StyleSheet, TouchableOpacity, Platform, Share, ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { hapticPress } from "@/lib/audio";
 import { Analytics } from "@/lib/analytics";
+import { fetchReferralStats, type ReferralStats } from "@/lib/api";
 
 const REFERRAL_REWARDS = [
   { count: 1, reward: "Earn City tier 2x faster", icon: "trending-up-outline" },
@@ -26,13 +28,18 @@ export default function ReferralScreen() {
   const { user } = useAuth();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
-  // Generate referral code from username or user ID
-  const referralCode = user?.username
-    ? `${user.username.toUpperCase()}`
-    : "TOPRANKER";
-  const referralLink = `https://topranker.com/join?ref=${referralCode}`;
+  // Sprint 192: Live referral data from API
+  const { data: stats, isLoading } = useQuery<ReferralStats>({
+    queryKey: ["/api/referrals/me"],
+    queryFn: fetchReferralStats,
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
-  const [referralCount] = useState(0); // Mock — will come from API
+  const referralCode = stats?.code || user?.username?.toUpperCase() || "TOPRANKER";
+  const referralLink = stats?.shareUrl || `https://topranker.com/join?ref=${referralCode}`;
+  const referralCount = stats?.totalReferred || 0;
+  const activatedCount = stats?.activated || 0;
 
   const shareReferral = async () => {
     hapticPress();
@@ -120,10 +127,21 @@ export default function ReferralScreen() {
         {/* Progress */}
         <Animated.View entering={FadeInUp.delay(400).duration(500)} style={styles.progressCard}>
           <Text style={styles.progressTitle}>Your Referrals</Text>
-          <View style={styles.progressCount}>
-            <Text style={styles.progressNumber}>{referralCount}</Text>
-            <Text style={styles.progressLabel}>friends joined</Text>
-          </View>
+          {isLoading ? (
+            <ActivityIndicator color={BRAND.colors.amber} style={{ marginVertical: 12 }} />
+          ) : (
+            <View style={styles.statsRow}>
+              <View style={styles.progressCount}>
+                <Text style={styles.progressNumber}>{referralCount}</Text>
+                <Text style={styles.progressLabel}>friends joined</Text>
+              </View>
+              <View style={styles.statsDivider} />
+              <View style={styles.progressCount}>
+                <Text style={styles.progressNumber}>{activatedCount}</Text>
+                <Text style={styles.progressLabel}>started rating</Text>
+              </View>
+            </View>
+          )}
         </Animated.View>
 
         {/* Rewards */}
@@ -158,6 +176,33 @@ export default function ReferralScreen() {
             );
           })}
         </Animated.View>
+
+        {/* Referral List */}
+        {stats?.referrals && stats.referrals.length > 0 && (
+          <Animated.View entering={FadeInUp.delay(550).duration(500)}>
+            <Text style={styles.rewardsTitle}>Your Referral Network</Text>
+            {stats.referrals.map((ref, i) => (
+              <View key={ref.referredId || i} style={styles.referralRow}>
+                <View style={styles.referralAvatar}>
+                  <Text style={styles.referralAvatarText}>
+                    {ref.displayName?.charAt(0)?.toUpperCase() || "?"}
+                  </Text>
+                </View>
+                <View style={styles.rewardInfo}>
+                  <Text style={styles.referralName}>{ref.displayName}</Text>
+                  <Text style={styles.referralDetail}>
+                    @{ref.username} · {ref.status === "activated" ? "Active rater" : "Joined"}
+                  </Text>
+                </View>
+                {ref.status === "activated" ? (
+                  <Ionicons name="checkmark-circle" size={18} color="#4CAF50" />
+                ) : (
+                  <Ionicons name="time-outline" size={16} color={Colors.textTertiary} />
+                )}
+              </View>
+            ))}
+          </Animated.View>
+        )}
 
         {/* Trust message */}
         <Animated.View entering={FadeInUp.delay(600).duration(500)} style={styles.trustMessage}>
@@ -281,6 +326,16 @@ const styles = StyleSheet.create({
     gap: 4,
     ...Colors.cardShadow,
   },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 20,
+  },
+  statsDivider: {
+    width: 1,
+    height: 36,
+    backgroundColor: Colors.border,
+  },
   progressTitle: {
     fontSize: 12,
     fontWeight: "600",
@@ -340,6 +395,41 @@ const styles = StyleSheet.create({
   rewardCountUnlocked: { color: BRAND.colors.amber },
   rewardText: {
     fontSize: 12,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
+  },
+  referralRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 6,
+    ...Colors.cardShadow,
+  },
+  referralAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${BRAND.colors.amber}15`,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  referralAvatarText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: BRAND.colors.amber,
+    fontFamily: "DMSans_700Bold",
+  },
+  referralName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: Colors.text,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  referralDetail: {
+    fontSize: 11,
     color: Colors.textTertiary,
     fontFamily: "DMSans_400Regular",
   },

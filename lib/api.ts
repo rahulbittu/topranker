@@ -385,6 +385,32 @@ export async function fetchMemberImpact() {
   return apiFetch<ApiMemberImpact>("/api/members/me/impact");
 }
 
+// ── Sprint 192: Referral API ────────────────────────────────────
+
+export interface ReferralEntry {
+  referredId: string;
+  displayName: string;
+  username: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface ReferralStats {
+  code: string;
+  shareUrl: string;
+  totalReferred: number;
+  activated: number;
+  referrals: ReferralEntry[];
+}
+
+export async function fetchReferralStats(): Promise<ReferralStats> {
+  return apiFetch<ReferralStats>("/api/referrals/me");
+}
+
+export async function validateReferralCode(code: string): Promise<{ valid: boolean }> {
+  return apiFetch<{ valid: boolean }>(`/api/referrals/validate?code=${encodeURIComponent(code)}`);
+}
+
 export async function submitCategorySuggestion(data: {
   name: string;
   description: string;
