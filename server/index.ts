@@ -10,6 +10,7 @@ import { securityHeaders } from "./security-headers";
 import { apiRateLimiter } from "./rate-limiter";
 import { perfMonitor } from "./perf-monitor";
 import { initErrorTracking } from "./error-tracking";
+import { cacheHeaders } from "./cache-headers";
 
 const app = express();
 const log = console.log;
@@ -336,6 +337,7 @@ function setupErrorHandler(app: express.Application) {
   app.use(securityHeaders);
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
+  app.use(cacheHeaders); // Sprint 194: HTTP cache headers for CDN
   app.use(perfMonitor);
 
   // X-Response-Time header — set before response is sent (Sprint 118)
