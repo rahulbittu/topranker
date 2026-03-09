@@ -2,7 +2,7 @@
  * Multi-City Seed Script
  * Owner: Priya Sharma (Backend Architect) + Cole (City Growth Lead)
  *
- * Seeds Austin, Houston, San Antonio, Fort Worth, and Oklahoma City with realistic businesses.
+ * Seeds Austin, Houston, San Antonio, Fort Worth, Oklahoma City, and New Orleans with realistic businesses.
  * Run this AFTER the main seed has populated Dallas.
  * Usage: npx tsx server/seed-cities.ts
  */
@@ -88,16 +88,30 @@ const OKC_BUSINESSES: SeedBusiness[] = [
   { name: "The Press", slug: "the-press-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "cafe", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Coffee and community in the heart of Plaza District", priceRange: "$", phone: "(405) 524-0222", address: "1738 NW 16th St, Oklahoma City, OK", lat: "35.4822", lng: "-97.5342", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
 ];
 
+const NOLA_BUSINESSES: SeedBusiness[] = [
+  { name: "Commander's Palace", slug: "commanders-palace-nola", city: "New Orleans", neighborhood: "Garden District", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 612, description: "Fine dining legend since 1893. Creole cuisine at its finest", priceRange: "$$$$", phone: "(504) 899-8221", address: "1403 Washington Ave, New Orleans, LA", lat: "29.9291", lng: "-90.0892", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+  { name: "Dooky Chase's", slug: "dooky-chases-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Queen of Creole cuisine. Civil rights history meets gumbo perfection", priceRange: "$$$", phone: "(504) 821-0600", address: "2301 Orleans Ave, New Orleans, LA", lat: "29.9650", lng: "-90.0775", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+  { name: "Cafe Du Monde", slug: "cafe-du-monde-nola", city: "New Orleans", neighborhood: "French Quarter", category: "cafe", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Beignets and chicory coffee 24/7 since 1862", priceRange: "$", phone: "(504) 525-4544", address: "800 Decatur St, New Orleans, LA", lat: "29.9574", lng: "-90.0618", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+  { name: "Willie Mae's Scotch House", slug: "willie-maes-scotch-house-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Best fried chicken in America. James Beard Award winner", priceRange: "$$", phone: "(504) 822-9503", address: "2401 St Ann St, New Orleans, LA", lat: "29.9660", lng: "-90.0790", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "Cochon", slug: "cochon-nola", city: "New Orleans", neighborhood: "Warehouse District", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 398, description: "Cajun nose-to-tail cooking with Louisiana soul", priceRange: "$$$", phone: "(504) 588-2123", address: "930 Tchoupitoulas St, New Orleans, LA", lat: "29.9430", lng: "-90.0680", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+  { name: "Bacchanal Wine", slug: "bacchanal-wine-nola", city: "New Orleans", neighborhood: "Bywater", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 423, description: "Wine bar meets backyard concert venue in the Bywater", priceRange: "$$", phone: "(504) 948-9111", address: "600 Poland Ave, New Orleans, LA", lat: "29.9630", lng: "-90.0400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+  { name: "Dong Phuong Bakery", slug: "dong-phuong-bakery-nola", city: "New Orleans", neighborhood: "New Orleans East", category: "bakery", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Vietnamese-French bakery. Best king cake and banh mi in NOLA", priceRange: "$", phone: "(504) 254-0214", address: "14207 Chef Menteur Hwy, New Orleans, LA", lat: "30.0280", lng: "-89.9580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+  { name: "Dat Dog", slug: "dat-dog-nola", city: "New Orleans", neighborhood: "Frenchmen Street", category: "street_food", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Gourmet hot dogs with wild toppings. NOLA street food icon", priceRange: "$", phone: "(504) 309-3362", address: "601 Frenchmen St, New Orleans, LA", lat: "29.9640", lng: "-90.0570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+  { name: "Raising Cane's", slug: "raising-canes-nola", city: "New Orleans", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Born in Baton Rouge, perfected in NOLA. One love — chicken fingers", priceRange: "$", phone: "(504) 304-6264", address: "Multiple locations, New Orleans, LA", lat: "29.9511", lng: "-90.0715", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "French Truck Coffee", slug: "french-truck-coffee-nola", city: "New Orleans", neighborhood: "CBD", category: "cafe", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 289, description: "Local roaster serving NOLA's best specialty coffee", priceRange: "$$", phone: "(504) 309-7880", address: "1200 Carondelet St, New Orleans, LA", lat: "29.9410", lng: "-90.0730", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+];
+
 const ALL_CITY_BUSINESSES = [
   ...AUSTIN_BUSINESSES,
   ...HOUSTON_BUSINESSES,
   ...SAN_ANTONIO_BUSINESSES,
   ...FORT_WORTH_BUSINESSES,
   ...OKC_BUSINESSES,
+  ...NOLA_BUSINESSES,
 ];
 
 export async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 5 cities...`);
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 6 cities...`);
 
   let seeded = 0;
   for (const biz of ALL_CITY_BUSINESSES) {
@@ -135,7 +149,7 @@ export async function seedCities() {
   }
 
   console.log(`\nSeeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10)");
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10)");
 }
 
 // Run directly if executed as script

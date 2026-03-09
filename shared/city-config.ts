@@ -96,7 +96,8 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     region: "Greater New Orleans",
     timezone: "America/Chicago",
     coordinates: { lat: 29.9511, lng: -90.0715 },
-    status: "planned",
+    status: "beta",
+    launchDate: "2026-03-09",
     minBusinesses: 10,
   },
 } as const;

@@ -11,6 +11,7 @@ import { db } from "./db";
 import { businesses, members } from "@shared/schema";
 import { log } from "./logger";
 import { eq, isNotNull, and, isNull } from "drizzle-orm";
+import { hasOutreachBeenSent, recordOutreachSent } from "./outreach-history";
 
 const outreachLog = log.tag("OutreachScheduler");
 
@@ -77,6 +78,11 @@ export async function processOwnerOutreach(): Promise<{
     for (const biz of proCandidates) {
       if (biz.totalRatings < 10 || !biz.ownerId) continue;
 
+      if (hasOutreachBeenSent(String(biz.id), "pro_upgrade", 30)) {
+        outreachLog.info(`Skipping Pro upgrade for ${biz.name} — sent within 30 days`);
+        continue;
+      }
+
       try {
         const [owner] = await db
           .select({ email: members.email, displayName: members.displayName })
@@ -92,6 +98,7 @@ export async function processOwnerOutreach(): Promise<{
           totalRatings: biz.totalRatings,
           weightedScore: parseFloat(biz.weightedScore ?? "0"),
         });
+        recordOutreachSent(String(biz.id), "pro_upgrade");
         proUpgrades++;
       } catch (err) {
         outreachLog.error(`Pro upgrade email failed for business ${biz.id}`, err);
