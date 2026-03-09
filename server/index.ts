@@ -422,6 +422,10 @@ function setupErrorHandler(app: express.Application) {
   const { startDripScheduler } = await import("./drip-scheduler");
   const dripSchedulerTimeout = startDripScheduler();
 
+  // Sprint 227: Owner outreach scheduler — weekly on Wednesdays
+  const { startOutreachScheduler } = await import("./outreach-scheduler");
+  const outreachSchedulerTimeout = startOutreachScheduler();
+
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
@@ -440,6 +444,7 @@ function setupErrorHandler(app: express.Application) {
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
     clearTimeout(dripSchedulerTimeout);
+    clearTimeout(outreachSchedulerTimeout);
 
     server.close(() => {
       logger.info("HTTP server closed");
