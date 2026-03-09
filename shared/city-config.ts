@@ -135,3 +135,15 @@ export function getCityStats(): { active: number; beta: number; planned: number;
     total: cities.length,
   };
 }
+
+/** Sprint 226: Get all beta city names — used by city picker to show beta badge */
+export function getBetaCities(): string[] {
+  return Object.values(CITY_REGISTRY)
+    .filter((c) => c.status === "beta")
+    .map((c) => c.name);
+}
+
+/** Sprint 226: Get a city's badge status for the frontend city picker */
+export function getCityBadge(name: string): "active" | "beta" | "planned" | "unknown" {
+  return CITY_REGISTRY[name]?.status ?? "unknown";
+}

@@ -4,6 +4,7 @@
  * Falls back to console logging in development.
  */
 import { log } from "./logger";
+import { trackEmailSent, trackEmailFailed } from "./email-tracking";
 
 const emailLog = log.tag("Email");
 
@@ -64,11 +65,18 @@ async function sendWithRetry(payload: EmailPayload, maxRetries: number = 3): Pro
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<void> {
+  // Sprint 226: Track all email sends
+  const templateName = payload.subject.slice(0, 50);
+  const trackingId = trackEmailSent(payload.to, templateName);
+
   if (!RESEND_API_KEY) {
     emailLog.info(`[DEV] To: ${payload.to} | Subject: ${payload.subject}`);
     return;
   }
-  await sendWithRetry(payload);
+  const success = await sendWithRetry(payload);
+  if (!success) {
+    trackEmailFailed(trackingId, "Resend API failed after retries");
+  }
 }
 
 export async function sendWelcomeEmail(params: {

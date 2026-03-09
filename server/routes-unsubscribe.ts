@@ -13,6 +13,7 @@ import { members } from "@shared/schema";
 import { log } from "./logger";
 import { wrapAsync } from "./wrap-async";
 import { sanitizeString } from "./sanitize";
+import { verifyUnsubscribeToken } from "./unsubscribe-tokens";
 
 type EmailType = "drip" | "weekly" | "all";
 const VALID_TYPES: EmailType[] = ["drip", "weekly", "all"];
@@ -41,46 +42,76 @@ a{color:#C49A1A;text-decoration:underline}</style></head>
 
 export function registerUnsubscribeRoutes(app: Express) {
   app.get("/api/unsubscribe", wrapAsync(async (req: Request, res: Response) => {
-    const token = sanitizeString(req.query.token, 100);
-    const type = (sanitizeString(req.query.type, 10) || "all") as EmailType;
+    const token = sanitizeString(req.query.token, 200);
 
-    if (!token || !VALID_TYPES.includes(type)) {
+    if (!token) {
       return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
     }
 
-    const [member] = await db.select().from(members).where(eq(members.id, token)).limit(1);
+    // Sprint 226: Support signed tokens
+    let memberId: string;
+    let type: EmailType;
+    const signed = verifyUnsubscribeToken(token);
+    if (signed && VALID_TYPES.includes(signed.type as EmailType)) {
+      memberId = signed.memberId;
+      type = signed.type as EmailType;
+    } else {
+      // Backward compatibility: treat token as raw member ID
+      memberId = token;
+      type = (sanitizeString(req.query.type, 10) || "all") as EmailType;
+      if (!VALID_TYPES.includes(type)) {
+        return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+      }
+    }
+
+    const [member] = await db.select().from(members).where(eq(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
 
     const existing = (member.notificationPrefs as Record<string, boolean>) || {};
     const updated = { ...existing, ...flagsForType(type, false) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq(members.id, token));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq(members.id, memberId));
 
-    log.info(`Unsubscribed member ${token} from ${type} emails`);
+    log.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
     return res.send(htmlPage("Unsubscribed", `<p>You've been unsubscribed from <strong>${label}</strong> emails.</p><p><a href="${resubLink}">Re-subscribe</a></p>`));
   }));
 
   app.get("/api/resubscribe", wrapAsync(async (req: Request, res: Response) => {
-    const token = sanitizeString(req.query.token, 100);
-    const type = (sanitizeString(req.query.type, 10) || "all") as EmailType;
+    const token = sanitizeString(req.query.token, 200);
 
-    if (!token || !VALID_TYPES.includes(type)) {
+    if (!token) {
       return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
     }
 
-    const [member] = await db.select().from(members).where(eq(members.id, token)).limit(1);
+    // Sprint 226: Support signed tokens
+    let memberId: string;
+    let type: EmailType;
+    const signed = verifyUnsubscribeToken(token);
+    if (signed && VALID_TYPES.includes(signed.type as EmailType)) {
+      memberId = signed.memberId;
+      type = signed.type as EmailType;
+    } else {
+      // Backward compatibility: treat token as raw member ID
+      memberId = token;
+      type = (sanitizeString(req.query.type, 10) || "all") as EmailType;
+      if (!VALID_TYPES.includes(type)) {
+        return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+      }
+    }
+
+    const [member] = await db.select().from(members).where(eq(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
 
     const existing = (member.notificationPrefs as Record<string, boolean>) || {};
     const updated = { ...existing, ...flagsForType(type, true) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq(members.id, token));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq(members.id, memberId));
 
-    log.info(`Resubscribed member ${token} to ${type} emails`);
+    log.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
   }));
