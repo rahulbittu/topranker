@@ -25,6 +25,7 @@ import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCar
 import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
+import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
@@ -231,56 +232,17 @@ export default function SearchScreen() {
         )}
       </View>
 
-      {/* Sprint 184: Autocomplete dropdown */}
-      {searchFocused && query.length >= 2 && autocompleteResults.length > 0 && (
-        <View style={styles.autocompleteDropdown}>
-          {autocompleteResults.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.autocompleteRow}
-              onPress={() => {
-                router.push({ pathname: "/business/[id]", params: { id: item.slug } });
-                setSearchFocused(false);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Go to ${item.name}`}
-            >
-              <Ionicons name="restaurant-outline" size={14} color={AMBER} />
-              <View style={styles.autocompleteInfo}>
-                <Text style={styles.autocompleteName} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.autocompleteMeta} numberOfLines={1}>
-                  {getCategoryDisplay(item.category).emoji} {getCategoryDisplay(item.category).label}
-                  {item.neighborhood ? ` · ${item.neighborhood}` : ""}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Sprint 193: Extracted to SearchOverlays component */}
+      {searchFocused && query.length >= 2 && (
+        <AutocompleteDropdown results={autocompleteResults} onDismiss={() => setSearchFocused(false)} />
       )}
 
-      {/* Sprint 184: Recent searches — shown when focused with empty query */}
-      {searchFocused && query.length === 0 && recentSearches.length > 0 && (
-        <View style={styles.recentSearchesContainer}>
-          <View style={styles.recentSearchesHeader}>
-            <Text style={styles.recentSearchesTitle}>Recent</Text>
-            <TouchableOpacity onPress={clearRecentSearches} accessibilityRole="button" accessibilityLabel="Clear recent searches">
-              <Text style={styles.recentSearchesClear}>Clear</Text>
-            </TouchableOpacity>
-          </View>
-          {recentSearches.slice(0, 5).map((term) => (
-            <TouchableOpacity
-              key={term}
-              style={styles.recentSearchRow}
-              onPress={() => { setQuery(term); setSearchFocused(false); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Search for ${term}`}
-            >
-              <Ionicons name="time-outline" size={14} color={Colors.textTertiary} />
-              <Text style={styles.recentSearchText}>{term}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {searchFocused && query.length === 0 && (
+        <RecentSearchesPanel
+          searches={recentSearches}
+          onSelect={(term) => { setQuery(term); setSearchFocused(false); }}
+          onClear={clearRecentSearches}
+        />
       )}
 
       {/* View mode toggle + filters */}
@@ -825,46 +787,5 @@ const styles = StyleSheet.create({
     color: "#fff", fontWeight: "600",
   },
 
-  // Sprint 184: Autocomplete dropdown
-  autocompleteDropdown: {
-    marginHorizontal: 16, backgroundColor: Colors.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
-    ...Colors.cardShadow, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4,
-  },
-  autocompleteRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 11,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  autocompleteInfo: { flex: 1, gap: 1 },
-  autocompleteName: {
-    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  autocompleteMeta: {
-    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-
-  // Sprint 184: Recent searches
-  recentSearchesContainer: {
-    marginHorizontal: 16, backgroundColor: Colors.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border, marginBottom: 8, overflow: "hidden",
-  },
-  recentSearchesHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 6,
-  },
-  recentSearchesTitle: {
-    fontSize: 12, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
-  },
-  recentSearchesClear: {
-    fontSize: 11, color: AMBER, fontFamily: "DMSans_600SemiBold",
-  },
-  recentSearchRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingHorizontal: 14, paddingVertical: 9,
-    borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  recentSearchText: {
-    fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular",
-  },
+  // Sprint 193: Autocomplete + recent search styles moved to SearchOverlays.tsx
 });

@@ -171,13 +171,13 @@ describe("Client — autocomplete dropdown", () => {
     expect(src).toContain("150");
   });
 
-  it("shows autocomplete dropdown with business names", () => {
-    expect(src).toContain("autocompleteDropdown");
-    expect(src).toContain("autocompleteName");
+  it("uses AutocompleteDropdown component (Sprint 193 extraction)", () => {
+    expect(src).toContain("AutocompleteDropdown");
+    expect(src).toContain("SearchOverlays");
   });
 
-  it("navigates to business on autocomplete tap", () => {
-    expect(src).toContain("router.push({ pathname: \"/business/[id]\", params: { id: item.slug } })");
+  it("passes autocompleteResults to AutocompleteDropdown", () => {
+    expect(src).toContain("results={autocompleteResults}");
   });
 
   it("requires minimum 2 characters for autocomplete", () => {
@@ -185,9 +185,10 @@ describe("Client — autocomplete dropdown", () => {
     expect(src).toContain("query.trim().length < 2");
   });
 
-  it("displays category and neighborhood in suggestions", () => {
-    expect(src).toContain("autocompleteMeta");
-    expect(src).toContain("item.neighborhood");
+  it("autocomplete component handles category and neighborhood (in SearchOverlays)", () => {
+    const overlaySrc = readFile("components/search/SearchOverlays.tsx");
+    expect(overlaySrc).toContain("autocompleteMeta");
+    expect(overlaySrc).toContain("item.neighborhood");
   });
 });
 
@@ -210,14 +211,14 @@ describe("Client — recent searches", () => {
     expect(src).toContain(".slice(0, 8)");
   });
 
-  it("shows recent searches when focused with empty query", () => {
-    expect(src).toContain("recentSearchesContainer");
-    expect(src).toContain("searchFocused && query.length === 0 && recentSearches.length > 0");
+  it("uses RecentSearchesPanel component (Sprint 193 extraction)", () => {
+    expect(src).toContain("RecentSearchesPanel");
+    expect(src).toContain("searchFocused && query.length === 0");
   });
 
-  it("has clear recent searches button", () => {
+  it("passes clearRecentSearches to RecentSearchesPanel", () => {
     expect(src).toContain("clearRecentSearches");
-    expect(src).toContain("Clear recent searches");
+    expect(src).toContain("onClear={clearRecentSearches}");
   });
 
   it("deduplicates recent searches (case-insensitive)", () => {
