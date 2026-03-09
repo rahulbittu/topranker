@@ -15,6 +15,7 @@ import { registerDishRoutes } from "./routes-dishes";
 import { registerSeoRoutes } from "./routes-seo";
 import { registerQrRoutes } from "./routes-qr";
 import { registerNotificationRoutes } from "./routes-notifications";
+import { registerReferralRoutes } from "./routes-referrals";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -207,6 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSeoRoutes(app);
   registerQrRoutes(app);
   registerNotificationRoutes(app);
+  registerReferralRoutes(app);
 
   // ── Rating Submission ──────────────────────────────────────
   app.post("/api/ratings", requireAuth, wrapAsync(async (req: Request, res: Response) => {

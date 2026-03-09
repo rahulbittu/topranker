@@ -158,6 +158,15 @@ export {
   markQrScanConverted,
 } from "./qr";
 
+// Referrals (Sprint 188)
+export {
+  createReferral,
+  resolveReferralCode,
+  getReferralStats,
+  activateReferral,
+  getReferrerForMember,
+} from "./referrals";
+
 // In-App Notifications (Sprint 182)
 export {
   createNotification,

@@ -226,6 +226,12 @@ export async function submitRating(
   const oldTier = member.credibilityTier;
   const tierUpgraded = newTier !== oldTier;
 
+  // Sprint 188: Activate referral on first rating
+  if (member.totalRatings === 0) {
+    const { activateReferral } = await import("./referrals");
+    activateReferral(memberId).catch(() => {});
+  }
+
   const prevRank = business.rankPosition;
   await recalculateBusinessScore(data.businessId);
   await recalculateRanks(business.city, business.category);

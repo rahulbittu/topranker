@@ -52,6 +52,18 @@ export function registerAuthRoutes(app: Express) {
 
       const member = await registerMember({ displayName, username, email, password, city });
 
+      // Sprint 188: Track referral if code provided
+      const referralCode = sanitizeString(req.body.referralCode, 50);
+      if (referralCode) {
+        const { resolveReferralCode, createReferral } = await import("./storage");
+        const referrerId = await resolveReferralCode(referralCode);
+        if (referrerId && referrerId !== member.id) {
+          createReferral(referrerId, member.id, referralCode).catch((err) =>
+            log.error("Referral tracking failed:", err)
+          );
+        }
+      }
+
       // Sprint 186: Send verification email + welcome email
       const { generateEmailVerificationToken } = await import("./storage");
       const verificationToken = await generateEmailVerificationToken(member.id);

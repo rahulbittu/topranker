@@ -726,3 +726,30 @@ export const notifications = pgTable(
 );
 
 export type Notification = typeof notifications.$inferSelect;
+
+// Sprint 188: Referral tracking
+export const referrals = pgTable(
+  "referrals",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    referrerId: varchar("referrer_id")
+      .notNull()
+      .references(() => members.id),
+    referredId: varchar("referred_id")
+      .notNull()
+      .references(() => members.id),
+    referralCode: text("referral_code").notNull(),
+    status: text("status").notNull().default("signed_up"), // signed_up, activated (rated), churned
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    activatedAt: timestamp("activated_at"), // when referred user submits first rating
+  },
+  (table) => [
+    index("idx_referral_referrer").on(table.referrerId),
+    index("idx_referral_referred").on(table.referredId),
+    unique("uq_referral_referred").on(table.referredId), // one referrer per user
+  ],
+);
+
+export type Referral = typeof referrals.$inferSelect;
