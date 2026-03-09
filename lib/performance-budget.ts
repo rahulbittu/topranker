@@ -44,12 +44,25 @@ export function checkBudget(
 }
 
 /**
- * Generate a full budget report for all tracked metrics.
- * Placeholder — returns all "ok" until real measurements are wired in.
+ * Generate a full budget report for tracked metrics.
+ * Sprint 208: Now accepts actual values for real measurement.
  */
-export function getBudgetReport(): {
+export function getBudgetReport(
+  actuals?: Record<string, number>,
+): Array<{
   metric: string;
   status: "ok" | "warning" | "exceeded";
-}[] {
-  return BUDGETS.map((b) => ({ metric: b.metric, status: "ok" as const }));
+  budget: number;
+  actual: number | null;
+  unit: string;
+}> {
+  return BUDGETS.map((b) => {
+    const actual = actuals?.[b.metric] ?? null;
+    let status: "ok" | "warning" | "exceeded" = "ok";
+    if (actual !== null) {
+      if (actual > b.budget) status = "exceeded";
+      else if (actual > b.budget * 0.8) status = "warning";
+    }
+    return { metric: b.metric, status, budget: b.budget, actual, unit: b.unit };
+  });
 }
