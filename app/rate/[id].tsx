@@ -68,6 +68,14 @@ export default function RateScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
 
+  // Auto-dismiss error banner after 8 seconds
+  useEffect(() => {
+    if (submitError) {
+      const timer = setTimeout(() => setSubmitError(""), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [submitError]);
+
   const [dishSearchResults, setDishSearchResults] = useState<ApiDish[]>([]);
   const [dishSearching, setDishSearching] = useState(false);
   const dishSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -181,8 +189,14 @@ export default function RateScreen() {
         setSubmitError("No internet connection. Please check your network and try again.");
       } else if (msg.includes("401")) {
         setSubmitError("Your session has expired. Please sign in again.");
+      } else if (msg.includes("Already rated today") || msg.includes("already rated")) {
+        setSubmitError("You've already rated this place today. Come back tomorrow to rate again!");
+      } else if (msg.includes("3+ days") || msg.includes("days old")) {
+        setSubmitError("Your account needs a few more days before you can rate. This helps us prevent fake reviews.");
+      } else if (msg.includes("suspended") || msg.includes("banned")) {
+        setSubmitError("Your account has been suspended. Please contact support for more information.");
       } else {
-        setSubmitError(msg || "Failed to submit rating");
+        setSubmitError(msg || "Failed to submit rating. Please try again.");
       }
     },
     onSettled: () => {
@@ -598,10 +612,17 @@ export default function RateScreen() {
       </ScrollView>
 
       {!!submitError && (
-        <View style={styles.errorBanner}>
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={() => setSubmitError("")}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss error"
+        >
           <Ionicons name="alert-circle" size={16} color={Colors.red} />
           <Text style={styles.errorBannerText}>{submitError}</Text>
-        </View>
+          <Ionicons name="close" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: bottomPad + 12 }]}>
