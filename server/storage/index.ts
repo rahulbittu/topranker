@@ -34,6 +34,7 @@ export {
   getTrendingBusinesses,
   getBusinessBySlug,
   getBusinessById,
+  getBusinessesByIds,
   searchBusinesses,
   getAllCategories,
   recalculateBusinessScore,
@@ -54,7 +55,16 @@ export { submitRating } from "./ratings";
 export { getActiveChallenges, updateChallengerVotes } from "./challengers";
 
 // Dishes
-export { getBusinessDishes, searchDishes } from "./dishes";
+export {
+  getBusinessDishes,
+  searchDishes,
+  getDishLeaderboards,
+  getDishLeaderboardWithEntries,
+  getDishSuggestions,
+  submitDishSuggestion,
+  voteDishSuggestion,
+  recalculateDishLeaderboard,
+} from "./dishes";
 
 // Categories
 export {

@@ -566,6 +566,99 @@ export const deletionRequests = pgTable(
 
 export type DeletionRequestRow = typeof deletionRequests.$inferSelect;
 
+// ── Dish Leaderboards — Sprint 166 ─────────────────────────
+export const dishLeaderboards = pgTable(
+  "dish_leaderboards",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    city: text("city").notNull(),
+    dishName: text("dish_name").notNull(),
+    dishSlug: text("dish_slug").notNull(),
+    dishEmoji: text("dish_emoji"),
+    status: text("status").notNull().default("active"),
+    minRatingCount: integer("min_rating_count").notNull().default(5),
+    displayOrder: integer("display_order").notNull().default(0),
+    source: text("source").notNull().default("system"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    unique("unique_dish_city").on(table.city, table.dishSlug),
+    index("idx_dish_lb_city").on(table.city, table.status),
+  ],
+);
+
+export type DishLeaderboard = typeof dishLeaderboards.$inferSelect;
+
+export const dishLeaderboardEntries = pgTable(
+  "dish_leaderboard_entries",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    leaderboardId: varchar("leaderboard_id")
+      .notNull()
+      .references(() => dishLeaderboards.id),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    dishScore: numeric("dish_score", { precision: 5, scale: 2 }).notNull().default("0"),
+    dishRatingCount: integer("dish_rating_count").notNull().default(0),
+    rankPosition: integer("rank_position").notNull().default(0),
+    previousRank: integer("previous_rank"),
+    photoUrl: text("photo_url"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    unique("unique_entry_lb_biz").on(table.leaderboardId, table.businessId),
+    index("idx_dish_entry_lb_rank").on(table.leaderboardId, table.rankPosition),
+  ],
+);
+
+export type DishLeaderboardEntry = typeof dishLeaderboardEntries.$inferSelect;
+
+export const dishSuggestions = pgTable(
+  "dish_suggestions",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    city: text("city").notNull(),
+    dishName: text("dish_name").notNull(),
+    suggestedBy: varchar("suggested_by")
+      .notNull()
+      .references(() => members.id),
+    voteCount: integer("vote_count").notNull().default(1),
+    status: text("status").notNull().default("proposed"),
+    activationThreshold: integer("activation_threshold").notNull().default(10),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_dish_sugg_city").on(table.city, table.voteCount),
+  ],
+);
+
+export type DishSuggestion = typeof dishSuggestions.$inferSelect;
+
+export const dishSuggestionVotes = pgTable("dish_suggestion_votes", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  suggestionId: varchar("suggestion_id")
+    .notNull()
+    .references(() => dishSuggestions.id),
+  memberId: varchar("member_id")
+    .notNull()
+    .references(() => members.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertDishSuggestionSchema = z.object({
+  city: z.string().min(2).max(50),
+  dishName: z.string().min(2).max(40),
+});
+
 export const insertCategorySuggestionSchema = z.object({
   name: z.string().min(2).max(50),
   description: z.string().min(10).max(200),

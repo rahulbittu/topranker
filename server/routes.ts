@@ -38,6 +38,7 @@ import {
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
+import { registerDishRoutes } from "./routes-dishes";
 import { authRateLimiter } from "./rate-limiter";
 import { sanitizeString, sanitizeEmail, sanitizeNumber } from "./sanitize";
 import { trackEvent } from "./analytics";
@@ -581,6 +582,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = await searchDishes(businessId, query);
     return res.json({ data });
   }));
+
+  // ── Dish Leaderboard Routes (extracted to routes-dishes.ts) ──
+  registerDishRoutes(app);
 
   app.post("/api/ratings", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     try {
