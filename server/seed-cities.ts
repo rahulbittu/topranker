@@ -2,7 +2,7 @@
  * Multi-City Seed Script
  * Owner: Priya Sharma (Backend Architect) + Cole (City Growth Lead)
  *
- * Seeds Austin, Houston, San Antonio, Fort Worth, Oklahoma City, and New Orleans with realistic businesses.
+ * Seeds Austin, Houston, San Antonio, Fort Worth, Oklahoma City, New Orleans, Memphis, and Nashville with realistic businesses.
  * Run this AFTER the main seed has populated Dallas.
  * Usage: npx tsx server/seed-cities.ts
  */
@@ -101,6 +101,32 @@ const NOLA_BUSINESSES: SeedBusiness[] = [
   { name: "French Truck Coffee", slug: "french-truck-coffee-nola", city: "New Orleans", neighborhood: "CBD", category: "cafe", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 289, description: "Local roaster serving NOLA's best specialty coffee", priceRange: "$$", phone: "(504) 309-7880", address: "1200 Carondelet St, New Orleans, LA", lat: "29.9410", lng: "-90.0730", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
 ];
 
+const MEMPHIS_BUSINESSES: SeedBusiness[] = [
+  { name: "Central BBQ", slug: "central-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "restaurant", weightedScore: "4.820", rawAvgScore: "4.70", rankPosition: 1, rankDelta: 0, totalRatings: 589, description: "Memphis dry-rub ribs perfected. Competition-winning BBQ.", priceRange: "$$", phone: "(901) 672-7760", address: "2249 Central Ave, Memphis, TN", lat: "35.1312", lng: "-89.9903", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+  { name: "Gus's World Famous Fried Chicken", slug: "gus-fried-chicken-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Spicy fried chicken legend. The original since 1953.", priceRange: "$$", phone: "(901) 527-4877", address: "310 S Front St, Memphis, TN", lat: "35.1380", lng: "-90.0560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "Charlie Vergos' Rendezvous", slug: "rendezvous-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Underground dry-rub rib institution since 1948.", priceRange: "$$", phone: "(901) 523-2746", address: "52 S 2nd St, Memphis, TN", lat: "35.1420", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+  { name: "Dyer's Burgers", slug: "dyers-burgers-memphis", city: "Memphis", neighborhood: "Beale Street", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Deep-fried burgers on Beale Street since 1912. Legendary grease.", priceRange: "$", phone: "(901) 527-3937", address: "205 Beale St, Memphis, TN", lat: "35.1395", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+  { name: "Muddy's Bake Shop", slug: "muddys-bake-shop-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "bakery", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "From-scratch cupcakes and pies in Cooper-Young.", priceRange: "$", phone: "(901) 683-8844", address: "2263 Young Ave, Memphis, TN", lat: "35.1270", lng: "-89.9880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+  { name: "City & State Coffee", slug: "city-state-coffee-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Specialty coffee and community in the Cooper-Young district.", priceRange: "$$", phone: "(901) 249-2406", address: "2625 Broad Ave, Memphis, TN", lat: "35.1350", lng: "-89.9760", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+  { name: "Aldo's Pizza Pies", slug: "aldos-pizza-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "restaurant", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 5, rankDelta: 0, totalRatings: 198, description: "Neapolitan-style pizza in the heart of Cooper-Young.", priceRange: "$$", phone: "(901) 276-7600", address: "1937 Young Ave, Memphis, TN", lat: "35.1275", lng: "-89.9920", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+  { name: "Blues City Cafe", slug: "blues-city-cafe-memphis", city: "Memphis", neighborhood: "Beale Street", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 412, description: "Live blues and BBQ on Beale Street. Memphis nightlife icon.", priceRange: "$$", phone: "(901) 526-3637", address: "138 Beale St, Memphis, TN", lat: "35.1393", lng: "-90.0540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+  { name: "Payne's Bar-B-Q", slug: "paynes-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "street_food", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 367, description: "Chopped pork sandwich perfection. No-frills Memphis BBQ.", priceRange: "$", phone: "(901) 272-1523", address: "1762 Lamar Ave, Memphis, TN", lat: "35.1230", lng: "-89.9870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+  { name: "Jack Pirtle's Chicken", slug: "jack-pirtles-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "fast_food", weightedScore: "4.300", rawAvgScore: "4.15", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Memphis fried chicken chain since 1956. Local institution.", priceRange: "$", phone: "(901) 324-7800", address: "1217 S Bellevue Blvd, Memphis, TN", lat: "35.1240", lng: "-90.0100", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+];
+
+const NASHVILLE_BUSINESSES: SeedBusiness[] = [
+  { name: "Prince's Hot Chicken Shack", slug: "princes-hot-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 623, description: "The original Nashville hot chicken. Since 1945.", priceRange: "$", phone: "(615) 226-9442", address: "123 Ewing Dr, Nashville, TN", lat: "36.1880", lng: "-86.7450", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+  { name: "Hattie B's Hot Chicken", slug: "hattie-bs-nashville", city: "Nashville", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Nashville hot chicken with Southern sides. Worth the wait.", priceRange: "$$", phone: "(615) 678-4794", address: "112 19th Ave S, Nashville, TN", lat: "36.1530", lng: "-86.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+  { name: "Martin's Bar-B-Que Joint", slug: "martins-bbq-nashville", city: "Nashville", neighborhood: "12South", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 445, description: "Whole-hog BBQ done right. West Tennessee pit tradition.", priceRange: "$$", phone: "(615) 288-0880", address: "2400 Elliston Pl, Nashville, TN", lat: "36.1540", lng: "-86.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+  { name: "Biscuit Love", slug: "biscuit-love-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Southern brunch institution. The Bonuts are legendary.", priceRange: "$$", phone: "(615) 490-9584", address: "316 11th Ave S, Nashville, TN", lat: "36.1520", lng: "-86.7880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
+  { name: "The Pharmacy Burger Parlor", slug: "pharmacy-burger-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 378, description: "German-style biergarten with craft burgers.", priceRange: "$$", phone: "(615) 712-9517", address: "731 McFerrin Ave, Nashville, TN", lat: "36.1850", lng: "-86.7620", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+  { name: "Five Daughters Bakery", slug: "five-daughters-bakery-nashville", city: "Nashville", neighborhood: "12South", category: "bakery", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "100-layer donuts and artisan pastries in 12South.", priceRange: "$$", phone: "(615) 490-6554", address: "1110 Caruthers Ave, Nashville, TN", lat: "36.1310", lng: "-86.7890", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+  { name: "Robert's Western World", slug: "roberts-western-world-nashville", city: "Nashville", neighborhood: "Broadway", category: "bar", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Honky-tonk legend on Lower Broadway. Live country every night.", priceRange: "$", phone: "(615) 244-9552", address: "416 Broadway, Nashville, TN", lat: "36.1590", lng: "-86.7770", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+  { name: "Bolton's Spicy Chicken & Fish", slug: "boltons-spicy-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Hot fish and hot chicken. East Nashville staple.", priceRange: "$", phone: "(615) 254-8015", address: "624 Main St, Nashville, TN", lat: "36.1780", lng: "-86.7580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+  { name: "Slim & Husky's", slug: "slim-huskys-nashville", city: "Nashville", neighborhood: "East Nashville", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Artisan pizza and craft beer. Black-owned Nashville favorite.", priceRange: "$", phone: "(615) 891-2433", address: "911 Buchanan St, Nashville, TN", lat: "36.1820", lng: "-86.7950", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
+  { name: "Barista Parlor", slug: "barista-parlor-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 267, description: "Nashville's craft coffee pioneer. Industrial chic spaces.", priceRange: "$$", phone: "(615) 712-9766", address: "519 Gallatin Ave, Nashville, TN", lat: "36.1740", lng: "-86.7560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+];
+
 const ALL_CITY_BUSINESSES = [
   ...AUSTIN_BUSINESSES,
   ...HOUSTON_BUSINESSES,
@@ -108,10 +134,12 @@ const ALL_CITY_BUSINESSES = [
   ...FORT_WORTH_BUSINESSES,
   ...OKC_BUSINESSES,
   ...NOLA_BUSINESSES,
+  ...MEMPHIS_BUSINESSES,
+  ...NASHVILLE_BUSINESSES,
 ];
 
 export async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 6 cities...`);
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 8 cities...`);
 
   let seeded = 0;
   for (const biz of ALL_CITY_BUSINESSES) {
@@ -149,7 +177,7 @@ export async function seedCities() {
   }
 
   console.log(`\nSeeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10)");
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10), Memphis (10), Nashville (10)");
 }
 
 // Run directly if executed as script

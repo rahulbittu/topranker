@@ -100,6 +100,27 @@ export const CITY_REGISTRY: Record<string, CityConfig> = {
     launchDate: "2026-03-09",
     minBusinesses: 10,
   },
+  // Phase 3 — Tennessee expansion (Sprint 234)
+  Memphis: {
+    name: "Memphis",
+    state: "Tennessee",
+    stateCode: "TN",
+    region: "West Tennessee",
+    timezone: "America/Chicago",
+    coordinates: { lat: 35.1495, lng: -90.049 },
+    status: "planned",
+    minBusinesses: 30,
+  },
+  Nashville: {
+    name: "Nashville",
+    state: "Tennessee",
+    stateCode: "TN",
+    region: "Middle Tennessee",
+    timezone: "America/Chicago",
+    coordinates: { lat: 36.1627, lng: -86.7816 },
+    status: "planned",
+    minBusinesses: 40,
+  },
 } as const;
 
 /** Get all active city names */
