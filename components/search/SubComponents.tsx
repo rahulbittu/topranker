@@ -305,27 +305,34 @@ export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedB
       if (!mapRef.current.isConnected) return;
       const center = CITY_COORDS[city] || CITY_COORDS.Dallas;
 
-      const map = new mapsLib.Map(mapRef.current, {
-        center,
-        zoom: 12,
-        disableDefaultUI: true,
-        zoomControl: true,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        clickableIcons: false,
-        styles: [
-          { featureType: "poi", stylers: [{ visibility: "off" }] },
-          { featureType: "transit", stylers: [{ visibility: "off" }] },
-        ],
-      });
+      try {
+        // Double-check element is still connected right before construction
+        if (!mapRef.current.isConnected) return;
+        const map = new mapsLib.Map(mapRef.current, {
+          center,
+          zoom: 12,
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: false,
+          streetViewControl: false,
+          fullscreenControl: false,
+          clickableIcons: false,
+          styles: [
+            { featureType: "poi", stylers: [{ visibility: "off" }] },
+            { featureType: "transit", stylers: [{ visibility: "off" }] },
+          ],
+        });
 
-      map.addListener("click", () => onSelectBiz?.(null));
+        map.addListener("click", () => onSelectBiz?.(null));
 
-      mapInstance.current = map;
-      setMapReady(true);
-      const google = window.google;
-      if (google) updateMarkers(google, map, bizWithCoords);
+        mapInstance.current = map;
+        setMapReady(true);
+        const google = window.google;
+        if (google) updateMarkers(google, map, bizWithCoords);
+      } catch (initErr: any) {
+        console.error("[MapView] Map initialization failed:", initErr);
+        setMapError("Map could not be initialized. Try the list view.");
+      }
     }).catch((err: any) => {
       console.error("[MapView] Google Maps load error:", err);
       const msg = String(err?.message || err || "");
