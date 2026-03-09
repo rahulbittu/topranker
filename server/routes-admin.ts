@@ -20,7 +20,7 @@ import {
   markWebhookProcessed,
 } from "./storage";
 import { fetchAndStorePhotos, searchNearbyRestaurants, normalizeCategory } from "./google-places";
-import { getPerfStats } from "./perf-monitor";
+import { getPerfStats, getPerformanceValidation } from "./perf-monitor";
 import { getFunnelStats, getRecentEvents, getRateGateStats, getHourlyStats, getDailyStats, getActiveUserStats, getBetaConversionFunnel } from "./analytics";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
@@ -293,6 +293,19 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data });
   }));
 
+  // ── Sprint 204: Performance Validation ──────────────────────
+  app.get("/api/admin/perf/validate", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const validation = getPerformanceValidation();
+      return res.json({ data: validation });
+  }));
+
+  // ── Sprint 204: DB-backed Active Users ─────────────────────
+  app.get("/api/admin/analytics/active-users-db", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const { getActiveUserStatsDb } = await import("./storage");
+      const stats = await getActiveUserStatsDb();
+      return res.json({ data: stats });
+  }));
+
   // ── Sprint 191: Error Log ──────────────────────────────────
   app.get("/api/admin/errors", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
       const { getRecentServerErrors } = await import("./error-tracking");
@@ -544,8 +557,8 @@ export function registerAdminRoutes(app: Express) {
       const { getMemberByEmail, createBetaInvite, getBetaInviteByEmail } = await import("./storage");
 
       const invites: Array<{ email: string; displayName: string; referralCode?: string }> = req.body.invites;
-      if (!Array.isArray(invites) || invites.length === 0 || invites.length > 25) {
-        return res.status(400).json({ error: "invites must be an array of 1-25 entries" });
+      if (!Array.isArray(invites) || invites.length === 0 || invites.length > 100) {
+        return res.status(400).json({ error: "invites must be an array of 1-100 entries" });
       }
 
       const results: Array<{ email: string; status: "sent" | "skipped"; reason?: string }> = [];

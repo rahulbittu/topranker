@@ -66,6 +66,41 @@ export function perfMonitor(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+/** Sprint 204: Performance validation — checks budgets against actuals */
+export function getPerformanceValidation(): {
+  healthy: boolean;
+  checks: Array<{ name: string; passed: boolean; actual: number; budget: number; unit: string }>;
+} {
+  const checks = [
+    {
+      name: "Avg Response Time",
+      passed: stats.avgDurationMs <= 200,
+      actual: Math.round(stats.avgDurationMs),
+      budget: 200,
+      unit: "ms",
+    },
+    {
+      name: "Max Response Time",
+      passed: stats.maxDurationMs <= 2000,
+      actual: Math.round(stats.maxDurationMs),
+      budget: 2000,
+      unit: "ms",
+    },
+    {
+      name: "Slow Request Rate",
+      passed: stats.totalRequests === 0 || (stats.slowRequests / stats.totalRequests) < 0.05,
+      actual: stats.totalRequests > 0 ? Math.round((stats.slowRequests / stats.totalRequests) * 100) : 0,
+      budget: 5,
+      unit: "%",
+    },
+  ];
+
+  return {
+    healthy: checks.every((c) => c.passed),
+    checks,
+  };
+}
+
 /** Get current performance stats (for admin endpoint) */
 export function getPerfStats() {
   const routes = Array.from(stats.byRoute.entries())

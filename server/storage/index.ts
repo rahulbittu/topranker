@@ -191,3 +191,9 @@ export {
   getPersistedDailyStats,
   getPersistedEventTotal,
 } from "./analytics";
+
+// User Activity Persistence (Sprint 204)
+export {
+  recordUserActivityDb,
+  getActiveUserStatsDb,
+} from "./user-activity";

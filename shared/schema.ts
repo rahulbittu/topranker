@@ -777,3 +777,19 @@ export const betaInvites = pgTable(
 );
 
 export type BetaInvite = typeof betaInvites.$inferSelect;
+
+// Sprint 204: User activity tracking (persisted active users)
+export const userActivity = pgTable(
+  "user_activity",
+  {
+    userId: varchar("user_id")
+      .primaryKey()
+      .references(() => members.id),
+    lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_user_activity_last_seen").on(table.lastSeenAt),
+  ],
+);
+
+export type UserActivity = typeof userActivity.$inferSelect;

@@ -119,13 +119,13 @@ describe("Batch beta invite — server/routes-admin.ts", () => {
     expect(src).toContain('"/api/admin/beta-invite/batch"');
   });
 
-  it("limits batch to 25 invites", () => {
-    expect(src).toContain("invites.length > 25");
+  it("limits batch to 100 invites", () => {
+    expect(src).toContain("invites.length > 100");
   });
 
   it("validates array input", () => {
     expect(src).toContain("Array.isArray(invites)");
-    expect(src).toContain("1-25 entries");
+    expect(src).toContain("1-100 entries");
   });
 
   it("skips existing members", () => {
