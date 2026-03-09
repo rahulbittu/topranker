@@ -229,7 +229,7 @@ describe("Brand consistency", () => {
   });
 
   it("uses TYPOGRAPHY for headings", () => {
-    expect(src).toContain("TYPOGRAPHY.heading.fontFamily");
+    expect(src).toContain("TYPOGRAPHY.display.fontFamily");
   });
 
   it("uses consistent border radius (14 for cards, 19 for chips)", () => {

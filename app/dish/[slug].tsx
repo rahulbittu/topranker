@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
   heroTextWrap: { flex: 1 },
   heroTitle: {
     fontSize: 18, fontWeight: "700", color: "#111",
-    fontFamily: TYPOGRAPHY.heading.fontFamily,
+    fontFamily: TYPOGRAPHY.display.fontFamily,
   },
   heroCount: { fontSize: 12, color: "#636366", marginTop: 2 },
   provisionalBadge: {

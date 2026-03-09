@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
   container: { marginBottom: 20 },
   sectionTitle: {
     fontSize: 18, fontWeight: "800", color: "#111",
-    fontFamily: TYPOGRAPHY.heading.fontFamily, marginLeft: 16, marginBottom: 4,
+    fontFamily: TYPOGRAPHY.display.fontFamily, marginLeft: 16, marginBottom: 4,
   },
   sectionSubtitle: {
     fontSize: 12, color: "#636366", marginLeft: 16, marginBottom: 12,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   heroTextWrap: { flex: 1 },
   heroTitle: {
     fontSize: 18, fontWeight: "700", color: "#111",
-    fontFamily: TYPOGRAPHY.heading.fontFamily,
+    fontFamily: TYPOGRAPHY.display.fontFamily,
   },
   heroCount: { fontSize: 12, color: "#636366", marginTop: 2 },
   provisionalBadge: {
