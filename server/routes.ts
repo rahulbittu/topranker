@@ -396,6 +396,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/deploy/status", wrapAsync(handleDeployStatus));
   app.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
 
+  // ── Sprint 211: Beta Feedback ───────────────────────────────
+  app.post("/api/feedback", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { createFeedback } = await import("./storage/feedback");
+    const { rating, category, message, screenContext, appVersion } = req.body;
+    if (!rating || !category || !message) {
+      return res.status(400).json({ error: "rating, category, and message are required" });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "rating must be 1-5" });
+    }
+    if (!["bug", "feature", "praise", "other"].includes(category)) {
+      return res.status(400).json({ error: "category must be bug, feature, praise, or other" });
+    }
+    const feedback = await createFeedback({
+      memberId: req.user!.id,
+      rating: Math.round(rating),
+      category,
+      message: String(message).slice(0, 2000),
+      screenContext: screenContext ? String(screenContext).slice(0, 100) : undefined,
+      appVersion: appVersion ? String(appVersion).slice(0, 50) : undefined,
+    });
+    return res.status(201).json({ data: feedback });
+  }));
+
   // ── Extracted Route Modules ─────────────────────────────────
   registerBadgeRoutes(app);
   registerAdminRoutes(app);

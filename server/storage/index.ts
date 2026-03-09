@@ -197,3 +197,10 @@ export {
   recordUserActivityDb,
   getActiveUserStatsDb,
 } from "./user-activity";
+
+// Beta Feedback (Sprint 211)
+export {
+  createFeedback,
+  getRecentFeedback,
+  getFeedbackStats,
+} from "./feedback";

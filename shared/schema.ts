@@ -793,3 +793,26 @@ export const userActivity = pgTable(
 );
 
 export type UserActivity = typeof userActivity.$inferSelect;
+
+// Sprint 211: Beta feedback collection
+export const betaFeedback = pgTable(
+  "beta_feedback",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    memberId: varchar("member_id").references(() => members.id),
+    rating: integer("rating").notNull(), // 1-5 star rating
+    category: text("category").notNull(), // bug, feature, praise, other
+    message: text("message").notNull(),
+    screenContext: text("screen_context"), // which screen they were on
+    appVersion: text("app_version"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_beta_feedback_member").on(table.memberId),
+    index("idx_beta_feedback_created").on(table.createdAt),
+  ],
+);
+
+export type BetaFeedback = typeof betaFeedback.$inferSelect;

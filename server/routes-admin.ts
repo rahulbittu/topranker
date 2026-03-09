@@ -445,6 +445,17 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data: { days, dailyStats, eventCounts, exportedAt: new Date().toISOString() } });
   }));
 
+  // ── Sprint 211: Beta Feedback Admin ─────────────────────────
+  app.get("/api/admin/feedback", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { getRecentFeedback, getFeedbackStats } = await import("./storage/feedback");
+      const limit = Math.min(100, parseInt(req.query.limit as string) || 50);
+      const [recent, stats] = await Promise.all([
+        getRecentFeedback(limit),
+        getFeedbackStats(),
+      ]);
+      return res.json({ data: { recent, stats } });
+  }));
+
   // ── Sprint 183: Auto-Flagged Moderation Queue ──────────────
   app.get("/api/admin/moderation-queue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
     const { getAutoFlaggedRatings } = await import("./storage/ratings");
