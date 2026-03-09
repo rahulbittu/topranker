@@ -27,6 +27,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { getActiveCategories, type BestInCategory } from "@/shared/best-in-categories";
 
 const AMBER = BRAND.colors.amber;
 
@@ -468,6 +469,45 @@ export default function SearchScreen() {
                 </View>
               )}
 
+              {/* Best In [City] — Category Browsing */}
+              {!debouncedQuery && (
+                <View style={styles.bestInSection}>
+                  <View style={styles.bestInHeader}>
+                    <View style={styles.bestInHeaderLeft}>
+                      <Ionicons name="trophy" size={16} color={AMBER} />
+                      <Text style={styles.bestInTitle}>Best In {city}</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setQuery("best in " + city.toLowerCase())}
+                      accessibilityRole="button"
+                      accessibilityLabel="See all Best In categories"
+                    >
+                      <Text style={styles.bestInSeeAll}>See All</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.bestInScroll}
+                  >
+                    {getActiveCategories().map((cat: BestInCategory) => (
+                      <TouchableOpacity
+                        key={cat.slug}
+                        style={styles.bestInCard}
+                        onPress={() => { Haptics.selectionAsync(); setQuery(cat.displayName); setActiveFilter("All"); }}
+                        activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Best ${cat.displayName} in ${city}`}
+                      >
+                        <Text style={styles.bestInEmoji}>{cat.emoji}</Text>
+                        <Text style={styles.bestInName} numberOfLines={1}>{cat.displayName}</Text>
+                        <Text style={styles.bestInSubtitle} numberOfLines={1}>Best in {city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
               {/* Featured / Promoted Listings */}
               {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
 
@@ -631,6 +671,44 @@ const styles = StyleSheet.create({
   },
   discoverTipClose: {
     position: "absolute" as const, top: 10, right: 10,
+  },
+
+  // Best In [City] section
+  bestInSection: {
+    marginBottom: 12,
+  },
+  bestInHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  bestInHeaderLeft: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  bestInTitle: {
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  bestInSeeAll: {
+    fontSize: 12, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold",
+  },
+  bestInScroll: {
+    gap: 10, paddingRight: 4,
+  },
+  bestInCard: {
+    width: 100, backgroundColor: Colors.surface, borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 8, alignItems: "center", gap: 4,
+    borderWidth: 1, borderColor: Colors.border,
+    ...Colors.cardShadow,
+  },
+  bestInEmoji: {
+    fontSize: 28,
+  },
+  bestInName: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+    textAlign: "center" as const,
+  },
+  bestInSubtitle: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center" as const,
   },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },

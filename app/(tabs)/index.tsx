@@ -12,6 +12,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
+import { getActiveCategories, BestInCategory } from "@/shared/best-in-categories";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
@@ -37,6 +38,8 @@ export default function LeaderboardScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [selectedBestIn, setSelectedBestIn] = useState<string | null>(null);
+  const bestInCategories = useMemo(() => getActiveCategories(), []);
 
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
@@ -193,6 +196,46 @@ export default function LeaderboardScreen() {
           <Ionicons name="add-circle-outline" size={16} color={AMBER} />
           <Text style={styles.suggestChipText}>Suggest</Text>
         </TouchableOpacity>
+      </ScrollView>
+
+      {/* Best In Dallas Chips */}
+      <View style={styles.bestInHeader}>
+        <Text style={styles.bestInTitle}>Best In {city}</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.bestInChipsContainer}
+        style={styles.bestInChipsRow}
+      >
+        <TouchableOpacity
+          onPress={() => { Haptics.selectionAsync(); setSelectedBestIn(null); }}
+          style={[styles.bestInChip, selectedBestIn === null && styles.bestInChipActive]}
+          accessibilityRole="button"
+          accessibilityLabel={`All categories${selectedBestIn === null ? ", selected" : ""}`}
+          accessibilityState={{ selected: selectedBestIn === null }}
+        >
+          <Text style={[styles.bestInChipText, selectedBestIn === null && styles.bestInChipTextActive]}>
+            All
+          </Text>
+        </TouchableOpacity>
+        {bestInCategories.map((cat) => {
+          const isSelected = selectedBestIn === cat.slug;
+          return (
+            <TouchableOpacity
+              key={cat.slug}
+              onPress={() => { Haptics.selectionAsync(); setSelectedBestIn(cat.slug); }}
+              style={[styles.bestInChip, isSelected && styles.bestInChipActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`Best ${cat.displayName}${isSelected ? ", selected" : ""}`}
+              accessibilityState={{ selected: isSelected }}
+            >
+              <Text style={[styles.bestInChipText, isSelected && styles.bestInChipTextActive]}>
+                {cat.emoji} {cat.displayName}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       <Modal visible={showSuggest} animationType="slide" transparent>
@@ -358,6 +401,29 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER, borderRadius: 10,
   },
   retryButtonText: { color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 },
+
+  bestInHeader: {
+    paddingHorizontal: 20, paddingTop: 2, paddingBottom: 4,
+  },
+  bestInTitle: {
+    fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text,
+  },
+  bestInChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 8 },
+  bestInChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
+  bestInChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+    marginRight: 8, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  bestInChipActive: {
+    backgroundColor: AMBER, borderColor: AMBER,
+  },
+  bestInChipText: {
+    fontSize: 13, fontFamily: "DMSans_600SemiBold", color: Colors.text,
+  },
+  bestInChipTextActive: {
+    color: "#FFFFFF",
+  },
 
   suggestChip: {
     flexDirection: "row", alignItems: "center", gap: 4,
