@@ -147,6 +147,13 @@ export function DishLeaderboardSection({ city }: { city: string }) {
                   <Text style={styles.provisionalText}>Early Rankings</Text>
                 </View>
               )}
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/dish/[slug]", params: { slug: activeBoard.dishSlug } })}
+                style={styles.seeAllBtn}
+                accessibilityLabel={`See full ${activeBoard.dishName} ranking`}
+              >
+                <Text style={styles.seeAllText}>Full ranking →</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -393,6 +400,11 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
   provisionalText: { fontSize: 10, color: "#fff", fontWeight: "700" },
+  seeAllBtn: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+    backgroundColor: "rgba(196,154,26,0.15)",
+  },
+  seeAllText: { fontSize: 12, color: AMBER, fontWeight: "700" },
 
   buildingCard: {
     margin: 16, padding: 20, backgroundColor: "#FFF8E7",

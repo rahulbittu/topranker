@@ -12,6 +12,7 @@ import { registerAuthRoutes } from "./routes-auth";
 import { registerMemberRoutes } from "./routes-members";
 import { registerBusinessRoutes } from "./routes-businesses";
 import { registerDishRoutes } from "./routes-dishes";
+import { registerSeoRoutes } from "./routes-seo";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -201,6 +202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Dish Leaderboard Routes (extracted to routes-dishes.ts) ──
   registerDishRoutes(app);
+  registerSeoRoutes(app);
 
   // ── Rating Submission ──────────────────────────────────────
   app.post("/api/ratings", requireAuth, wrapAsync(async (req: Request, res: Response) => {
