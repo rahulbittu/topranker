@@ -42,7 +42,7 @@ export default function RateScreen() {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const circleSize = Math.min(56, (screenWidth - 80) / 5 - 8);
-  const { id: slug } = useLocalSearchParams<{ id: string }>();
+  const { id: slug, dish: dishContext } = useLocalSearchParams<{ id: string; dish?: string }>();
   const { user } = useAuth();
   const qc = useQueryClient();
 
@@ -63,7 +63,7 @@ export default function RateScreen() {
   const [q3Score, setQ3Score] = useState(0);
   const [wouldReturn, setWouldReturn] = useState<boolean | null>(null);
   const [selectedDish, setSelectedDish] = useState<string>("");
-  const [dishInput, setDishInput] = useState("");
+  const [dishInput, setDishInput] = useState(dishContext || "");
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
@@ -367,6 +367,14 @@ export default function RateScreen() {
       case 1:
         return (
           <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
+            {/* Dish context banner (Sprint 168) */}
+            {dishContext && (
+              <View style={styles.dishContextBanner}>
+                <Text style={styles.dishContextText}>
+                  You're rating {business.name} for their <Text style={{ fontWeight: "700" }}>{dishContext}</Text>
+                </Text>
+              </View>
+            )}
             {/* Q1: Quality */}
             <View style={styles.compactQuestion}>
               <Text style={styles.compactLabel}>{q1Label}</Text>
@@ -759,6 +767,11 @@ const styles = StyleSheet.create({
     flexDirection: "row", flexWrap: "wrap", gap: 8,
   },
 
+  dishContextBanner: {
+    backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 10,
+    padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center",
+  },
+  dishContextText: { fontSize: 13, color: "#111" },
   dishInputWrap: { gap: 4 },
   dishInput: {
     backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14,

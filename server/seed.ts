@@ -1,6 +1,6 @@
 import { db } from "./db";
-import { businesses, challengers, members, dishes, businessPhotos } from "@shared/schema";
-import { sql } from "drizzle-orm";
+import { businesses, challengers, members, dishes, businessPhotos, dishLeaderboards, dishLeaderboardEntries } from "@shared/schema";
+import { sql, eq, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
 const SEED_BUSINESSES = [
@@ -336,6 +336,51 @@ export async function seedDatabase() {
   }
 
   console.log("Seeded dishes");
+
+  // ── Dish Leaderboards — Sprint 168 seed ────────────────────
+  const SEED_DISH_BOARDS = [
+    { dishName: "Biryani", dishSlug: "biryani", dishEmoji: "🍛", displayOrder: 1 },
+    { dishName: "Ramen", dishSlug: "ramen", dishEmoji: "🍜", displayOrder: 2 },
+    { dishName: "Taco", dishSlug: "taco", dishEmoji: "🌮", displayOrder: 3 },
+    { dishName: "Burger", dishSlug: "burger", dishEmoji: "🍔", displayOrder: 4 },
+    { dishName: "Coffee", dishSlug: "coffee", dishEmoji: "☕", displayOrder: 5 },
+  ];
+
+  for (const board of SEED_DISH_BOARDS) {
+    const [lb] = await db.insert(dishLeaderboards).values({
+      city: "dallas",
+      dishName: board.dishName,
+      dishSlug: board.dishSlug,
+      dishEmoji: board.dishEmoji,
+      status: "active",
+      displayOrder: board.displayOrder,
+      source: "system",
+    }).returning();
+
+    // Populate entries from existing seeded dishes
+    const matchingDishes = await db.select({ businessId: dishes.businessId })
+      .from(dishes)
+      .innerJoin(businesses, eq(dishes.businessId, businesses.id))
+      .where(and(
+        eq(businesses.city, "Dallas"),
+        sql`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`,
+      ));
+
+    const uniqueBizIds = [...new Set(matchingDishes.map(d => d.businessId))];
+    for (let i = 0; i < uniqueBizIds.length; i++) {
+      const biz = insertedBusinesses.find(b => b.id === uniqueBizIds[i]);
+      if (!biz) continue;
+      await db.insert(dishLeaderboardEntries).values({
+        leaderboardId: lb.id,
+        businessId: biz.id,
+        dishScore: (4.5 - i * 0.3).toFixed(2),
+        dishRatingCount: Math.max(3, 15 - i * 3),
+        rankPosition: i + 1,
+        photoUrl: biz.photoUrl,
+      });
+    }
+  }
+  console.log("Seeded dish leaderboards (5 boards for Dallas)");
 
   const spiceGarden = insertedBusinesses.find((b) => b.slug === "spice-garden-dallas");
   const yardKitchen = insertedBusinesses.find((b) => b.slug === "the-yard-kitchen-dallas");

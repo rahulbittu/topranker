@@ -167,7 +167,7 @@ export function DishLeaderboardSection({ city }: { city: string }) {
               </Text>
               <TouchableOpacity
                 style={styles.buildingCta}
-                onPress={() => router.push("/(tabs)")}
+                onPress={() => router.push("/(tabs)/search")}
               >
                 <Text style={styles.buildingCtaText}>Rate a spot →</Text>
               </TouchableOpacity>
