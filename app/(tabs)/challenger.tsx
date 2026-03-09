@@ -27,6 +27,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useExperiment } from "@/lib/use-experiment";
 import {
   VoteBar,
   FighterPhoto,
@@ -41,6 +42,7 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const { scale, onPressIn, onPressOut } = usePressAnimation();
   const { cardRef, captureAndShare } = useShareCard();
   const { user } = useAuth();
+  const { isTreatment: showPersonalizedWeight } = useExperiment("personalized_weight");
   const [, setTick] = useState(0);
   const endTs = new Date(challenge.endDate).getTime();
   const startTs = new Date(challenge.startDate).getTime();
@@ -151,17 +153,17 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
         <Text style={styles.voteCtaText}>Rate either business to cast your weighted vote</Text>
       </View>
 
-      {/* How Voting Works — Sprint 131, personalized weight preview (RETRO-131) */}
+      {/* How Voting Works — Sprint 131, A/B gated personalized weight (Sprint 144) */}
       <View style={styles.howVotingWorks}>
         <Ionicons name="information-circle-outline" size={13} color={Colors.textTertiary} />
-        {user?.credibilityTier ? (
+        {showPersonalizedWeight && user?.credibilityTier ? (
           <View style={styles.howVotingWorksPersonalized}>
             <Text style={styles.howVotingWorksText}>
-              Your votes count as{" "}
+              Your vote weight:{" "}
               <Text style={[styles.howVotingWorksAccent, { color: TIER_COLORS[user.credibilityTier as CredibilityTier] || Colors.textSecondary }]}>
-                {TIER_INFLUENCE_LABELS[user.credibilityTier as CredibilityTier] || "Standard"}
+                {TIER_WEIGHTS[user.credibilityTier as CredibilityTier].toFixed(2)}
               </Text>
-              {" "}({(TIER_WEIGHTS[user.credibilityTier as CredibilityTier] * 100).toFixed(0)}% weight)
+              {" "}({TIER_INFLUENCE_LABELS[user.credibilityTier as CredibilityTier] || "Standard"})
             </Text>
             {user.credibilityTier !== "top" && (
               <Text style={styles.howVotingWorksMotivation}>

@@ -56,7 +56,7 @@ const experiments: ExperimentRegistry = {
   trust_signal_style: {
     id: "trust_signal_style",
     description: "Text labels instead of icons for trust signals",
-    active: false,
+    active: true,
     variants: [
       { id: "control", weight: 50 },
       { id: "treatment", weight: 50 },
@@ -65,7 +65,7 @@ const experiments: ExperimentRegistry = {
   personalized_weight: {
     id: "personalized_weight",
     description: "Personalized weight display vs static 'How Voting Works'",
-    active: false,
+    active: true,
     variants: [
       { id: "control", weight: 50 },
       { id: "treatment", weight: 50 },
