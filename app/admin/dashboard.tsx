@@ -50,6 +50,29 @@ interface DashboardData {
   };
 }
 
+// Sprint 203: Beta funnel data
+interface BetaFunnelData {
+  invitesSent: number;
+  joinPageViews: number;
+  signups: number;
+  firstRatings: number;
+  referralsShared: number;
+  conversionRates: {
+    inviteToView: string;
+    viewToSignup: string;
+    signupToRating: string;
+    overallInviteToRating: string;
+  };
+  inviteTracking: { total: number; joined: number; pending: number };
+}
+
+interface ActiveUserData {
+  last1h: number;
+  last24h: number;
+  last7d: number;
+  last30d: number;
+}
+
 function useDashboardData() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,6 +101,33 @@ function useDashboardData() {
   return { data, loading, refetch: fetchDashboard };
 }
 
+// Sprint 203: Beta funnel + active users hooks
+function useBetaFunnel() {
+  const [data, setData] = useState<BetaFunnelData | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl() + "/api/admin/analytics/beta-funnel", { credentials: "include" });
+        if (res.ok) { const json = await res.json(); setData(json.data); }
+      } catch {}
+    })();
+  }, []);
+  return data;
+}
+
+function useActiveUsers() {
+  const [data, setData] = useState<ActiveUserData | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl() + "/api/admin/analytics/active-users", { credentials: "include" });
+        if (res.ok) { const json = await res.json(); setData(json.data); }
+      } catch {}
+    })();
+  }, []);
+  return data;
+}
+
 const RECENT_ACTIVITY = [
   { id: "1", text: "New user registered — member #1205", time: "2m ago" },
   { id: "2", text: "Rating submitted for Sakura Ramen", time: "5m ago" },
@@ -91,6 +141,8 @@ export default function AdminDashboard() {
     new Date().toLocaleTimeString()
   );
   const { data, loading, refetch } = useDashboardData();
+  const betaFunnel = useBetaFunnel();
+  const activeUsers = useActiveUsers();
 
   const handleRefresh = () => {
     setLastRefresh(new Date().toLocaleTimeString());
@@ -178,6 +230,57 @@ export default function AdminDashboard() {
           ));
         })()}
       </View>
+
+      {/* Sprint 203: Beta Conversion Funnel */}
+      {betaFunnel && (
+        <View style={styles.funnelSection}>
+          <Text style={styles.funnelSectionHeader}>BETA CONVERSION FUNNEL</Text>
+          {[
+            { label: "Invites Sent", count: betaFunnel.invitesSent, rate: null },
+            { label: "Join Page Views", count: betaFunnel.joinPageViews, rate: betaFunnel.conversionRates.inviteToView },
+            { label: "Signups", count: betaFunnel.signups, rate: betaFunnel.conversionRates.viewToSignup },
+            { label: "First Ratings", count: betaFunnel.firstRatings, rate: betaFunnel.conversionRates.signupToRating },
+            { label: "Referrals Shared", count: betaFunnel.referralsShared, rate: null },
+          ].map((stage) => (
+            <View key={stage.label} style={styles.funnelRow}>
+              <View style={styles.funnelLabelRow}>
+                <Text style={styles.funnelLabel}>{stage.label}</Text>
+                <Text style={styles.funnelCount}>{stage.count}</Text>
+              </View>
+              <View style={styles.funnelBarTrack}>
+                <View style={[styles.funnelBarFill, { width: `${Math.max(2, (stage.count / Math.max(betaFunnel.invitesSent, 1)) * 100)}%` as any }]} />
+              </View>
+              {stage.rate && stage.rate !== "N/A" && (
+                <Text style={styles.funnelConversion}>↓ {stage.rate} conversion</Text>
+              )}
+            </View>
+          ))}
+          <View style={styles.betaInviteStats}>
+            <Text style={styles.betaInviteLabel}>Overall: {betaFunnel.conversionRates.overallInviteToRating} invite→rating</Text>
+            <Text style={styles.betaInviteLabel}>Invites: {betaFunnel.inviteTracking.joined}/{betaFunnel.inviteTracking.total} joined</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Sprint 203: Active Users */}
+      {activeUsers && (
+        <View style={styles.activitySection}>
+          <Text style={styles.sectionTitle}>Active Users</Text>
+          <View style={styles.statsGrid}>
+            {[
+              { label: "Last Hour", value: activeUsers.last1h },
+              { label: "Last 24h", value: activeUsers.last24h },
+              { label: "Last 7d", value: activeUsers.last7d },
+              { label: "Last 30d", value: activeUsers.last30d },
+            ].map((stat) => (
+              <View key={stat.label} style={styles.statCard}>
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
       <View style={styles.activitySection}>
         <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -320,5 +423,18 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.ui.caption.fontSize,
     color: Colors.textSecondary,
     marginTop: 2,
+  },
+  betaInviteStats: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  betaInviteLabel: {
+    fontSize: TYPOGRAPHY.ui.caption.fontSize,
+    fontWeight: "600",
+    color: Colors.textSecondary,
   },
 });

@@ -4,7 +4,7 @@
  * Uses the existing analyticsEvents table from schema.
  */
 
-import { desc, eq, gte, sql, count } from "drizzle-orm";
+import { desc, eq, gte, lt, sql, count } from "drizzle-orm";
 import { analyticsEvents } from "@shared/schema";
 import { db } from "../db";
 
@@ -79,3 +79,21 @@ export async function getPersistedEventTotal(): Promise<number> {
     .from(analyticsEvents);
   return result.count;
 }
+
+/**
+ * Sprint 203: Data retention — purge analytics events older than N days.
+ * Default retention: 90 days. Called by scheduled cleanup.
+ */
+export async function purgeOldAnalyticsEvents(retentionDays = 90): Promise<number> {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+  const result = await db
+    .delete(analyticsEvents)
+    .where(lt(analyticsEvents.createdAt, cutoff));
+  return result.rowCount ?? 0;
+}
+
+/** Sprint 203: Data retention policy metadata */
+export const DATA_RETENTION_POLICY = {
+  analyticsEvents: { retentionDays: 90, description: "Analytics events older than 90 days are purged" },
+  betaInvites: { retentionDays: 365, description: "Beta invite records retained for 1 year" },
+} as const;

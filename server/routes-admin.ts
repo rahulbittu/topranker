@@ -384,6 +384,19 @@ export function registerAdminRoutes(app: Express) {
       });
   }));
 
+  // ── Sprint 203: Data Retention ────────────────────────────
+  app.post("/api/admin/analytics/purge", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+      const { purgeOldAnalyticsEvents, DATA_RETENTION_POLICY } = await import("./storage/analytics");
+      const retentionDays = Math.max(30, parseInt(req.body.retentionDays as string) || 90);
+      const purged = await purgeOldAnalyticsEvents(retentionDays);
+      return res.json({ purged, retentionDays, policy: DATA_RETENTION_POLICY });
+  }));
+
+  app.get("/api/admin/analytics/retention-policy", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+      const { DATA_RETENTION_POLICY } = await import("./storage/analytics");
+      return res.json({ policy: DATA_RETENTION_POLICY });
+  }));
+
   // ── Sprint 183: Auto-Flagged Moderation Queue ──────────────
   app.get("/api/admin/moderation-queue", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
     const { getAutoFlaggedRatings } = await import("./storage/ratings");
