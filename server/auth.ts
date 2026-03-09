@@ -145,34 +145,47 @@ export async function registerMember(data: {
   });
 }
 
-export async function authenticateGoogleUser(idToken: string) {
+export async function authenticateGoogleUser(token: string) {
   const googleClientId = config.googleClientId;
   if (!googleClientId) {
     throw new Error("Google Sign-In is not configured");
   }
 
-  // Verify the ID token with Google
-  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-  if (!res.ok) {
-    throw new Error("Invalid Google token");
-  }
-  const payload = await res.json() as {
-    sub: string;
-    email: string;
-    email_verified: string;
-    name: string;
-    picture?: string;
-    aud: string;
-  };
+  // Try ID token first (web), then access token (native)
+  let googleId: string;
+  let email: string;
+  let displayName: string;
+  let avatarUrl: string | null;
 
-  if (payload.aud !== googleClientId) {
-    throw new Error("Token audience mismatch");
+  const idTokenRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+  if (idTokenRes.ok) {
+    // Web flow: ID token
+    const payload = await idTokenRes.json() as {
+      sub: string; email: string; name: string; picture?: string; aud: string;
+    };
+    if (payload.aud !== googleClientId) {
+      throw new Error("Token audience mismatch");
+    }
+    googleId = payload.sub;
+    email = payload.email.toLowerCase();
+    displayName = payload.name || email.split("@")[0];
+    avatarUrl = payload.picture || null;
+  } else {
+    // Native flow: access token — get user info from Google
+    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!userInfoRes.ok) {
+      throw new Error("Invalid Google token");
+    }
+    const userInfo = await userInfoRes.json() as {
+      sub: string; email: string; name: string; picture?: string;
+    };
+    googleId = userInfo.sub;
+    email = userInfo.email.toLowerCase();
+    displayName = userInfo.name || email.split("@")[0];
+    avatarUrl = userInfo.picture || null;
   }
-
-  const googleId = payload.sub;
-  const email = payload.email.toLowerCase();
-  const displayName = payload.name || email.split("@")[0];
-  const avatarUrl = payload.picture || null;
 
   // Check if user already exists by Google ID
   let member = await getMemberByAuthId(googleId);

@@ -1,6 +1,15 @@
 import { Platform } from "react-native";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+// Complete auth session for native platforms
+if (Platform.OS !== "web") {
+  WebBrowser.maybeCompleteAuthSession();
+}
+
+// ── Web: Google Identity Services (GSI) ──────────────────────────
 
 let gsiLoaded = false;
 let gsiLoadPromise: Promise<void> | null = null;
@@ -44,61 +53,12 @@ function loadGsiScript(): Promise<void> {
   return gsiLoadPromise;
 }
 
-export function isGoogleAuthAvailable(): boolean {
-  return Platform.OS === "web" && !!GOOGLE_CLIENT_ID;
-}
-
-export async function signInWithGoogle(): Promise<string> {
-  if (Platform.OS !== "web") {
-    throw new Error("Google Sign-In is only available on web");
-  }
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error("Google Client ID not configured");
-  }
-
-  await loadGsiScript();
-
-  return new Promise((resolve, reject) => {
-    if (!window.google) {
-      reject(new Error("Google Sign-In failed to initialize"));
-      return;
-    }
-
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response: { credential: string }) => {
-        // Clean up the hidden button container
-        const container = document.getElementById("g-signin-fallback");
-        if (container) container.remove();
-
-        if (response.credential) {
-          resolve(response.credential);
-        } else {
-          reject(new Error("No credential received from Google"));
-        }
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-
-    // Try One Tap first
-    window.google.accounts.id.prompt((notification: any) => {
-      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-        // One Tap unavailable (e.g., third-party cookies blocked).
-        // Fall back to rendering a hidden Google button and clicking it.
-        renderAndClickGoogleButton(reject);
-      }
-    });
-  });
-}
-
 function renderAndClickGoogleButton(reject: (err: Error) => void) {
   if (!window.google) {
     reject(new Error("Google Sign-In not available"));
     return;
   }
 
-  // Create an off-screen container for the Google button
   let container = document.getElementById("g-signin-fallback");
   if (!container) {
     container = document.createElement("div");
@@ -114,7 +74,6 @@ function renderAndClickGoogleButton(reject: (err: Error) => void) {
     size: "large",
   });
 
-  // Click the rendered button to trigger the popup
   requestAnimationFrame(() => {
     const btn =
       container?.querySelector<HTMLElement>('[role="button"]') ||
@@ -126,4 +85,88 @@ function renderAndClickGoogleButton(reject: (err: Error) => void) {
       reject(new Error("Could not initialize Google Sign-In. Please try again."));
     }
   });
+}
+
+async function signInWithGoogleWeb(): Promise<string> {
+  await loadGsiScript();
+
+  return new Promise((resolve, reject) => {
+    if (!window.google) {
+      reject(new Error("Google Sign-In failed to initialize"));
+      return;
+    }
+
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: (response: { credential: string }) => {
+        const container = document.getElementById("g-signin-fallback");
+        if (container) container.remove();
+
+        if (response.credential) {
+          resolve(response.credential);
+        } else {
+          reject(new Error("No credential received from Google"));
+        }
+      },
+      auto_select: false,
+      cancel_on_tap_outside: true,
+    });
+
+    window.google.accounts.id.prompt((notification: any) => {
+      if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+        renderAndClickGoogleButton(reject);
+      }
+    });
+  });
+}
+
+// ── Native: expo-auth-session OAuth flow ─────────────────────────
+
+const discovery = {
+  authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+  tokenEndpoint: "https://oauth2.googleapis.com/token",
+  userInfoEndpoint: "https://www.googleapis.com/oauth2/v3/userinfo",
+};
+
+async function signInWithGoogleNative(): Promise<string> {
+  const redirectUri = AuthSession.makeRedirectUri({ preferLocalhost: true });
+
+  const request = new AuthSession.AuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    scopes: ["openid", "profile", "email"],
+    redirectUri,
+    responseType: AuthSession.ResponseType.Token,
+  });
+
+  const result = await request.promptAsync(discovery);
+
+  if (result.type === "cancel" || result.type === "dismiss") {
+    throw new Error("Google sign-in cancelled");
+  }
+
+  if (result.type !== "success" || !result.authentication?.accessToken) {
+    throw new Error("Google sign-in failed");
+  }
+
+  // Exchange access token for user info to get an ID-like token
+  // The server will verify this access token with Google's userinfo endpoint
+  return result.authentication.accessToken;
+}
+
+// ── Public API ───────────────────────────────────────────────────
+
+export function isGoogleAuthAvailable(): boolean {
+  return !!GOOGLE_CLIENT_ID;
+}
+
+export async function signInWithGoogle(): Promise<string> {
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error("Google Client ID not configured");
+  }
+
+  if (Platform.OS === "web") {
+    return signInWithGoogleWeb();
+  }
+
+  return signInWithGoogleNative();
 }
