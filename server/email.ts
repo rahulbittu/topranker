@@ -292,6 +292,132 @@ Questions? Contact support@topranker.com
   });
 }
 
+export async function sendClaimApprovedEmail(params: {
+  email: string;
+  displayName: string;
+  businessName: string;
+  businessSlug: string;
+}): Promise<void> {
+  const { email, displayName, businessName, businessSlug } = params;
+  const firstName = displayName.split(" ")[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Approved!</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, your claim for <strong>${businessName}</strong> has been approved.
+            You are now the verified owner.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">What You Can Do Now</p>
+            <ul style="margin:8px 0 0;padding-left:18px;color:#0D1B2A;font-size:14px;line-height:1.8;">
+              <li>Access your business dashboard with analytics</li>
+              <li>Respond to customer ratings</li>
+              <li>Display the verified owner badge</li>
+            </ul>
+          </div>
+          <a href="https://topranker.com/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            View Your Dashboard
+          </a>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+Your claim for ${businessName} has been approved! You are now the verified owner.
+
+What you can do now:
+- Access your business dashboard with analytics
+- Respond to customer ratings
+- Display the verified owner badge
+
+View your dashboard: https://topranker.com/business/${businessSlug}/dashboard
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: `Claim approved: ${businessName}`,
+    html,
+    text,
+  });
+}
+
+export async function sendClaimRejectedEmail(params: {
+  email: string;
+  displayName: string;
+  businessName: string;
+}): Promise<void> {
+  const { email, displayName, businessName } = params;
+  const firstName = displayName.split(" ")[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Update</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we were unable to verify your claim for <strong>${businessName}</strong> at this time.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Next Steps</p>
+            <p style="margin:8px 0 0;color:#0D1B2A;font-size:14px;line-height:1.6;">
+              If you believe this was in error, please contact us at
+              <a href="mailto:support@topranker.com" style="color:#C49A1A;">support@topranker.com</a>
+              with additional verification documents.
+            </p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName},
+
+We were unable to verify your claim for ${businessName} at this time.
+
+If you believe this was in error, please contact us at support@topranker.com with additional verification documents.
+
+— The TopRanker Team`;
+
+  await sendEmail({
+    to: email,
+    subject: `Claim update: ${businessName}`,
+    html,
+    text,
+  });
+}
+
 export async function sendClaimAdminNotification(params: {
   businessName: string;
   claimantName: string;

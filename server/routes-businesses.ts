@@ -113,6 +113,14 @@ export function registerBusinessRoutes(app: Express) {
       return res.status(404).json({ error: "Business not found" });
     }
 
+    // Sprint 173: Only business owner or admin can access dashboard
+    const { isAdminEmail } = await import("@shared/admin");
+    const isOwner = business.ownerId && business.ownerId === req.user!.id;
+    const isAdmin = isAdminEmail(req.user?.email);
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Dashboard access requires business ownership" });
+    }
+
     const { getRankHistory, getBusinessDishes } = await import("./storage");
     const [{ ratings, total }, rankHistory, dishes] = await Promise.all([
       getBusinessRatings(business.id, 1, 10),

@@ -68,7 +68,22 @@ export async function reviewClaim(
     .set({ status, reviewedAt: new Date() })
     .where(eq(businessClaims.id, id))
     .returning();
-  return updated ?? null;
+
+  if (!updated) return null;
+
+  // On approval, transfer ownership to the claiming member (Sprint 173)
+  if (status === "approved" && updated.businessId && updated.memberId) {
+    await db
+      .update(businesses)
+      .set({
+        ownerId: updated.memberId,
+        isClaimed: true,
+        claimedAt: new Date(),
+      })
+      .where(eq(businesses.id, updated.businessId));
+  }
+
+  return updated;
 }
 
 export async function getClaimCount() {

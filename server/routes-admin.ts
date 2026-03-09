@@ -102,6 +102,33 @@ export function registerAdminRoutes(app: Express) {
       }
       const updated = await reviewClaim(req.params.id as string, status, req.user!.id);
       if (!updated) return res.status(404).json({ error: "Claim not found" });
+
+      // Send notification email to claimant (Sprint 173)
+      if (updated.memberId && updated.businessId) {
+        const { getMemberById, getBusinessById } = await import("./storage");
+        const [member, business] = await Promise.all([
+          getMemberById(updated.memberId),
+          getBusinessById(updated.businessId),
+        ]);
+        if (member?.email && business) {
+          const { sendClaimApprovedEmail, sendClaimRejectedEmail } = await import("./email");
+          if (status === "approved") {
+            sendClaimApprovedEmail({
+              email: member.email,
+              displayName: member.displayName || "User",
+              businessName: business.name,
+              businessSlug: business.slug || business.id,
+            }).catch(() => {});
+          } else {
+            sendClaimRejectedEmail({
+              email: member.email,
+              displayName: member.displayName || "User",
+              businessName: business.name,
+            }).catch(() => {});
+          }
+        }
+      }
+
       return res.json({ data: updated });
   }));
 
