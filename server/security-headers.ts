@@ -15,6 +15,8 @@ function buildAllowedOrigins(): Set<string> {
   // Production origins
   origins.add("https://topranker.com");
   origins.add("https://www.topranker.com");
+  origins.add("https://topranker.io");
+  origins.add("https://www.topranker.io");
 
   // Configurable origins via CORS_ORIGINS env (comma-separated)
   const envOrigins = process.env.CORS_ORIGINS;
