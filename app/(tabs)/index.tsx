@@ -52,6 +52,9 @@ export default function LeaderboardScreen() {
   const availableCuisines = useMemo(() => getAvailableCuisines(), []);
   // Sprint 312: Dynamic dish shortcuts with real entry counts
   const dishShortcuts = useDishShortcuts(city, selectedCuisine);
+  // Sprint 327: Sticky cuisine chips on scroll
+  const [showStickyCuisine, setShowStickyCuisine] = useState(false);
+  const CUISINE_STICKY_THRESHOLD = 80;
 
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
@@ -183,6 +186,39 @@ export default function LeaderboardScreen() {
         </View>
       </Modal>
 
+      {/* Sprint 327: Sticky cuisine bar — appears when user scrolls past cuisine chips */}
+      {showStickyCuisine && (
+        <View style={styles.stickyCuisineBar}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stickyCuisineContainer}
+          >
+            <TouchableOpacity
+              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
+              style={[styles.stickyCuisineChip, selectedCuisine === null && styles.stickyCuisineChipActive]}
+            >
+              <Text style={[styles.stickyCuisineText, selectedCuisine === null && styles.stickyCuisineTextActive]}>All</Text>
+            </TouchableOpacity>
+            {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
+              const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
+              const isSelected = selectedCuisine === cuisine;
+              return (
+                <TouchableOpacity
+                  key={cuisine}
+                  onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
+                  style={[styles.stickyCuisineChip, isSelected && styles.stickyCuisineChipActive]}
+                >
+                  <Text style={[styles.stickyCuisineText, isSelected && styles.stickyCuisineTextActive]}>
+                    {display.emoji} {display.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       {isLoading ? (
         <LeaderboardSkeleton />
       ) : isError ? (
@@ -212,6 +248,12 @@ export default function LeaderboardScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           removeClippedSubviews={Platform.OS !== "web"}
+          onScroll={(e) => {
+            const y = e.nativeEvent.contentOffset.y;
+            const shouldShow = y > CUISINE_STICKY_THRESHOLD;
+            if (shouldShow !== showStickyCuisine) setShowStickyCuisine(shouldShow);
+          }}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
@@ -576,4 +618,33 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  // Sprint 327: Sticky cuisine bar styles
+  stickyCuisineBar: {
+    backgroundColor: Colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 3,
+    zIndex: 10,
+  },
+  stickyCuisineContainer: {
+    paddingHorizontal: 16, flexDirection: "row", paddingVertical: 6, gap: 6,
+  },
+  stickyCuisineChip: {
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: "rgba(13, 27, 42, 0.06)",
+    borderWidth: 1, borderColor: "transparent",
+  },
+  stickyCuisineChipActive: {
+    backgroundColor: "rgba(13, 27, 42, 0.12)", borderColor: BRAND.colors.navy,
+  },
+  stickyCuisineText: {
+    fontSize: 12, fontFamily: "DMSans_500Medium", color: Colors.textSecondary,
+  },
+  stickyCuisineTextActive: {
+    color: BRAND.colors.navy, fontFamily: "DMSans_700Bold",
+  },
 });

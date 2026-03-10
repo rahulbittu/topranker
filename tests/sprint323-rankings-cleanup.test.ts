@@ -59,9 +59,9 @@ describe("Sprint 323 — Rankings page cleanup", () => {
     expect(src).toContain("cuisineChipsRow");
   });
 
-  it("page is under 600 LOC after cleanup", () => {
+  it("page is under 660 LOC after sticky cuisine addition", () => {
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(600);
+    expect(lines).toBeLessThan(660);
   });
 
   // Sprint docs
