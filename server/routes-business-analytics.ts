@@ -6,6 +6,7 @@
  * - GET /api/businesses/:slug/dashboard (owner dashboard analytics)
  * - GET /api/businesses/:id/rank-history (public rank history)
  * - GET /api/businesses/:id/dimension-breakdown (public dimension scores)
+ * - GET /api/cities/:city/dimension-averages (Sprint 578: city dimension averages)
  */
 
 import type { Express, Request, Response } from "express";
@@ -14,6 +15,7 @@ import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
 import { buildDashboardTrend } from "./dashboard-analytics";
 import { computeDimensionBreakdown } from "./dimension-breakdown";
+import { computeCityDimensionAverages } from "./city-dimension-averages";
 
 export function registerBusinessAnalyticsRoutes(app: Express) {
   // ── Business Dashboard Analytics ─────────────────────────
@@ -104,6 +106,13 @@ export function registerBusinessAnalyticsRoutes(app: Express) {
     }
     const { ratings } = await getBusinessRatings(businessId as string, 1, 200);
     const data = computeDimensionBreakdown(ratings as any[]);
+    return res.json({ data });
+  }));
+
+  // ── Sprint 578: City Dimension Averages ────────────────────
+  app.get("/api/cities/:city/dimension-averages", wrapAsync(async (req: Request, res: Response) => {
+    const city = decodeURIComponent(req.params.city as string);
+    const data = await computeCityDimensionAverages(city);
     return res.json({ data });
   }));
 }

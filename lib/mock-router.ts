@@ -38,6 +38,8 @@ const EXACT_ROUTES: MockRoute[] = [
   { prefix: "/api/challengers", handler: () => MOCK_CHALLENGERS },
   { prefix: "/api/search/", handler: () => [] },
   { prefix: "/api/city-stats", handler: () => null },
+  // Sprint 578: City dimension averages
+  { prefix: "/api/cities/", handler: () => ({ food: 3.8, service: 3.5, vibe: 3.4, packaging: 3.2, waitTime: 3.3, value: 3.6, totalRatings: 500, totalBusinesses: 50 }) },
 ];
 
 function searchHandler(path: string): unknown {

@@ -36,6 +36,7 @@ import { BadgeRowCompact } from "@/components/profile/BadgeGrid";
 import { SlideUpView } from "@/components/animations/SlideUpView";
 import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
 import { DimensionScoreCard } from "@/components/business/DimensionScoreCard";
+import { DimensionComparisonCard } from "@/components/business/DimensionComparisonCard";
 import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
@@ -384,6 +385,7 @@ export default function BusinessProfileScreen() {
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
           {/* Sprint 487: Dimension score breakdown with per-dimension bars */}
           {business?.id && <DimensionScoreCard businessId={business.id} />}
+          {business?.id && business?.city && <DimensionComparisonCard businessId={business.id} city={business.city} />}
           {business?.id && <ScoreTrendSparkline businessId={business.id} />}
           {business?.id && <DishRankings businessId={business.id} />}
           {business?.id && <TopDishes businessId={business.id} businessName={business.name} />}
