@@ -11,6 +11,7 @@
 
 import { sendPushNotification } from "./push";
 import { recordPushDelivery } from "./push-analytics";
+import { getNotificationVariant } from "./push-ab-testing";
 import { log } from "./logger";
 
 const triggerLog = log.tag("NotifyTrigger");
@@ -56,10 +57,14 @@ export async function onRankingChange(
       if (prefs.rankingChanges === false) continue;
 
       const emoji = direction === "up" ? "📈" : "📉";
+      // Sprint 511: Check for A/B variant
+      const abVariant = getNotificationVariant(String(rater.memberId), "rankingChange");
+      const abTitle = abVariant ? abVariant.variant.title.replace("{emoji}", emoji).replace("{business}", businessName).replace("{direction}", direction) : `${emoji} ${businessName} moved ${direction}`;
+      const abBody = abVariant ? abVariant.variant.body.replace("{newRank}", String(newRank)).replace("{oldRank}", String(oldRank)).replace("{city}", city) : `Now ranked #${newRank} in ${city} (was #${oldRank})`;
       await sendPushNotification(
         [rater.pushToken],
-        `${emoji} ${businessName} moved ${direction}`,
-        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
+        abTitle,
+        abBody,
         { screen: "business", businessId },
       );
       sent++;
@@ -112,10 +117,14 @@ export async function onNewRatingForBusiness(
       const prefs = (rater.notificationPrefs as Record<string, boolean>) || {};
       if (prefs.savedBusinessAlerts === false) continue;
 
+      // Sprint 511: Check for A/B variant
+      const abVariant = getNotificationVariant(String(rater.memberId), "newRating");
+      const nrTitle = abVariant ? abVariant.variant.title.replace("{business}", businessName) : `New rating for ${businessName}`;
+      const nrBody = abVariant ? abVariant.variant.body.replace("{rater}", raterName).replace("{score}", score.toFixed(1)) : `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`;
       await sendPushNotification(
         [rater.pushToken],
-        `New rating for ${businessName}`,
-        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
+        nrTitle,
+        nrBody,
         { screen: "business", businessId },
       );
       sent++;
@@ -190,10 +199,14 @@ export async function sendCityHighlightsPush(city: string): Promise<number> {
       if (prefs.cityAlerts === false) continue;
 
       const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
+      // Sprint 511: Check for A/B variant
+      const abVariant = getNotificationVariant(String(user.id), "cityHighlights");
+      const chTitle = abVariant ? abVariant.variant.title.replace("{city}", city) : `${city} rankings update`;
+      const chBody = abVariant ? abVariant.variant.body.replace("{business}", biggestMover.businessName || "A restaurant").replace("{direction}", direction).replace("{delta}", String(biggestDelta)) : `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`;
       await sendPushNotification(
         [user.pushToken],
-        `${city} rankings update`,
-        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
+        chTitle,
+        chBody,
         { screen: "rankings" },
       );
       sent++;

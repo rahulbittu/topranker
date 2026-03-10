@@ -19,6 +19,7 @@
 
 import { sendPushNotification } from "./push";
 import { recordPushDelivery } from "./push-analytics";
+import { getNotificationVariant } from "./push-ab-testing";
 import { log } from "./logger";
 
 const triggerLog = log.tag("NotifyTrigger");
@@ -113,11 +114,17 @@ export async function sendWeeklyDigestPush(): Promise<number> {
       if (prefs.weeklyDigest === false) continue;
 
       const firstName = (user.displayName || "").split(" ")[0] || "there";
+      // Sprint 511: Check for A/B variant
+      const abVariant = getNotificationVariant(String(user.id), "weeklyDigest");
+      const title = abVariant ? abVariant.variant.title : "Your weekly rankings update";
+      const body = abVariant
+        ? abVariant.variant.body.replace("{firstName}", firstName)
+        : `Hey ${firstName}, check what's changed in your city's rankings this week.`;
       await sendPushNotification(
         [user.pushToken],
-        "Your weekly rankings update",
-        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
-        { screen: "search" },
+        title,
+        body,
+        { screen: "search", ...(abVariant ? { experimentId: abVariant.experimentId, variant: abVariant.variant.name } : {}) },
       );
       sent++;
     }
