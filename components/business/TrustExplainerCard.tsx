@@ -14,9 +14,12 @@ export interface TrustExplainerCardProps {
   weightedScore: number;
   category: string;
   ratings: MappedRating[];
+  // Sprint 348: Trust card refresh — trusted rater count and freshness
+  trustedRaterCount?: number;
+  lastRatedDate?: string;
 }
 
-export function TrustExplainerCard({ ratingCount, weightedScore, category, ratings }: TrustExplainerCardProps) {
+export function TrustExplainerCard({ ratingCount, weightedScore, category, ratings, trustedRaterCount, lastRatedDate }: TrustExplainerCardProps) {
   const conf = getRankConfidence(ratingCount, category);
   const { isTreatment: showTrustLabels } = useExperiment("trust_signal_style");
   const bodyText = (conf === "provisional" || conf === "early")
@@ -47,6 +50,18 @@ export function TrustExplainerCard({ ratingCount, weightedScore, category, ratin
           ))}
         </View>
         <Text style={s.trustCardBody}>{bodyText}</Text>
+        {/* Sprint 348: Confidence badge */}
+        <View style={s.confidenceBadgeRow}>
+          <View style={[s.confidenceBadge, conf === "strong" && s.confidenceBadgeStrong, conf === "established" && s.confidenceBadgeEstablished]}>
+            <Ionicons name={conf === "strong" || conf === "established" ? "shield-checkmark" : "hourglass-outline"} size={12} color={conf === "strong" ? Colors.green : conf === "established" ? Colors.blue : BRAND.colors.amber} />
+            <Text style={[s.confidenceBadgeText, { color: conf === "strong" ? Colors.green : conf === "established" ? Colors.blue : BRAND.colors.amber }]}>
+              {conf === "strong" ? "High Confidence" : conf === "established" ? "Established" : conf === "early" ? "Early" : "Provisional"}
+            </Text>
+          </View>
+          {lastRatedDate && (
+            <Text style={s.lastRatedText}>Last rated {lastRatedDate}</Text>
+          )}
+        </View>
         <View style={s.trustCardStats}>
           <View style={s.trustStat}>
             <Text style={s.trustStatValue}>{ratingCount.toLocaleString()}</Text>
@@ -62,6 +77,12 @@ export function TrustExplainerCard({ ratingCount, weightedScore, category, ratin
                 {formatReturnRate(ratings.filter(r => r.wouldReturn).length, ratings.length)}
               </Text>
               <Text style={s.trustStatLabel}>Would Return</Text>
+            </View>
+          )}
+          {(trustedRaterCount ?? 0) > 0 && (
+            <View style={s.trustStat}>
+              <Text style={s.trustStatValue}>{trustedRaterCount}</Text>
+              <Text style={s.trustStatLabel}>Trusted Raters</Text>
             </View>
           )}
         </View>
@@ -96,5 +117,21 @@ const s = StyleSheet.create({
   trustStatLabel: {
     fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textTransform: "uppercase" as const, letterSpacing: 0.5,
+  },
+  // Sprint 348: Confidence badge + freshness
+  confidenceBadgeRow: {
+    flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "space-between" as const,
+  },
+  confidenceBadge: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 4,
+    backgroundColor: `${BRAND.colors.amber}15`, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+  },
+  confidenceBadgeStrong: { backgroundColor: `${Colors.green}15` },
+  confidenceBadgeEstablished: { backgroundColor: `${Colors.blue}15` },
+  confidenceBadgeText: {
+    fontSize: 11, fontWeight: "600" as const, fontFamily: "DMSans_600SemiBold",
+  },
+  lastRatedText: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 });

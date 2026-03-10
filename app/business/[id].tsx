@@ -299,6 +299,8 @@ export default function BusinessProfileScreen() {
             weightedScore={business.weightedScore}
             category={business.category}
             ratings={ratings}
+            trustedRaterCount={ratings.filter(r => r.userTier === "trusted" || r.userTier === "top").length}
+            lastRatedDate={ratings.length > 0 ? new Date(ratings[0].createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : undefined}
           />
 
           {/* Sub-scores */}
