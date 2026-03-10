@@ -389,7 +389,7 @@ export default function BusinessProfileScreen() {
 
           {/* Opening Hours */}
           {openingHoursText && openingHoursText.length > 0 && (
-            <OpeningHoursCard hours={openingHoursText} />
+            <OpeningHoursCard hours={openingHoursText} isOpenNow={business.isOpenNow} />
           )}
 
           {business.address && (
