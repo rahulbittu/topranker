@@ -10721,6 +10721,34 @@ var queue = [];
 function getPendingItems(limit) {
   return queue.filter((i) => i.status === "pending").slice(0, limit || 50);
 }
+function getFilteredItems(opts) {
+  let items = [...queue];
+  if (opts.status) items = items.filter((i) => i.status === opts.status);
+  if (opts.contentType) items = items.filter((i) => i.contentType === opts.contentType);
+  if (opts.sortByViolations) items.sort((a, b) => b.violations.length - a.violations.length);
+  return items.slice(0, opts.limit || 50);
+}
+function bulkApprove(itemIds, moderatorId, note) {
+  let approved = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (approveItem(id, moderatorId, note)) approved++;
+    else notFound++;
+  }
+  return { approved, notFound };
+}
+function bulkReject(itemIds, moderatorId, note) {
+  let rejected = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (rejectItem(id, moderatorId, note)) rejected++;
+    else notFound++;
+  }
+  return { rejected, notFound };
+}
+function getResolvedItems(limit) {
+  return queue.filter((i) => i.status === "approved" || i.status === "rejected").slice(0, limit || 50);
+}
 function approveItem(itemId, moderatorId, note) {
   const item = queue.find((i) => i.id === itemId);
   if (!item || item.status !== "pending") return false;
@@ -10751,6 +10779,9 @@ function getQueueStats() {
 }
 function getItemsByBusiness(businessId) {
   return queue.filter((i) => i.businessId === businessId);
+}
+function getItemsByMember(memberId) {
+  return queue.filter((i) => i.memberId === memberId);
 }
 
 // server/routes-admin-moderation.ts
@@ -10791,6 +10822,55 @@ function registerAdminModerationRoutes(app2) {
     const { businessId } = req.params;
     adminModLog.info(`Fetching moderation items for business ${businessId}`);
     res.json(getItemsByBusiness(businessId));
+  });
+  app2.get("/api/admin/moderation/member/:memberId", (req, res) => {
+    const { memberId } = req.params;
+    adminModLog.info(`Fetching moderation items for member ${memberId}`);
+    res.json(getItemsByMember(memberId));
+  });
+  app2.get("/api/admin/moderation/filtered", (req, res) => {
+    const status = req.query.status;
+    const contentType = req.query.contentType;
+    const limit = parseInt(req.query.limit) || 50;
+    const sortByViolations = req.query.sort === "violations";
+    adminModLog.info(`Filtered queue: status=${status}, type=${contentType}, sort=${sortByViolations}`);
+    res.json(getFilteredItems({
+      status,
+      contentType,
+      limit,
+      sortByViolations
+    }));
+  });
+  app2.get("/api/admin/moderation/resolved", (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminModLog.info(`Fetching resolved items (limit: ${limit})`);
+    res.json(getResolvedItems(limit));
+  });
+  app2.post("/api/admin/moderation/bulk-approve", (req, res) => {
+    const { ids, note } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array required" });
+    }
+    if (ids.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
+    }
+    const moderatorId = req.user?.id || "admin";
+    adminModLog.info(`Bulk approving ${ids.length} items`);
+    const result = bulkApprove(ids, moderatorId, note);
+    res.json(result);
+  });
+  app2.post("/api/admin/moderation/bulk-reject", (req, res) => {
+    const { ids, note } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array required" });
+    }
+    if (ids.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
+    }
+    const moderatorId = req.user?.id || "admin";
+    adminModLog.info(`Bulk rejecting ${ids.length} items`);
+    const result = bulkReject(ids, moderatorId, note);
+    res.json(result);
   });
 }
 

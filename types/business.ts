@@ -18,4 +18,6 @@ export interface MappedBusiness {
   dishRankings?: { dishSlug: string; dishName: string; dishEmoji: string | null; rankPosition: number }[];
   lat?: number;
   lng?: number;
+  googleRating?: number;
+  isClaimed?: boolean;
 }

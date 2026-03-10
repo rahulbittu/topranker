@@ -161,9 +161,20 @@ export const BusinessCard = React.memo(function BusinessCard({
         </View>
         <View style={s.cardRow3}>
           <Text style={s.cardScore}>{"\u2B50"} {item.weightedScore.toFixed(1)}</Text>
+          {item.googleRating != null && item.googleRating > 0 && (
+            <Text style={s.cardGoogleRating}>G {item.googleRating.toFixed(1)}</Text>
+          )}
           {item.ratingCount ? (
             <Text style={s.cardRatingCount}>({item.ratingCount.toLocaleString()} weighted)</Text>
           ) : null}
+          {item.ratingCount != null && item.ratingCount > 0 && item.ratingCount < 5 && (
+            <View style={s.newBadge}>
+              <Text style={s.newBadgeText}>NEW</Text>
+            </View>
+          )}
+          {item.isClaimed && (
+            <Ionicons name="shield-checkmark" size={10} color={AMBER} />
+          )}
           {(() => {
             const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
             if (conf === "strong" || conf === "established") {
@@ -494,6 +505,11 @@ const s = StyleSheet.create({
   cardDistance: { fontSize: 11, color: AMBER, fontFamily: "DMSans_500Medium", marginLeft: 2 },
   cardRow3: { flexDirection: "row", alignItems: "center", marginTop: 2, gap: 8 },
   cardScore: { fontSize: 15, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black" },
+  cardGoogleRating: { fontSize: 11, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  newBadge: {
+    backgroundColor: `${AMBER}15`, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4,
+  },
+  newBadgeText: { fontSize: 9, fontWeight: "700", color: AMBER, fontFamily: "DMSans_700Bold", letterSpacing: 0.3 },
   cardRatingCount: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   cardDelta: { fontSize: 11, fontFamily: "DMSans_500Medium" },
   statusPill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99 },
