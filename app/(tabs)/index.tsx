@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ScrollView, Platform, Modal,
+  Platform, Modal,
   TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -21,10 +21,10 @@ import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
-import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
+import { RankedCard } from "@/components/leaderboard/SubComponents";
+import { RankingsListHeader } from "@/components/leaderboard/RankingsListHeader";
 import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { Analytics } from "@/lib/analytics";
 import { FadeInView } from "@/components/animations/FadeInView";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
 
@@ -238,111 +238,24 @@ export default function LeaderboardScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
+          // DoorDash pattern: small top, big middle, small bottom
           ListHeaderComponent={
-            <>
-              {/* Sprint 325: Category + Cuisine + Dish filters in scroll (DoorDash pattern) */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipsContainer}
-                style={styles.chipsRow}
-              >
-                {categoryChips.map((chip) => {
-                  const isActive = activeCategory === chip.slug;
-                  return (
-                    <TouchableOpacity
-                      key={chip.slug}
-                      onPress={() => { Haptics.selectionAsync(); setActiveCategory(chip.slug); }}
-                      style={[styles.chip, isActive && styles.chipActive]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
-                      accessibilityState={{ selected: isActive }}
-                    >
-                      <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
-                        <Text style={styles.chipEmoji}>{chip.emoji}</Text>
-                      </View>
-                      <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>{chip.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-                <TouchableOpacity
-                  onPress={() => { Haptics.selectionAsync(); setShowSuggest(true); }}
-                  style={styles.suggestChip}
-                  accessibilityRole="button"
-                  accessibilityLabel="Suggest a new category"
-                >
-                  <Ionicons name="add-circle-outline" size={16} color={AMBER} />
-                  <Text style={styles.suggestChipText}>Suggest</Text>
-                </TouchableOpacity>
-              </ScrollView>
-              <View style={styles.bestInHeader}>
-                <Text style={styles.bestInTitle}>Best In {city}</Text>
-              </View>
-              {/* Sprint 331: Extracted to CuisineChipRow */}
-              <CuisineChipRow
-                cuisines={availableCuisines}
-                selectedCuisine={selectedCuisine}
-                onSelect={setSelectedCuisine}
-                analyticsSource="rankings"
-              />
-              {dishShortcuts.length > 0 && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.dishShortcutsContainer}
-                  style={styles.dishShortcutsRow}
-                >
-                  <Text style={styles.dishShortcutsLabel}>Dish Rankings:</Text>
-                  {dishShortcuts.map((dish) => (
-                    <TouchableOpacity
-                      key={dish.slug}
-                      onPress={() => {
-                        Haptics.selectionAsync();
-                        Analytics.dishDeepLinkTap(dish.slug);
-                        router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
-                      }}
-                      style={styles.dishShortcutChip}
-                      accessibilityRole="link"
-                      accessibilityLabel={`Best ${dish.name} leaderboard`}
-                    >
-                      <Text style={styles.dishShortcutText}>
-                        {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount}` : ""}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={14} color={AMBER} />
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-              {showBanner && (
-                <View style={styles.welcomeBanner}>
-                  <Text style={styles.welcomeBannerText}>Trust-weighted rankings by real people.</Text>
-                  <Text style={styles.welcomeBannerSubtext}>Rate businesses you've visited to build your credibility.</Text>
-                  <TouchableOpacity
-                    style={styles.welcomeBannerClose}
-                    onPress={() => { AsyncStorage.setItem("banner_dismissed", "true"); setShowBanner(false); }}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Dismiss welcome banner"
-                  >
-                    <Ionicons name="close" size={16} color="rgba(255,255,255,0.5)" />
-                  </TouchableOpacity>
-                </View>
-              )}
-              {heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
-              {/* Sprint 299: Rankings summary — count + cuisine + last updated */}
-              {filteredBiz.length > 0 && (
-                <View style={styles.rankingSummary}>
-                  <Text style={styles.rankingSummaryText}>
-                    {filteredBiz.length} {selectedCuisine && CUISINE_DISPLAY[selectedCuisine] ? `${CUISINE_DISPLAY[selectedCuisine].label} ` : ""}{getCategoryDisplay(activeCategory).label.toLowerCase()} ranked
-                  </Text>
-                  {dataUpdatedAt > 0 && (
-                    <Text style={styles.rankingSummaryTime}>
-                      Updated {formatTimeAgo(dataUpdatedAt)}
-                    </Text>
-                  )}
-                </View>
-              )}
-            </>
+            <RankingsListHeader
+              categoryChips={categoryChips}
+              activeCategory={activeCategory}
+              onCategoryChange={setActiveCategory}
+              onShowSuggest={() => setShowSuggest(true)}
+              availableCuisines={availableCuisines}
+              selectedCuisine={selectedCuisine}
+              onCuisineChange={setSelectedCuisine}
+              dishShortcuts={dishShortcuts}
+              showBanner={showBanner}
+              onDismissBanner={() => { AsyncStorage.setItem("banner_dismissed", "true"); setShowBanner(false); }}
+              heroBiz={heroBiz}
+              filteredCount={filteredBiz.length}
+              dataUpdatedAt={dataUpdatedAt}
+              city={city}
+            />
           }
           ListFooterComponent={
             restBiz.length > 0 ? (
@@ -447,41 +360,14 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 14, color: Colors.text, fontFamily: "DMSans_400Regular" },
 
-  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 12 },
-  chipsContainer: { paddingHorizontal: 16, gap: 8, flexDirection: "row", paddingVertical: 6 },
-  chip: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 14, height: 38, borderRadius: 100,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  chipActive: {
-    backgroundColor: AMBER, borderColor: AMBER,
-    shadowColor: AMBER, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 4,
-  },
-  chipEmojiCircle: {
-    width: 24, height: 24, borderRadius: 12,
-    backgroundColor: "rgba(0,0,0,0.04)", alignItems: "center", justifyContent: "center",
-  },
-  chipEmojiCircleActive: { backgroundColor: "rgba(255,255,255,0.2)" },
-  chipEmoji: { fontSize: 13 },
-  chipLabel: { fontSize: 13, fontFamily: "DMSans_600SemiBold", color: Colors.text },
-  chipLabelActive: { color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
+  // Sprint 386: chip styles moved to RankingsListHeader
 
   list: { paddingHorizontal: CARD_PADDING, gap: 10, paddingTop: 4 },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
-  rankingSummary: {
-    flexDirection: "row" as const, alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 6, marginBottom: 4,
-  },
-  rankingSummaryText: {
-    fontSize: 12, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
-  },
-  rankingSummaryTime: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
+  // Sprint 386: rankingSummary styles moved to RankingsListHeader
   listFooter: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 20, paddingHorizontal: 16 },
   listFooterLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   listFooterText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
@@ -492,49 +378,11 @@ const styles = StyleSheet.create({
   },
   retryButtonText: { color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 },
 
-  bestInHeader: {
-    paddingHorizontal: 20, paddingTop: 2, paddingBottom: 4,
-  },
-  bestInTitle: {
-    fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text,
-  },
-  // Sprint 331: cuisineChip styles moved to CuisineChipRow component
-
-  suggestChip: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 14, height: 38, borderRadius: 100,
-    backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: AMBER, borderStyle: "dashed",
-  },
-  suggestChipText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
+  // Sprint 386: bestIn, suggest, cuisine styles moved to RankingsListHeader
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center",
   },
-  welcomeBanner: {
-    backgroundColor: "#0D1B2A", borderRadius: 12,
-    padding: 16, marginBottom: 12, marginHorizontal: 0,
-    position: "relative" as const,
-  },
-  welcomeBannerText: {
-    color: "#FFFFFF", fontSize: 14, fontFamily: "DMSans_600SemiBold",
-    paddingRight: 24,
-  },
-  welcomeBannerSubtext: {
-    color: "rgba(255,255,255,0.7)", fontSize: 12, fontFamily: "DMSans_400Regular",
-    marginTop: 4, paddingRight: 24,
-  },
-  welcomeBannerClose: {
-    position: "absolute" as const, top: 12, right: 12,
-  },
-  dishShortcutsRow: { flexGrow: 0, minHeight: 38, marginBottom: 4 },
-  dishShortcutsContainer: { paddingHorizontal: 16, flexDirection: "row", alignItems: "center", paddingVertical: 2 },
-  dishShortcutsLabel: { fontSize: 11, fontFamily: "DMSans_600SemiBold", color: Colors.textTertiary, marginRight: 8 },
-  dishShortcutChip: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    marginRight: 8, backgroundColor: "rgba(196,154,26,0.08)",
-    borderWidth: 1, borderColor: "rgba(196,154,26,0.25)",
-  },
-  dishShortcutText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
+  // Sprint 386: welcomeBanner, dishShortcut styles moved to RankingsListHeader
   // Sprint 319: Cuisine-aware empty state
   emptyStateContainer: { alignItems: "center" as const },
   emptyDishSuggestions: {

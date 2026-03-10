@@ -53,6 +53,7 @@ describe("Sprint 306 — Cuisine-to-Dish Drill-Down", () => {
   // ─── Rankings page integration ─────────────────────────────
 
   const indexSrc = readFile("app/(tabs)/index.tsx");
+  const headerSrc = readFile("components/leaderboard/RankingsListHeader.tsx");
 
   it("Rankings uses useDishShortcuts hook (replaced CUISINE_DISH_MAP in Sprint 312)", () => {
     expect(indexSrc).toContain("useDishShortcuts");
@@ -63,7 +64,7 @@ describe("Sprint 306 — Cuisine-to-Dish Drill-Down", () => {
   });
 
   it("dish shortcuts row has 'Dish Rankings:' label", () => {
-    expect(indexSrc).toContain("Dish Rankings:");
+    expect(headerSrc).toContain("Dish Rankings:");
   });
 
   it("dish chip shows 'Best {name}' text", () => {
@@ -80,18 +81,18 @@ describe("Sprint 306 — Cuisine-to-Dish Drill-Down", () => {
   });
 
   it("dish chip tracks analytics", () => {
-    expect(indexSrc).toContain("Analytics.dishDeepLinkTap(dish.slug)");
+    expect(headerSrc).toContain("Analytics.dishDeepLinkTap(dish.slug)");
   });
 
   // ─── Styles ────────────────────────────────────────────────
 
   it("has dishShortcutsRow style", () => {
-    expect(indexSrc).toContain("dishShortcutsRow");
+    expect(headerSrc).toContain("dishShortcutsRow");
   });
 
   it("has dishShortcutChip style with amber tint", () => {
-    expect(indexSrc).toContain("dishShortcutChip");
-    expect(indexSrc).toContain("rgba(196,154,26,0.08)");
+    expect(headerSrc).toContain("dishShortcutChip");
+    expect(headerSrc).toContain("rgba(196,154,26,0.08)");
   });
 
   // ─── Sprint docs ──────────────────────────────────────────

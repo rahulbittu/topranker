@@ -15,19 +15,20 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 
 describe("Sprint 325 — Navigation redesign", () => {
   const src = readFile("app/(tabs)/index.tsx");
+  const headerSrc = readFile("components/leaderboard/RankingsListHeader.tsx");
 
   it("category chips are inside ListHeaderComponent", () => {
-    // Category chips should appear AFTER "ListHeaderComponent" in the source
+    // Sprint 386: ListHeaderComponent now uses RankingsListHeader which contains categoryChips.map
     const listHeaderIdx = src.indexOf("ListHeaderComponent=");
-    const chipsIdx = src.indexOf("categoryChips.map");
     expect(listHeaderIdx).toBeGreaterThan(-1);
-    expect(chipsIdx).toBeGreaterThan(listHeaderIdx);
+    expect(src).toContain("RankingsListHeader");
+    expect(headerSrc).toContain("categoryChips.map");
   });
 
   it("CuisineChipRow is inside ListHeaderComponent", () => {
-    const listHeaderIdx = src.indexOf("ListHeaderComponent=");
-    const afterLhc = src.slice(listHeaderIdx, listHeaderIdx + 5000);
-    expect(afterLhc).toContain("CuisineChipRow");
+    // Sprint 386: CuisineChipRow is now inside RankingsListHeader component
+    expect(src).toContain("RankingsListHeader");
+    expect(headerSrc).toContain("CuisineChipRow");
   });
 
   it("dish shortcuts are inside ListHeaderComponent", () => {
@@ -62,6 +63,7 @@ describe("Sprint 325 — Navigation redesign", () => {
   it("has DoorDash pattern comment", () => {
     expect(src).toContain("DoorDash pattern");
   });
+
 
   // Sprint docs
   it("sprint doc exists", () => {

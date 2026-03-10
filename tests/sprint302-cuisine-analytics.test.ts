@@ -88,10 +88,10 @@ describe("Sprint 302 — Cuisine Analytics", () => {
   // ─── Rankings Page Integration ────────────────────────────
 
   it("Rankings page imports Analytics", async () => {
-    const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/index.tsx", "utf-8")
+    const headerSource = await import("fs").then((fs) =>
+      fs.readFileSync("components/leaderboard/RankingsListHeader.tsx", "utf-8")
     );
-    expect(source).toContain('import { Analytics }');
+    expect(headerSource).toContain('import { Analytics }');
   });
 
   it("Rankings page tracks cuisine select via CuisineChipRow", async () => {

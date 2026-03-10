@@ -15,11 +15,14 @@ import * as path from "path";
 const src = fs.readFileSync(
   path.resolve("app/(tabs)/index.tsx"), "utf-8",
 );
+const headerSrc = fs.readFileSync(
+  path.resolve("components/leaderboard/RankingsListHeader.tsx"), "utf-8",
+);
 
 describe("Sprint 299 — Rankings summary content", () => {
   it("shows filtered business count", () => {
-    expect(src).toContain("filteredBiz.length");
-    expect(src).toMatch(/filteredBiz\.length.*ranked/);
+    expect(headerSrc).toContain("filteredCount");
+    expect(headerSrc).toMatch(/filteredCount.*ranked/);
   });
 
   it("includes cuisine label when cuisine is selected", () => {
@@ -42,20 +45,20 @@ describe("Sprint 299 — Rankings summary content", () => {
 
 describe("Sprint 299 — Rankings summary conditional rendering", () => {
   it("only shows when filteredBiz has items", () => {
-    expect(src).toMatch(/filteredBiz\.length\s*>\s*0\s*&&/);
+    expect(headerSrc).toMatch(/filteredCount\s*>\s*0/);
   });
 });
 
 describe("Sprint 299 — Rankings summary styles", () => {
   it("defines rankingSummary style", () => {
-    expect(src).toContain("rankingSummary:");
+    expect(headerSrc).toContain("rankingSummary:");
   });
 
   it("defines rankingSummaryText style", () => {
-    expect(src).toContain("rankingSummaryText:");
+    expect(headerSrc).toContain("rankingSummaryText:");
   });
 
   it("defines rankingSummaryTime style", () => {
-    expect(src).toContain("rankingSummaryTime:");
+    expect(headerSrc).toContain("rankingSummaryTime:");
   });
 });

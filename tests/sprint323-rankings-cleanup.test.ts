@@ -14,6 +14,7 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 
 describe("Sprint 323 — Rankings page cleanup", () => {
   const src = readFile("app/(tabs)/index.tsx");
+  const headerSrc = readFile("components/leaderboard/RankingsListHeader.tsx");
 
   it("does NOT have selectedBestIn state (removed)", () => {
     expect(src).not.toContain("selectedBestIn");
@@ -34,15 +35,15 @@ describe("Sprint 323 — Rankings page cleanup", () => {
   });
 
   it("still has cuisine picker", () => {
-    expect(src).toContain("cuisineChip");
+    expect(headerSrc).toContain("CuisineChipRow");
     expect(src).toContain("setSelectedCuisine");
     expect(src).toContain("CUISINE_DISPLAY");
   });
 
   it("still has dish shortcuts", () => {
     expect(src).toContain("dishShortcuts");
-    expect(src).toContain("dishShortcutChip");
-    expect(src).toContain("Dish Rankings:");
+    expect(headerSrc).toContain("dishShortcutChip");
+    expect(headerSrc).toContain("Dish Rankings:");
   });
 
   it("still has category chips", () => {
@@ -51,8 +52,8 @@ describe("Sprint 323 — Rankings page cleanup", () => {
   });
 
   it("still has Best In header", () => {
-    expect(src).toContain("Best In {city}");
-    expect(src).toContain("bestInTitle");
+    expect(headerSrc).toContain("Best In {city}");
+    expect(headerSrc).toContain("bestInTitle");
   });
 
   it("uses CuisineChipRow component (extracted Sprint 331)", () => {

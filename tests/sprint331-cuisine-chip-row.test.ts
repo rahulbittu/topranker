@@ -76,11 +76,10 @@ describe("Sprint 331 — CuisineChipRow Component", () => {
   });
 
   it("should use CuisineChipRow in ListHeaderComponent", () => {
-    const lhcSection = indexCode.slice(
-      indexCode.indexOf("ListHeaderComponent={"),
-      indexCode.indexOf("ListFooterComponent=")
-    );
-    expect(lhcSection).toContain("CuisineChipRow");
+    // Sprint 386: ListHeaderComponent now renders RankingsListHeader which contains CuisineChipRow
+    const headerSrc = fs.readFileSync(path.resolve(__dirname, "../components/leaderboard/RankingsListHeader.tsx"), "utf-8");
+    expect(indexCode).toContain("RankingsListHeader");
+    expect(headerSrc).toContain("CuisineChipRow");
   });
 
   it("should NOT have inline cuisine chip rendering in index.tsx", () => {

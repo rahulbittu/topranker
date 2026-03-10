@@ -72,16 +72,16 @@ describe("Sprint 327 — Sticky Cuisine Chips", () => {
     expect(lines).toBeLessThan(660);
   });
 
-  // Existing functionality preserved
+  // Existing functionality preserved (Sprint 386: via RankingsListHeader)
   it("should preserve in-scroll CuisineChipRow in ListHeaderComponent", () => {
-    const lhcStart = indexCode.indexOf("ListHeaderComponent={");
-    const afterLhc = indexCode.slice(lhcStart, lhcStart + 5000);
-    expect(afterLhc).toContain("CuisineChipRow");
+    const headerSrc = fs.readFileSync(path.resolve(__dirname, "../components/leaderboard/RankingsListHeader.tsx"), "utf-8");
+    expect(indexCode).toContain("RankingsListHeader");
+    expect(headerSrc).toContain("CuisineChipRow");
   });
 
   it("should preserve category chips in ListHeaderComponent", () => {
-    const lhcStart = indexCode.indexOf("ListHeaderComponent={");
-    const afterLhc = indexCode.slice(lhcStart, lhcStart + 3000);
-    expect(afterLhc).toContain("categoryChips.map");
+    const headerSrc = fs.readFileSync(path.resolve(__dirname, "../components/leaderboard/RankingsListHeader.tsx"), "utf-8");
+    expect(indexCode).toContain("RankingsListHeader");
+    expect(headerSrc).toContain("categoryChips.map");
   });
 });
