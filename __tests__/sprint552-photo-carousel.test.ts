@@ -11,10 +11,12 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 describe("Sprint 552: Photo Carousel", () => {
   describe("CollapsibleReviews.tsx (carousel integration)", () => {
     const src = readFile("components/business/CollapsibleReviews.tsx");
+    // Sprint 563: PhotoCarouselModal extracted to own component
+    const modalSrc = readFile("components/business/PhotoCarouselModal.tsx");
 
-    it("imports Modal and FlatList from react-native", () => {
-      expect(src).toContain("Modal");
-      expect(src).toContain("FlatList");
+    it("imports PhotoCarouselModal from extracted component", () => {
+      expect(src).toContain("PhotoCarouselModal");
+      expect(src).toContain("./PhotoCarouselModal");
     });
 
     it("imports fetchRatingPhotos from api", () => {
@@ -27,12 +29,12 @@ describe("Sprint 552: Photo Carousel", () => {
     });
 
     it("carousel uses horizontal pagingEnabled FlatList", () => {
-      expect(src).toContain("horizontal");
-      expect(src).toContain("pagingEnabled");
+      // Sprint 563: moved to extracted component
+      expect(modalSrc).toContain("horizontal");
+      expect(modalSrc).toContain("pagingEnabled");
     });
 
     it("badges are tappable with TouchableOpacity", () => {
-      // The photoIndicatorRow is now wrapped in TouchableOpacity
       expect(src).toContain("onPress={openCarousel}");
     });
 
@@ -45,26 +47,31 @@ describe("Sprint 552: Photo Carousel", () => {
     });
 
     it("carousel has close button", () => {
-      expect(src).toContain("carouselClose");
-      expect(src).toContain("close-circle");
+      // Sprint 563: moved to extracted component
+      expect(modalSrc).toContain("carouselClose");
+      expect(modalSrc).toContain("close-circle");
     });
 
     it("carousel shows receipt badge overlay", () => {
-      expect(src).toContain("carouselReceiptBadge");
-      expect(src).toContain("isVerifiedReceipt");
+      // Sprint 563: moved to extracted component
+      expect(modalSrc).toContain("carouselReceiptBadge");
+      expect(modalSrc).toContain("isVerifiedReceipt");
     });
 
     it("carousel shows photo count", () => {
-      expect(src).toContain("carouselCount");
+      // Sprint 563: moved to extracted component
+      expect(modalSrc).toContain("carouselCount");
     });
 
     it("handles loading state with ActivityIndicator", () => {
-      expect(src).toContain("ActivityIndicator");
+      // Sprint 563: ActivityIndicator moved to extracted component
+      expect(modalSrc).toContain("ActivityIndicator");
       expect(src).toContain("photosLoading");
     });
 
     it("handles empty photos state", () => {
-      expect(src).toContain("No photos available");
+      // Sprint 563: moved to extracted component
+      expect(modalSrc).toContain("No photos available");
     });
 
     it("uses on-demand fetch with React Query caching", () => {
@@ -73,10 +80,11 @@ describe("Sprint 552: Photo Carousel", () => {
       expect(src).toContain("staleTime");
     });
 
-    it("has carousel styles", () => {
-      expect(src).toContain("carouselOverlay");
-      expect(src).toContain("carouselSlide");
-      expect(src).toContain("carouselImage");
+    it("has carousel styles in extracted component", () => {
+      // Sprint 563: carousel styles moved to PhotoCarouselModal
+      expect(modalSrc).toContain("carouselOverlay");
+      expect(modalSrc).toContain("carouselSlide");
+      expect(modalSrc).toContain("carouselImage");
     });
   });
 

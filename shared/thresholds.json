@@ -12,7 +12,8 @@
     "app/(tabs)/search.tsx": { "maxLOC": 680, "current": 666, "notes": "Search page" },
     "app/business/dashboard.tsx": { "maxLOC": 510, "current": 492, "notes": "Sprint 561: HoursEditor extracted" },
     "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 111, "notes": "Sprint 561: extracted from dashboard.tsx" },
-    "components/business/CollapsibleReviews.tsx": { "maxLOC": 420, "current": 407, "notes": "Sprint 552: carousel" },
+    "components/business/CollapsibleReviews.tsx": { "maxLOC": 370, "current": 349, "notes": "Sprint 563: carousel extracted" },
+    "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 70, "notes": "Sprint 563: extracted from CollapsibleReviews" },
     "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 100, "current": 80, "notes": "Sprint 553: new" },
     "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 414, "notes": "Sprint 546: dedup" },
     "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" }
