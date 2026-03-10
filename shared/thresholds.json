@@ -1,0 +1,26 @@
+{
+  "_comment": "Sprint 558: Centralized file health thresholds. Update here instead of per-sprint test files.",
+  "files": {
+    "shared/schema.ts": { "maxLOC": 950, "current": 935, "notes": "Sprint 551: compressed from 996" },
+    "server/routes.ts": { "maxLOC": 400, "current": 383, "notes": "Core routes" },
+    "server/storage/businesses.ts": { "maxLOC": 620, "current": 599, "notes": "Sprint 554: +updateBusinessHours" },
+    "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 81, "notes": "Sprint 554: hours PUT" },
+    "server/hours-utils.ts": { "maxLOC": 220, "current": 200, "notes": "Sprint 557: conversion utils" },
+    "lib/api.ts": { "maxLOC": 710, "current": 691, "notes": "Sprint 554: HoursUpdate" },
+    "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
+    "app/(tabs)/search.tsx": { "maxLOC": 680, "current": 666, "notes": "Search page" },
+    "app/business/dashboard.tsx": { "maxLOC": 610, "current": 592, "notes": "Sprint 556: hours prefill" },
+    "components/business/CollapsibleReviews.tsx": { "maxLOC": 420, "current": 407, "notes": "Sprint 552: carousel" },
+    "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 100, "current": 80, "notes": "Sprint 553: new" },
+    "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 414, "notes": "Sprint 546: dedup" },
+    "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" }
+  },
+  "build": {
+    "maxSizeKb": 720,
+    "currentSizeKb": 708.7
+  },
+  "tests": {
+    "minCount": 10400,
+    "currentCount": 10468
+  }
+}
