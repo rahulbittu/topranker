@@ -345,6 +345,7 @@ export default function SearchScreen() {
         <PopularQueriesPanel
           queries={popularQueries}
           onSelect={(term) => { setQuery(term); setSearchFocused(false); }}
+          excludeQueries={recentSearches}
         />
         </>
       )}

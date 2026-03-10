@@ -194,20 +194,24 @@ export function RecentSearchesPanel({ searches, onSelect, onClear }: RecentSearc
 }
 
 // Sprint 544: Popular search queries panel
+// Sprint 546: excludeQueries deduplication — hides queries already shown in Recent
 interface PopularQueriesPanelProps {
   queries: { query: string; count: number }[];
   onSelect: (term: string) => void;
+  excludeQueries?: string[];
 }
 
-export function PopularQueriesPanel({ queries, onSelect }: PopularQueriesPanelProps) {
-  if (queries.length === 0) return null;
+export function PopularQueriesPanel({ queries, onSelect, excludeQueries = [] }: PopularQueriesPanelProps) {
+  const excludeSet = new Set(excludeQueries.map((q) => q.toLowerCase().trim()));
+  const filtered = queries.filter((item) => !excludeSet.has(item.query.toLowerCase().trim()));
+  if (filtered.length === 0) return null;
   return (
     <View style={styles.popularQueriesContainer}>
       <View style={styles.popularQueriesHeader}>
         <Ionicons name="trending-up" size={14} color={AMBER} />
         <Text style={styles.popularQueriesTitle}>Popular Searches</Text>
       </View>
-      {queries.slice(0, 6).map((item) => (
+      {filtered.slice(0, 6).map((item) => (
         <TouchableOpacity
           key={item.query}
           style={styles.popularQueryRow}

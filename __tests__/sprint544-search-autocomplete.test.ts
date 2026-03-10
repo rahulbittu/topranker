@@ -137,8 +137,9 @@ describe("Sprint 544: Search Autocomplete", () => {
       expect(src).toContain("popularQueryCountBadge");
     });
 
-    it("returns null when no queries", () => {
-      expect(src).toContain("queries.length === 0");
+    it("returns null when no queries after filtering", () => {
+      // Sprint 546: changed from queries.length to filtered.length for dedup
+      expect(src).toContain("filtered.length === 0");
       expect(src).toContain("return null");
     });
 
