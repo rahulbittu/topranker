@@ -42,6 +42,7 @@ import { PhotoLightbox } from "@/components/business/PhotoLightbox";
 import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
+import { PhotoUploadSheet } from "@/components/business/PhotoUploadSheet";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -87,6 +88,7 @@ export default function BusinessProfileScreen() {
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(0);
+  const [uploadSheetVisible, setUploadSheetVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [ratingImpact, setRatingImpactState] = useState<{ prevRank: number; newRank: number } | null>(null);
 
@@ -417,7 +419,7 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Photo Gallery — extracted component (Sprint 366) */}
-          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => router.push({ pathname: "/rate/[id]", params: { id: business.slug } }) : undefined} onPhotoPress={openLightbox} />
+          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => setUploadSheetVisible(true) : undefined} onPhotoPress={openLightbox} />
 
         </View>
       </ScrollView>
@@ -429,6 +431,14 @@ export default function BusinessProfileScreen() {
         initialIndex={lightboxIdx}
         category={business.category}
         onClose={() => setLightboxVisible(false)}
+      />
+      {/* Sprint 438: Community photo upload */}
+      <PhotoUploadSheet
+        visible={uploadSheetVisible}
+        onClose={() => setUploadSheetVisible(false)}
+        businessId={business.id}
+        businessName={business.name}
+        onUploadSuccess={() => refetch()}
       />
     </View>
   );

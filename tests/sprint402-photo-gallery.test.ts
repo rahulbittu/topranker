@@ -109,8 +109,9 @@ describe("Sprint 402 — Business detail integration", () => {
     expect(src).toContain("onAddPhoto=");
   });
 
-  it("navigates to rate screen on add photo", () => {
-    expect(src).toContain('pathname: "/rate/[id]"');
+  it("opens upload sheet on add photo", () => {
+    // Sprint 438: Changed from rate navigation to photo upload sheet
+    expect(src).toContain("setUploadSheetVisible(true)");
   });
 });
 

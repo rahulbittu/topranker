@@ -228,4 +228,58 @@ export function registerBusinessRoutes(app: Express) {
     return res.json({ data });
   }));
 
+  // ── Sprint 438: Community Photo Upload ──────────────────────
+  app.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const businessId = req.params.id as string;
+    const memberId = req.user!.id;
+
+    // Validate photo data
+    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
+    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
+    const caption = sanitizeString(rawCaption, 500) || "";
+
+    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
+    }
+
+    if (!photoData || typeof photoData !== "string") {
+      return res.status(400).json({ error: "Photo data is required (base64)" });
+    }
+
+    const buffer = Buffer.from(photoData, "base64");
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const MIN_SIZE = 1024; // 1KB
+    if (buffer.length > MAX_SIZE) {
+      return res.status(400).json({ error: "Photo too large (max 10MB)" });
+    }
+    if (buffer.length < MIN_SIZE) {
+      return res.status(400).json({ error: "Photo too small (min 1KB)" });
+    }
+
+    // Upload to file storage
+    const { fileStorage } = await import("./file-storage");
+    const ext = mimeType.split("/")[1] || "jpeg";
+    const crypto = await import("crypto");
+    const key = `community-photos/${businessId}/${memberId}-${crypto.randomUUID()}.${ext}`;
+    const url = await fileStorage.upload(key, buffer, mimeType);
+
+    // Submit to moderation queue
+    const { submitPhoto } = await import("./photo-moderation");
+    const result = submitPhoto(businessId, memberId, url, caption, buffer.length, mimeType);
+    if ("error" in result) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    log.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
+    return res.status(201).json({
+      data: {
+        id: result.id,
+        url: result.url,
+        status: result.status,
+        message: "Photo submitted for review",
+      },
+    });
+  }));
+
 }
