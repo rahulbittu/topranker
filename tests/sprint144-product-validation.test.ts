@@ -29,6 +29,7 @@ function fileExists(relPath: string): boolean {
 describe("Experiment Integration Verification", () => {
   const challengerSrc = readFile("app/(tabs)/challenger.tsx");
   const challengerSubSrc = readFile("components/challenger/SubComponents.tsx");
+  const challengerCardSrc = readFile("components/challenger/ChallengeCard.tsx");
   const businessSrc = readFile("app/business/[id].tsx");
   const businessSubSrc = readFile("components/business/SubComponents.tsx");
   const searchSubSrc = readFile("components/search/SubComponents.tsx");
@@ -37,20 +38,22 @@ describe("Experiment Integration Verification", () => {
   it("challenger.tsx or SubComponents imports useExperiment", () => {
     const imported =
       challengerSrc.includes("useExperiment") ||
-      challengerSubSrc.includes("useExperiment");
+      challengerSubSrc.includes("useExperiment") ||
+      challengerCardSrc.includes("useExperiment");
     expect(imported).toBe(true);
   });
 
   it("challenger renders personalized_weight experiment variant or personalized weight text", () => {
-    // The personalized weight feature is present in challenger.tsx via the
+    // The personalized weight feature is present in ChallengeCard.tsx via the
     // credibilityTier-based personalized weight display (Sprint 131).
     // Check for the personalized_weight experiment key OR the personalized weight UI.
     const hasExperimentKey =
       challengerSrc.includes("personalized_weight") ||
-      challengerSubSrc.includes("personalized_weight");
+      challengerSubSrc.includes("personalized_weight") ||
+      challengerCardSrc.includes("personalized_weight");
     const hasPersonalizedUI =
-      challengerSrc.includes("howVotingWorksPersonalized") ||
-      challengerSrc.includes("Your votes count as");
+      challengerCardSrc.includes("howVotingWorksPersonalized") ||
+      challengerCardSrc.includes("Your votes count as");
     expect(hasExperimentKey || hasPersonalizedUI).toBe(true);
   });
 
@@ -103,14 +106,17 @@ describe("Experiment Integration Verification", () => {
 
   it("treatment shows personalized vote weight text in challenger", () => {
     // The personalized weight text is tier-aware and shows the numeric weight
-    expect(challengerSrc).toContain("Your vote weight:");
-    expect(challengerSrc).toContain("TIER_WEIGHTS");
-    expect(challengerSrc).toContain("showPersonalizedWeight");
+    // After extraction, this logic lives in ChallengeCard.tsx
+    const src = challengerCardSrc;
+    expect(src).toContain("Your vote weight:");
+    expect(src).toContain("TIER_WEIGHTS");
+    expect(src).toContain("showPersonalizedWeight");
   });
 
   it("control shows default behavior (generic how voting works text)", () => {
     // When user has no credibilityTier, the default text is shown (control path)
-    expect(challengerSrc).toContain(
+    // After extraction, this logic lives in ChallengeCard.tsx
+    expect(challengerCardSrc).toContain(
       "Your vote weight depends on your credibility tier"
     );
   });
@@ -231,13 +237,16 @@ describe("Component Extraction Integrity", () => {
   });
 
   it("all extraction source files import from their SubComponents", () => {
-    const challengerSrc = readFile("app/(tabs)/challenger.tsx");
+    const challSrc = readFile("app/(tabs)/challenger.tsx");
+    const challCardSrc = readFile("components/challenger/ChallengeCard.tsx");
     const businessSrc = readFile("app/business/[id].tsx");
     const searchSrc = readFile("app/(tabs)/search.tsx");
 
-    expect(challengerSrc).toContain(
-      'from "@/components/challenger/SubComponents"'
-    );
+    // challenger.tsx imports ChallengeCard which in turn imports SubComponents
+    const challengerImportsSubComponents =
+      challSrc.includes('from "@/components/challenger/SubComponents"') ||
+      challCardSrc.includes('from "@/components/challenger/SubComponents"');
+    expect(challengerImportsSubComponents).toBe(true);
     expect(businessSrc).toContain(
       'from "@/components/business/SubComponents"'
     );
@@ -248,10 +257,11 @@ describe("Component Extraction Integrity", () => {
 
   it("no orphaned exports — everything exported from SubComponents is imported somewhere", () => {
     // Check that key exports from each SubComponents file are imported by their parent
-    const challengerSrc = readFile("app/(tabs)/challenger.tsx");
+    // After ChallengeCard extraction, SubComponents are consumed by ChallengeCard.tsx
+    const challCardSrc = readFile("components/challenger/ChallengeCard.tsx");
     const challengerSubExports = ["VoteBar", "FighterPhoto", "FighterConfidence", "WinnerReveal", "CommunityReviews"];
     for (const exp of challengerSubExports) {
-      expect(challengerSrc).toContain(exp);
+      expect(challCardSrc).toContain(exp);
     }
 
     const businessSrc = readFile("app/business/[id].tsx");

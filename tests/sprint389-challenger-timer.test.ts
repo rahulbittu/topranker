@@ -14,7 +14,7 @@ const readFile = (relPath: string) =>
 // ── 1. Live countdown interval ──────────────────────────────────────
 
 describe("Sprint 389 — Live countdown interval", () => {
-  const src = readFile("app/(tabs)/challenger.tsx");
+  const src = readFile("components/challenger/ChallengeCard.tsx");
 
   it("uses 1-second interval for live updates", () => {
     expect(src).toContain("1000");
@@ -33,7 +33,7 @@ describe("Sprint 389 — Live countdown interval", () => {
 // ── 2. Urgency color system ─────────────────────────────────────────
 
 describe("Sprint 389 — Urgency colors", () => {
-  const src = readFile("app/(tabs)/challenger.tsx");
+  const src = readFile("components/challenger/ChallengeCard.tsx");
 
   it("defines urgencyColor variable", () => {
     expect(src).toContain("urgencyColor");
@@ -57,7 +57,7 @@ describe("Sprint 389 — Urgency colors", () => {
 // ── 3. Segmented timer display ──────────────────────────────────────
 
 describe("Sprint 389 — Segmented timer display", () => {
-  const src = readFile("app/(tabs)/challenger.tsx");
+  const src = readFile("components/challenger/ChallengeCard.tsx");
 
   it("shows DAYS segment", () => {
     expect(src).toContain("DAYS");
@@ -92,7 +92,7 @@ describe("Sprint 389 — Segmented timer display", () => {
 // ── 4. Timer styles ─────────────────────────────────────────────────
 
 describe("Sprint 389 — Timer styles", () => {
-  const src = readFile("app/(tabs)/challenger.tsx");
+  const src = readFile("components/challenger/ChallengeCard.tsx");
 
   it("has timerSegments style", () => {
     expect(src).toContain("timerSegments:");

@@ -146,8 +146,9 @@ describe("Typography Migration Completeness", () => {
   });
 
   it("challenger.tsx imports TYPOGRAPHY", () => {
+    // After ChallengeCard extraction, TYPOGRAPHY moved to ChallengeCard.tsx
     const src = fs.readFileSync(
-      path.join(ROOT, "app", "(tabs)", "challenger.tsx"),
+      path.join(ROOT, "components", "challenger", "ChallengeCard.tsx"),
       "utf-8",
     );
     expect(src).toMatch(/import\s*\{[^}]*TYPOGRAPHY[^}]*\}\s*from/);

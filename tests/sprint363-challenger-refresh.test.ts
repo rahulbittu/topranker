@@ -6,7 +6,7 @@ const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");
 
 describe("Sprint 363: Challenger card visual refresh", () => {
-  const challengerSrc = readFile("app/(tabs)/challenger.tsx");
+  const challengerSrc = readFile("components/challenger/ChallengeCard.tsx");
   const subSrc = readFile("components/challenger/SubComponents.tsx");
 
   // ── Status badge ──────────────────────────────────────────
