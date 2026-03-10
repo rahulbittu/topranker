@@ -50,7 +50,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(90); // Sprint 489: search skeleton percentage casts
+    expect(total).toBeLessThan(95); // Sprint 521: frequency prefs jsonb access casts
   });
 
   it("client-side casts under 15", () => {

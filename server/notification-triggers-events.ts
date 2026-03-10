@@ -12,6 +12,8 @@
 import { sendPushNotification } from "./push";
 import { recordPushDelivery } from "./push-analytics";
 import { getNotificationVariant } from "./push-ab-testing";
+import { shouldSendImmediately, enqueueNotification } from "./notification-frequency";
+import type { FrequencyPrefs } from "./notification-frequency";
 import { log } from "./logger";
 
 const triggerLog = log.tag("NotifyTrigger");
@@ -45,6 +47,7 @@ export async function onRankingChange(
         memberId: ratings.memberId,
         pushToken: members.pushToken,
         notificationPrefs: members.notificationPrefs,
+        notificationFrequencyPrefs: members.notificationFrequencyPrefs,
       })
       .from(ratings)
       .innerJoin(members, eq(ratings.memberId, members.id))
@@ -61,12 +64,13 @@ export async function onRankingChange(
       const abVariant = getNotificationVariant(String(rater.memberId), "rankingChange");
       const abTitle = abVariant ? abVariant.variant.title.replace("{emoji}", emoji).replace("{business}", businessName).replace("{direction}", direction) : `${emoji} ${businessName} moved ${direction}`;
       const abBody = abVariant ? abVariant.variant.body.replace("{newRank}", String(newRank)).replace("{oldRank}", String(oldRank)).replace("{city}", city) : `Now ranked #${newRank} in ${city} (was #${oldRank})`;
-      await sendPushNotification(
-        [rater.pushToken],
-        abTitle,
-        abBody,
-        { screen: "business", businessId },
-      );
+      // Sprint 521: Check frequency preference
+      const freqPrefs = (rater as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
+      if (shouldSendImmediately(freqPrefs, "rankingChanges")) {
+        await sendPushNotification([rater.pushToken], abTitle, abBody, { screen: "business", businessId });
+      } else {
+        enqueueNotification({ memberId: String(rater.memberId), pushToken: rater.pushToken, title: abTitle, body: abBody, data: { screen: "business", businessId }, category: "rankingChanges", queuedAt: Date.now() });
+      }
       sent++;
     }
 
@@ -102,6 +106,7 @@ export async function onNewRatingForBusiness(
         memberId: ratings.memberId,
         pushToken: members.pushToken,
         notificationPrefs: members.notificationPrefs,
+        notificationFrequencyPrefs: members.notificationFrequencyPrefs,
       })
       .from(ratings)
       .innerJoin(members, eq(ratings.memberId, members.id))
@@ -122,12 +127,13 @@ export async function onNewRatingForBusiness(
       const abVariant = getNotificationVariant(String(rater.memberId), "newRating");
       const nrTitle = abVariant ? abVariant.variant.title.replace("{business}", businessName) : `New rating for ${businessName}`;
       const nrBody = abVariant ? abVariant.variant.body.replace("{rater}", raterName).replace("{score}", score.toFixed(1)) : `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`;
-      await sendPushNotification(
-        [rater.pushToken],
-        nrTitle,
-        nrBody,
-        { screen: "business", businessId },
-      );
+      // Sprint 521: Check frequency preference
+      const freqPrefs = (rater as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
+      if (shouldSendImmediately(freqPrefs, "newRatings")) {
+        await sendPushNotification([rater.pushToken], nrTitle, nrBody, { screen: "business", businessId });
+      } else {
+        enqueueNotification({ memberId: String(rater.memberId), pushToken: rater.pushToken, title: nrTitle, body: nrBody, data: { screen: "business", businessId }, category: "newRatings", queuedAt: Date.now() });
+      }
       sent++;
     }
 
@@ -189,6 +195,7 @@ export async function sendCityHighlightsPush(city: string): Promise<number> {
         id: members.id,
         pushToken: members.pushToken,
         notificationPrefs: members.notificationPrefs,
+        notificationFrequencyPrefs: members.notificationFrequencyPrefs,
       })
       .from(members)
       .where(and(eq(members.city, city), isNotNull(members.pushToken)));
@@ -204,12 +211,13 @@ export async function sendCityHighlightsPush(city: string): Promise<number> {
       const abVariant = getNotificationVariant(String(user.id), "cityHighlights");
       const chTitle = abVariant ? abVariant.variant.title.replace("{city}", city) : `${city} rankings update`;
       const chBody = abVariant ? abVariant.variant.body.replace("{business}", biggestMover.businessName || "A restaurant").replace("{direction}", direction).replace("{delta}", String(biggestDelta)) : `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`;
-      await sendPushNotification(
-        [user.pushToken],
-        chTitle,
-        chBody,
-        { screen: "rankings" },
-      );
+      // Sprint 521: Check frequency preference
+      const freqPrefs = (user as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
+      if (shouldSendImmediately(freqPrefs, "cityAlerts")) {
+        await sendPushNotification([user.pushToken], chTitle, chBody, { screen: "rankings" });
+      } else {
+        enqueueNotification({ memberId: String(user.id), pushToken: user.pushToken, title: chTitle, body: chBody, data: { screen: "rankings" }, category: "cityAlerts", queuedAt: Date.now() });
+      }
       sent++;
     }
 

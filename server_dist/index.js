@@ -6135,6 +6135,31 @@ var init_push_analytics = __esm({
   }
 });
 
+// server/notification-frequency.ts
+function enqueueNotification(notification) {
+  const key2 = `${notification.memberId}:${notification.category}`;
+  const existing = queue2.get(key2) || [];
+  existing.push(notification);
+  queue2.set(key2, existing);
+  freqLog.info(`Queued notification: member=${notification.memberId.slice(0, 8)} category=${notification.category} (${existing.length} in batch)`);
+}
+function shouldSendImmediately(frequencyPrefs, category) {
+  if (!frequencyPrefs) return true;
+  const freq = frequencyPrefs[category];
+  return !freq || freq === "realtime";
+}
+var freqLog, queue2, HOUR_MS, DAY_MS;
+var init_notification_frequency = __esm({
+  "server/notification-frequency.ts"() {
+    "use strict";
+    init_logger();
+    freqLog = log.tag("NotifFreq");
+    queue2 = /* @__PURE__ */ new Map();
+    HOUR_MS = 60 * 60 * 1e3;
+    DAY_MS = 24 * HOUR_MS;
+  }
+});
+
 // server/notification-triggers-events.ts
 async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
   if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
@@ -6148,7 +6173,8 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
     const raters = await db2.selectDistinct({
       memberId: ratings5.memberId,
       pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
+      notificationPrefs: members4.notificationPrefs,
+      notificationFrequencyPrefs: members4.notificationFrequencyPrefs
     }).from(ratings5).innerJoin(members4, eq31(ratings5.memberId, members4.id)).where(and20(eq31(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
     let sent = 0;
     for (const rater of raters) {
@@ -6159,12 +6185,12 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
       const abVariant = getNotificationVariant(String(rater.memberId), "rankingChange");
       const abTitle = abVariant ? abVariant.variant.title.replace("{emoji}", emoji).replace("{business}", businessName).replace("{direction}", direction) : `${emoji} ${businessName} moved ${direction}`;
       const abBody = abVariant ? abVariant.variant.body.replace("{newRank}", String(newRank)).replace("{oldRank}", String(oldRank)).replace("{city}", city) : `Now ranked #${newRank} in ${city} (was #${oldRank})`;
-      await sendPushNotification(
-        [rater.pushToken],
-        abTitle,
-        abBody,
-        { screen: "business", businessId }
-      );
+      const freqPrefs = rater.notificationFrequencyPrefs;
+      if (shouldSendImmediately(freqPrefs, "rankingChanges")) {
+        await sendPushNotification([rater.pushToken], abTitle, abBody, { screen: "business", businessId });
+      } else {
+        enqueueNotification({ memberId: String(rater.memberId), pushToken: rater.pushToken, title: abTitle, body: abBody, data: { screen: "business", businessId }, category: "rankingChanges", queuedAt: Date.now() });
+      }
       sent++;
     }
     triggerLog.info(`Ranking change push: ${businessName} #${oldRank}\u2192#${newRank}, sent to ${sent} raters`);
@@ -6183,7 +6209,8 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
     const otherRaters = await db2.selectDistinct({
       memberId: ratings5.memberId,
       pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
+      notificationPrefs: members4.notificationPrefs,
+      notificationFrequencyPrefs: members4.notificationFrequencyPrefs
     }).from(ratings5).innerJoin(members4, eq31(ratings5.memberId, members4.id)).where(and20(
       eq31(ratings5.businessId, businessId),
       ne2(ratings5.memberId, ratingMemberId),
@@ -6197,12 +6224,12 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
       const abVariant = getNotificationVariant(String(rater.memberId), "newRating");
       const nrTitle = abVariant ? abVariant.variant.title.replace("{business}", businessName) : `New rating for ${businessName}`;
       const nrBody = abVariant ? abVariant.variant.body.replace("{rater}", raterName).replace("{score}", score.toFixed(1)) : `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`;
-      await sendPushNotification(
-        [rater.pushToken],
-        nrTitle,
-        nrBody,
-        { screen: "business", businessId }
-      );
+      const freqPrefs = rater.notificationFrequencyPrefs;
+      if (shouldSendImmediately(freqPrefs, "newRatings")) {
+        await sendPushNotification([rater.pushToken], nrTitle, nrBody, { screen: "business", businessId });
+      } else {
+        enqueueNotification({ memberId: String(rater.memberId), pushToken: rater.pushToken, title: nrTitle, body: nrBody, data: { screen: "business", businessId }, category: "newRatings", queuedAt: Date.now() });
+      }
       sent++;
     }
     triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
@@ -6239,7 +6266,8 @@ async function sendCityHighlightsPush(city) {
     const cityUsers = await db2.select({
       id: members4.id,
       pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
+      notificationPrefs: members4.notificationPrefs,
+      notificationFrequencyPrefs: members4.notificationFrequencyPrefs
     }).from(members4).where(and20(eq31(members4.city, city), isNotNull5(members4.pushToken)));
     let sent = 0;
     for (const user of cityUsers) {
@@ -6250,12 +6278,12 @@ async function sendCityHighlightsPush(city) {
       const abVariant = getNotificationVariant(String(user.id), "cityHighlights");
       const chTitle = abVariant ? abVariant.variant.title.replace("{city}", city) : `${city} rankings update`;
       const chBody = abVariant ? abVariant.variant.body.replace("{business}", biggestMover.businessName || "A restaurant").replace("{direction}", direction).replace("{delta}", String(biggestDelta)) : `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`;
-      await sendPushNotification(
-        [user.pushToken],
-        chTitle,
-        chBody,
-        { screen: "rankings" }
-      );
+      const freqPrefs = user.notificationFrequencyPrefs;
+      if (shouldSendImmediately(freqPrefs, "cityAlerts")) {
+        await sendPushNotification([user.pushToken], chTitle, chBody, { screen: "rankings" });
+      } else {
+        enqueueNotification({ memberId: String(user.id), pushToken: user.pushToken, title: chTitle, body: chBody, data: { screen: "rankings" }, category: "cityAlerts", queuedAt: Date.now() });
+      }
       sent++;
     }
     triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
@@ -6304,6 +6332,7 @@ var init_notification_triggers_events = __esm({
     init_push();
     init_push_analytics();
     init_push_ab_testing();
+    init_notification_frequency();
     init_logger();
     triggerLog = log.tag("NotifyTrigger");
   }
@@ -7256,7 +7285,7 @@ async function processDripEmails() {
     let sent = 0;
     for (const member of allMembers) {
       if (!member.joinedAt) continue;
-      const daysSinceSignup = Math.floor((now - new Date(member.joinedAt).getTime()) / DAY_MS);
+      const daysSinceSignup = Math.floor((now - new Date(member.joinedAt).getTime()) / DAY_MS2);
       const step = getDripStepForDay(daysSinceSignup);
       if (!step) continue;
       const prefs = member.notificationPrefs || {};
@@ -7290,11 +7319,11 @@ function startDripScheduler() {
   dripLog2.info(`Drip scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
   const initialTimeout = setTimeout(() => {
     processDripEmails();
-    setInterval(processDripEmails, DAY_MS);
+    setInterval(processDripEmails, DAY_MS2);
   }, msUntilFirst);
   return initialTimeout;
 }
-var dripLog2, DAY_MS;
+var dripLog2, DAY_MS2;
 var init_drip_scheduler = __esm({
   "server/drip-scheduler.ts"() {
     "use strict";
@@ -7303,7 +7332,7 @@ var init_drip_scheduler = __esm({
     init_schema();
     init_logger();
     dripLog2 = log.tag("DripScheduler");
-    DAY_MS = 24 * 60 * 60 * 1e3;
+    DAY_MS2 = 24 * 60 * 60 * 1e3;
   }
 });
 
@@ -7512,7 +7541,7 @@ function startOutreachScheduler() {
   }, msUntilFirst);
   return initialTimeout;
 }
-var outreachLog2, DAY_MS2, WEEK_MS;
+var outreachLog2, DAY_MS3, WEEK_MS;
 var init_outreach_scheduler = __esm({
   "server/outreach-scheduler.ts"() {
     "use strict";
@@ -7522,8 +7551,8 @@ var init_outreach_scheduler = __esm({
     init_logger();
     init_outreach_history();
     outreachLog2 = log.tag("OutreachScheduler");
-    DAY_MS2 = 24 * 60 * 60 * 1e3;
-    WEEK_MS = 7 * DAY_MS2;
+    DAY_MS3 = 24 * 60 * 60 * 1e3;
+    WEEK_MS = 7 * DAY_MS3;
   }
 });
 
