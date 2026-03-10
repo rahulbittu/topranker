@@ -13,6 +13,8 @@ import Colors from "@/constants/colors";
 import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, type AutocompleteSuggestion } from "@/lib/api";
+import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
+import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 
 import * as Location from "expo-location";
@@ -118,11 +120,15 @@ export default function SearchScreen() {
     openLate: hoursFilters.includes("openLate") || undefined,
     openWeekends: hoursFilters.includes("openWeekends") || undefined,
   };
-  const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["search", city, debouncedQuery, selectedCuisine, dietaryTags, distanceFilter, hoursFilters, userLocation?.lat, userLocation?.lng],
-    queryFn: () => fetchBusinessSearch(debouncedQuery, city, undefined, selectedCuisine || undefined, searchOpts),
-    staleTime: 30000,
-  });
+  // Sprint 483: Infinite scroll search with pagination
+  const {
+    businesses: allBusinesses,
+    isLoading, isError, refetch, isRefetching,
+    isFetchingNextPage, hasNextPage, fetchNextPage, totalCount,
+  } = useInfiniteSearch(debouncedQuery, city, selectedCuisine, searchOpts);
+  const handleLoadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Track search queries after debounce settles + save to recents
   useEffect(() => {
@@ -477,6 +483,16 @@ export default function SearchScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           removeClippedSubviews={Platform.OS !== "web"}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <InfiniteScrollFooter
+              isFetchingNextPage={isFetchingNextPage}
+              hasNextPage={hasNextPage}
+              totalCount={totalCount}
+              displayedCount={filtered.length}
+            />
+          }
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }

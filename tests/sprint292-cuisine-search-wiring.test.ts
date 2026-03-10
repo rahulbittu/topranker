@@ -48,14 +48,15 @@ describe("Sprint 292 — search.tsx cuisine state wiring", () => {
     expect(src).toContain("usePersistedCuisine");
   });
 
-  it("passes selectedCuisine to fetchBusinessSearch", () => {
-    expect(src).toMatch(/fetchBusinessSearch\([^)]*selectedCuisine/);
+  it("passes selectedCuisine to useInfiniteSearch", () => {
+    // Sprint 483: Replaced fetchBusinessSearch with useInfiniteSearch
+    expect(src).toMatch(/useInfiniteSearch\([^)]*selectedCuisine/);
   });
 
-  it("includes selectedCuisine in React Query key", () => {
-    // Sprint 442: query key now also includes dietary + distance filters
+  it("includes selectedCuisine in infinite search params", () => {
+    // Sprint 483: useInfiniteSearch passes cuisine to paginated API
     expect(src).toContain("selectedCuisine");
-    expect(src).toMatch(/queryKey:\s*\["search",\s*city,\s*debouncedQuery,\s*selectedCuisine/);
+    expect(src).toContain("useInfiniteSearch(debouncedQuery, city, selectedCuisine");
   });
 
   it("passes onCuisineChange to BestInSection", () => {

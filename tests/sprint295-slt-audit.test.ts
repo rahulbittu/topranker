@@ -73,7 +73,8 @@ describe("Sprint 295 — Cuisine pipeline completeness", () => {
   it("search.tsx tracks selectedCuisine and passes to API", () => {
     const search = fs.readFileSync(path.resolve("app/(tabs)/search.tsx"), "utf-8");
     expect(search).toContain("selectedCuisine");
-    expect(search).toMatch(/fetchBusinessSearch\([^)]*selectedCuisine/);
+    // Sprint 483: Now uses useInfiniteSearch instead of fetchBusinessSearch
+    expect(search).toMatch(/useInfiniteSearch\([^)]*selectedCuisine/);
   });
 
   it("active cuisine indicator visible in list view", () => {
