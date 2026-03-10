@@ -6,7 +6,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Animated, useWindowDimensions,
+  ScrollView, Animated, useWindowDimensions, Share,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +22,8 @@ import { MappedBusiness } from "@/types/business";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { pct } from "@/lib/style-helpers";
 import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
+import { getShareUrl, getShareText } from "@/lib/sharing";
+import { Analytics } from "@/lib/analytics";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -283,6 +285,26 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         ]}>
           <Text style={s.rankBadgeText}>{rankLabel}</Text>
         </View>
+        {/* Sprint 328: Share button on ranked card */}
+        <TouchableOpacity
+          style={s.cardShareBtn}
+          onPress={async (e) => {
+            e.stopPropagation();
+            Haptics.selectionAsync();
+            try {
+              await Share.share({
+                message: getShareText(item.name, item.weightedScore),
+                url: getShareUrl("business", item.slug),
+              });
+              Analytics.shareBusiness(item.slug, "ranked_card");
+            } catch {}
+          }}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Share ${item.name}`}
+        >
+          <Ionicons name="share-outline" size={14} color="#fff" />
+        </TouchableOpacity>
         <TouchableOpacity
           style={s.cardBookmarkBtn}
           onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
@@ -471,6 +493,11 @@ const s = StyleSheet.create({
   rankBadgeSilver: { backgroundColor: Colors.silver },
   rankBadgeBronze: { backgroundColor: Colors.bronze },
   rankBadgeText: { fontSize: 12, fontWeight: "800", color: "#fff", fontFamily: "PlayfairDisplay_900Black" },
+  cardShareBtn: {
+    position: "absolute", top: 8, right: 44,
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center",
+  },
   cardBookmarkBtn: {
     position: "absolute", top: 8, right: 8,
     width: 30, height: 30, borderRadius: 15,
