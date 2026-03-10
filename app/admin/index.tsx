@@ -24,6 +24,8 @@ import {
 import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
 import { PushExperimentsCard, type PushExperimentData } from "@/components/admin/PushExperimentsCard";
 import { ClaimsTabContent } from "@/components/admin/ClaimsTabContent";
+import { TemplateManagerCard } from "@/components/admin/TemplateManagerCard";
+import { fetchNotificationTemplates, createNotificationTemplate, deleteNotificationTemplate, updateNotificationTemplate, type NotificationTemplate } from "@/lib/api";
 import { getApiUrl } from "@/lib/query-client";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -160,6 +162,27 @@ export default function AdminScreen() {
     enabled: !!isAdmin,
     staleTime: 60000,
   });
+
+  // Sprint 522: Notification templates
+  const { data: notifTemplates = [] } = useQuery<NotificationTemplate[]>({
+    queryKey: ["admin-notification-templates"],
+    queryFn: () => fetchNotificationTemplates(),
+    enabled: !!isAdmin,
+    staleTime: 60000,
+  });
+
+  const handleCreateTemplate = async (input: { id: string; name: string; category: string; title: string; body: string }) => {
+    await createNotificationTemplate(input);
+    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
+  };
+  const handleDeleteTemplate = async (id: string) => {
+    await deleteNotificationTemplate(id);
+    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
+  };
+  const handleToggleTemplate = async (id: string, active: boolean) => {
+    await updateNotificationTemplate(id, { active });
+    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
+  };
 
   const { data: flags = [], isLoading: flagsLoading } = useQuery({
     queryKey: ["admin-flags"],
@@ -310,6 +333,16 @@ export default function AdminScreen() {
 
             {/* Sprint 512: Push A/B experiments */}
             <PushExperimentsCard experiments={pushExperiments} />
+
+            {/* Sprint 522: Notification template manager */}
+            {notifTemplates && (
+              <TemplateManagerCard
+                templates={notifTemplates}
+                onCreateTemplate={handleCreateTemplate}
+                onDeleteTemplate={handleDeleteTemplate}
+                onToggleActive={handleToggleTemplate}
+              />
+            )}
 
             <Text style={styles.sectionTitle}>Review Queue</Text>
           </>

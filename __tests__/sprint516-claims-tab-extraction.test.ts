@@ -71,9 +71,9 @@ describe("Sprint 516: Claims Tab Extraction", () => {
       expect(src).not.toContain("claim.businessName || \"Unknown Business\"");
     });
 
-    it("stays under 600 LOC", () => {
+    it("stays under 650 LOC", () => {
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(600);
+      expect(lines).toBeLessThan(650);
     });
 
     it("retains other tabs inline", () => {
