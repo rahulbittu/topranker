@@ -27,7 +27,20 @@ export function registerDishRoutes(app: Express) {
     const city = sanitizeString(req.query.city, 100) || "dallas";
     const result = await getDishLeaderboardWithEntries(slug, city);
     if (!result) return res.status(404).json({ error: "Dish leaderboard not found" });
-    return res.json({ data: result });
+    // Flatten leaderboard fields for client — page expects flat DishBoardDetail
+    const { leaderboard, entries, isProvisional, minRatingsNeeded } = result;
+    return res.json({ data: {
+      id: leaderboard.id,
+      city: leaderboard.city,
+      dishName: leaderboard.dishName,
+      dishSlug: leaderboard.dishSlug,
+      dishEmoji: leaderboard.dishEmoji,
+      status: leaderboard.status,
+      entryCount: entries.length,
+      entries,
+      isProvisional,
+      minRatingsNeeded,
+    } });
   }));
 
   app.get("/api/dish-suggestions", wrapAsync(async (req: Request, res: Response) => {
