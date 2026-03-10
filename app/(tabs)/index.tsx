@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { getActiveCategories, BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, BestInCategory } from "@/shared/best-in-categories";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
@@ -39,7 +39,12 @@ export default function LeaderboardScreen() {
   const [showSuggest, setShowSuggest] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [selectedBestIn, setSelectedBestIn] = useState<string | null>(null);
-  const bestInCategories = useMemo(() => getActiveCategories(), []);
+  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+  const availableCuisines = useMemo(() => getAvailableCuisines(), []);
+  const bestInCategories = useMemo(() =>
+    selectedCuisine ? getCategoriesByCuisine(selectedCuisine) : getActiveCategories(),
+    [selectedCuisine],
+  );
 
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
@@ -198,10 +203,44 @@ export default function LeaderboardScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Best In Dallas Chips */}
+      {/* Best In Dallas — Cuisine Picker + Subcategory Chips */}
       <View style={styles.bestInHeader}>
         <Text style={styles.bestInTitle}>Best In {city}</Text>
       </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.cuisineChipsContainer}
+        style={styles.bestInChipsRow}
+      >
+        <TouchableOpacity
+          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); setSelectedBestIn(null); }}
+          style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
+          accessibilityRole="button"
+          accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
+          accessibilityState={{ selected: selectedCuisine === null }}
+        >
+          <Text style={[styles.cuisineChipText, selectedCuisine === null && styles.cuisineChipTextActive]}>All</Text>
+        </TouchableOpacity>
+        {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
+          const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
+          const isSelected = selectedCuisine === cuisine;
+          return (
+            <TouchableOpacity
+              key={cuisine}
+              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); setSelectedBestIn(null); }}
+              style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
+              accessibilityRole="button"
+              accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}
+              accessibilityState={{ selected: isSelected }}
+            >
+              <Text style={[styles.cuisineChipText, isSelected && styles.cuisineChipTextActive]}>
+                {display.emoji} {display.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -212,7 +251,7 @@ export default function LeaderboardScreen() {
           onPress={() => { Haptics.selectionAsync(); setSelectedBestIn(null); }}
           style={[styles.bestInChip, selectedBestIn === null && styles.bestInChipActive]}
           accessibilityRole="button"
-          accessibilityLabel={`All categories${selectedBestIn === null ? ", selected" : ""}`}
+          accessibilityLabel={`All items${selectedBestIn === null ? ", selected" : ""}`}
           accessibilityState={{ selected: selectedBestIn === null }}
         >
           <Text style={[styles.bestInChipText, selectedBestIn === null && styles.bestInChipTextActive]}>
@@ -408,8 +447,23 @@ const styles = StyleSheet.create({
   bestInTitle: {
     fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text,
   },
-  bestInChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 8 },
+  bestInChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 4 },
   bestInChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
+  cuisineChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
+  cuisineChip: {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    marginRight: 6, backgroundColor: "rgba(13, 27, 42, 0.06)",
+    borderWidth: 1, borderColor: "transparent",
+  },
+  cuisineChipActive: {
+    backgroundColor: "rgba(13, 27, 42, 0.12)", borderColor: BRAND.colors.navy,
+  },
+  cuisineChipText: {
+    fontSize: 12, fontFamily: "DMSans_500Medium", color: Colors.textSecondary,
+  },
+  cuisineChipTextActive: {
+    color: BRAND.colors.navy, fontFamily: "DMSans_700Bold",
+  },
   bestInChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
     marginRight: 8, backgroundColor: Colors.surface,
