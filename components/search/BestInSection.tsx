@@ -14,9 +14,10 @@ interface BestInSectionProps {
   onSelectDish?: (slug: string) => void;
   onSeeAll: () => void;
   onCuisineChange?: (cuisine: string | null) => void;
+  entryCounts?: Record<string, number>;
 }
 
-export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, onCuisineChange }: BestInSectionProps) {
+export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, onCuisineChange, entryCounts }: BestInSectionProps) {
   const [bestInCuisine, setBestInCuisine] = useState<string | null>(null);
   const bestInCuisines = useMemo(() => getAvailableCuisines(), []);
   const bestInItems = useMemo(() =>
@@ -81,7 +82,9 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
           >
             <Text style={styles.bestInEmoji}>{cat.emoji}</Text>
             <Text style={styles.bestInName} numberOfLines={1}>{cat.displayName}</Text>
-            <Text style={styles.bestInSubtitle} numberOfLines={1}>Best in {city}</Text>
+            <Text style={styles.bestInSubtitle} numberOfLines={1}>
+              {entryCounts && entryCounts[cat.slug] ? `${entryCounts[cat.slug]} ranked` : `Best in ${city}`}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>

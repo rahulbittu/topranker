@@ -135,6 +135,22 @@ export default function SearchScreen() {
     staleTime: 120000,
   });
 
+  // Sprint 301: Dish leaderboard entry counts for Best In cards
+  const { data: dishEntryCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: ["dish-entry-counts", city],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/dish-leaderboards?city=${encodeURIComponent(city)}`);
+      if (!res.ok) return {};
+      const json = await res.json();
+      const counts: Record<string, number> = {};
+      for (const board of json.data || []) {
+        counts[board.dishSlug] = board.entryCount || 0;
+      }
+      return counts;
+    },
+    staleTime: 120000,
+  });
+
   const { data: featuredBusinesses = [] } = useQuery<FeaturedBusiness[]>({
     queryKey: ["featured", city],
     queryFn: async () => {
@@ -498,6 +514,7 @@ export default function SearchScreen() {
                   onSelectDish={(slug) => router.push({ pathname: "/dish/[slug]", params: { slug } })}
                   onSeeAll={() => setQuery("best in " + city.toLowerCase())}
                   onCuisineChange={(cuisine) => setSelectedCuisine(cuisine)}
+                  entryCounts={dishEntryCounts}
                 />
               )}
 
