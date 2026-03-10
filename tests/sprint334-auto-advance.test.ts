@@ -44,24 +44,24 @@ describe("Sprint 334 — Auto-Advance Dimensions", () => {
     expect(rateCode).toContain("setTimeout(() => setFocusedDimension");
   });
 
-  // Focus highlighting
-  it("should apply focusedQuestion style conditionally", () => {
-    expect(rateCode).toContain("styles.focusedQuestion");
+  // Focus highlighting (Sprint 342: upgraded to animated highlight)
+  it("should apply animated dimension highlight styles", () => {
+    expect(rateCode).toContain("dim0Style");
+    expect(rateCode).toContain("dim1Style");
+    expect(rateCode).toContain("dim2Style");
+    expect(rateCode).toContain("dim3Style");
   });
 
-  it("should have focusedQuestion style with highlight", () => {
-    expect(rateCode).toContain("focusedQuestion:");
-    const styleSection = rateCode.slice(rateCode.indexOf("focusedQuestion:"));
-    expect(styleSection).toContain("borderColor");
-    expect(styleSection).toContain("backgroundColor");
+  it("should have animated highlight with interpolateColor", () => {
+    expect(rateCode).toContain("interpolateColor");
+    expect(rateCode).toContain("borderColor");
+    expect(rateCode).toContain("backgroundColor");
   });
 
-  // Only show focus on unanswered questions
+  // Only show focus on unanswered questions (Sprint 342: now computed in useEffect)
   it("should only highlight when dimension score is 0 or null", () => {
-    expect(rateCode).toContain("focusedDimension === 0 && q1Score === 0");
-    expect(rateCode).toContain("focusedDimension === 1 && q2Score === 0");
-    expect(rateCode).toContain("focusedDimension === 2 && q3Score === 0");
-    expect(rateCode).toContain("focusedDimension === 3 && wouldReturn === null");
+    expect(rateCode).toContain("focusedDimension === i");
+    expect(rateCode).toContain("shouldHighlight ? 1 : 0");
   });
 
   // Reset on step change

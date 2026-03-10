@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withDelay, Easing, FadeIn,
+  withDelay, Easing, FadeIn, interpolateColor,
 } from "react-native-reanimated";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
@@ -136,6 +136,36 @@ export default function RateScreen() {
       })
     : 0;
   const weightedScore = rawScore * voteWeight;
+
+  // Sprint 342: Animated highlight for focused dimensions
+  const dim0Highlight = useSharedValue(0);
+  const dim1Highlight = useSharedValue(0);
+  const dim2Highlight = useSharedValue(0);
+  const dim3Highlight = useSharedValue(0);
+  const dimHighlights = [dim0Highlight, dim1Highlight, dim2Highlight, dim3Highlight];
+
+  useEffect(() => {
+    const timing = { duration: 300, easing: Easing.out(Easing.cubic) };
+    dimHighlights.forEach((h, i) => {
+      const shouldHighlight = focusedDimension === i && [q1Score, q2Score, q3Score, wouldReturn === null ? 0 : 1][i] === 0;
+      h.value = withTiming(shouldHighlight ? 1 : 0, timing);
+    });
+  }, [focusedDimension, q1Score, q2Score, q3Score, wouldReturn]);
+
+  const makeDimStyle = (highlight: typeof dim0Highlight) =>
+    useAnimatedStyle(() => ({
+      backgroundColor: interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.06)"]),
+      borderColor: interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.15)"]),
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: highlight.value > 0 ? 8 : 0,
+      marginHorizontal: highlight.value > 0 ? -8 : 0,
+    }));
+
+  const dim0Style = makeDimStyle(dim0Highlight);
+  const dim1Style = makeDimStyle(dim1Highlight);
+  const dim2Style = makeDimStyle(dim2Highlight);
+  const dim3Style = makeDimStyle(dim3Highlight);
 
   const confirmScale = useSharedValue(0);
   const rankSlide = useSharedValue(0);
@@ -379,20 +409,20 @@ export default function RateScreen() {
                 </Text>
               </View>
             )}
-            {/* Sprint 334: Auto-advance focus highlighting */}
-            <View style={[styles.compactQuestion, focusedDimension === 0 && q1Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[0] = e.nativeEvent.layout.y; }}>
+            {/* Sprint 334/342: Auto-advance focus with animated highlight */}
+            <Animated.View style={[styles.compactQuestion, dim0Style]} onLayout={(e) => { dimensionYPositions.current[0] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q1Label}</Text>
               <CircleScorePicker value={q1Score} onChange={handleQ1} circleSize={circleSize} />
-            </View>
-            <View style={[styles.compactQuestion, focusedDimension === 1 && q2Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[1] = e.nativeEvent.layout.y; }}>
+            </Animated.View>
+            <Animated.View style={[styles.compactQuestion, dim1Style]} onLayout={(e) => { dimensionYPositions.current[1] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q2Label}</Text>
               <CircleScorePicker value={q2Score} onChange={handleQ2} circleSize={circleSize} />
-            </View>
-            <View style={[styles.compactQuestion, focusedDimension === 2 && q3Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[2] = e.nativeEvent.layout.y; }}>
+            </Animated.View>
+            <Animated.View style={[styles.compactQuestion, dim2Style]} onLayout={(e) => { dimensionYPositions.current[2] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q3Label}</Text>
               <CircleScorePicker value={q3Score} onChange={handleQ3} circleSize={circleSize} />
-            </View>
-            <View style={[styles.compactQuestion, focusedDimension === 3 && wouldReturn === null && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[3] = e.nativeEvent.layout.y; }}>
+            </Animated.View>
+            <Animated.View style={[styles.compactQuestion, dim3Style]} onLayout={(e) => { dimensionYPositions.current[3] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{returnLabel}</Text>
               <View style={styles.yesNoRow}>
                 <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => handleReturn(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
@@ -404,7 +434,7 @@ export default function RateScreen() {
                   <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </Animated.View>
             {/* Sprint 274: Live composite score preview */}
             {rawScore > 0 && (
               <Animated.View entering={FadeIn.duration(200)} style={styles.liveScorePreview}>
@@ -513,14 +543,6 @@ const styles = StyleSheet.create({
   stepAreaContent: { paddingVertical: 8 },
   stepContent: { gap: 20 },
   compactQuestion: { gap: 8 },
-  focusedQuestion: {
-    backgroundColor: "rgba(196,154,26,0.06)",
-    borderRadius: 12,
-    padding: 8,
-    marginHorizontal: -8,
-    borderWidth: 1,
-    borderColor: "rgba(196,154,26,0.15)",
-  },
   compactLabel: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
     fontFamily: "DMSans_600SemiBold",
