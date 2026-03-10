@@ -253,6 +253,28 @@ export function registerMemberRoutes(app: Express) {
     return res.json({ data: saved });
   }));
 
+  // Sprint 518: Notification frequency preferences
+  app.get("/api/members/me/notification-frequency", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { getMemberById } = await import("./storage");
+    const member = await getMemberById(req.user!.id);
+    const stored = (member?.notificationFrequencyPrefs as Record<string, string>) || {};
+    const prefs = { rankingChanges: "realtime", newRatings: "realtime", cityAlerts: "realtime", ...stored };
+    return res.json({ data: prefs });
+  }));
+
+  app.put("/api/members/me/notification-frequency", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const VALID = ["realtime", "daily", "weekly"];
+    const prefs: Record<string, string> = {};
+    for (const key of ["rankingChanges", "newRatings", "cityAlerts"]) {
+      const val = req.body[key];
+      prefs[key] = VALID.includes(val) ? val : "realtime";
+    }
+    const { updateNotificationFrequencyPrefs } = await import("./storage");
+    const saved = await updateNotificationFrequencyPrefs(req.user!.id, prefs);
+    log.tag("Notifications").info(`Frequency prefs updated for user ${req.user!.id}: ${JSON.stringify(saved)}`);
+    return res.json({ data: saved });
+  }));
+
   // Sprint 185: Onboarding progress checklist
   app.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const { getOnboardingProgress } = await import("./storage");

@@ -360,6 +360,19 @@ export async function updateNotificationPrefs(
   return (updated?.notificationPrefs as Record<string, boolean>) ?? prefs;
 }
 
+// Sprint 518: Notification frequency preferences
+export async function updateNotificationFrequencyPrefs(
+  memberId: string,
+  prefs: Record<string, string>,
+): Promise<Record<string, string>> {
+  const [updated] = await db
+    .update(members)
+    .set({ notificationFrequencyPrefs: prefs })
+    .where(eq(members.id, memberId))
+    .returning({ notificationFrequencyPrefs: members.notificationFrequencyPrefs });
+  return (updated?.notificationFrequencyPrefs as Record<string, string>) ?? prefs;
+}
+
 export async function getMemberImpact(
   memberId: string,
 ): Promise<{

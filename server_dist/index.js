@@ -112,7 +112,9 @@ var init_schema = __esm({
       passwordResetExpires: timestamp("password_reset_expires"),
       joinedAt: timestamp("joined_at").notNull().defaultNow(),
       lastActive: timestamp("last_active"),
-      notificationPrefs: jsonb("notification_prefs")
+      notificationPrefs: jsonb("notification_prefs"),
+      // Sprint 518: Per-category frequency settings (realtime/daily/weekly)
+      notificationFrequencyPrefs: jsonb("notification_frequency_prefs")
     });
     businesses = pgTable(
       "businesses",
@@ -927,6 +929,7 @@ __export(members_exports, {
   updateMemberEmail: () => updateMemberEmail,
   updateMemberProfile: () => updateMemberProfile,
   updateMemberStats: () => updateMemberStats,
+  updateNotificationFrequencyPrefs: () => updateNotificationFrequencyPrefs,
   updateNotificationPrefs: () => updateNotificationPrefs,
   updatePushToken: () => updatePushToken,
   verifyEmailToken: () => verifyEmailToken
@@ -1152,6 +1155,10 @@ async function updateMemberEmail(memberId, email) {
 async function updateNotificationPrefs(memberId, prefs) {
   const [updated] = await db.update(members).set({ notificationPrefs: prefs }).where(eq2(members.id, memberId)).returning({ notificationPrefs: members.notificationPrefs });
   return updated?.notificationPrefs ?? prefs;
+}
+async function updateNotificationFrequencyPrefs(memberId, prefs) {
+  const [updated] = await db.update(members).set({ notificationFrequencyPrefs: prefs }).where(eq2(members.id, memberId)).returning({ notificationFrequencyPrefs: members.notificationFrequencyPrefs });
+  return updated?.notificationFrequencyPrefs ?? prefs;
 }
 async function getMemberImpact(memberId) {
   const memberRatings = await db.select({
@@ -3504,6 +3511,7 @@ __export(storage_exports, {
   updateMemberEmail: () => updateMemberEmail,
   updateMemberProfile: () => updateMemberProfile,
   updateMemberStats: () => updateMemberStats,
+  updateNotificationFrequencyPrefs: () => updateNotificationFrequencyPrefs,
   updateNotificationPrefs: () => updateNotificationPrefs,
   updatePaymentStatus: () => updatePaymentStatus,
   updatePaymentStatusByStripeId: () => updatePaymentStatusByStripeId,
@@ -10425,6 +10433,25 @@ function registerMemberRoutes(app2) {
     const { updateNotificationPrefs: updateNotificationPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const saved = await updateNotificationPrefs2(req.user.id, prefs);
     log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
+    return res.json({ data: saved });
+  }));
+  app2.get("/api/members/me/notification-frequency", requireAuth, wrapAsync(async (req, res) => {
+    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const member = await getMemberById2(req.user.id);
+    const stored = member?.notificationFrequencyPrefs || {};
+    const prefs = { rankingChanges: "realtime", newRatings: "realtime", cityAlerts: "realtime", ...stored };
+    return res.json({ data: prefs });
+  }));
+  app2.put("/api/members/me/notification-frequency", requireAuth, wrapAsync(async (req, res) => {
+    const VALID = ["realtime", "daily", "weekly"];
+    const prefs = {};
+    for (const key2 of ["rankingChanges", "newRatings", "cityAlerts"]) {
+      const val = req.body[key2];
+      prefs[key2] = VALID.includes(val) ? val : "realtime";
+    }
+    const { updateNotificationFrequencyPrefs: updateNotificationFrequencyPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const saved = await updateNotificationFrequencyPrefs2(req.user.id, prefs);
+    log.tag("Notifications").info(`Frequency prefs updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
     return res.json({ data: saved });
   }));
   app2.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req, res) => {

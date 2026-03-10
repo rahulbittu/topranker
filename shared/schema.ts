@@ -47,6 +47,8 @@ export const members = pgTable("members", {
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   lastActive: timestamp("last_active"),
   notificationPrefs: jsonb("notification_prefs"),
+  // Sprint 518: Per-category frequency settings (realtime/daily/weekly)
+  notificationFrequencyPrefs: jsonb("notification_frequency_prefs"),
 });
 
 export const businesses = pgTable(

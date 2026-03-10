@@ -76,6 +76,42 @@ function SettingRow({
   );
 }
 
+type NotificationFrequency = "realtime" | "daily" | "weekly";
+const FREQ_LABELS: Record<NotificationFrequency, string> = {
+  realtime: "Instant",
+  daily: "Daily digest",
+  weekly: "Weekly digest",
+};
+const FREQ_STORAGE_KEY = "notif_frequency_prefs";
+
+function FrequencyPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: NotificationFrequency;
+  onChange: (freq: NotificationFrequency) => void;
+}) {
+  const handlePress = () => {
+    Alert.alert(
+      `${label} Frequency`,
+      "How often should we send these?",
+      [
+        { text: "Instant", onPress: () => onChange("realtime"), style: value === "realtime" ? "cancel" : "default" },
+        { text: "Daily digest", onPress: () => onChange("daily"), style: value === "daily" ? "cancel" : "default" },
+        { text: "Weekly digest", onPress: () => onChange("weekly"), style: value === "weekly" ? "cancel" : "default" },
+      ],
+    );
+  };
+  return (
+    <TouchableOpacity style={styles.freqRow} onPress={handlePress} activeOpacity={0.7}>
+      <Text style={styles.freqLabel}>Delivery: {FREQ_LABELS[value]}</Text>
+      <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+    </TouchableOpacity>
+  );
+}
+
 function NavigationRow({
   icon,
   label,
@@ -146,6 +182,13 @@ export default function SettingsScreen() {
     newRatings: true,
   });
 
+  // Sprint 518: Notification frequency settings
+  const [freqPrefs, setFreqPrefs] = useState<Record<string, NotificationFrequency>>({
+    rankingChanges: "realtime",
+    newRatings: "realtime",
+    cityAlerts: "realtime",
+  });
+
   useEffect(() => {
     // Load saved preferences from AsyncStorage, then try server sync
     (async () => {
@@ -172,6 +215,11 @@ export default function SettingsScreen() {
       } catch {
         /* offline — use local prefs */
       }
+      // Sprint 518: Load frequency prefs
+      try {
+        const freqJson = await AsyncStorage.getItem(FREQ_STORAGE_KEY);
+        if (freqJson) setFreqPrefs(JSON.parse(freqJson));
+      } catch { /* ignore */ }
     })();
   }, []);
 
@@ -184,6 +232,20 @@ export default function SettingsScreen() {
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ ...notifPrefs, [key]: val }),
+    }).catch(() => {});
+  };
+
+  // Sprint 518: Frequency change handler
+  const changeFrequency = (key: string) => (freq: NotificationFrequency) => {
+    const updated = { ...freqPrefs, [key]: freq };
+    setFreqPrefs(updated);
+    AsyncStorage.setItem(FREQ_STORAGE_KEY, JSON.stringify(updated)).catch(() => {});
+    // Fire-and-forget server sync
+    fetch("/api/members/me/notification-frequency", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(updated),
     }).catch(() => {});
   };
 
@@ -299,6 +361,9 @@ export default function SettingsScreen() {
             value={notifPrefs.rankingChanges}
             onToggle={toggleNotif("rankingChanges")}
           />
+          {notifPrefs.rankingChanges && (
+            <FrequencyPicker label="Ranking Changes" value={freqPrefs.rankingChanges || "realtime"} onChange={changeFrequency("rankingChanges")} />
+          )}
           <SettingRow
             icon="bookmark-outline"
             label="Saved Place Updates"
@@ -313,6 +378,9 @@ export default function SettingsScreen() {
             value={notifPrefs.cityAlerts}
             onToggle={toggleNotif("cityAlerts")}
           />
+          {notifPrefs.cityAlerts && (
+            <FrequencyPicker label="City Highlights" value={freqPrefs.cityAlerts || "realtime"} onChange={changeFrequency("cityAlerts")} />
+          )}
           <SettingRow
             icon="document-outline"
             label="Claim Updates"
@@ -327,6 +395,9 @@ export default function SettingsScreen() {
             value={notifPrefs.newRatings}
             onToggle={toggleNotif("newRatings")}
           />
+          {notifPrefs.newRatings && (
+            <FrequencyPicker label="New Ratings" value={freqPrefs.newRatings || "realtime"} onChange={changeFrequency("newRatings")} />
+          )}
           <SettingRow
             icon="mail-outline"
             label="Marketing Emails"
@@ -434,6 +505,21 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.border,
+  },
+  freqRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 46,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.border,
+    backgroundColor: `${Colors.surface}CC`,
+  },
+  freqLabel: {
+    fontSize: 12,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
   },
   settingInfo: { flex: 1, gap: 1 },
   settingLabel: {

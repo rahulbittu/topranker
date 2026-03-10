@@ -24,6 +24,7 @@ export {
   updateMemberProfile,
   updatePushToken,
   updateNotificationPrefs,
+  updateNotificationFrequencyPrefs,
   updateMemberAvatar,
   updateMemberEmail,
   getOnboardingProgress,
