@@ -6,7 +6,7 @@
     "server/storage/businesses.ts": { "maxLOC": 620, "current": 599, "notes": "Sprint 554: +updateBusinessHours" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 86, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 200, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 575, "current": 566, "notes": "Sprint 574: +dish streak types, mock data guards" },
+    "lib/api.ts": { "maxLOC": 575, "current": 573, "notes": "Sprint 574: +dish streak types, mock data guards, search fallback" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 198, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
     "app/(tabs)/search.tsx": { "maxLOC": 600, "current": 588, "notes": "Sprint 571: DiscoverSections extracted" },

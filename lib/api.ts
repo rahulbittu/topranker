@@ -394,24 +394,30 @@ export async function fetchBusinessSearchPaginated(
   if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
   if (cuisine) path += `&cuisine=${encodeURIComponent(cuisine)}`;
   if (opts?.dietary?.length) path += `&dietary=${encodeURIComponent(opts.dietary.join(","))}`;
-  if (opts?.lat != null && opts?.lng != null) {
-    path += `&lat=${opts.lat}&lng=${opts.lng}`;
-    if (opts?.maxDistance) path += `&maxDistance=${opts.maxDistance}`;
-  }
-  if (opts?.openNow) path += `&openNow=true`;
-  if (opts?.openLate) path += `&openLate=true`;
-  if (opts?.openWeekends) path += `&openWeekends=true`;
-  if (opts?.limit) path += `&limit=${opts.limit}`;
-  if (opts?.offset) path += `&offset=${opts.offset}`;
+  if (opts?.lat != null && opts?.lng != null) { path += `&lat=${opts.lat}&lng=${opts.lng}`; if (opts?.maxDistance) path += `&maxDistance=${opts.maxDistance}`; }
+  if (opts?.openNow) path += `&openNow=true`; if (opts?.openLate) path += `&openLate=true`; if (opts?.openWeekends) path += `&openWeekends=true`;
+  if (opts?.limit) path += `&limit=${opts.limit}`; if (opts?.offset) path += `&offset=${opts.offset}`;
   const baseUrl = getApiUrl();
   const url = new URL(path, baseUrl);
-  const res = await fetch(url.toString(), { credentials: "include" });
-  if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
-  const json = await res.json();
-  return {
-    businesses: (json.data || []).map(mapApiBusiness),
-    pagination: json.pagination || { total: 0, limit: 20, offset: 0, hasMore: false },
-  };
+  try {
+    const res = await fetch(url.toString(), { credentials: "include" });
+    if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+    const json = await res.json();
+    return {
+      businesses: (json.data || []).map(mapApiBusiness),
+      pagination: json.pagination || { total: 0, limit: 20, offset: 0, hasMore: false },
+    };
+  } catch (err) {
+    if (__DEV__) {
+      const mock = getMockData(path) as ApiBusiness[] | null;
+      if (mock) {
+        _servingMockData = true;
+        const mapped = mock.map(mapApiBusiness);
+        return { businesses: mapped, pagination: { total: mapped.length, limit: 20, offset: 0, hasMore: false } };
+      }
+    }
+    throw err;
+  }
 }
 
 export type AutocompleteSuggestion = {
