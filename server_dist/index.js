@@ -10287,6 +10287,60 @@ function buildDashboardTrend(ratings5) {
   };
 }
 
+// server/dimension-breakdown.ts
+function avgOrZero(scores) {
+  if (scores.length === 0) return 0;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10;
+}
+function toNum(val) {
+  if (val == null) return null;
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  return isNaN(n) ? null : n;
+}
+function computeDimensionBreakdown(ratings5) {
+  const dist = { dineIn: 0, delivery: 0, takeaway: 0 };
+  const food = [];
+  const service = [];
+  const vibe = [];
+  const packaging = [];
+  const waitTime = [];
+  const value = [];
+  for (const r of ratings5) {
+    const vt = (r.visitType || "dine_in").toLowerCase().replace(/[-\s]/g, "_");
+    if (vt === "dine_in" || vt === "dinein") dist.dineIn++;
+    else if (vt === "delivery") dist.delivery++;
+    else if (vt === "takeaway" || vt === "pickup") dist.takeaway++;
+    else dist.dineIn++;
+    const f = toNum(r.foodScore);
+    if (f !== null) food.push(f);
+    const s = toNum(r.serviceScore);
+    if (s !== null) service.push(s);
+    const v = toNum(r.vibeScore);
+    if (v !== null) vibe.push(v);
+    const p = toNum(r.packagingScore);
+    if (p !== null) packaging.push(p);
+    const w = toNum(r.waitTimeScore);
+    if (w !== null) waitTime.push(w);
+    const val = toNum(r.valueScore);
+    if (val !== null) value.push(val);
+  }
+  const maxVisit = Math.max(dist.dineIn, dist.delivery, dist.takeaway);
+  const primaryVisitType = maxVisit === dist.delivery ? "delivery" : maxVisit === dist.takeaway ? "takeaway" : "dineIn";
+  return {
+    dimensions: {
+      food: avgOrZero(food),
+      service: avgOrZero(service),
+      vibe: avgOrZero(vibe),
+      packaging: avgOrZero(packaging),
+      waitTime: avgOrZero(waitTime),
+      value: avgOrZero(value)
+    },
+    visitTypeDistribution: dist,
+    totalRatings: ratings5.length,
+    primaryVisitType
+  };
+}
+
 // server/routes-businesses.ts
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
@@ -10478,6 +10532,11 @@ function registerBusinessRoutes(app2) {
     const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
     const data = await getRankHistory2(req.params.id, days);
+    return res.json({ data });
+  }));
+  app2.get("/api/businesses/:id/dimension-breakdown", wrapAsync(async (req, res) => {
+    const { ratings: ratings5 } = await getBusinessRatings(req.params.id, 1, 200);
+    const data = computeDimensionBreakdown(ratings5);
     return res.json({ data });
   }));
   app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {

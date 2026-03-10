@@ -26,6 +26,8 @@ import { computeOpenStatus } from "./hours-utils";
 import { enrichSearchResults, applySearchFilters, sortByRelevance, haversineKm } from "./search-result-processor";
 // Sprint 478: Dashboard analytics
 import { buildDashboardTrend } from "./dashboard-analytics";
+// Sprint 484: Dimension breakdown
+import { computeDimensionBreakdown } from "./dimension-breakdown";
 
 export function registerBusinessRoutes(app: Express) {
   // Sprint 184: Autocomplete — lightweight typeahead for search-as-you-type
@@ -256,6 +258,13 @@ export function registerBusinessRoutes(app: Express) {
     const { getRankHistory } = await import("./storage");
     const days = Math.min(90, Math.max(7, parseInt(req.query.days as string) || 30));
     const data = await getRankHistory(req.params.id as string, days);
+    return res.json({ data });
+  }));
+
+  // ── Sprint 484: Dimension Score Breakdown ────────────────────
+  app.get("/api/businesses/:id/dimension-breakdown", wrapAsync(async (req: Request, res: Response) => {
+    const { ratings } = await getBusinessRatings(req.params.id as string, 1, 200);
+    const data = computeDimensionBreakdown(ratings as any[]);
     return res.json({ data });
   }));
 
