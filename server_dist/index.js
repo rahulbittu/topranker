@@ -5283,7 +5283,11 @@ async function seedDatabase() {
     { dishName: "Bibimbap", dishSlug: "bibimbap", dishEmoji: "\u{1F35A}", displayOrder: 21 },
     { dishName: "Fried Chicken", dishSlug: "fried-chicken", dishEmoji: "\u{1F357}", displayOrder: 22 },
     { dishName: "Pad Thai", dishSlug: "pad-thai", dishEmoji: "\u{1F35C}", displayOrder: 23 },
-    { dishName: "Green Curry", dishSlug: "green-curry", dishEmoji: "\u{1F35B}", displayOrder: 24 }
+    { dishName: "Green Curry", dishSlug: "green-curry", dishEmoji: "\u{1F35B}", displayOrder: 24 },
+    // Sprint 320: Chinese leaderboards
+    { dishName: "Dim Sum", dishSlug: "dim-sum", dishEmoji: "\u{1F95F}", displayOrder: 25 },
+    { dishName: "Peking Duck", dishSlug: "peking-duck", dishEmoji: "\u{1F986}", displayOrder: 26 },
+    { dishName: "Hot Pot", dishSlug: "hot-pot", dishEmoji: "\u{1FAD5}", displayOrder: 27 }
   ];
   for (const board of SEED_DISH_BOARDS) {
     const [lb] = await db.insert(dishLeaderboards).values({
@@ -5755,6 +5759,25 @@ var init_seed = __esm({
       // Green Curry
       { businessSlug: "khao-noodle-dallas", dishes: [
         { name: "Thai Green Curry", voteCount: 65 }
+      ] },
+      // ── Sprint 320: Chinese seed dishes ──
+      // Dim Sum
+      { businessSlug: "royal-china-dallas", dishes: [
+        { name: "Dim Sum Selection", voteCount: 87 }
+      ] },
+      { businessSlug: "golden-dragon-palace-dallas", dishes: [
+        { name: "Weekend Dim Sum Brunch", voteCount: 72 }
+      ] },
+      // Peking Duck
+      { businessSlug: "royal-china-dallas", dishes: [
+        { name: "Whole Peking Duck", voteCount: 76 }
+      ] },
+      { businessSlug: "golden-dragon-palace-dallas", dishes: [
+        { name: "Half Peking Duck with Pancakes", voteCount: 54 }
+      ] },
+      // Hot Pot
+      { businessSlug: "sichuan-house-dallas", dishes: [
+        { name: "Sichuan Hot Pot", voteCount: 92 }
       ] }
     ];
   }

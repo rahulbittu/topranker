@@ -393,6 +393,25 @@ const SEED_DISHES: { businessSlug: string; dishes: { name: string; voteCount: nu
   { businessSlug: "khao-noodle-dallas", dishes: [
     { name: "Thai Green Curry", voteCount: 65 },
   ]},
+  // ── Sprint 320: Chinese seed dishes ──
+  // Dim Sum
+  { businessSlug: "royal-china-dallas", dishes: [
+    { name: "Dim Sum Selection", voteCount: 87 },
+  ]},
+  { businessSlug: "golden-dragon-palace-dallas", dishes: [
+    { name: "Weekend Dim Sum Brunch", voteCount: 72 },
+  ]},
+  // Peking Duck
+  { businessSlug: "royal-china-dallas", dishes: [
+    { name: "Whole Peking Duck", voteCount: 76 },
+  ]},
+  { businessSlug: "golden-dragon-palace-dallas", dishes: [
+    { name: "Half Peking Duck with Pancakes", voteCount: 54 },
+  ]},
+  // Hot Pot
+  { businessSlug: "sichuan-house-dallas", dishes: [
+    { name: "Sichuan Hot Pot", voteCount: 92 },
+  ]},
 ];
 
 export async function seedDatabase() {
@@ -502,6 +521,10 @@ export async function seedDatabase() {
     { dishName: "Fried Chicken", dishSlug: "fried-chicken", dishEmoji: "🍗", displayOrder: 22 },
     { dishName: "Pad Thai", dishSlug: "pad-thai", dishEmoji: "🍜", displayOrder: 23 },
     { dishName: "Green Curry", dishSlug: "green-curry", dishEmoji: "🍛", displayOrder: 24 },
+    // Sprint 320: Chinese leaderboards
+    { dishName: "Dim Sum", dishSlug: "dim-sum", dishEmoji: "🥟", displayOrder: 25 },
+    { dishName: "Peking Duck", dishSlug: "peking-duck", dishEmoji: "🦆", displayOrder: 26 },
+    { dishName: "Hot Pot", dishSlug: "hot-pot", dishEmoji: "🫕", displayOrder: 27 },
   ];
 
   for (const board of SEED_DISH_BOARDS) {

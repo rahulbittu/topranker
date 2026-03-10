@@ -200,6 +200,12 @@ export const CUISINE_DISH_MAP: Record<string, { slug: string; name: string; emoj
     { slug: "kebab", name: "Kebab", emoji: "🥙" },
     { slug: "falafel", name: "Falafel", emoji: "🧆" },
   ],
+  // Sprint 320: Chinese cuisine dish map
+  chinese: [
+    { slug: "dim-sum", name: "Dim Sum", emoji: "🥟" },
+    { slug: "peking-duck", name: "Peking Duck", emoji: "🦆" },
+    { slug: "hot-pot", name: "Hot Pot", emoji: "🫕" },
+  ],
   // Sprint 316: Korean + Thai cuisine dish maps
   korean: [
     { slug: "korean-bbq", name: "Korean BBQ", emoji: "🥩" },
