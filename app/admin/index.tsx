@@ -22,8 +22,8 @@ import {
   type AdminClaim, type AdminFlag, type AdminMember,
 } from "@/lib/api";
 import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
-import { ClaimEvidenceCard, type ClaimEvidence } from "@/components/admin/ClaimEvidenceCard";
 import { PushExperimentsCard, type PushExperimentData } from "@/components/admin/PushExperimentsCard";
+import { ClaimsTabContent } from "@/components/admin/ClaimsTabContent";
 import { getApiUrl } from "@/lib/query-client";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -341,32 +341,14 @@ export default function AdminScreen() {
         )}
 
         {(activeTab === "overview" || activeTab === "claims") && (
-          <>
-            {activeTab === "claims" && <Text style={styles.sectionTitle}>Business Claims</Text>}
-            {claimsLoading && <Text style={styles.emptySub}>Loading claims...</Text>}
-            {!claimsLoading && claims.length === 0 && activeTab === "claims" && (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkmark-circle-outline" size={48} color={Colors.green} />
-                <Text style={styles.emptyTitle}>No Pending Claims</Text>
-                <Text style={styles.emptySub}>All business claims have been reviewed</Text>
-              </View>
-            )}
-            {claims.map(claim => {
-              const evidence = claimEvidence.find(e => e.claimId === claim.id);
-              return (
-                <View key={claim.id}>
-                  <QueueItem
-                    title={claim.businessName || "Unknown Business"}
-                    subtitle={`Claim by ${claim.memberName || "Unknown"} via ${claim.verificationMethod}`}
-                    type="claim"
-                    onApprove={() => handleClaimAction(claim.id, "approved")}
-                    onReject={() => handleClaimAction(claim.id, "rejected")}
-                  />
-                  {evidence && <ClaimEvidenceCard evidence={evidence} />}
-                </View>
-              );
-            })}
-          </>
+          <ClaimsTabContent
+            claims={claims}
+            claimEvidence={claimEvidence}
+            claimsLoading={claimsLoading}
+            isFullTab={activeTab === "claims"}
+            onClaimAction={handleClaimAction}
+            QueueItem={QueueItem}
+          />
         )}
 
         {(activeTab === "overview" || activeTab === "flags") && (

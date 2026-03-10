@@ -92,33 +92,37 @@ describe("Sprint 509: Claim V2 Dashboard Integration", () => {
     });
   });
 
-  describe("app/admin/index.tsx — wiring", () => {
-    const src = readFile("app/admin/index.tsx");
+  // Sprint 516: Claims tab extracted to ClaimsTabContent
+  describe("claims tab wiring", () => {
+    const adminSrc = readFile("app/admin/index.tsx");
+    const claimsSrc = readFile("components/admin/ClaimsTabContent.tsx");
 
-    it("imports ClaimEvidenceCard", () => {
-      expect(src).toContain("ClaimEvidenceCard");
-      expect(src).toContain("@/components/admin/ClaimEvidenceCard");
+    it("admin imports ClaimsTabContent which uses ClaimEvidenceCard", () => {
+      expect(adminSrc).toContain("ClaimsTabContent");
+      expect(claimsSrc).toContain("ClaimEvidenceCard");
     });
 
-    it("imports fetchAllClaimEvidence", () => {
-      expect(src).toContain("fetchAllClaimEvidence");
+    it("admin imports fetchAllClaimEvidence", () => {
+      expect(adminSrc).toContain("fetchAllClaimEvidence");
     });
 
-    it("has useQuery for claim evidence", () => {
-      expect(src).toContain("admin-claim-evidence");
+    it("admin has useQuery for claim evidence", () => {
+      expect(adminSrc).toContain("admin-claim-evidence");
     });
 
-    it("renders ClaimEvidenceCard when evidence exists", () => {
-      expect(src).toContain("<ClaimEvidenceCard evidence={evidence}");
+    it("ClaimsTabContent renders ClaimEvidenceCard when evidence exists", () => {
+      expect(claimsSrc).toContain("ClaimEvidenceCard");
+      expect(claimsSrc).toContain("evidence &&");
     });
 
-    it("matches evidence to claims by claimId", () => {
-      expect(src).toContain("claimEvidence.find(e => e.claimId === claim.id)");
+    it("ClaimsTabContent matches evidence to claims by claimId", () => {
+      expect(claimsSrc).toContain("claimEvidence.find");
+      expect(claimsSrc).toContain("e.claimId === claim.id");
     });
 
     it("retains existing claim queue items", () => {
-      expect(src).toContain("handleClaimAction");
-      expect(src).toContain("QueueItem");
+      expect(adminSrc).toContain("handleClaimAction");
+      expect(claimsSrc).toContain("QueueItem");
     });
   });
 });
