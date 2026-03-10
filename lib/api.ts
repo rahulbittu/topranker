@@ -644,6 +644,50 @@ export async function stopDigestCopyTest() {
   });
 }
 
+// Sprint 519: Push notification template API
+export interface NotificationTemplate {
+  id: string;
+  name: string;
+  category: string;
+  title: string;
+  body: string;
+  variables: string[];
+  active: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export async function fetchNotificationTemplates(category?: string) {
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+  return apiFetch<NotificationTemplate[]>(`/api/admin/notification-templates${query}`);
+}
+
+export async function fetchTemplateVariables() {
+  return apiFetch<string[]>("/api/admin/notification-templates/variables");
+}
+
+export async function createNotificationTemplate(input: {
+  id: string; name: string; category: string; title: string; body: string;
+}) {
+  return apiRequest<NotificationTemplate>("/api/admin/notification-templates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateNotificationTemplate(id: string, updates: Partial<NotificationTemplate>) {
+  return apiRequest<NotificationTemplate>(`/api/admin/notification-templates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function deleteNotificationTemplate(id: string) {
+  return apiRequest<{ deleted: boolean }>(`/api/admin/notification-templates/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function fetchPendingFlags() {
   return apiFetch<AdminFlag[]>("/api/admin/flags");
 }

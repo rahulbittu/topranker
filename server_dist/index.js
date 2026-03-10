@@ -12678,6 +12678,120 @@ function registerAdminTemplateRoutes(app2) {
   });
 }
 
+// server/notification-templates.ts
+init_logger();
+var tmplLog2 = log.tag("NotifTemplate");
+var templates2 = /* @__PURE__ */ new Map();
+var SUPPORTED_VARIABLES = [
+  "firstName",
+  "city",
+  "business",
+  "emoji",
+  "direction",
+  "newRank",
+  "oldRank",
+  "delta",
+  "rater",
+  "score",
+  "count"
+];
+function detectVariables(title, body) {
+  const combined = `${title} ${body}`;
+  return SUPPORTED_VARIABLES.filter((v) => combined.includes(`{${v}}`));
+}
+function createTemplate2(input) {
+  if (templates2.has(input.id)) {
+    tmplLog2.info(`Template already exists: ${input.id}`);
+    return null;
+  }
+  const template = {
+    ...input,
+    variables: detectVariables(input.title, input.body),
+    active: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  templates2.set(input.id, template);
+  tmplLog2.info(`Created template: ${input.id} for ${input.category}`);
+  return template;
+}
+function updateTemplate(id, updates) {
+  const existing = templates2.get(id);
+  if (!existing) return null;
+  const updated = {
+    ...existing,
+    ...updates,
+    variables: detectVariables(
+      updates.title ?? existing.title,
+      updates.body ?? existing.body
+    ),
+    updatedAt: Date.now()
+  };
+  templates2.set(id, updated);
+  tmplLog2.info(`Updated template: ${id}`);
+  return updated;
+}
+function deleteTemplate(id) {
+  const existed = templates2.delete(id);
+  if (existed) tmplLog2.info(`Deleted template: ${id}`);
+  return existed;
+}
+function getTemplate2(id) {
+  return templates2.get(id);
+}
+function listTemplates() {
+  return Array.from(templates2.values());
+}
+function listTemplatesByCategory(category) {
+  return Array.from(templates2.values()).filter((t) => t.category === category);
+}
+function getSupportedVariables() {
+  return [...SUPPORTED_VARIABLES];
+}
+
+// server/routes-admin-push-templates.ts
+function requireAdmin4(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminPushTemplateRoutes(app2) {
+  app2.get("/api/admin/notification-templates", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const category = req.query.category;
+    const data = category ? listTemplatesByCategory(category) : listTemplates();
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/notification-templates/variables", requireAuth, requireAdmin4, wrapAsync(async (_req, res) => {
+    return res.json({ data: getSupportedVariables() });
+  }));
+  app2.get("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const template = getTemplate2(req.params.id);
+    if (!template) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: template });
+  }));
+  app2.post("/api/admin/notification-templates", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const { id, name, category, title, body } = req.body;
+    if (!id || !name || !category || !title || !body) {
+      return res.status(400).json({ error: "id, name, category, title, and body are required" });
+    }
+    const template = createTemplate2({ id, name, category, title, body });
+    if (!template) return res.status(409).json({ error: "Template already exists" });
+    return res.json({ data: template });
+  }));
+  app2.put("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const { name, category, title, body, active } = req.body;
+    const template = updateTemplate(req.params.id, { name, category, title, body, active });
+    if (!template) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: template });
+  }));
+  app2.delete("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const deleted = deleteTemplate(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: { deleted: true } });
+  }));
+}
+
 // server/routes-admin-tier-limits.ts
 init_logger();
 
@@ -13040,14 +13154,14 @@ init_schema();
 import { eq as eq26 } from "drizzle-orm";
 init_admin();
 var enrichLog = log.tag("AdminEnrichment");
-function requireAdmin4(req, res, next) {
+function requireAdmin5(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
   }
   next();
 }
 function registerAdminEnrichmentRoutes(app2) {
-  app2.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin4, async (_req, res) => {
+  app2.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin5, async (_req, res) => {
     enrichLog.info("Generating enrichment dashboard");
     const allBiz = await db.select({
       id: businesses.id,
@@ -13134,7 +13248,7 @@ function registerAdminEnrichmentRoutes(app2) {
       cityBreakdown
     });
   });
-  app2.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin4, async (req, res) => {
+  app2.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin5, async (req, res) => {
     const city = req.query.city;
     enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
     let allBiz = await db.select({
@@ -13163,7 +13277,7 @@ function registerAdminEnrichmentRoutes(app2) {
       gaps
     });
   });
-  app2.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin4, async (req, res) => {
+  app2.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin5, async (req, res) => {
     const city = req.query.city;
     enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
     let allBiz = await db.select({
@@ -13199,7 +13313,7 @@ init_schema();
 import { eq as eq27 } from "drizzle-orm";
 init_admin();
 var bulkLog = log.tag("AdminEnrichmentBulk");
-function requireAdmin5(req, res, next) {
+function requireAdmin6(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
   }
@@ -13207,7 +13321,7 @@ function requireAdmin5(req, res, next) {
 }
 var VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
 function registerAdminEnrichmentBulkRoutes(app2) {
-  app2.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin5, async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin6, async (req, res) => {
     const { businessIds, tags, mode = "merge" } = req.body || {};
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
       return res.status(400).json({ error: "businessIds must be a non-empty array" });
@@ -13239,7 +13353,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
     bulkLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
     res.json({ updated: results.length, requested: businessIds.length, mode, results });
   });
-  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin5, async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin6, async (req, res) => {
     const { cuisine, tags, city, dryRun = true } = req.body || {};
     if (!cuisine || typeof cuisine !== "string") {
       return res.status(400).json({ error: "cuisine is required" });
@@ -13286,7 +13400,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
       // cap for response size
     });
   });
-  app2.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin5, async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin6, async (req, res) => {
     const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
       return res.status(400).json({ error: "businessIds must be a non-empty array" });
@@ -14583,6 +14697,7 @@ async function registerRoutes(app2) {
   registerAdminRankingRoutes(app2);
   registerOwnerDashboardRoutes(app2);
   registerAdminTemplateRoutes(app2);
+  registerAdminPushTemplateRoutes(app2);
   registerAdminTierLimitRoutes(app2);
   registerAdminWebSocketRoutes(app2);
   registerAdminHealthRoutes(app2);

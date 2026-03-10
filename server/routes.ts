@@ -27,6 +27,7 @@ import { registerAdminReputationRoutes } from "./routes-admin-reputation";
 import { registerAdminModerationRoutes } from "./routes-admin-moderation";
 import { registerAdminRankingRoutes } from "./routes-admin-ranking";
 import { registerAdminTemplateRoutes } from "./routes-admin-templates";
+import { registerAdminPushTemplateRoutes } from "./routes-admin-push-templates";
 import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits";
 import { registerAdminWebSocketRoutes } from "./routes-admin-websocket";
 import { registerAdminHealthRoutes } from "./routes-admin-health";
@@ -350,6 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminRankingRoutes(app);
   registerOwnerDashboardRoutes(app);
   registerAdminTemplateRoutes(app);
+  registerAdminPushTemplateRoutes(app);
   registerAdminTierLimitRoutes(app);
   registerAdminWebSocketRoutes(app);
   registerAdminHealthRoutes(app);
