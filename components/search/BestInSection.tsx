@@ -11,11 +11,12 @@ const AMBER = BRAND.colors.amber;
 interface BestInSectionProps {
   city: string;
   onSelectCategory: (displayName: string) => void;
+  onSelectDish?: (slug: string) => void;
   onSeeAll: () => void;
   onCuisineChange?: (cuisine: string | null) => void;
 }
 
-export function BestInSection({ city, onSelectCategory, onSeeAll, onCuisineChange }: BestInSectionProps) {
+export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, onCuisineChange }: BestInSectionProps) {
   const [bestInCuisine, setBestInCuisine] = useState<string | null>(null);
   const bestInCuisines = useMemo(() => getAvailableCuisines(), []);
   const bestInItems = useMemo(() =>
@@ -73,7 +74,7 @@ export function BestInSection({ city, onSelectCategory, onSeeAll, onCuisineChang
           <TouchableOpacity
             key={cat.slug}
             style={styles.bestInCard}
-            onPress={() => { Haptics.selectionAsync(); onSelectCategory(cat.displayName); }}
+            onPress={() => { Haptics.selectionAsync(); onSelectDish ? onSelectDish(cat.slug) : onSelectCategory(cat.displayName); }}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel={`Best ${cat.displayName} in ${city}`}
