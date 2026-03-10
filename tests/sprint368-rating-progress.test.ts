@@ -139,8 +139,8 @@ describe("Sprint 368: Rating flow UX polish (progress indicator)", () => {
       expect(rateSrc).toContain("setVisitType");
     });
 
-    it("should still have 3-step flow", () => {
-      expect(rateSrc).toContain("total={3}");
+    it("should have 4-step flow (Sprint 531: added review step)", () => {
+      expect(rateSrc).toContain("total={4}");
     });
   });
 });

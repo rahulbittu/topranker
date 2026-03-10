@@ -99,14 +99,14 @@ describe("Sprint 411 — Visit Type Step Extraction", () => {
       expect(rateSrc).not.toContain("const getDimensionLabels = ()");
     });
 
-    it("is under 580 LOC (was 631, target < 580)", () => {
+    it("is under 610 LOC (Sprint 531: added review step)", () => {
       const loc = rateSrc.split("\n").length;
-      expect(loc).toBeLessThan(580);
+      expect(loc).toBeLessThan(610);
     });
 
-    it("dropped below 82% of 700 LOC threshold", () => {
+    it("stays below 86% of 700 LOC threshold", () => {
       const loc = rateSrc.split("\n").length;
-      expect(loc / 700).toBeLessThan(0.82);
+      expect(loc / 700).toBeLessThan(0.86);
     });
   });
 });

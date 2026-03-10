@@ -24,6 +24,7 @@ import {
   CircleScorePicker, ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
 } from "@/components/rate/SubComponents";
 import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
+import { RatingReviewStep } from "@/components/rate/RatingReviewStep";
 import { VisitTypeStep, getDimensionLabels, getDimensionTooltips, DimensionTooltip, type VisitType } from "@/components/rate/VisitTypeStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
@@ -32,7 +33,7 @@ import {
   useDimensionHighlight, useDimensionTiming, useConfirmationAnimations,
 } from "@/lib/hooks/useRatingAnimations";
 
-type RatingStep = 0 | 1 | 2;
+type RatingStep = 0 | 1 | 2 | 3;
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
@@ -281,6 +282,7 @@ export default function RateScreen() {
       case 0: return visitType !== null;
       case 1: return q1Score > 0 && q2Score > 0 && q3Score > 0 && wouldReturn !== null;
       case 2: return true;
+      case 3: return true;
       default: return false;
     }
   };
@@ -293,6 +295,9 @@ export default function RateScreen() {
     } else if (step === 1) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setStep(2);
+    } else if (step === 2) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setStep(3);
     } else {
       setSubmitError("");
       submitMutation.mutate();
@@ -300,9 +305,16 @@ export default function RateScreen() {
   };
 
   const goBack = () => {
-    if (step === 2) setStep(1);
+    if (step === 3) setStep(2);
+    else if (step === 2) setStep(1);
     else if (step === 1) setStep(0);
     else router.back();
+  };
+
+  // Sprint 531: Jump to specific step from review screen
+  const handleEditStep = (targetStep: number) => {
+    setStep(targetStep as RatingStep);
+    if (targetStep === 1) setFocusedDimension(0);
   };
 
   return (
@@ -311,11 +323,11 @@ export default function RateScreen() {
         <TouchableOpacity onPress={goBack} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel={step > 0 ? "Previous step" : "Go back"}>
           <Ionicons name="chevron-back" size={22} color={Colors.text} />
         </TouchableOpacity>
-        <StepIndicator step={step} total={3} />
+        <StepIndicator step={step} total={4} />
         <View style={styles.navSpacer} />
       </View>
 
-      <ProgressBar step={step} total={3} />
+      <ProgressBar step={step} total={4} />
 
       <View style={styles.businessHeader}>
         <Text style={styles.rateLabel}>RATE</Text>
@@ -379,7 +391,7 @@ export default function RateScreen() {
               </Animated.View>
             )}
           </Animated.View>
-        ) : (
+        ) : step === 2 ? (
           <RatingExtrasStep
             existingDishes={existingDishes}
             selectedDish={selectedDish}
@@ -406,6 +418,26 @@ export default function RateScreen() {
             weightedScore={weightedScore}
             visitType={visitType}
           />
+        ) : (
+          <RatingReviewStep
+            businessName={business.name}
+            visitType={visitType || "dine_in"}
+            q1Score={q1Score}
+            q2Score={q2Score}
+            q3Score={q3Score}
+            wouldReturn={wouldReturn}
+            rawScore={rawScore}
+            weightedScore={weightedScore}
+            voteWeight={voteWeight}
+            userTier={userTier}
+            tierColor={tierColor}
+            selectedDish={selectedDish}
+            dishInput={dishInput}
+            note={note}
+            photoUris={photoUris.length > 0 ? photoUris : (photoUri ? [photoUri] : [])}
+            receiptUri={receiptUri}
+            onEditStep={handleEditStep}
+          />
         )}
       </ScrollView>
 
@@ -428,23 +460,23 @@ export default function RateScreen() {
       <View style={[styles.bottomBar, { paddingBottom: bottomPad + 12 }]}>
         {step === 2 && (
           <TouchableOpacity
-            style={[styles.skipBtn, submitMutation.isPending && { opacity: 0.5 }]}
-            onPress={() => { setSelectedDish(""); setDishInput(""); setNote(""); setSubmitError(""); submitMutation.mutate(); }}
-            activeOpacity={0.7} disabled={submitMutation.isPending}
-            accessibilityRole="button" accessibilityLabel="Skip extras and submit rating"
+            style={styles.skipBtn}
+            onPress={() => { setSelectedDish(""); setDishInput(""); setNote(""); setStep(3); }}
+            activeOpacity={0.7}
+            accessibilityRole="button" accessibilityLabel="Skip extras and go to review"
           >
-            <Text style={styles.skipBtnText}>Skip & Submit</Text>
+            <Text style={styles.skipBtnText}>Skip</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity
           style={[styles.primaryButton, styles.primaryButtonFlex, !canProceed() && styles.primaryButtonDisabled]}
           onPress={goNext} activeOpacity={0.8} disabled={!canProceed() || submitMutation.isPending}
-          testID="next-step" accessibilityRole="button" accessibilityLabel={step === 2 ? "Submit rating" : "Next step"}
+          testID="next-step" accessibilityRole="button" accessibilityLabel={step === 3 ? "Submit rating" : "Next step"}
         >
           <Text style={[styles.primaryButtonText, !canProceed() && styles.primaryButtonTextDisabled]}>
-            {submitMutation.isPending ? "Submitting..." : step === 2 ? "Submit Rating" : "Next"}
+            {submitMutation.isPending ? "Submitting..." : step === 3 ? "Submit Rating" : step === 2 ? "Review" : "Next"}
           </Text>
-          {(step === 0 || step === 1) && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
+          {(step === 0 || step === 1 || step === 2) && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
     </View>

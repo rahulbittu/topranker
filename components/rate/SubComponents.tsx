@@ -58,11 +58,12 @@ export function CircleScoreLabels({ circleSize }: { circleSize: number }) {
   );
 }
 
-const STEP_LABELS = ["Visit Type", "Score", "Details"];
+const STEP_LABELS = ["Visit Type", "Score", "Details", "Review"];
 const STEP_DESCRIPTIONS = [
   "How did you experience this place?",
   "Rate the dimensions that matter",
   "Add optional details to boost credibility",
+  "Confirm your rating before submitting",
 ];
 
 export function ProgressBar({ step, total }: { step: number; total: number }) {
