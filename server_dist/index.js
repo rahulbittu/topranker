@@ -10121,7 +10121,19 @@ function registerBusinessRoutes(app2) {
       }
     }
     const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
-    return res.json({ data: { ...business, photoUrls, recentRatings: ratings5, dishes: dishList } });
+    const bHours = business.openingHours;
+    const openStatus = computeOpenStatus(bHours);
+    const dynamicIsOpenNow = bHours ? openStatus.isOpen : business.isOpenNow ?? false;
+    return res.json({ data: {
+      ...business,
+      photoUrls,
+      recentRatings: ratings5,
+      dishes: dishList,
+      isOpenNow: dynamicIsOpenNow,
+      closingTime: openStatus.closingTime,
+      nextOpenTime: openStatus.nextOpenTime,
+      todayHours: openStatus.todayHours
+    } });
   }));
   app2.get("/api/businesses/:id/ratings", wrapAsync(async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);

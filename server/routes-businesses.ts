@@ -169,7 +169,21 @@ export function registerBusinessRoutes(app: Express) {
 
     const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
 
-    return res.json({ data: { ...business, photoUrls, recentRatings: ratings, dishes: dishList } });
+    // Sprint 453: Dynamic hours computation for single business
+    const bHours = (business as any).openingHours;
+    const openStatus = computeOpenStatus(bHours);
+    const dynamicIsOpenNow = bHours ? openStatus.isOpen : (business.isOpenNow ?? false);
+
+    return res.json({ data: {
+      ...business,
+      photoUrls,
+      recentRatings: ratings,
+      dishes: dishList,
+      isOpenNow: dynamicIsOpenNow,
+      closingTime: openStatus.closingTime,
+      nextOpenTime: openStatus.nextOpenTime,
+      todayHours: openStatus.todayHours,
+    } });
   }));
 
   app.get("/api/businesses/:id/ratings", wrapAsync(async (req: Request, res: Response) => {

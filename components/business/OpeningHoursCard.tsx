@@ -141,9 +141,12 @@ function WeekOverviewDots({ hours }: { hours: string[] }) {
 interface OpeningHoursCardProps {
   hours: string[];
   isOpenNow?: boolean;
+  closingTime?: string | null;   // Sprint 453: server-computed "21:00"
+  nextOpenTime?: string | null;  // Sprint 453: server-computed "09:00" or "Mon 09:00"
+  todayHours?: string | null;    // Sprint 453: server-computed "11:00 AM – 10:00 PM"
 }
 
-export function OpeningHoursCard({ hours, isOpenNow }: OpeningHoursCardProps) {
+export function OpeningHoursCard({ hours, isOpenNow, closingTime, nextOpenTime, todayHours }: OpeningHoursCardProps) {
   const [expanded, setExpanded] = useState(false);
   const today = new Date();
   const todayIdx = today.getDay();
@@ -153,6 +156,12 @@ export function OpeningHoursCard({ hours, isOpenNow }: OpeningHoursCardProps) {
   const status = useMemo(() => getTodayStatus(todayLine, hours, todayIdx), [todayLine, hours.length]);
   // Use API isOpenNow if available, fall back to parsed status
   const effectiveOpen = isOpenNow ?? status.isOpen;
+  // Sprint 453: Prefer server-computed status text when available
+  const effectiveStatusText = useMemo(() => {
+    if (effectiveOpen && closingTime) return `Open until ${closingTime}`;
+    if (!effectiveOpen && nextOpenTime) return `Opens ${nextOpenTime}`;
+    return status.statusText;
+  }, [effectiveOpen, closingTime, nextOpenTime, status.statusText]);
   const duration = useMemo(() => getHoursDuration(todayLine), [todayLine]);
 
   return (
@@ -176,9 +185,9 @@ export function OpeningHoursCard({ hours, isOpenNow }: OpeningHoursCardProps) {
           )}
         </View>
         <View style={s.hoursTodayRow}>
-          {status.statusText ? (
+          {effectiveStatusText ? (
             <Text style={[s.statusText, effectiveOpen ? s.statusTextOpen : s.statusTextClosed]} numberOfLines={1}>
-              {status.statusText}
+              {effectiveStatusText}
             </Text>
           ) : (
             <Text style={s.hoursTodaySummary} numberOfLines={1}>{todayLine || hours[0] || "\u2014"}</Text>
