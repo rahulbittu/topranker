@@ -183,7 +183,7 @@ export default function BusinessProfileScreen() {
   };
   const handleToggleBookmark = () => {
     if (business) {
-      toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category });
+      toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category, cuisine: business.cuisine ?? undefined });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   };

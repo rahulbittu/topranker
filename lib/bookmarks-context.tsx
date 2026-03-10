@@ -56,7 +56,7 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
     return bookmarks.has(businessId);
   }, [bookmarks]);
 
-  const toggleBookmark = useCallback((businessId: string, meta?: { name: string; slug: string; category: string }) => {
+  const toggleBookmark = useCallback((businessId: string, meta?: { name: string; slug: string; category: string; cuisine?: string }) => {
     setBookmarks(prev => {
       const next = new Map(prev);
       if (next.has(businessId)) {

@@ -320,7 +320,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         </TouchableOpacity>
         <TouchableOpacity
           style={s.cardBookmarkBtn}
-          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          onPress={(e) => { e.stopPropagation(); toggleBookmark(item.id, { name: item.name, slug: item.slug, category: item.category, cuisine: item.cuisine ?? undefined }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={saved ? `Remove ${item.name} from saved` : `Save ${item.name}`}
