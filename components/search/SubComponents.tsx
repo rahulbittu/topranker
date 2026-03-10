@@ -291,21 +291,31 @@ export function MapBusinessCard({ item }: { item: MappedBusiness }) {
 // --- MapView component (extracted from search.tsx) ---
 
 export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
+  // Active TX cities
   Dallas: { lat: 32.7767, lng: -96.7970 },
   Austin: { lat: 30.2672, lng: -97.7431 },
   Houston: { lat: 29.7604, lng: -95.3698 },
   "San Antonio": { lat: 29.4241, lng: -98.4936 },
   "Fort Worth": { lat: 32.7555, lng: -97.3308 },
+  // Sprint 418: Beta cities
+  "Oklahoma City": { lat: 35.4676, lng: -97.5164 },
+  "New Orleans": { lat: 29.9511, lng: -90.0715 },
+  Memphis: { lat: 35.1495, lng: -90.0490 },
+  Nashville: { lat: 36.1627, lng: -86.7816 },
+  Charlotte: { lat: 35.2271, lng: -80.8431 },
+  Raleigh: { lat: 35.7796, lng: -78.6382 },
 };
 
 let _mapsInitialized = false;
 
-export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void }) {
+export function MapView({ businesses, city, onSelectBiz, onSearchArea }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void; onSearchArea?: (lat: number, lng: number) => void }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const infoWindowRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | false>(false);
+  const [showSearchArea, setShowSearchArea] = useState(false);
 
   const bizWithCoords = businesses.filter(b => b.lat && b.lng);
 
@@ -354,7 +364,14 @@ export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedB
           ],
         });
 
-        map.addListener("click", () => onSelectBiz?.(null));
+        map.addListener("click", () => {
+          onSelectBiz?.(null);
+          if (infoWindowRef.current) infoWindowRef.current.close();
+        });
+
+        // Sprint 418: Show "Search this area" on pan/zoom
+        map.addListener("dragend", () => setShowSearchArea(true));
+        map.addListener("zoom_changed", () => setShowSearchArea(true));
 
         mapInstance.current = map;
         setMapReady(true);
@@ -425,6 +442,13 @@ export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedB
       marker.addListener("click", () => {
         onSelectBiz?.(biz);
         map.panTo({ lat: biz.lat, lng: biz.lng });
+        // Sprint 418: Info window with score + rating count
+        if (infoWindowRef.current) infoWindowRef.current.close();
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<div style="font-family:sans-serif;padding:2px 4px"><b style="font-size:13px">${biz.name}</b><br/><span style="color:#C49A1A;font-weight:700">★ ${biz.weightedScore.toFixed(1)}</span> · <span style="color:#888">${biz.ratingCount} ratings</span></div>`,
+        });
+        infoWindow.open(map, marker);
+        infoWindowRef.current = infoWindow;
       });
 
       markersRef.current.push(marker);
@@ -455,6 +479,15 @@ export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedB
     );
   }
 
+  const handleSearchArea = () => {
+    if (!mapInstance.current || !onSearchArea) return;
+    const center = mapInstance.current.getCenter();
+    if (center) {
+      onSearchArea(center.lat(), center.lng());
+      setShowSearchArea(false);
+    }
+  };
+
   return (
     <View style={s.mapContainer}>
       <div ref={mapRef as any} style={{ width: "100%", height: "100%" }} />
@@ -462,6 +495,19 @@ export function MapView({ businesses, city, onSelectBiz }: { businesses: MappedB
         <View style={s.mapLoadingOverlay}>
           <ActivityIndicator size="small" color={AMBER} />
         </View>
+      )}
+      {/* Sprint 418: Search this area button */}
+      {mapReady && showSearchArea && onSearchArea && (
+        <TouchableOpacity
+          style={s.searchAreaBtn}
+          onPress={handleSearchArea}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Search this area on the map"
+        >
+          <Ionicons name="search" size={14} color="#fff" />
+          <Text style={s.searchAreaText}>Search this area</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -584,6 +630,17 @@ const s = StyleSheet.create({
   mapLoadingOverlay: {
     position: "absolute" as const, top: 0, left: 0, right: 0, bottom: 0,
     alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.8)",
+  },
+  // Sprint 418: Search this area button
+  searchAreaBtn: {
+    position: "absolute" as const, top: 12, alignSelf: "center",
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: BRAND.colors.navy, paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 4, elevation: 4,
+  },
+  searchAreaText: {
+    fontSize: 12, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
   },
   mapFallbackBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
