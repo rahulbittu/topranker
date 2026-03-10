@@ -371,6 +371,7 @@ export default function SearchScreen() {
                   onClearCuisine={() => setSelectedCuisine(null)}
                   onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
                   onCityChange={setCity}
+                  onClearFilter={() => setActiveFilter("All")}
                 />
               }
             />
@@ -411,6 +412,7 @@ export default function SearchScreen() {
               onClearCuisine={() => setSelectedCuisine(null)}
               onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
               onCityChange={setCity}
+              onClearFilter={() => setActiveFilter("All")}
             />
           }
           ListHeaderComponent={

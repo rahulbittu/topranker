@@ -1,5 +1,6 @@
 /**
  * Sprint 383: Extracted & enhanced discover empty state.
+ * Sprint 408: Search suggestions, filter reset, activity pulse, quick search pills.
  * Contextual messaging, "Be the first" CTA, nearby city suggestions.
  */
 import React from "react";
@@ -10,8 +11,55 @@ import Colors from "@/constants/colors";
 import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
 import { SUPPORTED_CITIES } from "@/lib/city-context";
+import { pct } from "@/lib/style-helpers";
 
 const AMBER = BRAND.colors.amber;
+
+// Sprint 408: Common quick-search terms by context
+const QUICK_SEARCHES = [
+  { label: "Biryani", emoji: "🍚" },
+  { label: "Tacos", emoji: "🌮" },
+  { label: "Pizza", emoji: "🍕" },
+  { label: "Sushi", emoji: "🍣" },
+  { label: "Brunch", emoji: "🥞" },
+  { label: "BBQ", emoji: "🍖" },
+];
+
+// Sprint 408: Generate search suggestions based on the failed query
+function getSearchSuggestions(query: string): string[] {
+  const q = query.toLowerCase().trim();
+  if (q.length < 2) return [];
+  const suggestions: string[] = [];
+  // Suggest cuisine-based alternatives
+  const cuisineKeys = Object.keys(CUISINE_DISPLAY);
+  for (const key of cuisineKeys) {
+    const label = CUISINE_DISPLAY[key].label.toLowerCase();
+    if (label.includes(q.slice(0, 3)) || q.includes(label.slice(0, 3))) {
+      suggestions.push(CUISINE_DISPLAY[key].label);
+    }
+  }
+  // Suggest common terms
+  const common = ["biryani", "tacos", "pizza", "sushi", "brunch", "curry", "ramen", "pho", "thai", "italian"];
+  for (const term of common) {
+    if (term.includes(q.slice(0, 3)) && !suggestions.map(s => s.toLowerCase()).includes(term)) {
+      suggestions.push(term.charAt(0).toUpperCase() + term.slice(1));
+    }
+  }
+  return suggestions.slice(0, 3);
+}
+
+// Sprint 408: Get filter-specific action text
+function getFilterAction(activeFilter: string): { text: string; icon: string } | null {
+  if (activeFilter === "All") return null;
+  const map: Record<string, { text: string; icon: string }> = {
+    "Top 10": { text: "Remove Top 10 filter to see all places", icon: "trophy-outline" },
+    "Challenging": { text: "Remove Challenger filter to see all places", icon: "flash-outline" },
+    "Trending": { text: "Remove Trending filter — no movers this week", icon: "trending-up-outline" },
+    "Open Now": { text: "Remove Open Now filter — some places may be closed", icon: "time-outline" },
+    "Near Me": { text: "Remove Near Me filter to see all places", icon: "navigate-outline" },
+  };
+  return map[activeFilter] || { text: `Remove ${activeFilter} filter`, icon: "close-circle-outline" };
+}
 
 interface PopularCategory {
   category: string;
@@ -28,6 +76,7 @@ export interface DiscoverEmptyStateProps {
   onClearCuisine: () => void;
   onSearchCategory: (category: string) => void;
   onCityChange: (city: string) => void;
+  onClearFilter?: () => void;
 }
 
 export function DiscoverEmptyState({
@@ -40,6 +89,7 @@ export function DiscoverEmptyState({
   onClearCuisine,
   onSearchCategory,
   onCityChange,
+  onClearFilter,
 }: DiscoverEmptyStateProps) {
   const hasActiveSearch = query.trim().length > 0;
   const hasActiveFilter = activeFilter !== "All";
@@ -69,6 +119,12 @@ export function DiscoverEmptyState({
       ? "Try removing some filters"
       : "Try a different search or filter";
 
+  // Sprint 408: Search suggestions
+  const searchSuggestions = hasActiveSearch ? getSearchSuggestions(query) : [];
+
+  // Sprint 408: Filter action
+  const filterAction = getFilterAction(activeFilter);
+
   // Nearby city suggestions (show 2 cities that aren't the current one)
   const otherCities = SUPPORTED_CITIES
     .filter(c => c.key !== city)
@@ -81,6 +137,61 @@ export function DiscoverEmptyState({
       </View>
       <Text style={s.message}>{message}</Text>
       <Text style={s.subtitle}>{subtitle}</Text>
+
+      {/* Sprint 408: Search suggestions when query has no results */}
+      {searchSuggestions.length > 0 && (
+        <View style={s.suggestSection}>
+          <Text style={s.suggestLabel}>Did you mean?</Text>
+          <View style={s.suggestRow}>
+            {searchSuggestions.map(term => (
+              <TouchableOpacity
+                key={term}
+                style={s.suggestChip}
+                onPress={() => onSearchCategory(term)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search for ${term}`}
+              >
+                <Ionicons name="search" size={12} color={AMBER} />
+                <Text style={s.suggestChipText}>{term}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Sprint 408: Filter-specific reset action */}
+      {hasActiveFilter && filterAction && onClearFilter && (
+        <TouchableOpacity
+          style={s.filterResetBtn}
+          onPress={onClearFilter}
+          accessibilityRole="button"
+          accessibilityLabel={filterAction.text}
+        >
+          <Ionicons name={filterAction.icon as any} size={14} color={AMBER} />
+          <Text style={s.filterResetText}>{filterAction.text}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Sprint 408: Quick search pills when no query and no cuisine filter */}
+      {!hasActiveSearch && !selectedCuisine && variant === "list" && popularCategories.length === 0 && (
+        <View style={s.quickSearchSection}>
+          <Text style={s.quickSearchLabel}>Quick search</Text>
+          <View style={s.quickSearchRow}>
+            {QUICK_SEARCHES.map(qs => (
+              <TouchableOpacity
+                key={qs.label}
+                style={s.quickSearchPill}
+                onPress={() => onSearchCategory(qs.label)}
+                accessibilityRole="button"
+                accessibilityLabel={`Search for ${qs.label}`}
+              >
+                <Text style={s.quickSearchEmoji}>{qs.emoji}</Text>
+                <Text style={s.quickSearchText}>{qs.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* Be the first CTA */}
       <TouchableOpacity
@@ -194,7 +305,52 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: `${AMBER}25`,
   },
   beFirstText: { fontSize: 13, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold" },
-  dishSuggestions: { marginTop: 16, width: "100%" as any },
+
+  // Sprint 408: Search suggestions
+  suggestSection: { marginTop: 12, width: pct(100), gap: 6 },
+  suggestLabel: {
+    fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  suggestRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  suggestChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 7,
+    backgroundColor: `${AMBER}08`, borderRadius: 10,
+    borderWidth: 1, borderColor: `${AMBER}20`,
+  },
+  suggestChipText: {
+    fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium",
+  },
+
+  // Sprint 408: Filter reset
+  filterResetBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    marginTop: 8, paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: Colors.surface, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  filterResetText: {
+    fontSize: 12, color: AMBER, fontFamily: "DMSans_500Medium",
+  },
+
+  // Sprint 408: Quick search pills
+  quickSearchSection: { marginTop: 16, width: pct(100), gap: 8 },
+  quickSearchLabel: {
+    fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
+    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as const, letterSpacing: 0.8,
+  },
+  quickSearchRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
+  quickSearchPill: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: Colors.surface, borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  quickSearchEmoji: { fontSize: 14 },
+  quickSearchText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium" },
+
+  dishSuggestions: { marginTop: 16, width: pct(100) },
   dishTitle: { fontSize: 12, fontWeight: "600", color: Colors.textTertiary, fontFamily: "DMSans_600SemiBold", marginBottom: 8 },
   dishChip: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -204,10 +360,10 @@ const s = StyleSheet.create({
   dishChipText: { fontSize: 14, color: Colors.text, fontFamily: "DMSans_500Medium" },
   clearFilter: { marginTop: 8, paddingVertical: 8 },
   clearFilterText: { fontSize: 13, color: AMBER, fontFamily: "DMSans_600SemiBold" },
-  suggestionsSection: { marginTop: 20, width: "100%" as any, gap: 10 },
+  suggestionsSection: { marginTop: 20, width: pct(100), gap: 10 },
   suggestionsLabel: {
     fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
-    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as any, letterSpacing: 0.8,
+    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as const, letterSpacing: 0.8,
   },
   suggestionsRow: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
   suggestionChip: {
@@ -221,10 +377,10 @@ const s = StyleSheet.create({
   chipInfo: { gap: 1 },
   chipText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   chipCount: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  citySection: { marginTop: 20, width: "100%" as any, gap: 8 },
+  citySection: { marginTop: 20, width: pct(100), gap: 8 },
   cityLabel: {
     fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
-    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as any, letterSpacing: 0.8,
+    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as const, letterSpacing: 0.8,
   },
   cityRow: { flexDirection: "row", gap: 8 },
   cityChip: {
