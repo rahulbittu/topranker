@@ -13,6 +13,8 @@ export interface MappedRating {
   q3: number;
   wouldReturn: boolean;
   comment: string | null;
+  hasPhoto?: boolean; // Sprint 548: rating photo indicator
+  hasReceipt?: boolean; // Sprint 548: receipt indicator
   createdAt: number;
 }
 

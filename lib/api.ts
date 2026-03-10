@@ -58,6 +58,8 @@ export interface ApiRating {
   weightedScore: string;
   isFlagged: boolean;
   autoFlagged: boolean;
+  hasPhoto?: boolean; // Sprint 548: rating photo indicator
+  hasReceipt?: boolean; // Sprint 548: receipt indicator
   source: string | null;
   createdAt: string;
   memberName?: string;
@@ -212,6 +214,8 @@ export function mapApiRating(rating: ApiRating) {
     q3: rating.q3Score,
     wouldReturn: rating.wouldReturn,
     comment: rating.note,
+    hasPhoto: rating.hasPhoto || false, // Sprint 548
+    hasReceipt: rating.hasReceipt || false, // Sprint 548
     createdAt: new Date(rating.createdAt).getTime(),
   };
 }
@@ -649,4 +653,18 @@ export async function deleteRatingApi(ratingId: string) {
     throw new Error(data.error || `Delete failed: ${res.status}`);
   }
   return res.json();
+}
+
+// Sprint 548: Rating photo data for carousel display
+export interface RatingPhotoData {
+  id: string;
+  ratingId: string;
+  photoUrl: string;
+  cdnKey: string;
+  isVerifiedReceipt: boolean;
+}
+
+export async function fetchRatingPhotos(ratingId: string): Promise<RatingPhotoData[]> {
+  const data = await apiFetch<{ data: RatingPhotoData[] }>(`/api/ratings/${encodeURIComponent(ratingId)}/photos`);
+  return data.data || [];
 }

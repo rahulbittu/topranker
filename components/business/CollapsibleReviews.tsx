@@ -95,6 +95,23 @@ export const RatingRow = React.memo(function RatingRow({ rating }: { rating: Map
           />
         </View>
       </View>
+      {/* Sprint 548: Photo/receipt verification indicators */}
+      {(rating.hasPhoto || rating.hasReceipt) && (
+        <View style={s.photoIndicatorRow}>
+          {rating.hasPhoto && (
+            <View style={s.photoIndicator}>
+              <Ionicons name="camera-outline" size={12} color={BRAND.colors.amber} />
+              <Text style={s.photoIndicatorText}>Photo Verified</Text>
+            </View>
+          )}
+          {rating.hasReceipt && (
+            <View style={s.receiptIndicator}>
+              <Ionicons name="receipt-outline" size={12} color={Colors.green} />
+              <Text style={s.receiptIndicatorText}>Receipt Verified</Text>
+            </View>
+          )}
+        </View>
+      )}
       {rating.comment && (
         <Text style={s.ratingComment}>"{rating.comment}"</Text>
       )}
@@ -243,6 +260,26 @@ const s = StyleSheet.create({
   ratingSubItem: { alignItems: "center", gap: 2 },
   ratingSubLabel: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary },
   ratingSubVal: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  // Sprint 548: Rating photo/receipt verification indicators
+  photoIndicatorRow: {
+    flexDirection: "row" as const, gap: 8, paddingLeft: 42, paddingTop: 4,
+  },
+  photoIndicator: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
+    backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  photoIndicatorText: {
+    fontSize: 10, fontWeight: "600" as const, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
+  },
+  receiptIndicator: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
+    backgroundColor: "rgba(34,197,94,0.08)", borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  receiptIndicatorText: {
+    fontSize: 10, fontWeight: "600" as const, color: Colors.green, fontFamily: "DMSans_600SemiBold",
+  },
   ratingComment: {
     fontSize: 13, color: Colors.textSecondary, fontStyle: "italic",
     fontFamily: "DMSans_400Regular", paddingLeft: 42, lineHeight: 18,

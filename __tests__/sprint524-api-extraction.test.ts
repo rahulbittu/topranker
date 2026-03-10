@@ -114,10 +114,10 @@ describe("Sprint 524: api.ts Domain Extraction", () => {
       expect(src).toContain("fetchAdminMembers");
     });
 
-    it("stays under 660 LOC (was 766)", () => {
-      // Sprint 544: +16 LOC for popular queries API functions
+    it("stays under 680 LOC (was 766)", () => {
+      // Sprint 548: +16 LOC for RatingPhotoData type + fetchRatingPhotos + hasPhoto/hasReceipt
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(660);
+      expect(lines).toBeLessThan(680);
     });
 
     it("retains non-admin exports", () => {

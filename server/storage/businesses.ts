@@ -427,6 +427,8 @@ export async function getBusinessRatings(
       flagReason: ratings.flagReason,
       flagProbability: ratings.flagProbability,
       source: ratings.source,
+      hasPhoto: ratings.hasPhoto,
+      hasReceipt: ratings.hasReceipt,
       createdAt: ratings.createdAt,
       memberName: members.displayName,
       memberTier: members.credibilityTier,
