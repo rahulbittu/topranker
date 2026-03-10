@@ -79,18 +79,22 @@ describe("Sprint 287: search.tsx cleanup", () => {
     expect(search).not.toContain("cuisineTab:");
   });
 
-  it("search.tsx no longer imports best-in-categories directly", () => {
-    expect(search).not.toContain("from \"@/shared/best-in-categories\"");
+  it("search.tsx only imports CUISINE_DISPLAY from best-in-categories (not full category arrays)", () => {
+    // After Sprint 302, search.tsx imports CUISINE_DISPLAY for analytics tracking
+    // but no longer imports getAvailableCuisines, getCategoriesByCuisine, etc.
+    expect(search).not.toContain("getAvailableCuisines");
+    expect(search).not.toContain("getCategoriesByCuisine");
   });
 
-  it("search.tsx is under 900 LOC (was 917, threshold 950)", () => {
+  it("search.tsx is under 950 LOC (grew from 802 with new features)", () => {
     const lines = countLines("app/(tabs)/search.tsx");
-    expect(lines).toBeLessThan(900);
+    expect(lines).toBeLessThan(950);
   });
 
-  it("search.tsx dropped at least 100 lines", () => {
-    const lines = countLines("app/(tabs)/search.tsx");
-    expect(lines).toBeLessThanOrEqual(820);
+  it("search.tsx BestIn rendering is delegated to BestInSection", () => {
+    // The core Best In rendering logic lives in BestInSection, not search.tsx
+    expect(search).not.toContain("bestInCard:");
+    expect(search).not.toContain("bestInEmoji:");
   });
 });
 

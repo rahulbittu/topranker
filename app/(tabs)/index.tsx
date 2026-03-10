@@ -22,6 +22,7 @@ import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Analytics } from "@/lib/analytics";
 import { FadeInView } from "@/components/animations/FadeInView";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
 
@@ -214,7 +215,7 @@ export default function LeaderboardScreen() {
         style={styles.bestInChipsRow}
       >
         <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); setSelectedBestIn(null); }}
+          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); setSelectedBestIn(null); Analytics.cuisineFilterClear("rankings"); }}
           style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
           accessibilityRole="button"
           accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
@@ -228,7 +229,7 @@ export default function LeaderboardScreen() {
           return (
             <TouchableOpacity
               key={cuisine}
-              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); setSelectedBestIn(null); }}
+              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); setSelectedBestIn(null); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
               style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
               accessibilityRole="button"
               accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}

@@ -81,6 +81,11 @@ export type AnalyticsEvent =
   | "settings_open"
   | "city_change"
 
+  // Sprint 302: Cuisine analytics
+  | "cuisine_filter_select"
+  | "cuisine_filter_clear"
+  | "dish_deep_link_tap"
+
   // Sprint 202: Beta tracking
   | "beta_join_page_view"
   | "beta_join_cta_tap"
@@ -242,4 +247,14 @@ export const Analytics = {
 
   betaReferralShare: (method: string) =>
     track("beta_referral_share", { method }),
+
+  // Sprint 302: Cuisine analytics
+  cuisineFilterSelect: (cuisine: string, surface: "rankings" | "discover") =>
+    track("cuisine_filter_select", { cuisine, surface }),
+
+  cuisineFilterClear: (surface: "rankings" | "discover") =>
+    track("cuisine_filter_clear", { surface }),
+
+  dishDeepLinkTap: (dishSlug: string) =>
+    track("dish_deep_link_tap", { dish_slug: dishSlug }),
 };

@@ -511,9 +511,9 @@ export default function SearchScreen() {
                 <BestInSection
                   city={city}
                   onSelectCategory={(name) => { setQuery(name); setActiveFilter("All"); }}
-                  onSelectDish={(slug) => router.push({ pathname: "/dish/[slug]", params: { slug } })}
+                  onSelectDish={(slug) => { Analytics.dishDeepLinkTap(slug); router.push({ pathname: "/dish/[slug]", params: { slug } }); }}
                   onSeeAll={() => setQuery("best in " + city.toLowerCase())}
-                  onCuisineChange={(cuisine) => setSelectedCuisine(cuisine)}
+                  onCuisineChange={(cuisine) => { setSelectedCuisine(cuisine); cuisine ? Analytics.cuisineFilterSelect(cuisine, "discover") : Analytics.cuisineFilterClear("discover"); }}
                   entryCounts={dishEntryCounts}
                 />
               )}
