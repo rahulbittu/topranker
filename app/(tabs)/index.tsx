@@ -26,6 +26,7 @@ import { RankingsListHeader } from "@/components/leaderboard/RankingsListHeader"
 import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FadeInView } from "@/components/animations/FadeInView";
+import { TopRankHighlight } from "@/components/animations/TopRankHighlight";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
 
 const AMBER = BRAND.colors.amber;
@@ -215,9 +216,9 @@ export default function LeaderboardScreen() {
           data={restBiz}
           keyExtractor={item => item.id}
           renderItem={({ item, index }) => (
-            <FadeInView delay={index * 100}>
+            <TopRankHighlight active={item.rank === 1}>
               <RankedCard item={item} index={index} />
-            </FadeInView>
+            </TopRankHighlight>
           )}
           contentContainerStyle={[
             styles.list,

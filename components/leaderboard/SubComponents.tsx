@@ -244,6 +244,47 @@ export function HeroCard({ item, categoryLabel }: { item: MappedBusiness; catego
   );
 }
 
+// ── Sprint 416: RankDeltaBadge — animated for big movers ────────
+function RankDeltaBadge({ delta }: { delta: number }) {
+  const isBigMover = Math.abs(delta) >= 3;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!isBigMover) return;
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [isBigMover, pulseAnim]);
+
+  const isUp = delta > 0;
+  const bgColor = isUp ? `${Colors.green}20` : `${Colors.red}20`;
+  const textColor = isUp ? Colors.green : Colors.red;
+  const arrow = isUp ? "\u2191" : "\u2193";
+
+  return (
+    <Animated.View
+      style={[
+        s.rankDeltaPill,
+        { backgroundColor: bgColor },
+        isBigMover && { transform: [{ scale: pulseAnim }] },
+      ]}
+      accessibilityLabel={`Rank ${isUp ? "up" : "down"} ${Math.abs(delta)} position${Math.abs(delta) !== 1 ? "s" : ""}`}
+    >
+      <Text style={[s.rankedDelta, { color: textColor }]}>
+        {arrow}{Math.abs(delta)}
+      </Text>
+      {isBigMover && (
+        <Ionicons name={isUp ? "flame" : "trending-down"} size={9} color={textColor} style={{ marginLeft: 2 }} />
+      )}
+    </Animated.View>
+  );
+}
+
 // ── RankedCard ──────────────────────────────────────────────────
 export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { item: MappedBusiness; index?: number }) {
   const { width: screenWidth } = useWindowDimensions();
@@ -389,11 +430,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
           })()}
           <Text style={s.rankedRatingCount}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
           {item.rankDelta !== 0 && (
-            <View style={[s.rankDeltaPill, { backgroundColor: item.rankDelta > 0 ? `${Colors.green}20` : `${Colors.red}20` }]}>
-              <Text style={[s.rankedDelta, { color: item.rankDelta > 0 ? Colors.green : Colors.red }]}>
-                {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
-              </Text>
-            </View>
+            <RankDeltaBadge delta={item.rankDelta} />
           )}
           {item.isOpenNow !== undefined && (
             <View style={[s.statusPillSmall, item.isOpenNow ? s.statusPillOpen : s.statusPillClosed]}>
