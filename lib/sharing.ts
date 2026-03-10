@@ -21,6 +21,25 @@ export function getShareText(businessName: string, rating: number): string {
 }
 
 /**
+ * Copy a shareable URL to clipboard with haptic + alert feedback.
+ * Returns true if successful, false if clipboard is unavailable.
+ */
+export async function copyShareLink(
+  url: string,
+  label?: string,
+): Promise<boolean> {
+  try {
+    const Clipboard = await import("expo-clipboard");
+    await Clipboard.setStringAsync(url);
+    const { Alert } = await import("react-native");
+    Alert.alert("Link Copied", label ? `${label} link copied to clipboard!` : "Link copied to clipboard!");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse a TopRanker URL and extract the type and slug.
  * Returns null if the URL doesn't match expected patterns.
  */

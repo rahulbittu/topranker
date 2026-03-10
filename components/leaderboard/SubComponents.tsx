@@ -22,7 +22,7 @@ import { MappedBusiness } from "@/types/business";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { pct } from "@/lib/style-helpers";
 import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
-import { getShareUrl, getShareText } from "@/lib/sharing";
+import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
 import { Analytics } from "@/lib/analytics";
 
 const AMBER = BRAND.colors.amber;
@@ -285,7 +285,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         ]}>
           <Text style={s.rankBadgeText}>{rankLabel}</Text>
         </View>
-        {/* Sprint 328: Share button on ranked card */}
+        {/* Sprint 328/337: Share button (tap=share, long-press=copy link) */}
         <TouchableOpacity
           style={s.cardShareBtn}
           onPress={async (e) => {
@@ -299,9 +299,17 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
               Analytics.shareBusiness(item.slug, "ranked_card");
             } catch {}
           }}
+          onLongPress={async (e) => {
+            e.stopPropagation();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            const url = getShareUrl("business", item.slug);
+            const copied = await copyShareLink(url, item.name);
+            if (copied) Analytics.shareBusiness(item.slug, "copy_link");
+          }}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={`Share ${item.name}`}
+          accessibilityHint="Long press to copy link"
         >
           <Ionicons name="share-outline" size={14} color="#fff" />
         </TouchableOpacity>

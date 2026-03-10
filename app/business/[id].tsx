@@ -18,7 +18,7 @@ import * as Haptics from "expo-haptics";
 import { BRAND } from "@/constants/brand";
 import { Analytics } from "@/lib/analytics";
 import { getRatingImpact, clearRatingImpact } from "@/lib/rating-impact";
-import { getShareUrl, getShareText } from "@/lib/sharing";
+import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
@@ -175,6 +175,12 @@ export default function BusinessProfileScreen() {
       Analytics.shareBusiness(business.slug, "share_sheet");
     } catch {}
   };
+  const handleCopyLink = async () => {
+    Haptics.selectionAsync();
+    const url = getShareUrl("business", business.slug);
+    const copied = await copyShareLink(url, business.name);
+    if (copied) Analytics.shareBusiness(business.slug, "copy_link");
+  };
   const handleToggleBookmark = () => {
     if (business) {
       toggleBookmark(business.id, { name: business.name, slug: business.slug, category: business.category });
@@ -322,6 +328,7 @@ export default function BusinessProfileScreen() {
             <ActionButton icon="globe-outline" label="Website" onPress={handleWebsite} disabled={!business.website} />
             <ActionButton icon="navigate-outline" label="Maps" onPress={handleMaps} disabled={!business.address} />
             <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
+            <ActionButton icon="copy-outline" label="Copy Link" onPress={handleCopyLink} />
           </View>
 
           <View style={styles.sectionDivider} />

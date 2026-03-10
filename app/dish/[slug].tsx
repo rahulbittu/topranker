@@ -21,6 +21,7 @@ import Colors from "@/constants/colors";
 import { getApiUrl } from "@/lib/query-client";
 import { CUISINE_DISH_MAP, CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { Analytics } from "@/lib/analytics";
+import { copyShareLink } from "@/lib/sharing";
 import { DishEntryCard } from "@/components/dish/DishEntryCard";
 
 const AMBER = BRAND.colors.amber;
@@ -183,25 +184,38 @@ export default function DishLeaderboardPage() {
           </Text>
           <Text style={styles.headerSubtitle}>in {cityTitle}</Text>
         </View>
-        {/* Sprint 318: Share button */}
-        <TouchableOpacity
-          style={styles.headerShare}
-          onPress={async () => {
-            const shareText = `${board.dishEmoji || "🍽️"} Best ${board.dishName} in ${cityTitle} — ${board.entryCount} spots ranked on TopRanker`;
-            try {
-              await Share.share({
-                message: `${shareText}\n${canonicalUrl}`,
-                url: canonicalUrl,
-                title: `Best ${board.dishName} in ${cityTitle}`,
-              });
-              Analytics.track("dish_leaderboard_share", { dish_slug: board.dishSlug });
-            } catch (_) { /* user cancelled */ }
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Share Best ${board.dishName} leaderboard`}
-        >
-          <Ionicons name="share-outline" size={22} color={AMBER} />
-        </TouchableOpacity>
+        {/* Sprint 318/337: Share + copy link buttons */}
+        <View style={{ flexDirection: "row", gap: 8 }}>
+          <TouchableOpacity
+            style={styles.headerShare}
+            onPress={async () => {
+              const shareText = `${board.dishEmoji || "🍽️"} Best ${board.dishName} in ${cityTitle} — ${board.entryCount} spots ranked on TopRanker`;
+              try {
+                await Share.share({
+                  message: `${shareText}\n${canonicalUrl}`,
+                  url: canonicalUrl,
+                  title: `Best ${board.dishName} in ${cityTitle}`,
+                });
+                Analytics.track("dish_leaderboard_share", { dish_slug: board.dishSlug });
+              } catch (_) { /* user cancelled */ }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Share Best ${board.dishName} leaderboard`}
+          >
+            <Ionicons name="share-outline" size={22} color={AMBER} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerShare}
+            onPress={async () => {
+              await copyShareLink(canonicalUrl, `Best ${board.dishName}`);
+              Analytics.track("dish_leaderboard_copy_link", { dish_slug: board.dishSlug });
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Copy link for Best ${board.dishName} leaderboard`}
+          >
+            <Ionicons name="copy-outline" size={20} color={AMBER} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
