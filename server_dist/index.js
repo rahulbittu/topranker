@@ -5277,7 +5277,13 @@ async function seedDatabase() {
     { dishName: "Pasta", dishSlug: "pasta", dishEmoji: "\u{1F35D}", displayOrder: 16 },
     { dishName: "Banh Mi", dishSlug: "banh-mi", dishEmoji: "\u{1F956}", displayOrder: 17 },
     { dishName: "Wings", dishSlug: "wings", dishEmoji: "\u{1F357}", displayOrder: 18 },
-    { dishName: "Falafel", dishSlug: "falafel", dishEmoji: "\u{1F9C6}", displayOrder: 19 }
+    { dishName: "Falafel", dishSlug: "falafel", dishEmoji: "\u{1F9C6}", displayOrder: 19 },
+    // Sprint 316: Korean + Thai leaderboards
+    { dishName: "Korean BBQ", dishSlug: "korean-bbq", dishEmoji: "\u{1F969}", displayOrder: 20 },
+    { dishName: "Bibimbap", dishSlug: "bibimbap", dishEmoji: "\u{1F35A}", displayOrder: 21 },
+    { dishName: "Fried Chicken", dishSlug: "fried-chicken", dishEmoji: "\u{1F357}", displayOrder: 22 },
+    { dishName: "Pad Thai", dishSlug: "pad-thai", dishEmoji: "\u{1F35C}", displayOrder: 23 },
+    { dishName: "Green Curry", dishSlug: "green-curry", dishEmoji: "\u{1F35B}", displayOrder: 24 }
   ];
   for (const board of SEED_DISH_BOARDS) {
     const [lb] = await db.insert(dishLeaderboards).values({
@@ -5710,6 +5716,45 @@ var init_seed = __esm({
       ] },
       { businessSlug: "kabob-king-dallas", dishes: [
         { name: "Falafel Wrap", voteCount: 54 }
+      ] },
+      // ── Sprint 316: Korean + Thai seed dishes ──
+      // Korean BBQ
+      { businessSlug: "seoul-brothers-dallas", dishes: [
+        { name: "Korean BBQ Platter", voteCount: 98 }
+      ] },
+      { businessSlug: "koryo-kalbi-dallas", dishes: [
+        { name: "Premium Korean BBQ Set", voteCount: 87 }
+      ] },
+      { businessSlug: "seoul-bbq-house-dallas", dishes: [
+        { name: "Korean BBQ All-You-Can-Eat", voteCount: 76 }
+      ] },
+      // Bibimbap
+      { businessSlug: "seoul-brothers-dallas", dishes: [
+        { name: "Stone Pot Bibimbap", voteCount: 78 }
+      ] },
+      { businessSlug: "koryo-kalbi-dallas", dishes: [
+        { name: "Dolsot Bibimbap", voteCount: 65 }
+      ] },
+      // Fried Chicken
+      { businessSlug: "seoul-brothers-dallas", dishes: [
+        { name: "Yangnyeom Fried Chicken", voteCount: 89 }
+      ] },
+      { businessSlug: "raising-canes-dallas", dishes: [
+        { name: "Classic Fried Chicken Fingers", voteCount: 112 }
+      ] },
+      // Pad Thai
+      { businessSlug: "khao-noodle-dallas", dishes: [
+        { name: "Classic Pad Thai", voteCount: 76 }
+      ] },
+      { businessSlug: "asian-mint-dallas", dishes: [
+        { name: "Shrimp Pad Thai", voteCount: 89 }
+      ] },
+      { businessSlug: "thai-orchid-garden-dallas", dishes: [
+        { name: "Pad Thai with Tofu", voteCount: 54 }
+      ] },
+      // Green Curry
+      { businessSlug: "khao-noodle-dallas", dishes: [
+        { name: "Thai Green Curry", voteCount: 65 }
       ] }
     ];
   }

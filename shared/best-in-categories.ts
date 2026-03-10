@@ -200,4 +200,14 @@ export const CUISINE_DISH_MAP: Record<string, { slug: string; name: string; emoj
     { slug: "kebab", name: "Kebab", emoji: "🥙" },
     { slug: "falafel", name: "Falafel", emoji: "🧆" },
   ],
+  // Sprint 316: Korean + Thai cuisine dish maps
+  korean: [
+    { slug: "korean-bbq", name: "Korean BBQ", emoji: "🥩" },
+    { slug: "bibimbap", name: "Bibimbap", emoji: "🍚" },
+    { slug: "fried-chicken", name: "Fried Chicken", emoji: "🍗" },
+  ],
+  thai: [
+    { slug: "pad-thai", name: "Pad Thai", emoji: "🍜" },
+    { slug: "green-curry", name: "Green Curry", emoji: "🍛" },
+  ],
 };
