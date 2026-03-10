@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, BestInCategory } from "@/shared/best-in-categories";
+import { getAvailableCuisines, CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { useDishShortcuts } from "@/lib/hooks/useDishShortcuts";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
@@ -40,7 +40,6 @@ export default function LeaderboardScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showSuggest, setShowSuggest] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
-  const [selectedBestIn, setSelectedBestIn] = useState<string | null>(null);
   const [selectedCuisine, setSelectedCuisineRaw] = useState<string | null>(null);
   const setSelectedCuisine = useCallback((cuisine: string | null) => {
     setSelectedCuisineRaw(cuisine);
@@ -51,10 +50,6 @@ export default function LeaderboardScreen() {
     }
   }, []);
   const availableCuisines = useMemo(() => getAvailableCuisines(), []);
-  const bestInCategories = useMemo(() =>
-    selectedCuisine ? getCategoriesByCuisine(selectedCuisine) : getActiveCategories(),
-    [selectedCuisine],
-  );
   // Sprint 312: Dynamic dish shortcuts with real entry counts
   const dishShortcuts = useDishShortcuts(city, selectedCuisine);
 
@@ -221,7 +216,7 @@ export default function LeaderboardScreen() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Best In Dallas — Cuisine Picker + Subcategory Chips */}
+      {/* Best In Dallas — Cuisine Picker */}
       <View style={styles.bestInHeader}>
         <Text style={styles.bestInTitle}>Best In {city}</Text>
       </View>
@@ -229,10 +224,10 @@ export default function LeaderboardScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.cuisineChipsContainer}
-        style={styles.bestInChipsRow}
+        style={styles.cuisineChipsRow}
       >
         <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); setSelectedBestIn(null); Analytics.cuisineFilterClear("rankings"); }}
+          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
           style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
           accessibilityRole="button"
           accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
@@ -246,7 +241,7 @@ export default function LeaderboardScreen() {
           return (
             <TouchableOpacity
               key={cuisine}
-              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); setSelectedBestIn(null); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
+              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
               style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
               accessibilityRole="button"
               accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}
@@ -254,41 +249,6 @@ export default function LeaderboardScreen() {
             >
               <Text style={[styles.cuisineChipText, isSelected && styles.cuisineChipTextActive]}>
                 {display.emoji} {display.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.bestInChipsContainer}
-        style={styles.bestInChipsRow}
-      >
-        <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setSelectedBestIn(null); }}
-          style={[styles.bestInChip, selectedBestIn === null && styles.bestInChipActive]}
-          accessibilityRole="button"
-          accessibilityLabel={`All items${selectedBestIn === null ? ", selected" : ""}`}
-          accessibilityState={{ selected: selectedBestIn === null }}
-        >
-          <Text style={[styles.bestInChipText, selectedBestIn === null && styles.bestInChipTextActive]}>
-            All
-          </Text>
-        </TouchableOpacity>
-        {bestInCategories.map((cat) => {
-          const isSelected = selectedBestIn === cat.slug;
-          return (
-            <TouchableOpacity
-              key={cat.slug}
-              onPress={() => { Haptics.selectionAsync(); setSelectedBestIn(cat.slug); }}
-              style={[styles.bestInChip, isSelected && styles.bestInChipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`Best ${cat.displayName}${isSelected ? ", selected" : ""}`}
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text style={[styles.bestInChipText, isSelected && styles.bestInChipTextActive]}>
-                {cat.emoji} {cat.displayName}
               </Text>
             </TouchableOpacity>
           );
@@ -554,8 +514,7 @@ const styles = StyleSheet.create({
   bestInTitle: {
     fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text,
   },
-  bestInChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 4 },
-  bestInChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
+  cuisineChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 4 },
   cuisineChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
   cuisineChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
@@ -570,20 +529,6 @@ const styles = StyleSheet.create({
   },
   cuisineChipTextActive: {
     color: BRAND.colors.navy, fontFamily: "DMSans_700Bold",
-  },
-  bestInChip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    marginRight: 8, backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  bestInChipActive: {
-    backgroundColor: AMBER, borderColor: AMBER,
-  },
-  bestInChipText: {
-    fontSize: 13, fontFamily: "DMSans_600SemiBold", color: Colors.text,
-  },
-  bestInChipTextActive: {
-    color: "#FFFFFF",
   },
 
   suggestChip: {

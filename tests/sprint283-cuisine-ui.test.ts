@@ -20,8 +20,9 @@ const readFile = (relPath: string) =>
 describe("Sprint 283: Rankings Cuisine Picker UI", () => {
   const indexSrc = readFile("app/(tabs)/index.tsx");
 
-  it("imports getCategoriesByCuisine from best-in-categories", () => {
-    expect(indexSrc).toContain("getCategoriesByCuisine");
+  it("imports cuisine functions from best-in-categories", () => {
+    expect(indexSrc).toContain("getAvailableCuisines");
+    expect(indexSrc).toContain("CUISINE_DISPLAY");
   });
 
   it("imports getAvailableCuisines from best-in-categories", () => {
@@ -36,8 +37,9 @@ describe("Sprint 283: Rankings Cuisine Picker UI", () => {
     expect(indexSrc).toContain("selectedCuisine");
   });
 
-  it("filters bestInCategories by selectedCuisine", () => {
-    expect(indexSrc).toContain("getCategoriesByCuisine(selectedCuisine)");
+  it("uses selectedCuisine for cuisine filtering", () => {
+    expect(indexSrc).toContain("selectedCuisine");
+    expect(indexSrc).toContain("setSelectedCuisine");
   });
 
   it("has cuisine picker chips that filter by cuisine", () => {
@@ -45,8 +47,8 @@ describe("Sprint 283: Rankings Cuisine Picker UI", () => {
     expect(indexSrc).toContain("setSelectedCuisine");
   });
 
-  it("cuisine picker resets selectedBestIn when changing cuisine", () => {
-    expect(indexSrc).toContain("setSelectedCuisine(cuisine); setSelectedBestIn(null)");
+  it("cuisine picker calls setSelectedCuisine on tap", () => {
+    expect(indexSrc).toContain("setSelectedCuisine(cuisine)");
   });
 
   it("has cuisineChip style", () => {
