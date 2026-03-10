@@ -414,6 +414,10 @@ function setupErrorHandler(app: express.Application) {
   recalculateAllDishBoards();
   const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1000);
 
+  // Sprint 587: Preload photo hash index from DB for duplicate detection
+  const { preloadHashIndex } = await import("./photo-hash");
+  preloadHashIndex().catch((err) => logger.error("Photo hash preload failed:", err));
+
   // Sprint 175: Weekly digest push notification scheduler
   const { startWeeklyDigestScheduler, startCityHighlightsScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();

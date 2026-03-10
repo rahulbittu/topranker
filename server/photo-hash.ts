@@ -10,6 +10,9 @@
 
 import crypto from "crypto";
 import { log } from "./logger";
+import { db } from "./db";
+import { ratingPhotos, ratings } from "@shared/schema";
+import { isNotNull, eq } from "drizzle-orm";
 
 const hashLog = log.tag("PhotoHash");
 
@@ -60,6 +63,41 @@ export function getHashIndexSize(): number {
 /** Clear the hash index (for testing / admin reset). */
 export function clearHashIndex(): void {
   hashIndex.clear();
+}
+
+/**
+ * Sprint 587: Preload hash index from DB on server startup.
+ * Reads all ratingPhotos with a contentHash and populates the in-memory index.
+ */
+export async function preloadHashIndex(): Promise<number> {
+  const rows = await db
+    .select({
+      id: ratingPhotos.id,
+      ratingId: ratingPhotos.ratingId,
+      contentHash: ratingPhotos.contentHash,
+      memberId: ratings.memberId,
+      businessId: ratings.businessId,
+    })
+    .from(ratingPhotos)
+    .innerJoin(ratings, eq(ratingPhotos.ratingId, ratings.id))
+    .where(isNotNull(ratingPhotos.contentHash));
+
+  let loaded = 0;
+  for (const row of rows) {
+    if (row.contentHash && !hashIndex.has(row.contentHash)) {
+      hashIndex.set(row.contentHash, {
+        ratingId: row.ratingId,
+        memberId: row.memberId,
+        businessId: row.businessId,
+        photoId: row.id,
+        uploadedAt: 0,
+      });
+      loaded++;
+    }
+  }
+
+  hashLog.info(`Preloaded ${loaded} photo hashes from DB`);
+  return loaded;
 }
 
 /**

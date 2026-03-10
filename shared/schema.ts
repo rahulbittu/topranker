@@ -855,6 +855,7 @@ export const ratingPhotos = pgTable(
       .references(() => ratings.id),
     photoUrl: text("photo_url").notNull(),
     cdnKey: text("cdn_key").notNull(),
+    contentHash: varchar("content_hash", { length: 64 }), // Sprint 587: SHA-256 for duplicate detection
     isVerifiedReceipt: boolean("is_verified_receipt").notNull().default(false),
     uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
   },
