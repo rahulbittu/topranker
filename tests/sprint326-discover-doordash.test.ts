@@ -12,32 +12,24 @@ const searchPath = path.resolve(__dirname, "../app/(tabs)/search.tsx");
 const searchCode = fs.readFileSync(searchPath, "utf-8");
 
 describe("Sprint 326 — Discover DoorDash Pattern", () => {
-  // Core pattern: filters in scroll, not fixed
-  it("should have filter chips inside ListHeaderComponent", () => {
-    // Find ListHeaderComponent content
+  // Core pattern: filters in scroll via extracted components (Sprint 332)
+  it("should have FilterChips inside ListHeaderComponent", () => {
     const lhcStart = searchCode.indexOf("ListHeaderComponent={");
     expect(lhcStart).toBeGreaterThan(-1);
-    const afterLhc = searchCode.slice(lhcStart, lhcStart + 3000);
-    // Filter chips (FILTERS.map) should be inside ListHeaderComponent
-    expect(afterLhc).toContain("FILTERS.map");
+    const afterLhc = searchCode.slice(lhcStart, lhcStart + 2000);
+    expect(afterLhc).toContain("FilterChips");
   });
 
-  it("should have price chips inside ListHeaderComponent", () => {
+  it("should have PriceChips inside ListHeaderComponent", () => {
     const lhcStart = searchCode.indexOf("ListHeaderComponent={");
-    const afterLhc = searchCode.slice(lhcStart, lhcStart + 3000);
-    // Price chips should be inside ListHeaderComponent
-    expect(afterLhc).toContain('"$"');
-    expect(afterLhc).toContain('"$$"');
-    expect(afterLhc).toContain('"$$$"');
-    expect(afterLhc).toContain('"$$$$"');
+    const afterLhc = searchCode.slice(lhcStart, lhcStart + 2000);
+    expect(afterLhc).toContain("PriceChips");
   });
 
-  it("should have sort chips inside ListHeaderComponent", () => {
+  it("should have SortChips inside ListHeaderComponent", () => {
     const lhcStart = searchCode.indexOf("ListHeaderComponent={");
-    const afterLhc = searchCode.slice(lhcStart, lhcStart + 3000);
-    expect(afterLhc).toContain("sortLabel");
-    expect(afterLhc).toContain("Ranked");
-    expect(afterLhc).toContain("Most Rated");
+    const afterLhc = searchCode.slice(lhcStart, lhcStart + 2000);
+    expect(afterLhc).toContain("SortChips");
   });
 
   it("should keep view toggle in fixed area (above FlatList)", () => {
@@ -75,8 +67,8 @@ describe("Sprint 326 — Discover DoorDash Pattern", () => {
     expect(searchCode).toContain("viewToggleRow:");
   });
 
-  it("should have filterScrollRow style defined", () => {
-    expect(searchCode).toContain("filterScrollRow:");
+  it("should import DiscoverFilters component", () => {
+    expect(searchCode).toContain("DiscoverFilters");
   });
 
   // Fixed area should be minimal: header + search + view toggle only

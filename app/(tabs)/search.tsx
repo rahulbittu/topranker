@@ -26,6 +26,7 @@ import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
+import { FilterChips, PriceChips, SortChips } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -33,7 +34,6 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 const AMBER = BRAND.colors.amber;
 
 type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now" | "Near Me";
-const FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now", "Near Me"];
 
 type ViewMode = "list" | "map";
 
@@ -492,57 +492,10 @@ export default function SearchScreen() {
           }
           ListHeaderComponent={
             <>
-              {/* Sprint 326: Filter chips, price, sort in scroll (DoorDash pattern) */}
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.filterScrollRow}>
-                {FILTERS.map(f => (
-                  <TouchableOpacity
-                    key={f}
-                    onPress={() => {
-                      Haptics.selectionAsync();
-                      setActiveFilter(f);
-                      if (f === "Near Me") requestLocation();
-                    }}
-                    style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${f} filter`}
-                    accessibilityState={{ selected: activeFilter === f }}
-                  >
-                    {f === "Near Me" && <Ionicons name="navigate-outline" size={12} color={activeFilter === f ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />}
-                    <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>
-                      {f === "Near Me" && locationLoading ? "Locating..." : f}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <View style={styles.priceRow}>
-                {["$", "$$", "$$$", "$$$$"].map(p => (
-                  <TouchableOpacity
-                    key={p}
-                    onPress={() => { Haptics.selectionAsync(); setPriceFilter(prev => prev === p ? null : p); }}
-                    style={[styles.priceChip, priceFilter === p && styles.priceChipActive]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Price ${p}${priceFilter === p ? ", selected" : ""}`}
-                    accessibilityHint="Double tap to filter by this price range"
-                    accessibilityState={{ selected: priceFilter === p }}
-                  >
-                    <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <View style={styles.sortRow}>
-                <Text style={styles.sortLabel}>Sort:</Text>
-                {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => { Haptics.selectionAsync(); setSortBy(key); }}
-                    style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: sortBy === key }}
-                  >
-                    <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Sprint 332: Filter/price/sort extracted to DiscoverFilters */}
+              <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} locationLoading={locationLoading} onNearMe={requestLocation} />
+              <PriceChips priceFilter={priceFilter} onPriceChange={setPriceFilter} />
+              <SortChips sortBy={sortBy} onSortChange={setSortBy} />
               {showDiscoverTip && (
                 <View style={styles.discoverTip}>
                   <Ionicons name="compass-outline" size={20} color={AMBER} style={{ marginTop: 2 }} />
@@ -701,15 +654,7 @@ const styles = StyleSheet.create({
   viewToggleText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   viewToggleTextActive: { color: "#fff" },
 
-  filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
-  filterScrollRow: { marginBottom: 6 },
-  filterChip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  filterChipActive: { backgroundColor: AMBER, borderColor: AMBER },
-  filterText: { ...TYPOGRAPHY.ui.label, fontWeight: "500", color: Colors.textSecondary },
-  filterTextActive: { color: "#fff", fontWeight: "600" },
+  // Sprint 332: filterChip/price/sort styles moved to DiscoverFilters component
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
@@ -889,53 +834,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
   },
 
-  priceRow: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    gap: 8,
-    paddingBottom: 10,
-  },
-  priceChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 16,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  priceChipActive: {
-    backgroundColor: AMBER,
-    borderColor: AMBER,
-  },
-  priceChipText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  priceChipTextActive: {
-    color: "#fff",
-  },
-  sortRow: {
-    flexDirection: "row", alignItems: "center",
-    paddingHorizontal: 16, gap: 6, paddingBottom: 10,
-  },
-  sortLabel: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
-  },
-  sortChip: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  sortChipActive: {
-    backgroundColor: BRAND.colors.navy, borderColor: BRAND.colors.navy,
-  },
-  sortChipText: {
-    fontSize: 11, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
-  },
-  sortChipTextActive: {
-    color: "#fff", fontWeight: "600",
-  },
+  // Sprint 332: priceRow/sortRow styles moved to DiscoverFilters component
 
   // Sprint 193: Autocomplete + recent search styles moved to SearchOverlays.tsx
 

@@ -292,13 +292,9 @@ describe("Search Page Regression", () => {
     );
   });
 
-  it("search.tsx still has FILTERS constant", () => {
-    expect(searchSrc).toContain("const FILTERS");
-    expect(searchSrc).toContain('"All"');
-    expect(searchSrc).toContain('"Top 10"');
-    expect(searchSrc).toContain('"Near Me"');
-    expect(searchSrc).toContain('"Trending"');
-    expect(searchSrc).toContain('"Open Now"');
+  it("search.tsx uses FilterChips from DiscoverFilters (Sprint 332)", () => {
+    expect(searchSrc).toContain("FilterChips");
+    expect(searchSrc).toContain("DiscoverFilters");
   });
 
   it("Google Maps related utilities accessible (in SubComponents after extraction)", () => {
