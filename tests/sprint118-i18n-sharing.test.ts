@@ -165,9 +165,10 @@ describe("Social Sharing Utility", () => {
     expect(content).toContain("slug: string");
   });
 
-  it("getShareUrl returns topranker.app URL", () => {
+  it("getShareUrl returns topranker.com URL", () => {
+    // Sprint 547: domain aligned from topranker.app → topranker.com
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("https://topranker.app/${type}/${slug}");
+    expect(content).toContain("https://topranker.com/${type}/${slug}");
   });
 
   it("exports getShareText function", () => {
@@ -195,14 +196,16 @@ describe("Social Sharing Utility", () => {
     expect(content).toContain("export const SHARE_DOMAINS");
   });
 
-  it("SHARE_DOMAINS contains topranker.app", () => {
+  it("SHARE_DOMAINS contains topranker.com", () => {
+    // Sprint 547: domain aligned from topranker.app → topranker.com
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("topranker.app");
+    expect(content).toContain("topranker.com");
   });
 
-  it("SHARE_DOMAINS contains www.topranker.app", () => {
+  it("SHARE_DOMAINS contains www.topranker.com", () => {
+    // Sprint 547: domain aligned from topranker.app → topranker.com
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("www.topranker.app");
+    expect(content).toContain("www.topranker.com");
   });
 
   it("getDeepLinkParams parses URL segments", () => {

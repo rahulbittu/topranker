@@ -34,7 +34,8 @@ describe("Sprint 378: Business share preview card", () => {
     });
 
     it("should display domain label", () => {
-      expect(shareSrc).toContain("topranker.app");
+      // Sprint 547: domain aligned from topranker.app → topranker.com
+      expect(shareSrc).toContain("topranker.com");
     });
 
     it("should display business name as title", () => {

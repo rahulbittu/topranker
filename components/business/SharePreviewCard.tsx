@@ -42,7 +42,7 @@ export function SharePreviewCard({
           <SafeImage uri={photoUrl} style={s.previewImage} contentFit="cover" category={category} />
         )}
         <View style={s.previewContent}>
-          <Text style={s.previewDomain}>topranker.app</Text>
+          <Text style={s.previewDomain}>topranker.com</Text>
           <Text style={s.previewTitle} numberOfLines={1}>{businessName}</Text>
           <Text style={s.previewDesc} numberOfLines={2}>
             {rank && rank > 0 ? `#${rank} • ` : ""}{"\u2B50"} {weightedScore.toFixed(1)}{locationParts ? ` • ${locationParts}` : ""}

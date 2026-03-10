@@ -81,7 +81,7 @@ export function RatingConfirmation({
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const url = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.app";
+    const url = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.com";
     const text = getShareText(business.name, rawScore);
     try {
       await Share.share(

@@ -4,20 +4,21 @@
  * Owner: Jasmine Taylor (Marketing)
  */
 
-export const SHARE_DOMAINS = ["topranker.app", "www.topranker.app"] as const;
+// Sprint 547: Aligned share domain from topranker.app → topranker.com (matches app.json deeplinks)
+export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com"] as const;
 
 /**
  * Generate a shareable URL for a business, challenger match, or profile.
  */
 export function getShareUrl(type: "business" | "challenger" | "profile", slug: string): string {
-  return `https://topranker.app/${type}/${slug}`;
+  return `https://topranker.com/${type}/${slug}`;
 }
 
 /**
  * Generate formatted share text for a business with its rating.
  */
 export function getShareText(businessName: string, rating: number): string {
-  return `Check out ${businessName} on TopRanker — rated ${rating.toFixed(1)}/5! https://topranker.app`;
+  return `Check out ${businessName} on TopRanker — rated ${rating.toFixed(1)}/5! https://topranker.com`;
 }
 
 /**
@@ -102,7 +103,8 @@ export function getDeepLinkParams(url: string): { type: string; slug: string } |
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
-    if (host !== "topranker.app") return null;
+    // Sprint 547: Accept both topranker.com (primary) and topranker.app (legacy)
+    if (host !== "topranker.com" && host !== "topranker.app") return null;
 
     // Expected format: /type/slug
     const segments = parsed.pathname.split("/").filter(Boolean);
