@@ -157,8 +157,8 @@ describe("Sprint 518: Notification Frequency Settings", () => {
     });
   });
 
-  describe("server/routes-members.ts — frequency endpoints", () => {
-    const src = readFile("server/routes-members.ts");
+  describe("server/routes-member-notifications.ts — frequency endpoints", () => {
+    const src = readFile("server/routes-member-notifications.ts");
 
     it("has GET /api/members/me/notification-frequency", () => {
       expect(src).toContain("/api/members/me/notification-frequency");

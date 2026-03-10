@@ -114,7 +114,7 @@ describe("Sprint 479: Notification Preferences UI", () => {
 
   describe("Server notification preferences endpoint", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../server/routes-members.ts"),
+      path.resolve(__dirname, "../server/routes-member-notifications.ts"),
       "utf-8"
     );
 

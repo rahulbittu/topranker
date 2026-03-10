@@ -11,6 +11,7 @@ import { registerExperimentRoutes } from "./routes-experiments";
 import { registerAdminExperimentRoutes } from "./routes-admin-experiments";
 import { registerAuthRoutes } from "./routes-auth";
 import { registerMemberRoutes } from "./routes-members";
+import { registerMemberNotificationRoutes } from "./routes-member-notifications";
 import { registerBusinessRoutes } from "./routes-businesses";
 import { registerBusinessAnalyticsRoutes } from "./routes-business-analytics";
 import { registerDishRoutes } from "./routes-dishes";
@@ -267,6 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Member Routes (extracted to routes-members.ts, Sprint 171) ──
   registerMemberRoutes(app);
+  registerMemberNotificationRoutes(app);
 
   // ── Challengers ─────────────────────────────────────────────
   app.get("/api/challengers/active", wrapAsync(async (req: Request, res: Response) => {

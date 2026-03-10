@@ -103,6 +103,7 @@ describe("routes-auth.ts — auth + account endpoints", () => {
 // ---------------------------------------------------------------------------
 describe("routes-members.ts — member endpoints", () => {
   const membersSrc = readFile("server/routes-members.ts");
+  const notifSrc = readFile("server/routes-member-notifications.ts");
 
   it("exports registerMemberRoutes function", () => {
     expect(membersSrc).toContain("export function registerMemberRoutes");
@@ -133,15 +134,15 @@ describe("routes-members.ts — member endpoints", () => {
   });
 
   it("handles POST /api/members/me/push-token", () => {
-    expect(membersSrc).toContain("/api/members/me/push-token");
+    expect(notifSrc).toContain("/api/members/me/push-token");
   });
 
   it("handles GET /api/members/me/notification-preferences", () => {
-    expect(membersSrc).toContain("/api/members/me/notification-preferences");
+    expect(notifSrc).toContain("/api/members/me/notification-preferences");
   });
 
   it("handles PUT /api/members/me/notification-preferences", () => {
-    expect(membersSrc).toContain('app.put("/api/members/me/notification-preferences"');
+    expect(notifSrc).toContain('app.put("/api/members/me/notification-preferences"');
   });
 
   it("uses requireAuth on all member routes", () => {
