@@ -839,3 +839,37 @@ export const ratingPhotos = pgTable(
 );
 
 export type RatingPhoto = typeof ratingPhotos.$inferSelect;
+
+// Sprint 441: Photo moderation DB persistence (was in-memory Map)
+export const photoSubmissions = pgTable(
+  "photo_submissions",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    memberId: varchar("member_id")
+      .notNull()
+      .references(() => members.id),
+    url: text("url").notNull(),
+    caption: text("caption").notNull().default(""),
+    status: text("status").notNull().default("pending"), // pending, approved, rejected
+    rejectionReason: text("rejection_reason"), // inappropriate, low_quality, irrelevant, copyright, spam, other
+    moderatorId: varchar("moderator_id").references(() => members.id),
+    moderatorNote: text("moderator_note"),
+    fileSize: integer("file_size").notNull(),
+    mimeType: text("mime_type").notNull(),
+    submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+    reviewedAt: timestamp("reviewed_at"),
+  },
+  (table) => [
+    index("idx_photo_sub_business").on(table.businessId),
+    index("idx_photo_sub_member").on(table.memberId),
+    index("idx_photo_sub_status").on(table.status),
+    index("idx_photo_sub_submitted").on(table.submittedAt),
+  ],
+);
+
+export type PhotoSubmission = typeof photoSubmissions.$inferSelect;

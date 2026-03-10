@@ -15,11 +15,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc16) => {
+var __copyProps = (to, from, except, desc17) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key2 of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key2) && key2 !== except)
-        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc16 = __getOwnPropDesc(from, key2)) || desc16.enumerable });
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc17 = __getOwnPropDesc(from, key2)) || desc17.enumerable });
   }
   return to;
 };
@@ -54,6 +54,7 @@ __export(schema_exports, {
   members: () => members,
   notifications: () => notifications,
   payments: () => payments,
+  photoSubmissions: () => photoSubmissions,
   qrScans: () => qrScans,
   rankHistory: () => rankHistory,
   ratingFlags: () => ratingFlags,
@@ -79,7 +80,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, deletionRequests, dishLeaderboards, dishLeaderboardEntries, dishSuggestions, dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema, notifications, referrals, betaInvites, userActivity, betaFeedback, ratingPhotos;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, deletionRequests, dishLeaderboards, dishLeaderboardEntries, dishSuggestions, dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema, notifications, referrals, betaInvites, userActivity, betaFeedback, ratingPhotos, photoSubmissions;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -703,6 +704,32 @@ var init_schema = __esm({
       },
       (table) => [
         index("idx_rating_photos_rating").on(table.ratingId)
+      ]
+    );
+    photoSubmissions = pgTable(
+      "photo_submissions",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        businessId: varchar("business_id").notNull().references(() => businesses.id),
+        memberId: varchar("member_id").notNull().references(() => members.id),
+        url: text("url").notNull(),
+        caption: text("caption").notNull().default(""),
+        status: text("status").notNull().default("pending"),
+        // pending, approved, rejected
+        rejectionReason: text("rejection_reason"),
+        // inappropriate, low_quality, irrelevant, copyright, spam, other
+        moderatorId: varchar("moderator_id").references(() => members.id),
+        moderatorNote: text("moderator_note"),
+        fileSize: integer("file_size").notNull(),
+        mimeType: text("mime_type").notNull(),
+        submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+        reviewedAt: timestamp("reviewed_at")
+      },
+      (table) => [
+        index("idx_photo_sub_business").on(table.businessId),
+        index("idx_photo_sub_member").on(table.memberId),
+        index("idx_photo_sub_status").on(table.status),
+        index("idx_photo_sub_submitted").on(table.submittedAt)
       ]
     );
   }
@@ -3512,7 +3539,7 @@ function getRateGateStats() {
     "rating_rejected_validation",
     "rating_rejected_unknown"
   ];
-  const submissions2 = buffer.filter((e) => e.event === "rating_submitted").length;
+  const submissions = buffer.filter((e) => e.event === "rating_submitted").length;
   const rejections = buffer.filter(
     (e) => rejectionEvents.includes(e.event)
   );
@@ -3520,9 +3547,9 @@ function getRateGateStats() {
   for (const r of rejections) {
     byReason[r.event] = (byReason[r.event] || 0) + 1;
   }
-  const total = submissions2 + rejections.length;
+  const total = submissions + rejections.length;
   return {
-    totalSubmissions: submissions2,
+    totalSubmissions: submissions,
     totalRejections: rejections.length,
     rejectionRate: total > 0 ? (rejections.length / total * 100).toFixed(1) + "%" : "0%",
     byReason,
@@ -5435,7 +5462,6 @@ var init_file_storage = __esm({
 var photo_moderation_exports = {};
 __export(photo_moderation_exports, {
   approvePhoto: () => approvePhoto,
-  clearSubmissions: () => clearSubmissions,
   getAllowedMimeTypes: () => getAllowedMimeTypes,
   getMaxFileSize: () => getMaxFileSize,
   getPendingPhotos: () => getPendingPhotos,
@@ -5444,72 +5470,67 @@ __export(photo_moderation_exports, {
   rejectPhoto: () => rejectPhoto,
   submitPhoto: () => submitPhoto
 });
+import { eq as eq21, desc as desc16, and as and14 } from "drizzle-orm";
 import crypto6 from "crypto";
-function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
+async function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
   if (fileSize > MAX_FILE_SIZE) return { error: "File too large (max 10MB)" };
   if (caption.length > MAX_CAPTION_LENGTH) return { error: "Caption too long (max 500 chars)" };
-  const sub = {
-    id: crypto6.randomUUID(),
+  const id = crypto6.randomUUID();
+  const [row] = await db.insert(photoSubmissions).values({
+    id,
     businessId,
     memberId,
     url,
     caption,
-    status: "pending",
-    rejectionReason: null,
-    moderatorId: null,
-    moderatorNote: null,
     fileSize,
-    mimeType,
-    submittedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    reviewedAt: null
-  };
-  submissions.set(sub.id, sub);
-  if (submissions.size > MAX_SUBMISSIONS) {
-    const oldest = Array.from(submissions.values()).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
-    if (oldest) submissions.delete(oldest.id);
-  }
-  photoModLog.info(`Photo submitted: ${sub.id} for business ${businessId}`);
-  return sub;
+    mimeType
+  }).returning();
+  photoModLog.info(`Photo submitted: ${row.id} for business ${businessId}`);
+  return row;
 }
-function approvePhoto(photoId, moderatorId, note) {
-  const sub = submissions.get(photoId);
-  if (!sub || sub.status !== "pending") return false;
-  sub.status = "approved";
-  sub.moderatorId = moderatorId;
-  sub.moderatorNote = note || null;
-  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+async function approvePhoto(photoId, moderatorId, note) {
+  const result = await db.update(photoSubmissions).set({
+    status: "approved",
+    moderatorId,
+    moderatorNote: note || null,
+    reviewedAt: /* @__PURE__ */ new Date()
+  }).where(and14(eq21(photoSubmissions.id, photoId), eq21(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  if (result.length === 0) return false;
   photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
   return true;
 }
-function rejectPhoto(photoId, moderatorId, reason, note) {
-  const sub = submissions.get(photoId);
-  if (!sub || sub.status !== "pending") return false;
-  sub.status = "rejected";
-  sub.rejectionReason = reason;
-  sub.moderatorId = moderatorId;
-  sub.moderatorNote = note || null;
-  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+async function rejectPhoto(photoId, moderatorId, reason, note) {
+  const result = await db.update(photoSubmissions).set({
+    status: "rejected",
+    rejectionReason: reason,
+    moderatorId,
+    moderatorNote: note || null,
+    reviewedAt: /* @__PURE__ */ new Date()
+  }).where(and14(eq21(photoSubmissions.id, photoId), eq21(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  if (result.length === 0) return false;
   photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
   return true;
 }
-function getPendingPhotos(limit) {
-  return Array.from(submissions.values()).filter((s) => s.status === "pending").slice(0, limit || 50);
+async function getPendingPhotos(limit) {
+  const rows = await db.select().from(photoSubmissions).where(eq21(photoSubmissions.status, "pending")).orderBy(desc16(photoSubmissions.submittedAt)).limit(limit || 50);
+  return rows;
 }
-function getPhotosByBusiness(businessId) {
-  return Array.from(submissions.values()).filter((s) => s.businessId === businessId && s.status === "approved");
+async function getPhotosByBusiness(businessId) {
+  const rows = await db.select().from(photoSubmissions).where(and14(eq21(photoSubmissions.businessId, businessId), eq21(photoSubmissions.status, "approved"))).orderBy(desc16(photoSubmissions.submittedAt));
+  return rows;
 }
-function getPhotoStats() {
-  const all = Array.from(submissions.values());
+async function getPhotoStats() {
+  const allRows = await db.select().from(photoSubmissions);
   const byReason = {};
-  for (const s of all) {
+  for (const s of allRows) {
     if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
   }
   return {
-    total: all.length,
-    pending: all.filter((s) => s.status === "pending").length,
-    approved: all.filter((s) => s.status === "approved").length,
-    rejected: all.filter((s) => s.status === "rejected").length,
+    total: allRows.length,
+    pending: allRows.filter((s) => s.status === "pending").length,
+    approved: allRows.filter((s) => s.status === "approved").length,
+    rejected: allRows.filter((s) => s.status === "rejected").length,
     byReason
   };
 }
@@ -5519,17 +5540,14 @@ function getAllowedMimeTypes() {
 function getMaxFileSize() {
   return MAX_FILE_SIZE;
 }
-function clearSubmissions() {
-  submissions.clear();
-}
-var photoModLog, submissions, MAX_SUBMISSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_CAPTION_LENGTH;
+var photoModLog, ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_CAPTION_LENGTH;
 var init_photo_moderation = __esm({
   "server/photo-moderation.ts"() {
     "use strict";
     init_logger();
+    init_db();
+    init_schema();
     photoModLog = log.tag("PhotoModeration");
-    submissions = /* @__PURE__ */ new Map();
-    MAX_SUBMISSIONS = 3e3;
     ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
     MAX_FILE_SIZE = 10 * 1024 * 1024;
     MAX_CAPTION_LENGTH = 500;
@@ -5541,7 +5559,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql13, eq as eq22, and as and14 } from "drizzle-orm";
+import { sql as sql14, eq as eq23, and as and15 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 function getHoursForCategory(category) {
   switch (category) {
@@ -5677,9 +5695,9 @@ async function seedDatabase() {
     }).returning();
     const slugPattern = "%" + board.dishSlug + "%";
     const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq22(dishes.businessId, businesses.id)).where(and14(
-      eq22(businesses.city, "Dallas"),
-      sql13`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq23(dishes.businessId, businesses.id)).where(and15(
+      eq23(businesses.city, "Dallas"),
+      sql14`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
     for (let i = 0; i < uniqueBizIds.length; i++) {
@@ -5735,7 +5753,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql13`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql14`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -6637,7 +6655,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq23, isNotNull as isNotNull2, and as and15 } from "drizzle-orm";
+import { eq as eq24, isNotNull as isNotNull2, and as and16 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -6650,8 +6668,8 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
-      and15(
-        eq23(businesses.isClaimed, false),
+      and16(
+        eq24(businesses.isClaimed, false),
         isNotNull2(businesses.rankPosition)
       )
     );
@@ -6669,10 +6687,10 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
-      and15(
-        eq23(businesses.isClaimed, true),
+      and16(
+        eq24(businesses.isClaimed, true),
         isNotNull2(businesses.ownerId),
-        eq23(businesses.subscriptionStatus, "none")
+        eq24(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -6682,7 +6700,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq23(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq24(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -6936,8 +6954,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq24(members4.id, member.id));
+    const { eq: eq25 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq25(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -8508,7 +8526,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -8519,7 +8537,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq24(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq25(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -10097,7 +10115,7 @@ function registerBusinessRoutes(app2) {
     const key2 = `community-photos/${businessId}/${memberId}-${crypto12.randomUUID()}.${ext}`;
     const url = await fileStorage2.upload(key2, buffer2, mimeType);
     const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
-    const result = submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
+    const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
     if ("error" in result) {
       return res.status(400).json({ error: result.error });
     }
@@ -10287,15 +10305,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24 } = await import("drizzle-orm");
+    const { eq: eq25 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq24(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq25(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq24(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq24(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -10529,7 +10547,7 @@ function registerReferralRoutes(app2) {
 init_db();
 init_schema();
 init_logger();
-import { eq as eq21 } from "drizzle-orm";
+import { eq as eq22 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
 import crypto7 from "crypto";
@@ -10590,13 +10608,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq21(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, false) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq21(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
     log.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
@@ -10620,13 +10638,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq21(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, true) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq21(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
     log.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
@@ -11574,27 +11592,27 @@ init_logger();
 init_photo_moderation();
 var adminPhotoLog = log.tag("AdminPhotos");
 function registerAdminPhotoRoutes(app2) {
-  app2.get("/api/admin/photos/pending", (req, res) => {
+  app2.get("/api/admin/photos/pending", async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
     adminPhotoLog.info(`Fetching pending photos (limit: ${limit})`);
-    res.json(getPendingPhotos(limit));
+    res.json(await getPendingPhotos(limit));
   });
-  app2.get("/api/admin/photos/stats", (_req, res) => {
+  app2.get("/api/admin/photos/stats", async (_req, res) => {
     adminPhotoLog.info("Fetching photo stats");
-    res.json(getPhotoStats());
+    res.json(await getPhotoStats());
   });
-  app2.post("/api/admin/photos/:id/approve", (req, res) => {
+  app2.post("/api/admin/photos/:id/approve", async (req, res) => {
     const { id } = req.params;
     const moderatorId = req.user?.id || "admin";
     const note = req.body?.note;
     adminPhotoLog.info(`Approving photo ${id}`);
-    const success = approvePhoto(id, moderatorId, note);
+    const success = await approvePhoto(id, moderatorId, note);
     if (!success) {
       return res.status(404).json({ error: "Photo not found or already reviewed" });
     }
     res.json({ success: true });
   });
-  app2.post("/api/admin/photos/:id/reject", (req, res) => {
+  app2.post("/api/admin/photos/:id/reject", async (req, res) => {
     const { id } = req.params;
     const moderatorId = req.user?.id || "admin";
     const { reason, note } = req.body || {};
@@ -11602,16 +11620,16 @@ function registerAdminPhotoRoutes(app2) {
       return res.status(400).json({ error: "Rejection reason is required" });
     }
     adminPhotoLog.info(`Rejecting photo ${id} (reason: ${reason})`);
-    const success = rejectPhoto(id, moderatorId, reason, note);
+    const success = await rejectPhoto(id, moderatorId, reason, note);
     if (!success) {
       return res.status(404).json({ error: "Photo not found or already reviewed" });
     }
     res.json({ success: true });
   });
-  app2.get("/api/photos/business/:businessId", (req, res) => {
+  app2.get("/api/photos/business/:businessId", async (req, res) => {
     const { businessId } = req.params;
     adminPhotoLog.info(`Fetching approved photos for business ${businessId}`);
-    res.json(getPhotosByBusiness(businessId));
+    res.json(await getPhotosByBusiness(businessId));
   });
 }
 
@@ -12120,7 +12138,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq24 } = await import("drizzle-orm");
+      const { eq: eq25 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -12136,7 +12154,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq24(ratings5.id, ratingId));
+      }).where(eq25(ratings5.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -12166,8 +12184,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq24(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq25 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq25(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -12181,7 +12199,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24, and: and16, sql: sql15, count: count15 } = await import("drizzle-orm");
+    const { eq: eq25, and: and17, sql: sql16, count: count15 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings5.visitType,
       foodScore: ratings5.foodScore,
@@ -12200,9 +12218,9 @@ function registerScoreBreakdownRoutes(app2) {
       hasReceipt: ratings5.hasReceipt,
       wouldReturn: ratings5.wouldReturn,
       createdAt: ratings5.createdAt
-    }).from(ratings5).where(and16(
-      eq24(ratings5.businessId, businessId),
-      eq24(ratings5.isFlagged, false)
+    }).from(ratings5).where(and17(
+      eq25(ratings5.businessId, businessId),
+      eq25(ratings5.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -12277,11 +12295,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq24, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq24(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq25(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)

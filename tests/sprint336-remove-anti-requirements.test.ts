@@ -245,8 +245,8 @@ describe("Sprint 336 — build metrics", () => {
     expect(verifySrc).not.toContain("rating_responses");
   });
 
-  it("ARCHITECTURE.md says 31 Tables", () => {
+  it("ARCHITECTURE.md says 32 Tables", () => {
     const archSrc = readFile("docs/ARCHITECTURE.md");
-    expect(archSrc).toContain("31 Tables");
+    expect(archSrc).toContain("32 Tables"); // Sprint 441: +photo_submissions
   });
 });

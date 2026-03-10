@@ -264,9 +264,9 @@ export function registerBusinessRoutes(app: Express) {
     const key = `community-photos/${businessId}/${memberId}-${crypto.randomUUID()}.${ext}`;
     const url = await fileStorage.upload(key, buffer, mimeType);
 
-    // Submit to moderation queue
+    // Submit to moderation queue (Sprint 441: DB-backed)
     const { submitPhoto } = await import("./photo-moderation");
-    const result = submitPhoto(businessId, memberId, url, caption, buffer.length, mimeType);
+    const result = await submitPhoto(businessId, memberId, url, caption, buffer.length, mimeType);
     if ("error" in result) {
       return res.status(400).json({ error: result.error });
     }
