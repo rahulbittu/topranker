@@ -79,7 +79,15 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
     <RNAnimated.View style={[styles.card, { transform: [{ scale }] }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.catText}>{catDisplay.emoji} {catDisplay.label.toUpperCase()}</Text>
-        <Text style={styles.cityText}>{challenge.city}</Text>
+        <View style={styles.cardHeaderRight}>
+          <View style={[styles.statusBadge, countdown.ended ? styles.statusBadgeEnded : styles.statusBadgeLive]}>
+            {!countdown.ended && <View style={styles.statusDot} />}
+            <Text style={[styles.statusText, countdown.ended ? styles.statusTextEnded : styles.statusTextLive]}>
+              {countdown.ended ? "ENDED" : "LIVE"}
+            </Text>
+          </View>
+          <Text style={styles.cityText}>{challenge.city}</Text>
+        </View>
       </View>
 
       <View style={styles.fightCard}>
@@ -100,7 +108,9 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
 
         <View style={styles.vsContainer}>
           <View style={styles.vsDivider} />
-          <Text style={styles.vsText}>VS</Text>
+          <View style={styles.vsCircle}>
+            <Text style={styles.vsText}>VS</Text>
+          </View>
           <View style={styles.vsDivider} />
         </View>
 
@@ -341,6 +351,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: 16,
     padding: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: BRAND.colors.amber,
     ...Colors.cardShadow,
   },
   cardHeader: {
@@ -355,6 +367,43 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: "DMSans_600SemiBold",
     letterSpacing: 1,
+  },
+  cardHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  statusBadgeLive: {
+    backgroundColor: "rgba(52, 199, 89, 0.12)",
+  },
+  statusBadgeEnded: {
+    backgroundColor: "rgba(142, 142, 147, 0.12)",
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: Colors.green,
+  },
+  statusText: {
+    fontSize: 9,
+    fontWeight: "700",
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 0.5,
+  },
+  statusTextLive: {
+    color: Colors.green,
+  },
+  statusTextEnded: {
+    color: Colors.textTertiary,
   },
   cityText: {
     fontSize: 12,
@@ -379,12 +428,22 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
   },
   vsContainer: { alignItems: "center", width: 40 },
-  vsDivider: { width: 1, height: 24, backgroundColor: Colors.border },
-  vsText: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    fontFamily: "PlayfairDisplay_400Regular_Italic",
+  vsDivider: { width: 1, height: 16, backgroundColor: Colors.border },
+  vsCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: BRAND.colors.navy,
+    alignItems: "center",
+    justifyContent: "center",
     marginVertical: 4,
+  },
+  vsText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#fff",
+    fontFamily: "DMSans_700Bold",
+    letterSpacing: 1,
   },
   timerSection: {
     flexDirection: "row",

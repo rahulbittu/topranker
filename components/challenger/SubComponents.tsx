@@ -317,8 +317,8 @@ const styles = StyleSheet.create({
   // VoteBar
   voteBarContainer: { marginBottom: 12, gap: 6 },
   voteBar: {
-    height: 6,
-    borderRadius: 3,
+    height: 8,
+    borderRadius: 4,
     overflow: "hidden",
     flexDirection: "row",
   },
@@ -345,14 +345,14 @@ const styles = StyleSheet.create({
   // FighterPhoto
   fighterPhotoWrap: {
     width: pct(100),
-    height: 130,
+    height: 150,
     borderRadius: 10,
     overflow: "hidden" as const,
     position: "relative" as const,
   },
   fighterPhoto: {
     width: pct(100),
-    height: 130,
+    height: 150,
     alignItems: "center" as const,
     justifyContent: "center" as const,
   },
