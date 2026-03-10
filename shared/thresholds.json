@@ -20,7 +20,8 @@
     "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" },
     "components/search/CityComparisonOverlay.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 568: city comparison overlay" },
     "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 154, "notes": "Sprint 571: extracted from search.tsx" },
-    "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 210, "current": 202, "notes": "Sprint 569: credibility breakdown" }
+    "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 210, "current": 202, "notes": "Sprint 569: credibility breakdown" },
+    "components/business/RatingPhotoGallery.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 572: rating photo gallery grid" }
   },
   "build": {
     "maxSizeKb": 720,
@@ -28,6 +29,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 10803
+    "currentCount": 10826
   }
 }

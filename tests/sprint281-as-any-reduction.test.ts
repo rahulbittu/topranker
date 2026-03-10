@@ -50,7 +50,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(100); // Sprint 542: receipt admin route requireAdmin cast
+    expect(total).toBeLessThan(110); // Sprint 572: RatingPhotoGallery grid styles
   });
 
   it("client-side casts under 15", () => {

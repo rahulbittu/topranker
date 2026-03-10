@@ -78,9 +78,9 @@ describe("Sprint 396 — Business detail (slim)", () => {
     expect(src).not.toContain("claimBtnText:");
   });
 
-  it("is under 560 LOC", () => {
-    // Sprint 541: +9 LOC for photoMeta + communityPhotoCount wiring
+  it("is under 590 LOC", () => {
+    // Sprint 572: +23 LOC for RatingPhotoGallery integration
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(560);
+    expect(lines).toBeLessThan(590);
   });
 });

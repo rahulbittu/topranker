@@ -11,6 +11,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, fetchCityStats, type ApiDish } from "@/lib/api";
+import { fetchRatingPhotos, type RatingPhotoData } from "@/lib/api-owner";
 import { type CredibilityTier } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
@@ -39,6 +40,7 @@ import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
 import { PhotoGallery } from "@/components/business/PhotoGallery";
+import { RatingPhotoGallery } from "@/components/business/RatingPhotoGallery";
 import { PhotoLightbox } from "@/components/business/PhotoLightbox";
 import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 import { BusinessActionBar } from "@/components/business/BusinessActionBar";
@@ -73,6 +75,18 @@ export default function BusinessProfileScreen() {
   const saved = business ? isBookmarked(business.id) : false;
   const ratings = (data?.ratings || []) as MappedRating[];
   const dishes = data?.dishes || [];
+
+  // Sprint 572: Aggregate rating photos for gallery
+  const ratingsWithPhotos = ratings.filter(r => r.hasPhoto);
+  const { data: allRatingPhotos = [] } = useQuery<RatingPhotoData[]>({
+    queryKey: ["all-rating-photos", business?.id],
+    queryFn: async () => {
+      const results = await Promise.all(ratingsWithPhotos.map(r => fetchRatingPhotos(r.id)));
+      return results.flat();
+    },
+    enabled: ratingsWithPhotos.length > 0,
+    staleTime: 300000,
+  });
 
   const { data: rankHistoryData } = useQuery({
     queryKey: ["rankHistory", business?.id],
@@ -461,6 +475,15 @@ export default function BusinessProfileScreen() {
             <SlideUpView delay={300} distance={20}>
               <CollapsibleReviews ratings={ratings} />
             </SlideUpView>
+          )}
+
+          {/* Sprint 572: Rating photo gallery grid */}
+          {allRatingPhotos.length > 0 && (
+            <RatingPhotoGallery
+              photos={allRatingPhotos}
+              category={business.category}
+              delay={400}
+            />
           )}
 
           {/* Photo Gallery — extracted component (Sprint 366) */}

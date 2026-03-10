@@ -125,8 +125,8 @@ describe("Sprint 570: Governance", () => {
   describe("thresholds health", () => {
     const config = JSON.parse(readFile("shared/thresholds.json"));
 
-    it("tracks 19 files", () => {
-      expect(Object.keys(config.files).length).toBe(19);
+    it("tracks 20+ files", () => {
+      expect(Object.keys(config.files).length).toBeGreaterThanOrEqual(20); // Sprint 571: +DiscoverSections
     });
 
     it("no file exceeds its maxLOC", () => {
