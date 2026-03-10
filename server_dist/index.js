@@ -6224,7 +6224,10 @@ var init_seed = __esm({
 var notification_triggers_exports = {};
 __export(notification_triggers_exports, {
   onClaimDecision: () => onClaimDecision,
+  onNewRatingForBusiness: () => onNewRatingForBusiness,
+  onRankingChange: () => onRankingChange,
   onTierUpgrade: () => onTierUpgrade,
+  sendCityHighlightsPush: () => sendCityHighlightsPush,
   sendWeeklyDigestPush: () => sendWeeklyDigestPush,
   startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
 });
@@ -6317,6 +6320,124 @@ function startWeeklyDigestScheduler() {
     setInterval(sendWeeklyDigestPush, WEEK_MS2);
   }, msUntilFirst);
   return initialTimeout;
+}
+async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
+  if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
+  const direction = newRank < oldRank ? "up" : "down";
+  const delta = Math.abs(newRank - oldRank);
+  if (delta < 2) return 0;
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19 } = await import("drizzle-orm");
+    const raters = await db2.selectDistinct({
+      memberId: ratings5.memberId,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(eq29(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
+    let sent = 0;
+    for (const rater of raters) {
+      if (!rater.pushToken) continue;
+      const prefs = rater.notificationPrefs || {};
+      if (prefs.rankingChanges === false) continue;
+      const emoji = direction === "up" ? "\u{1F4C8}" : "\u{1F4C9}";
+      await sendPushNotification(
+        [rater.pushToken],
+        `${emoji} ${businessName} moved ${direction}`,
+        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
+        { screen: "business", businessId }
+      );
+      sent++;
+    }
+    triggerLog.info(`Ranking change push: ${businessName} #${oldRank}\u2192#${newRank}, sent to ${sent} raters`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`Ranking change push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, raterName, score) {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19, ne: ne2 } = await import("drizzle-orm");
+    const otherRaters = await db2.selectDistinct({
+      memberId: ratings5.memberId,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(
+      eq29(ratings5.businessId, businessId),
+      ne2(ratings5.memberId, ratingMemberId),
+      isNotNull5(members4.pushToken)
+    ));
+    let sent = 0;
+    for (const rater of otherRaters) {
+      if (!rater.pushToken) continue;
+      const prefs = rater.notificationPrefs || {};
+      if (prefs.savedBusinessAlerts === false) continue;
+      await sendPushNotification(
+        [rater.pushToken],
+        `New rating for ${businessName}`,
+        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
+        { screen: "business", businessId }
+      );
+      sent++;
+    }
+    triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`New rating push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+async function sendCityHighlightsPush(city) {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19, gte: gte9, desc: desc17 } = await import("drizzle-orm");
+    const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+    const recentChanges = await db2.select({
+      businessId: rankHistory2.businessId,
+      businessName: businesses2.name,
+      oldRank: rankHistory2.previousRank,
+      newRank: rankHistory2.rank
+    }).from(rankHistory2).innerJoin(businesses2, eq29(rankHistory2.businessId, businesses2.id)).where(and19(eq29(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc17(rankHistory2.createdAt)).limit(50);
+    if (recentChanges.length === 0) return 0;
+    let biggestMover = recentChanges[0];
+    let biggestDelta = 0;
+    for (const change of recentChanges) {
+      const delta = Math.abs((change.oldRank || 0) - (change.newRank || 0));
+      if (delta > biggestDelta) {
+        biggestDelta = delta;
+        biggestMover = change;
+      }
+    }
+    if (biggestDelta < 2) return 0;
+    const cityUsers = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(members4).where(and19(eq29(members4.city, city), isNotNull5(members4.pushToken)));
+    let sent = 0;
+    for (const user of cityUsers) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.cityAlerts === false) continue;
+      const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
+      await sendPushNotification(
+        [user.pushToken],
+        `${city} rankings update`,
+        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
+        { screen: "rankings" }
+      );
+      sent++;
+    }
+    triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`City highlights push failed: ${city}`, err);
+    return 0;
+  }
 }
 var triggerLog;
 var init_notification_triggers = __esm({

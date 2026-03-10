@@ -1,5 +1,6 @@
 /**
  * Notification Triggers — Sprint 175
+ * Sprint 481: Added ranking change, saved business, and city highlights triggers
  *
  * Connects push notification functions to actual business events.
  * Each trigger is called from the relevant route/storage function
@@ -11,6 +12,9 @@
  * - onChallengerCreated: called when new challenger is created
  * - onChallengerEnded: called when challenge period expires
  * - scheduleWeeklyDigestPush: runs on interval, sends digest push to active users
+ * - onRankingChange: called after rank recalculation when position changes
+ * - onNewRatingForBusiness: called after rating submission to notify other raters
+ * - sendCityHighlightsPush: notable ranking shifts per city (weekly)
  */
 
 import { sendPushNotification } from "./push";
@@ -154,4 +158,196 @@ export function startWeeklyDigestScheduler(): NodeJS.Timeout {
   }, msUntilFirst);
 
   return initialTimeout;
+}
+
+// ── Sprint 481: New Push Notification Triggers ─────────────────
+
+/**
+ * Push notification when a business's rank position changes significantly.
+ * Called after rank recalculation. Notifies users who have rated the business.
+ */
+export async function onRankingChange(
+  businessId: string,
+  businessName: string,
+  oldRank: number,
+  newRank: number,
+  city: string,
+): Promise<number> {
+  if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
+
+  const direction = newRank < oldRank ? "up" : "down";
+  const delta = Math.abs(newRank - oldRank);
+  // Only notify for significant changes (2+ positions)
+  if (delta < 2) return 0;
+
+  try {
+    const { db } = await import("./db");
+    const { ratings, members } = await import("@shared/schema");
+    const { eq, isNotNull, and } = await import("drizzle-orm");
+
+    // Find all members who rated this business and have push tokens
+    const raters = await db
+      .selectDistinct({
+        memberId: ratings.memberId,
+        pushToken: members.pushToken,
+        notificationPrefs: members.notificationPrefs,
+      })
+      .from(ratings)
+      .innerJoin(members, eq(ratings.memberId, members.id))
+      .where(and(eq(ratings.businessId, businessId), isNotNull(members.pushToken)));
+
+    let sent = 0;
+    for (const rater of raters) {
+      if (!rater.pushToken) continue;
+      const prefs = (rater.notificationPrefs as Record<string, boolean>) || {};
+      if (prefs.rankingChanges === false) continue;
+
+      const emoji = direction === "up" ? "📈" : "📉";
+      await sendPushNotification(
+        [rater.pushToken],
+        `${emoji} ${businessName} moved ${direction}`,
+        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
+        { screen: "business", businessId },
+      );
+      sent++;
+    }
+
+    triggerLog.info(`Ranking change push: ${businessName} #${oldRank}→#${newRank}, sent to ${sent} raters`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`Ranking change push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+
+/**
+ * Push notification when a new rating is submitted for a business.
+ * Notifies other members who previously rated the same business.
+ * Respects savedBusinessAlerts preference.
+ */
+export async function onNewRatingForBusiness(
+  businessId: string,
+  businessName: string,
+  ratingMemberId: string,
+  raterName: string,
+  score: number,
+): Promise<number> {
+  try {
+    const { db } = await import("./db");
+    const { ratings, members } = await import("@shared/schema");
+    const { eq, isNotNull, and, ne } = await import("drizzle-orm");
+
+    // Find other members who rated this business (exclude the new rater)
+    const otherRaters = await db
+      .selectDistinct({
+        memberId: ratings.memberId,
+        pushToken: members.pushToken,
+        notificationPrefs: members.notificationPrefs,
+      })
+      .from(ratings)
+      .innerJoin(members, eq(ratings.memberId, members.id))
+      .where(and(
+        eq(ratings.businessId, businessId),
+        ne(ratings.memberId, ratingMemberId),
+        isNotNull(members.pushToken),
+      ));
+
+    let sent = 0;
+    for (const rater of otherRaters) {
+      if (!rater.pushToken) continue;
+      const prefs = (rater.notificationPrefs as Record<string, boolean>) || {};
+      if (prefs.savedBusinessAlerts === false) continue;
+
+      await sendPushNotification(
+        [rater.pushToken],
+        `New rating for ${businessName}`,
+        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
+        { screen: "business", businessId },
+      );
+      sent++;
+    }
+
+    triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`New rating push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+
+/**
+ * Push notification for notable ranking shifts in a city.
+ * Runs weekly (alongside weekly digest). Notifies users in the city
+ * about the biggest rank movements of the week.
+ * Respects cityAlerts preference.
+ */
+export async function sendCityHighlightsPush(city: string): Promise<number> {
+  try {
+    const { db } = await import("./db");
+    const { members, rankHistory, businesses } = await import("@shared/schema");
+    const { eq, isNotNull, and, gte, desc } = await import("drizzle-orm");
+
+    const oneWeekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    // Find biggest rank changes in the past week
+    const recentChanges = await db
+      .select({
+        businessId: rankHistory.businessId,
+        businessName: businesses.name,
+        oldRank: rankHistory.previousRank,
+        newRank: rankHistory.rank,
+      })
+      .from(rankHistory)
+      .innerJoin(businesses, eq(rankHistory.businessId, businesses.id))
+      .where(and(eq(businesses.city, city), gte(rankHistory.createdAt, oneWeekAgo)))
+      .orderBy(desc(rankHistory.createdAt))
+      .limit(50);
+
+    if (recentChanges.length === 0) return 0;
+
+    // Find the biggest mover
+    let biggestMover = recentChanges[0];
+    let biggestDelta = 0;
+    for (const change of recentChanges) {
+      const delta = Math.abs((change.oldRank || 0) - (change.newRank || 0));
+      if (delta > biggestDelta) {
+        biggestDelta = delta;
+        biggestMover = change;
+      }
+    }
+
+    if (biggestDelta < 2) return 0;
+
+    // Notify all users in this city with push tokens
+    const cityUsers = await db
+      .select({
+        id: members.id,
+        pushToken: members.pushToken,
+        notificationPrefs: members.notificationPrefs,
+      })
+      .from(members)
+      .where(and(eq(members.city, city), isNotNull(members.pushToken)));
+
+    let sent = 0;
+    for (const user of cityUsers) {
+      if (!user.pushToken) continue;
+      const prefs = (user.notificationPrefs as Record<string, boolean>) || {};
+      if (prefs.cityAlerts === false) continue;
+
+      const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
+      await sendPushNotification(
+        [user.pushToken],
+        `${city} rankings update`,
+        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
+        { screen: "rankings" },
+      );
+      sent++;
+    }
+
+    triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`City highlights push failed: ${city}`, err);
+    return 0;
+  }
 }
