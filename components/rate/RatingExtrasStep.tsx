@@ -16,6 +16,7 @@ import Colors from "@/constants/colors";
 import { TIER_INFLUENCE_LABELS, type CredibilityTier } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
 import { DishPill } from "@/components/rate/SubComponents";
+import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
 
 const MAX_PHOTOS = 3;
 
@@ -224,13 +225,17 @@ export function RatingExtrasStep({
         </Text>
       </View>
 
-      {/* Photo Upload — Sprint 379: multi-photo + camera */}
+      {/* Photo Upload — Sprint 379/424: multi-photo + camera + boost meter */}
       <View style={s.photoSection}>
+        <PhotoBoostMeter photoCount={photos.length} hasReceipt={!!receiptUri} />
         {photos.length > 0 && (
           <View style={s.photoStrip}>
             {photos.map((uri, idx) => (
               <View key={uri} style={s.photoThumb}>
                 <Image source={{ uri }} style={s.photoThumbImage} contentFit="cover" />
+                <View style={s.photoIndexBadge}>
+                  <Text style={s.photoIndexText}>{idx + 1}</Text>
+                </View>
                 <TouchableOpacity
                   style={s.photoThumbRemove}
                   onPress={() => removePhoto(idx)}
@@ -242,12 +247,6 @@ export function RatingExtrasStep({
                 </TouchableOpacity>
               </View>
             ))}
-          </View>
-        )}
-        {photos.length > 0 && (
-          <View style={s.photoVerifiedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
-            <Text style={s.photoVerifiedText}>+15% boost • {photos.length}/{MAX_PHOTOS} photos</Text>
           </View>
         )}
         {canAddMore && (
@@ -274,9 +273,7 @@ export function RatingExtrasStep({
             </TouchableOpacity>
           </View>
         )}
-        {photos.length === 0 && (
-          <Text style={s.photoBoostHint}>+15% verification boost per photo</Text>
-        )}
+        {photos.length === 0 && <PhotoTips />}
       </View>
 
       {/* Receipt Upload — Sprint 382: +25% verification boost */}
@@ -430,6 +427,12 @@ const s = StyleSheet.create({
   photoStrip: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   photoThumb: { width: 80, height: 80, borderRadius: 10, overflow: "hidden", position: "relative" as const },
   photoThumbImage: { width: 80, height: 80, borderRadius: 10 },
+  photoIndexBadge: {
+    position: "absolute" as const, bottom: 4, left: 4,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  photoIndexText: { fontSize: 10, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
   photoThumbRemove: {
     position: "absolute" as const, top: 2, right: 2,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2,

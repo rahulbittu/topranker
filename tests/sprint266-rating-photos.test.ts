@@ -143,13 +143,14 @@ describe("Sprint 266: Rating Photo Upload", () => {
 
   // ── UI Verification Boost Messaging ─────────────────────────────
 
-  it("photo add button shows verification boost hint", () => {
-    expect(extrasSrc).toContain("+15% verification boost");
-    expect(extrasSrc).toContain("photoBoostHint");
+  // Sprint 424: boost hint replaced by PhotoBoostMeter + PhotoTips
+  it("photo section includes boost meter and tips", () => {
+    expect(extrasSrc).toContain("PhotoBoostMeter");
+    expect(extrasSrc).toContain("PhotoTips");
   });
 
-  it("photo preview shows verified badge overlay", () => {
-    expect(extrasSrc).toContain("photoVerifiedBadge");
-    expect(extrasSrc).toContain("+15% boost");
+  it("photo preview shows index badge", () => {
+    expect(extrasSrc).toContain("photoIndexBadge");
+    expect(extrasSrc).toContain("photoIndexText");
   });
 });
