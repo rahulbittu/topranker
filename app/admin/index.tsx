@@ -25,6 +25,7 @@ import { NotificationInsightsCard, type NotificationInsightsData } from "@/compo
 import { PushExperimentsCard, type PushExperimentData } from "@/components/admin/PushExperimentsCard";
 import { ClaimsTabContent } from "@/components/admin/ClaimsTabContent";
 import { TemplateManagerCard } from "@/components/admin/TemplateManagerCard";
+import { ExperimentResultsCard } from "@/components/admin/ExperimentResultsCard";
 import { fetchNotificationTemplates, createNotificationTemplate, deleteNotificationTemplate, updateNotificationTemplate, type NotificationTemplate } from "@/lib/api";
 import { getApiUrl } from "@/lib/query-client";
 
@@ -333,6 +334,9 @@ export default function AdminScreen() {
 
             {/* Sprint 512: Push A/B experiments */}
             <PushExperimentsCard experiments={pushExperiments} />
+
+            {/* Sprint 523: Experiment results dashboard */}
+            <ExperimentResultsCard experiments={pushExperiments} />
 
             {/* Sprint 522: Notification template manager */}
             {notifTemplates && (
