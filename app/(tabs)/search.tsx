@@ -47,7 +47,11 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<"ranked" | "rated" | "trending">("ranked");
+  const [sortBy, setSortByRaw] = useState<"ranked" | "rated" | "trending">("ranked");
+  const setSortBy = useCallback((sort: "ranked" | "rated" | "trending") => {
+    setSortByRaw(sort);
+    AsyncStorage.setItem("discover_sort", sort);
+  }, []);
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -73,6 +77,10 @@ export default function SearchScreen() {
     // Sprint 308: Restore persisted cuisine filter
     AsyncStorage.getItem("discover_cuisine").then((val) => {
       if (val) setSelectedCuisineRaw(val);
+    });
+    // Sprint 357: Restore persisted sort preference
+    AsyncStorage.getItem("discover_sort").then((val) => {
+      if (val === "ranked" || val === "rated" || val === "trending") setSortByRaw(val);
     });
   }, []);
 
