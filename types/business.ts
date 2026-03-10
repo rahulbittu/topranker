@@ -14,6 +14,7 @@ export interface MappedBusiness {
   isOpenNow?: boolean;
   closingTime?: string;
   nextOpenTime?: string;
+  todayHours?: string; // Sprint 457: "11:00 AM – 10:00 PM" or "Open 24 hours"
   priceRange?: string;
   photoUrl?: string;
   photoUrls?: string[];

@@ -26,6 +26,18 @@ export { MapView, haversineKm, CITY_COORDS } from "@/components/search/MapView";
 
 const AMBER = BRAND.colors.amber;
 
+// Sprint 457: Check if closing time is within 60 minutes
+function isClosingSoon(closingTime?: string): boolean {
+  if (!closingTime) return false;
+  const [h, m] = closingTime.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return false;
+  const now = new Date();
+  const closeMinutes = h * 60 + m;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const diff = closeMinutes - nowMinutes;
+  return diff > 0 && diff <= 60;
+}
+
 export const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({
   photos, height, category, cuisine, containerWidth, name,
 }: {
@@ -209,17 +221,23 @@ export const BusinessCard = React.memo(function BusinessCard({
               {item.rankDelta > 0 ? "\u2191" : "\u2193"}{Math.abs(item.rankDelta)}
             </Text>
           )}
-          {isOpen !== undefined && isOpen !== null && (
-            <View style={[s.statusPill, isOpen ? s.statusPillOpen : s.statusPillClosed]}>
-              <Text style={s.statusPillText}>{isOpen ? "OPEN" : "CLOSED"}</Text>
-              {isOpen && item.closingTime && (
-                <Text style={s.statusTimeText}> · Closes {item.closingTime}</Text>
-              )}
-              {!isOpen && item.nextOpenTime && (
-                <Text style={s.statusTimeText}> · Opens {item.nextOpenTime}</Text>
-              )}
-            </View>
-          )}
+          {isOpen !== undefined && isOpen !== null && (() => {
+            const closingSoon = isOpen && isClosingSoon(item.closingTime);
+            return (
+              <View style={[s.statusPill, closingSoon ? s.statusPillClosingSoon : isOpen ? s.statusPillOpen : s.statusPillClosed]}>
+                <Text style={s.statusPillText}>{closingSoon ? "CLOSING SOON" : isOpen ? "OPEN" : "CLOSED"}</Text>
+                {isOpen && item.closingTime && !closingSoon && (
+                  <Text style={s.statusTimeText}> · {item.closingTime}</Text>
+                )}
+                {closingSoon && item.closingTime && (
+                  <Text style={s.statusTimeText}> · {item.closingTime}</Text>
+                )}
+                {!isOpen && item.nextOpenTime && (
+                  <Text style={s.statusTimeText}> · {item.nextOpenTime}</Text>
+                )}
+              </View>
+            );
+          })()}
           {item.ratingCount && item.ratingCount >= 20 && (
             <View style={s.activityPill}>
               <Ionicons name="flame" size={9} color={AMBER} />
@@ -345,6 +363,12 @@ const s = StyleSheet.create({
     shadowOpacity: 0.4, shadowRadius: 4, elevation: 2,
   },
   statusPillClosed: { backgroundColor: Colors.red },
+  // Sprint 457: Amber pill for closing soon
+  statusPillClosingSoon: {
+    backgroundColor: AMBER,
+    shadowColor: AMBER, shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4, shadowRadius: 4, elevation: 2,
+  },
   statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
   statusTimeText: { fontSize: 9, color: "rgba(255,255,255,0.8)", fontFamily: "DMSans_400Regular" },
   verifiedPill: {

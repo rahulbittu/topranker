@@ -31,12 +31,12 @@ describe("Sprint 388 — BusinessCard hours display", () => {
   const subSrc = readFile("components/search/SubComponents.tsx");
 
   it("shows closing time when open", () => {
-    expect(subSrc).toContain("Closes");
+    // Sprint 457: Text simplified to just time, "CLOSING SOON" handles urgency
     expect(subSrc).toContain("item.closingTime");
   });
 
   it("shows next open time when closed", () => {
-    expect(subSrc).toContain("Opens");
+    // Sprint 457: Text simplified to just time
     expect(subSrc).toContain("item.nextOpenTime");
   });
 

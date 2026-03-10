@@ -185,6 +185,10 @@ export function mapApiBusiness(biz: ApiBusiness) {
     photoUrl: photoUrls[0] || undefined,
     photoUrls,
     isOpenNow: biz.isOpenNow,
+    // Sprint 457: Map dynamic hours fields from server
+    closingTime: (biz as any).closingTime || undefined,
+    nextOpenTime: (biz as any).nextOpenTime || undefined,
+    todayHours: (biz as any).todayHours || undefined,
     lat: biz.lat ? parseFloat(biz.lat) : undefined,
     lng: biz.lng ? parseFloat(biz.lng) : undefined,
     isClaimed: biz.isClaimed,
