@@ -36,6 +36,8 @@ import {
 } from "@/components/challenger/SubComponents";
 import { useChallengerTip, ChallengerTipCard } from "@/components/challenger/ChallengerTip";
 
+const AMBER = "#E8A317";
+
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const { scale, onPressIn, onPressOut } = usePressAnimation();
   const { cardRef, captureAndShare } = useShareCard();
@@ -46,11 +48,23 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const startTs = new Date(challenge.startDate).getTime();
   const countdown = formatCountdown(endTs);
 
+  // Sprint 389: Live second-by-second countdown
+  const [seconds, setSeconds] = useState(0);
   useEffect(() => {
     if (countdown.ended) return;
-    const id = setInterval(() => setTick(t => t + 1), 60000);
+    const id = setInterval(() => {
+      setTick(t => t + 1);
+      setSeconds(Math.max(0, Math.floor((endTs - Date.now()) / 1000) % 60));
+    }, 1000);
     return () => clearInterval(id);
-  }, [countdown.ended]);
+  }, [countdown.ended, endTs]);
+
+  // Sprint 389: Urgency color based on remaining time
+  const hoursRemaining = countdown.days * 24 + countdown.hours;
+  const urgencyColor = countdown.ended ? Colors.textTertiary
+    : hoursRemaining < 6 ? Colors.red
+    : hoursRemaining < 24 ? AMBER
+    : Colors.green;
 
   const challengerVotes = parseFloat(challenge.challengerWeightedVotes);
   const defenderVotes = parseFloat(challenge.defenderWeightedVotes);
@@ -131,10 +145,32 @@ function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
       <VoteBar challenger={challengerVotes} defender={defenderVotes} />
 
       <View style={styles.timerSection}>
-        <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-        <Text style={styles.timerText}>
-          {countdown.ended ? "Ended" : `${countdown.days}d ${countdown.hours}h ${countdown.minutes}m remaining`}
-        </Text>
+        <Ionicons name="time-outline" size={14} color={urgencyColor} />
+        {countdown.ended ? (
+          <Text style={styles.timerText}>Ended</Text>
+        ) : (
+          <View style={styles.timerSegments}>
+            <View style={styles.timerSegment}>
+              <Text style={[styles.timerSegmentNum, { color: urgencyColor }]}>{String(countdown.days).padStart(2, "0")}</Text>
+              <Text style={styles.timerSegmentLabel}>DAYS</Text>
+            </View>
+            <Text style={[styles.timerColon, { color: urgencyColor }]}>:</Text>
+            <View style={styles.timerSegment}>
+              <Text style={[styles.timerSegmentNum, { color: urgencyColor }]}>{String(countdown.hours).padStart(2, "0")}</Text>
+              <Text style={styles.timerSegmentLabel}>HRS</Text>
+            </View>
+            <Text style={[styles.timerColon, { color: urgencyColor }]}>:</Text>
+            <View style={styles.timerSegment}>
+              <Text style={[styles.timerSegmentNum, { color: urgencyColor }]}>{String(countdown.minutes).padStart(2, "0")}</Text>
+              <Text style={styles.timerSegmentLabel}>MIN</Text>
+            </View>
+            <Text style={[styles.timerColon, { color: urgencyColor }]}>:</Text>
+            <View style={styles.timerSegment}>
+              <Text style={[styles.timerSegmentNum, { color: urgencyColor }]}>{String(seconds).padStart(2, "0")}</Text>
+              <Text style={styles.timerSegmentLabel}>SEC</Text>
+            </View>
+          </View>
+        )}
         <Text style={styles.progressText}>Day {daysElapsed}/{totalDays}</Text>
       </View>
 
@@ -474,6 +510,35 @@ const styles = StyleSheet.create({
   shareBtnText: {
     fontSize: 12, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
+  },
+  timerSegments: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    flex: 1,
+  },
+  timerSegment: {
+    alignItems: "center",
+  },
+  timerSegmentNum: {
+    fontSize: 18,
+    fontWeight: "700",
+    fontFamily: "PlayfairDisplay_700Bold",
+    letterSpacing: -0.5,
+  },
+  timerSegmentLabel: {
+    fontSize: 7,
+    fontWeight: "600",
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_600SemiBold",
+    letterSpacing: 0.5,
+    marginTop: -2,
+  },
+  timerColon: {
+    fontSize: 16,
+    fontWeight: "700",
+    fontFamily: "PlayfairDisplay_700Bold",
+    marginBottom: 8,
   },
 
 });
