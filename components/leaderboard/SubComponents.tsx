@@ -103,9 +103,9 @@ export const StarRating = React.memo(function StarRating({ score }: { score: num
 
 // ── PhotoStrip ──────────────────────────────────────────────────
 export const PhotoStrip = React.memo(function PhotoStrip({
-  photos, height, category, containerWidth, name,
+  photos, height, category, cuisine, containerWidth, name,
 }: {
-  photos: string[]; height: number; category?: string; containerWidth: number; name?: string;
+  photos: string[]; height: number; category?: string; cuisine?: string; containerWidth: number; name?: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripPhotos = photos.slice(0, 3);
@@ -113,6 +113,10 @@ export const PhotoStrip = React.memo(function PhotoStrip({
 
   if (stripPhotos.length === 0) {
     const initial = name?.charAt(0)?.toUpperCase() || "";
+    // Sprint 341: Prefer cuisine emoji for more specific fallbacks
+    const cuisineEmoji = cuisine ? getCategoryDisplay(cuisine).emoji : "";
+    const categoryEmoji = getCategoryDisplay(category || "").emoji;
+    const fallbackEmoji = cuisineEmoji || categoryEmoji;
     return (
       <LinearGradient
         colors={[AMBER, BRAND.colors.amberDark]}
@@ -127,9 +131,10 @@ export const PhotoStrip = React.memo(function PhotoStrip({
           <Text style={s.mosaicFallbackInitial}>{initial}</Text>
         ) : (
           <Text style={s.mosaicFallbackEmoji}>
-            {getCategoryDisplay(category || "").emoji}
+            {fallbackEmoji}
           </Text>
         )}
+        <Text style={s.photoStripHint}>No photo yet</Text>
       </LinearGradient>
     );
   }
@@ -277,7 +282,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
       accessibilityHint="Double tap to view business details"
     >
       <View style={s.rankedPhotoStripWrap}>
-        <PhotoStrip photos={photos} height={140} category={item.category} containerWidth={cardWidth} name={item.name} />
+        <PhotoStrip photos={photos} height={140} category={item.category} cuisine={item.cuisine ?? undefined} containerWidth={cardWidth} name={item.name} />
         <View style={[
           s.rankBadge,
           item.rank === 2 && s.rankBadgeSilver,
@@ -437,6 +442,7 @@ const s = StyleSheet.create({
 
   // Photo Strip
   photoStripFallback: { alignItems: "center", justifyContent: "center" },
+  photoStripHint: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4, letterSpacing: 0.5 },
   dotRow: {
     flexDirection: "row", justifyContent: "center", alignItems: "center",
     gap: 5, paddingVertical: 6,

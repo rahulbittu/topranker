@@ -14,7 +14,9 @@ interface SafeImageProps {
   uri: string;
   style: SafeImageStyle;
   category?: string;
+  cuisine?: string;
   fallbackText?: string;
+  showHint?: boolean;
   contentFit?: "cover" | "contain" | "fill";
   accessibilityLabel?: string;
 }
@@ -22,13 +24,17 @@ interface SafeImageProps {
 /**
  * Image that falls back to a branded gradient when the source fails to load.
  * Prevents blank white rectangles when photo URLs 404.
+ * Sprint 341: Cuisine-specific emoji fallback + optional hint text.
  */
-export function SafeImage({ uri, style, category, fallbackText, contentFit = "cover", accessibilityLabel }: SafeImageProps) {
+export function SafeImage({ uri, style, category, cuisine, fallbackText, showHint, contentFit = "cover", accessibilityLabel }: SafeImageProps) {
   const [failed, setFailed] = useState(false);
 
   if (failed || !uri) {
     const initial = fallbackText?.charAt(0)?.toUpperCase() || "";
-    const emoji = category ? getCategoryDisplay(category).emoji : "";
+    // Sprint 341: Prefer cuisine emoji over category for more specific fallbacks
+    const cuisineEmoji = cuisine ? getCategoryDisplay(cuisine).emoji : "";
+    const categoryEmoji = category ? getCategoryDisplay(category).emoji : "";
+    const emoji = cuisineEmoji || categoryEmoji;
     return (
       <LinearGradient
         colors={[BRAND.colors.amber, BRAND.colors.amberDark]}
@@ -37,13 +43,14 @@ export function SafeImage({ uri, style, category, fallbackText, contentFit = "co
         style={[style as StyleProp<ViewStyle>, fallbackStyles.container]}
         accessible={!!accessibilityLabel}
         accessibilityRole="image"
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={accessibilityLabel || "No photo available"}
       >
         {initial ? (
           <Text style={fallbackStyles.initial}>{initial}</Text>
         ) : (
           <Text style={fallbackStyles.emoji}>{emoji}</Text>
         )}
+        {showHint && <Text style={fallbackStyles.hint}>No photo yet</Text>}
       </LinearGradient>
     );
   }
@@ -65,4 +72,5 @@ const fallbackStyles = StyleSheet.create({
   container: { alignItems: "center", justifyContent: "center" },
   initial: { fontSize: 32, fontWeight: "800", color: "#FFFFFF", fontFamily: "PlayfairDisplay_900Black" },
   emoji: { fontSize: 28, color: "rgba(255,255,255,0.5)" },
+  hint: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4, fontFamily: "DMSans_400Regular", letterSpacing: 0.5 },
 });

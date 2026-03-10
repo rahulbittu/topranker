@@ -26,9 +26,9 @@ import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/j
 const AMBER = BRAND.colors.amber;
 
 export const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({
-  photos, height, category, containerWidth, name,
+  photos, height, category, cuisine, containerWidth, name,
 }: {
-  photos: string[]; height: number; category?: string; containerWidth: number; name?: string;
+  photos: string[]; height: number; category?: string; cuisine?: string; containerWidth: number; name?: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripWidth = containerWidth;
@@ -47,7 +47,7 @@ export const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({
           <Text style={s.discoverStripFallbackInitial}>{initial}</Text>
         ) : (
           <Text style={s.discoverStripFallbackEmoji}>
-            {getCategoryDisplay(category || "").emoji}
+            {(cuisine ? getCategoryDisplay(cuisine).emoji : "") || getCategoryDisplay(category || "").emoji}
           </Text>
         )}
       </LinearGradient>
@@ -115,7 +115,7 @@ export const BusinessCard = React.memo(function BusinessCard({
       accessibilityLabel={`${item.name}, ${isUnranked ? "unranked" : `ranked ${rankLabel}`}, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={s.cardPhotoStripWrap}>
-        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} name={item.name} />
+        <DiscoverPhotoStrip photos={photos} height={120} category={item.category} cuisine={item.cuisine ?? undefined} containerWidth={cardWidth} name={item.name} />
         <View style={[s.discoverRankBadge, isUnranked && s.unrankedBadge]}>
           <Text style={[s.discoverRankBadgeText, isUnranked && s.unrankedBadgeText]}>{rankLabel}</Text>
         </View>
