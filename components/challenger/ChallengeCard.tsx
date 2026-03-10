@@ -23,6 +23,7 @@ import {
   CommunityReviews,
 } from "@/components/challenger/SubComponents";
 import { ComparisonDetails } from "@/components/challenger/ComparisonDetails";
+import { AnimatedVoteBar, VoteCountTicker, VoteCelebration } from "@/components/challenger/VoteAnimation";
 
 const AMBER = "#E8A317";
 
@@ -60,6 +61,9 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
 
   const challengerVotes = parseFloat(challenge.challengerWeightedVotes);
   const defenderVotes = parseFloat(challenge.defenderWeightedVotes);
+  const totalVotes = challengerVotes + defenderVotes;
+  const defenderPct = totalVotes > 0 ? (defenderVotes / totalVotes) * 100 : 50;
+  const challengerPct = totalVotes > 0 ? (challengerVotes / totalVotes) * 100 : 50;
 
   const daysElapsed = Math.floor((Date.now() - startTs) / 86400000);
   const totalDays = Math.floor((endTs - startTs) / 86400000);
@@ -105,8 +109,7 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
           accessibilityLabel={`View ${challenge.defenderBusiness.name}, defending number 1`}
         >
           <FighterPhoto biz={challenge.defenderBusiness} label="DEFENDING #1" score={parseFloat(challenge.defenderBusiness.weightedScore) || 0} />
-          <Text style={styles.voteCount}>{formatCompact(defenderVotes)}</Text>
-          <Text style={styles.voteLabel}>weighted votes</Text>
+          <VoteCountTicker count={Math.round(defenderVotes)} label="weighted votes" />
           <FighterConfidence totalRatings={challenge.defenderBusiness.totalRatings} category={challenge.category} />
         </TouchableOpacity>
 
@@ -128,13 +131,12 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
           accessibilityLabel={`View ${challenge.challengerBusiness.name}, challenger`}
         >
           <FighterPhoto biz={challenge.challengerBusiness} label="CHALLENGER" score={parseFloat(challenge.challengerBusiness.weightedScore) || 0} />
-          <Text style={styles.voteCount}>{formatCompact(challengerVotes)}</Text>
-          <Text style={styles.voteLabel}>weighted votes</Text>
+          <VoteCountTicker count={Math.round(challengerVotes)} label="weighted votes" />
           <FighterConfidence totalRatings={challenge.challengerBusiness.totalRatings} category={challenge.category} />
         </TouchableOpacity>
       </View>
 
-      <VoteBar challenger={challengerVotes} defender={defenderVotes} />
+      <AnimatedVoteBar defenderPct={defenderPct} challengerPct={challengerPct} />
 
       {/* Sprint 417: Side-by-side comparison details */}
       <ComparisonDetails
@@ -306,17 +308,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   fighter: { flex: 1, alignItems: "center" as const, gap: 4 },
-  voteCount: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold",
-    letterSpacing: -1,
-    marginTop: 4,
-  },
-  voteLabel: {
-    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
-  },
   vsContainer: { alignItems: "center", width: 40 },
   vsDivider: { width: 1, height: 16, backgroundColor: Colors.border },
   vsCircle: {
