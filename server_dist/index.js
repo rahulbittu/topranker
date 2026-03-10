@@ -12133,6 +12133,62 @@ function registerAdminEnrichmentRoutes(app2) {
       // cap for response size
     });
   });
+  app2.post("/api/admin/enrichment/bulk-hours", async (req, res) => {
+    const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
+    if (!Array.isArray(businessIds) || businessIds.length === 0) {
+      return res.status(400).json({ error: "businessIds must be a non-empty array" });
+    }
+    if (!hoursData || typeof hoursData !== "object") {
+      return res.status(400).json({ error: "hoursData must be a valid hours object" });
+    }
+    if (businessIds.length > 50) {
+      return res.status(400).json({ error: "Maximum 50 businesses per hours batch" });
+    }
+    const VALID_SOURCES = ["manual", "google_places", "import"];
+    if (!VALID_SOURCES.includes(source)) {
+      return res.status(400).json({ error: `Invalid source: ${source}. Must be one of: ${VALID_SOURCES.join(", ")}` });
+    }
+    const periods = hoursData.periods;
+    if (periods && !Array.isArray(periods)) {
+      return res.status(400).json({ error: "hoursData.periods must be an array" });
+    }
+    if (periods) {
+      for (const p of periods) {
+        if (!p.open || typeof p.open.day !== "number" || typeof p.open.time !== "string") {
+          return res.status(400).json({ error: "Each period must have open.day (number) and open.time (string)" });
+        }
+      }
+    }
+    enrichLog.info(`Bulk hours: ${businessIds.length} businesses, source=${source}, dryRun=${dryRun}`);
+    const results = [];
+    for (const bizId of businessIds) {
+      const [biz] = await db.select({
+        id: businesses.id,
+        name: businesses.name,
+        openingHours: businesses.openingHours
+      }).from(businesses).where(eq24(businesses.id, bizId));
+      if (!biz) continue;
+      const prevHours = biz.openingHours;
+      const hadHours = !!(prevHours && prevHours.periods && prevHours.periods.length > 0);
+      if (!dryRun) {
+        await db.update(businesses).set({ openingHours: hoursData }).where(eq24(businesses.id, bizId));
+      }
+      results.push({
+        id: biz.id,
+        name: biz.name,
+        hadHours,
+        periodsCount: periods?.length || 0
+      });
+    }
+    enrichLog.info(`Bulk hours ${dryRun ? "(dry run)" : ""}: ${results.length}/${businessIds.length} ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      source,
+      requested: businessIds.length,
+      updated: results.length,
+      results: results.slice(0, 50)
+    });
+  });
 }
 
 // server/routes-city-stats.ts
