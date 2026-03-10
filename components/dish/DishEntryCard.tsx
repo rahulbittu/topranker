@@ -13,6 +13,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { pct } from "@/lib/style-helpers";
+import { shareToWhatsApp, getBestInShareText, getShareUrl } from "@/lib/sharing";
 
 const AMBER = BRAND.colors.amber;
 
@@ -28,9 +29,10 @@ export interface DishEntryCardProps {
     dishRatingCount: number;
   };
   dishName: string;
+  city?: string;
 }
 
-export function DishEntryCard({ entry, dishName }: DishEntryCardProps) {
+export function DishEntryCard({ entry, dishName, city }: DishEntryCardProps) {
   return (
     <TouchableOpacity
       style={styles.entryCard}
@@ -70,15 +72,30 @@ export function DishEntryCard({ entry, dishName }: DishEntryCardProps) {
             <Text style={styles.earlyDataText}>Early data</Text>
           </View>
         )}
-        <TouchableOpacity
-          style={styles.rateEntryButton}
-          onPress={() => router.push({ pathname: "/rate/[id]", params: { id: entry.businessSlug, dish: dishName } })}
-          accessibilityRole="button"
-          accessibilityLabel={`Rate ${dishName} at ${entry.businessName}`}
-        >
-          <Ionicons name="star-outline" size={14} color={AMBER} />
-          <Text style={styles.rateEntryText}>Rate {dishName}</Text>
-        </TouchableOpacity>
+        <View style={styles.entryActions}>
+          <TouchableOpacity
+            style={styles.rateEntryButton}
+            onPress={() => router.push({ pathname: "/rate/[id]", params: { id: entry.businessSlug, dish: dishName } })}
+            accessibilityRole="button"
+            accessibilityLabel={`Rate ${dishName} at ${entry.businessName}`}
+          >
+            <Ionicons name="star-outline" size={14} color={AMBER} />
+            <Text style={styles.rateEntryText}>Rate {dishName}</Text>
+          </TouchableOpacity>
+          {/* Sprint 539: WhatsApp share */}
+          <TouchableOpacity
+            style={styles.whatsappBtn}
+            onPress={() => {
+              const url = getShareUrl("business", entry.businessSlug);
+              const text = getBestInShareText(dishName, city || "Dallas", entry.businessName, entry.rankPosition, url);
+              shareToWhatsApp(text);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Share ${entry.businessName} on WhatsApp`}
+          >
+            <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
+          </TouchableOpacity>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -114,12 +131,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start", marginTop: 6,
   },
   earlyDataText: { fontSize: 10, color: AMBER, fontWeight: "600" },
+  entryActions: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8,
+  },
   rateEntryButton: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    marginTop: 8, alignSelf: "flex-start",
+    alignSelf: "flex-start",
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
     backgroundColor: "rgba(196,154,26,0.08)",
     borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
   },
   rateEntryText: { fontSize: 12, fontWeight: "600", color: AMBER },
+  whatsappBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "rgba(37,211,102,0.12)",
+    alignItems: "center", justifyContent: "center",
+  },
 });

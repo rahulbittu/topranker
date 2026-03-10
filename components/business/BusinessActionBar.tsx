@@ -7,7 +7,7 @@ import { View, StyleSheet, Platform, Linking, Share } from "react-native";
 import * as Haptics from "expo-haptics";
 import { ActionButton } from "./ActionButton";
 import { Analytics } from "@/lib/analytics";
-import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
+import { getShareUrl, getShareText, copyShareLink, shareToWhatsApp } from "@/lib/sharing";
 
 export interface BusinessActionBarProps {
   name: string;
@@ -61,13 +61,22 @@ export function BusinessActionBar({
     if (copied) Analytics.shareBusiness(slug, "copy_link");
   };
 
+  // Sprint 539: WhatsApp share with "Best In" format
+  const handleWhatsApp = async () => {
+    Haptics.selectionAsync();
+    const url = getShareUrl("business", slug);
+    const text = `🔥 ${name} — rated ${weightedScore.toFixed(1)}/5 on TopRanker!\n\nCheck it out:\n${url}`;
+    const sent = await shareToWhatsApp(text);
+    if (sent) Analytics.shareBusiness(slug, "whatsapp");
+  };
+
   return (
     <View style={s.actionBar}>
       <ActionButton icon="call-outline" label="Call" onPress={handleCall} disabled={!phone} />
       <ActionButton icon="globe-outline" label="Website" onPress={handleWebsite} disabled={!website} />
       <ActionButton icon="navigate-outline" label="Maps" onPress={handleMaps} disabled={!address} />
       <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
-      <ActionButton icon="copy-outline" label="Copy Link" onPress={handleCopyLink} />
+      <ActionButton icon="logo-whatsapp" label="WhatsApp" onPress={handleWhatsApp} />
     </View>
   );
 }

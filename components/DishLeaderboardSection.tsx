@@ -19,6 +19,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { getApiUrl } from "@/lib/query-client";
 import { pct } from "@/lib/style-helpers";
 import { TYPOGRAPHY } from "@/constants/typography";
+import { shareToWhatsApp, getDishLeaderboardShareText, getShareUrl } from "@/lib/sharing";
 
 const AMBER = BRAND.colors.amber;
 
@@ -170,6 +171,18 @@ export function DishLeaderboardSection({ city }: { city: string }) {
                 accessibilityLabel={`See full ${activeBoard.dishName} ranking`}
               >
                 <Text style={styles.seeAllText}>Full ranking →</Text>
+              </TouchableOpacity>
+              {/* Sprint 539: WhatsApp share button */}
+              <TouchableOpacity
+                onPress={() => {
+                  const url = getShareUrl("business", activeBoard.dishSlug);
+                  const text = getDishLeaderboardShareText(activeBoard.dishName, city, activeBoard.entryCount, url);
+                  shareToWhatsApp(text);
+                }}
+                style={styles.whatsappBtn}
+                accessibilityLabel={`Share ${activeBoard.dishName} ranking on WhatsApp`}
+              >
+                <Ionicons name="logo-whatsapp" size={16} color="#25D366" />
               </TouchableOpacity>
             </View>
           )}
@@ -487,6 +500,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(196,154,26,0.15)",
   },
   seeAllText: { fontSize: 12, color: AMBER, fontWeight: "700" },
+  whatsappBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: "rgba(37,211,102,0.12)",
+    alignItems: "center", justifyContent: "center",
+  },
 
   buildingCard: {
     margin: 16, padding: 20, backgroundColor: "#FFF8E7",

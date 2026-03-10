@@ -56,12 +56,12 @@ describe("Sprint 337 — business detail copy link", () => {
     expect(bizSrc).toContain("handleCopyLink");
   });
 
-  it("has Copy Link action button (in extracted action bar)", () => {
-    expect(actionBarSrc).toContain('label="Copy Link"');
+  it("has WhatsApp action button (Sprint 539: replaced Copy Link)", () => {
+    expect(actionBarSrc).toContain('label="WhatsApp"');
   });
 
-  it("uses copy-outline icon (in extracted action bar)", () => {
-    expect(actionBarSrc).toContain('icon="copy-outline"');
+  it("uses logo-whatsapp icon (Sprint 539: replaced copy-outline)", () => {
+    expect(actionBarSrc).toContain('icon="logo-whatsapp"');
   });
 
   it("tracks copy_link analytics", () => {

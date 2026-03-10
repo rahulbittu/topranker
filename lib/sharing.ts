@@ -40,6 +40,61 @@ export async function copyShareLink(
 }
 
 /**
+ * Sprint 539: Share directly to WhatsApp with pre-filled text.
+ * Uses wa.me universal link which works on both iOS and Android.
+ */
+export async function shareToWhatsApp(text: string): Promise<boolean> {
+  try {
+    const { Linking } = await import("react-native");
+    const encoded = encodeURIComponent(text);
+    const url = `https://wa.me/?text=${encoded}`;
+    const canOpen = await Linking.canOpenURL(url);
+    if (canOpen) {
+      await Linking.openURL(url);
+      return true;
+    }
+    // Fallback: try whatsapp:// scheme
+    const fallback = `whatsapp://send?text=${encoded}`;
+    await Linking.openURL(fallback);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Sprint 539: Generate WhatsApp-optimized "Best In" share text.
+ * Designed for controversy-driven engagement in WhatsApp groups.
+ */
+export function getBestInShareText(
+  dishOrCategory: string,
+  city: string,
+  businessName: string,
+  rank: number,
+  url: string,
+): string {
+  const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "🔥";
+  const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+  if (rank === 1) {
+    return `${emoji} Best ${dishOrCategory} in ${cityTitle} is ${businessName}!\n\nAgree or disagree? Check the live ranking:\n${url}`;
+  }
+  return `${emoji} ${businessName} is #${rank} for ${dishOrCategory} in ${cityTitle}\n\nThink they should be higher? Rate them:\n${url}`;
+}
+
+/**
+ * Sprint 539: Generate share text for a dish leaderboard.
+ */
+export function getDishLeaderboardShareText(
+  dishName: string,
+  city: string,
+  entryCount: number,
+  url: string,
+): string {
+  const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+  return `🍽️ Best ${dishName} in ${cityTitle} — ${entryCount} spots ranked!\n\nWho's your pick? See the full ranking:\n${url}`;
+}
+
+/**
  * Parse a TopRanker URL and extract the type and slug.
  * Returns null if the URL doesn't match expected patterns.
  */
