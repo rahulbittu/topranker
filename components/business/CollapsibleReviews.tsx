@@ -99,9 +99,59 @@ export const RatingRow = React.memo(function RatingRow({ rating }: { rating: Map
   );
 });
 
+type ReviewSortKey = "recent" | "highest" | "lowest" | "weighted";
+
+const SORT_OPTIONS: { key: ReviewSortKey; label: string; icon: string }[] = [
+  { key: "recent", label: "Recent", icon: "time-outline" },
+  { key: "highest", label: "Highest", icon: "arrow-up" },
+  { key: "lowest", label: "Lowest", icon: "arrow-down" },
+  { key: "weighted", label: "Most Weighted", icon: "shield-checkmark-outline" },
+];
+
+function sortRatings(ratings: MappedRating[], sort: ReviewSortKey): MappedRating[] {
+  const sorted = [...ratings];
+  switch (sort) {
+    case "recent":
+      return sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    case "highest":
+      return sorted.sort((a, b) => b.rawScore - a.rawScore);
+    case "lowest":
+      return sorted.sort((a, b) => a.rawScore - b.rawScore);
+    case "weighted":
+      return sorted.sort((a, b) => b.weight - a.weight);
+    default:
+      return sorted;
+  }
+}
+
+export function ReviewSortChips({ activeSort, onSort }: { activeSort: ReviewSortKey; onSort: (key: ReviewSortKey) => void }) {
+  return (
+    <View style={s.sortRow}>
+      {SORT_OPTIONS.map(opt => {
+        const active = opt.key === activeSort;
+        return (
+          <TouchableOpacity
+            key={opt.key}
+            style={[s.sortChip, active && s.sortChipActive]}
+            onPress={() => onSort(opt.key)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Sort reviews by ${opt.label}`}
+            accessibilityState={{ selected: active }}
+          >
+            <Ionicons name={opt.icon as any} size={12} color={active ? "#fff" : Colors.textSecondary} />
+            <Text style={[s.sortChipText, active && s.sortChipTextActive]}>{opt.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
 export function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
   const [expanded, setExpanded] = useState(false);
   const [visibleCount, setVisibleCount] = useState(5);
+  const [sortKey, setSortKey] = useState<ReviewSortKey>("recent");
 
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -114,7 +164,13 @@ export function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
     setVisibleCount(v => v + 10);
   };
 
-  const visibleRatings = ratings.slice(0, visibleCount);
+  const handleSort = (key: ReviewSortKey) => {
+    setSortKey(key);
+    setVisibleCount(5);
+  };
+
+  const sortedRatings = sortRatings(ratings, sortKey);
+  const visibleRatings = sortedRatings.slice(0, visibleCount);
   const hasMore = visibleCount < ratings.length;
 
   return (
@@ -137,6 +193,7 @@ export function CollapsibleReviews({ ratings }: { ratings: MappedRating[] }) {
       {expanded && (
         <View style={s.collapsibleBody}>
           <DistributionChart ratings={ratings} />
+          <ReviewSortChips activeSort={sortKey} onSort={handleSort} />
           {visibleRatings.map((rating: MappedRating) => (
             <RatingRow key={rating.id} rating={rating} />
           ))}
@@ -209,6 +266,16 @@ const s = StyleSheet.create({
     fontFamily: "DMSans_700Bold",
   },
   collapsibleBody: { paddingHorizontal: 14, paddingBottom: 14 },
+
+  sortRow: { flexDirection: "row", gap: 6, marginVertical: 10, flexWrap: "wrap" },
+  sortChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+    backgroundColor: `${Colors.border}40`,
+  },
+  sortChipActive: { backgroundColor: BRAND.colors.amber },
+  sortChipText: { fontSize: 11, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  sortChipTextActive: { color: "#fff" },
 
   showMoreBtn: {
     paddingVertical: 10, alignItems: "center",
