@@ -16,6 +16,7 @@ import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCate
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
+import { SearchResultsSkeleton } from "@/components/search/SearchResultsSkeleton";
 
 import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
@@ -363,7 +364,7 @@ export default function SearchScreen() {
       </View>
 
       {isLoading ? (
-        <DiscoverSkeleton />
+        <SearchResultsSkeleton />
       ) : isError ? (
         <View style={styles.loadingContainer}>
           <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
