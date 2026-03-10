@@ -118,6 +118,25 @@ function HoursEditor({ businessId, delay }: { businessId: string; delay: number 
   const [hours, setHours] = useState<string[]>(
     DAY_NAMES.map(() => "11:00 AM – 10:00 PM"),
   );
+  const [initialized, setInitialized] = useState(false);
+
+  // Sprint 556: Fetch existing hours from business data
+  const { data: existingHours } = useQuery<{ weekday_text?: string[] }>({
+    queryKey: ["business-hours", businessId],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/businesses/${businessId}`, { credentials: "include" });
+      if (!res.ok) return {};
+      const json = await res.json();
+      return json.data?.openingHours || json.openingHours || {};
+    },
+    staleTime: 300000,
+  });
+
+  // Pre-populate hours from existing data on first load
+  if (existingHours?.weekday_text && existingHours.weekday_text.length === 7 && !initialized) {
+    setHours(existingHours.weekday_text);
+    setInitialized(true);
+  }
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -137,7 +156,10 @@ function HoursEditor({ businessId, delay }: { businessId: string; delay: number 
       <View style={styles.hoursHeader}>
         <View style={styles.hoursHeaderLeft}>
           <Ionicons name="time-outline" size={18} color={BRAND.colors.amber} />
-          <Text style={styles.hoursTitle}>Operating Hours</Text>
+          <View>
+            <Text style={styles.hoursTitle}>Operating Hours</Text>
+            <Text style={styles.hoursSource}>{initialized ? "From your listing" : "Default hours — tap Edit to update"}</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={() => editing ? mutation.mutate() : setEditing(true)} style={styles.hoursEditBtn}>
           <Ionicons name={editing ? "checkmark" : "create-outline"} size={16} color={BRAND.colors.amber} />
@@ -558,6 +580,7 @@ const styles = StyleSheet.create({
   hoursHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
   hoursHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   hoursTitle: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  hoursSource: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 1 },
   hoursEditBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: `${BRAND.colors.amber}12` },
   hoursEditText: { fontSize: 12, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
   hoursRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
