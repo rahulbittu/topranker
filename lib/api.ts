@@ -676,3 +676,16 @@ export async function fetchRatingPhotos(ratingId: string): Promise<RatingPhotoDa
   const data = await apiFetch<{ data: RatingPhotoData[] }>(`/api/ratings/${encodeURIComponent(ratingId)}/photos`);
   return data.data || [];
 }
+
+// Sprint 554: Owner hours update
+export interface HoursUpdate {
+  weekday_text?: string[];
+  periods?: Array<{ open: { day: number; time: string }; close?: { day: number; time: string } }>;
+}
+
+export async function updateBusinessHours(businessId: string, openingHours: HoursUpdate): Promise<{ success: boolean; hoursLastUpdated: string }> {
+  return apiRequest<{ success: boolean; hoursLastUpdated: string }>(
+    `/api/owner/businesses/${encodeURIComponent(businessId)}/hours`,
+    { method: "PUT", body: JSON.stringify({ openingHours }), headers: { "Content-Type": "application/json" } },
+  );
+}

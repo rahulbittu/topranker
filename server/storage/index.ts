@@ -43,6 +43,7 @@ export {
   getBusinessBySlug,
   getBusinessById,
   updateBusinessSubscription,
+  updateBusinessHours, // Sprint 554
   getBusinessesByIds,
   searchBusinesses,
   countBusinessSearch, // Sprint 473

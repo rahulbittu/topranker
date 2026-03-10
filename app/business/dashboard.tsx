@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Dimensions,
+  Platform, Dimensions, TextInput, Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -12,8 +12,9 @@ import { BRAND } from "@/constants/brand";
 import { PRICING } from "@/shared/pricing";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/query-client";
+import { updateBusinessHours, type HoursUpdate } from "@/lib/api";
 import { SparklineChart } from "@/components/dashboard/SparklineChart";
 import { VolumeBarChart } from "@/components/dashboard/VolumeBarChart";
 import { VelocityIndicator } from "@/components/dashboard/VelocityIndicator";
@@ -105,6 +106,70 @@ function MiniChart({ data, color }: { data: number[]; color: string }) {
         ))}
       </View>
     </View>
+  );
+}
+
+// Sprint 554: Business hours editor for claimed owners
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function HoursEditor({ businessId, delay }: { businessId: string; delay: number }) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [hours, setHours] = useState<string[]>(
+    DAY_NAMES.map(() => "11:00 AM – 10:00 PM"),
+  );
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const hoursUpdate: HoursUpdate = { weekday_text: hours };
+      return updateBusinessHours(businessId, hoursUpdate);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", businessId] });
+      setEditing(false);
+      Alert.alert("Hours Updated", "Your operating hours have been saved.");
+    },
+    onError: () => Alert.alert("Error", "Failed to update hours. Please try again."),
+  });
+
+  return (
+    <Animated.View entering={FadeInDown.delay(delay).duration(400)} style={styles.hoursCard}>
+      <View style={styles.hoursHeader}>
+        <View style={styles.hoursHeaderLeft}>
+          <Ionicons name="time-outline" size={18} color={BRAND.colors.amber} />
+          <Text style={styles.hoursTitle}>Operating Hours</Text>
+        </View>
+        <TouchableOpacity onPress={() => editing ? mutation.mutate() : setEditing(true)} style={styles.hoursEditBtn}>
+          <Ionicons name={editing ? "checkmark" : "create-outline"} size={16} color={BRAND.colors.amber} />
+          <Text style={styles.hoursEditText}>{editing ? "Save" : "Edit"}</Text>
+        </TouchableOpacity>
+      </View>
+      {DAY_NAMES.map((day, i) => (
+        <View key={day} style={styles.hoursRow}>
+          <Text style={styles.hoursDayLabel}>{day.slice(0, 3)}</Text>
+          {editing ? (
+            <TextInput
+              style={styles.hoursInput}
+              value={hours[i]}
+              onChangeText={(t) => {
+                const next = [...hours];
+                next[i] = t;
+                setHours(next);
+              }}
+              placeholder="e.g. 11:00 AM – 10:00 PM"
+              placeholderTextColor={Colors.textTertiary}
+            />
+          ) : (
+            <Text style={styles.hoursValue}>{hours[i]}</Text>
+          )}
+        </View>
+      ))}
+      {editing && (
+        <TouchableOpacity onPress={() => setEditing(false)} style={styles.hoursCancelBtn}>
+          <Text style={styles.hoursCancelText}>Cancel</Text>
+        </TouchableOpacity>
+      )}
+    </Animated.View>
   );
 }
 
@@ -287,6 +352,9 @@ export default function BusinessDashboardScreen() {
                 <Text style={styles.proCardPrice}>{PRICING.dashboardPro.displayAmount}</Text>
               </View>
             </Animated.View>
+
+            {/* Sprint 554: Hours editor for claimed owners */}
+            {slug && <HoursEditor businessId={slug} delay={800} />}
           </>
         )}
 
@@ -485,4 +553,17 @@ const styles = StyleSheet.create({
   insightInfo: { flex: 1, gap: 4 },
   insightTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   insightDesc: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
+  // Sprint 554: Hours editor
+  hoursCard: { backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14, gap: 8 },
+  hoursHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  hoursHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  hoursTitle: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  hoursEditBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: `${BRAND.colors.amber}12` },
+  hoursEditText: { fontSize: 12, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
+  hoursRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4 },
+  hoursDayLabel: { fontSize: 12, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold", width: 36 },
+  hoursValue: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_400Regular" },
+  hoursInput: { flex: 1, marginLeft: 8, fontSize: 12, color: Colors.text, fontFamily: "DMSans_400Regular", borderWidth: 1, borderColor: Colors.border, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  hoursCancelBtn: { alignSelf: "center", paddingVertical: 6, paddingHorizontal: 16 },
+  hoursCancelText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_500Medium" },
 });

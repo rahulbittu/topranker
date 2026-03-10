@@ -119,6 +119,21 @@ export async function updateBusinessSubscription(
   await db.update(businesses).set(setData).where(eq(businesses.id, businessId));
 }
 
+// Sprint 554: Owner hours update
+export async function updateBusinessHours(
+  businessId: string,
+  ownerId: string,
+  openingHours: { weekday_text?: string[]; periods?: Array<{ open: { day: number; time: string }; close?: { day: number; time: string } }> },
+): Promise<boolean> {
+  const [biz] = await db.select().from(businesses).where(eq(businesses.id, businessId));
+  if (!biz || biz.ownerId !== ownerId) return false;
+  await db.update(businesses).set({
+    openingHours: openingHours,
+    hoursLastUpdated: new Date(),
+  }).where(eq(businesses.id, businessId));
+  return true;
+}
+
 export async function getBusinessesByIds(ids: string[]): Promise<Business[]> {
   if (ids.length === 0) return [];
   return db

@@ -5,8 +5,10 @@
  * Owner: Sarah Nakamura (Lead Eng)
  */
 
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { log } from "./logger";
+import { requireAuth } from "./middleware";
+import { wrapAsync } from "./wrap-async";
 import {
   getBusinessMetrics,
   getViewSources,
@@ -54,4 +56,26 @@ export function registerOwnerDashboardRoutes(app: Router): void {
     ownerDashLog.info("Fetching analytics stats");
     res.json(getAnalyticsStats());
   });
+
+  // Sprint 554: Owner hours update — claimed business owners can update operating hours
+  app.put("/api/owner/businesses/:businessId/hours", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { businessId } = req.params;
+    const memberId = (req as any).user?.id;
+    if (!memberId) return res.status(401).json({ error: "Unauthorized" });
+    const { openingHours } = req.body;
+    if (!openingHours || typeof openingHours !== "object") {
+      return res.status(400).json({ error: "openingHours object required" });
+    }
+    // Validate periods array if present
+    if (openingHours.periods && !Array.isArray(openingHours.periods)) {
+      return res.status(400).json({ error: "periods must be an array" });
+    }
+    const { updateBusinessHours } = await import("./storage/businesses");
+    const updated = await updateBusinessHours(businessId, memberId, openingHours);
+    if (!updated) {
+      return res.status(403).json({ error: "Not the owner of this business" });
+    }
+    ownerDashLog.info(`Owner ${memberId} updated hours for business ${businessId}`);
+    return res.json({ success: true, hoursLastUpdated: new Date().toISOString() });
+  }));
 }
