@@ -211,6 +211,12 @@ export const BusinessCard = React.memo(function BusinessCard({
           {isOpen !== undefined && isOpen !== null && (
             <View style={[s.statusPill, isOpen ? s.statusPillOpen : s.statusPillClosed]}>
               <Text style={s.statusPillText}>{isOpen ? "OPEN" : "CLOSED"}</Text>
+              {isOpen && item.closingTime && (
+                <Text style={s.statusTimeText}> · Closes {item.closingTime}</Text>
+              )}
+              {!isOpen && item.nextOpenTime && (
+                <Text style={s.statusTimeText}> · Opens {item.nextOpenTime}</Text>
+              )}
             </View>
           )}
           {item.ratingCount && item.ratingCount >= 20 && (
@@ -263,7 +269,12 @@ export function MapBusinessCard({ item }: { item: MappedBusiness }) {
       </View>
       <View style={s.mapCardInfo}>
         <Text style={s.mapCardName} numberOfLines={1}>{item.name}</Text>
-        <Text style={s.mapCardMeta}>{catDisplay.emoji} {catDisplay.label}{item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}</Text>
+        <Text style={s.mapCardMeta}>
+          {catDisplay.emoji} {catDisplay.label}{item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
+          {item.isOpenNow !== undefined && item.isOpenNow !== null && (
+            <Text style={item.isOpenNow ? s.mapCardOpen : s.mapCardClosed}> {"\u00B7"} {item.isOpenNow ? "Open" : "Closed"}{item.isOpenNow && item.closingTime ? ` til ${item.closingTime}` : ""}</Text>
+          )}
+        </Text>
       </View>
       <View style={s.mapCardRight}>
         <Text style={s.mapCardScore}>{item.weightedScore.toFixed(1)}</Text>
@@ -520,6 +531,7 @@ const s = StyleSheet.create({
   },
   statusPillClosed: { backgroundColor: Colors.red },
   statusPillText: { fontSize: 9, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
+  statusTimeText: { fontSize: 9, color: "rgba(255,255,255,0.8)", fontFamily: "DMSans_400Regular" },
   verifiedPill: {
     paddingHorizontal: 4, paddingVertical: 2, borderRadius: 99,
     backgroundColor: `${Colors.green}15`,
@@ -556,6 +568,8 @@ const s = StyleSheet.create({
   mapCardInfo: { flex: 1, gap: 2 },
   mapCardName: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   mapCardMeta: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  mapCardOpen: { color: Colors.green, fontWeight: "600" },
+  mapCardClosed: { color: Colors.red, fontWeight: "600" },
   mapCardRight: { alignItems: "center", gap: 4 },
   mapCardScore: { fontSize: 16, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black" },
   mapPinBtn: {

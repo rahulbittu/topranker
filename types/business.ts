@@ -12,6 +12,8 @@ export interface MappedBusiness {
   ratingCount?: number;
   isChallenger: boolean;
   isOpenNow?: boolean;
+  closingTime?: string;
+  nextOpenTime?: string;
   priceRange?: string;
   photoUrl?: string;
   photoUrls?: string[];
