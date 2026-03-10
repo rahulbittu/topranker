@@ -295,6 +295,65 @@ const SEED_DISHES: { businessSlug: string; dishes: { name: string; voteCount: nu
     { name: "Salsa Verde", voteCount: 67 },
     { name: "Fresh Tortillas", voteCount: 45 },
   ]},
+  // ── Sprint 315: Expanded dishes for new leaderboards ──
+  // Samosa
+  { businessSlug: "desi-district-richardson", dishes: [
+    { name: "Aloo Samosa", voteCount: 89 },
+  ]},
+  { businessSlug: "chennai-cafe-frisco", dishes: [
+    { name: "Samosa Chaat", voteCount: 54 },
+  ]},
+  { businessSlug: "tandoori-flames-irving", dishes: [
+    { name: "Keema Samosa", voteCount: 67 },
+  ]},
+  // Burrito
+  { businessSlug: "abuelas-kitchen-dallas", dishes: [
+    { name: "Carne Asada Burrito", voteCount: 76 },
+  ]},
+  { businessSlug: "el-rincon-del-sabor-dallas", dishes: [
+    { name: "Burrito Mojado", voteCount: 89 },
+  ]},
+  { businessSlug: "taqueria-la-ventana-dallas", dishes: [
+    { name: "Al Pastor Burrito", voteCount: 56 },
+  ]},
+  // Enchilada (covers enchilada ILIKE match)
+  { businessSlug: "casa-oaxaca-dallas", dishes: [
+    { name: "Enchilada Suizas", voteCount: 65 },
+  ]},
+  // Sushi
+  { businessSlug: "uchi-dallas", dishes: [
+    { name: "Omakase Sushi", voteCount: 112 },
+  ]},
+  { businessSlug: "tei-an-dallas", dishes: [
+    { name: "Chirashi Sushi Bowl", voteCount: 65 },
+  ]},
+  // Pasta
+  { businessSlug: "lucia-dallas", dishes: [
+    { name: "Ricotta Gnudi Pasta", voteCount: 78 },
+  ]},
+  { businessSlug: "nonnas-trattoria-dallas", dishes: [
+    { name: "Pasta Bolognese", voteCount: 87 },
+  ]},
+  { businessSlug: "cane-rosso-dallas", dishes: [
+    { name: "Truffle Pasta", voteCount: 56 },
+  ]},
+  // Wings
+  { businessSlug: "the-yard-kitchen-dallas", dishes: [
+    { name: "Smoked Wings", voteCount: 78 },
+  ]},
+  { businessSlug: "raising-canes-dallas", dishes: [
+    { name: "Buffalo Wings", voteCount: 65 },
+  ]},
+  { businessSlug: "fearings-dallas", dishes: [
+    { name: "Jalapeño Wings", voteCount: 54 },
+  ]},
+  // Falafel
+  { businessSlug: "istanbul-grill-dallas", dishes: [
+    { name: "Crispy Falafel Plate", voteCount: 65 },
+  ]},
+  { businessSlug: "kabob-king-dallas", dishes: [
+    { name: "Falafel Wrap", voteCount: 54 },
+  ]},
 ];
 
 export async function seedDatabase() {
@@ -388,6 +447,16 @@ export async function seedDatabase() {
     { dishName: "Dosa", dishSlug: "dosa", dishEmoji: "🫓", displayOrder: 8 },
     { dishName: "Kebab", dishSlug: "kebab", dishEmoji: "🥙", displayOrder: 9 },
     { dishName: "Brisket", dishSlug: "brisket", dishEmoji: "🥩", displayOrder: 10 },
+    // Sprint 315: Expanded dish leaderboards
+    { dishName: "Butter Chicken", dishSlug: "butter-chicken", dishEmoji: "🍗", displayOrder: 11 },
+    { dishName: "Samosa", dishSlug: "samosa", dishEmoji: "🥟", displayOrder: 12 },
+    { dishName: "Burrito", dishSlug: "burrito", dishEmoji: "🌯", displayOrder: 13 },
+    { dishName: "Enchilada", dishSlug: "enchilada", dishEmoji: "🫔", displayOrder: 14 },
+    { dishName: "Sushi", dishSlug: "sushi", dishEmoji: "🍣", displayOrder: 15 },
+    { dishName: "Pasta", dishSlug: "pasta", dishEmoji: "🍝", displayOrder: 16 },
+    { dishName: "Banh Mi", dishSlug: "banh-mi", dishEmoji: "🥖", displayOrder: 17 },
+    { dishName: "Wings", dishSlug: "wings", dishEmoji: "🍗", displayOrder: 18 },
+    { dishName: "Falafel", dishSlug: "falafel", dishEmoji: "🧆", displayOrder: 19 },
   ];
 
   for (const board of SEED_DISH_BOARDS) {
@@ -402,12 +471,15 @@ export async function seedDatabase() {
     }).returning();
 
     // Populate entries from existing seeded dishes
+    // Sprint 315: Match both hyphenated slugs and space-separated names
+    const slugPattern = "%" + board.dishSlug + "%";
+    const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
     const matchingDishes = await db.select({ businessId: dishes.businessId })
       .from(dishes)
       .innerJoin(businesses, eq(dishes.businessId, businesses.id))
       .where(and(
         eq(businesses.city, "Dallas"),
-        sql`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`,
+        sql`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`,
       ));
 
     const uniqueBizIds = [...new Set(matchingDishes.map(d => d.businessId))];

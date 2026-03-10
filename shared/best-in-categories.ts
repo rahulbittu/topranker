@@ -171,24 +171,33 @@ export const CUISINE_DISH_MAP: Record<string, { slug: string; name: string; emoj
   indian: [
     { slug: "biryani", name: "Biryani", emoji: "🍛" },
     { slug: "dosa", name: "Dosa", emoji: "🫓" },
+    { slug: "butter-chicken", name: "Butter Chicken", emoji: "🍗" },
+    { slug: "samosa", name: "Samosa", emoji: "🥟" },
   ],
   mexican: [
     { slug: "taco", name: "Taco", emoji: "🌮" },
+    { slug: "burrito", name: "Burrito", emoji: "🌯" },
+    { slug: "enchilada", name: "Enchilada", emoji: "🫔" },
   ],
   japanese: [
     { slug: "ramen", name: "Ramen", emoji: "🍜" },
+    { slug: "sushi", name: "Sushi", emoji: "🍣" },
   ],
   italian: [
     { slug: "pizza", name: "Pizza", emoji: "🍕" },
+    { slug: "pasta", name: "Pasta", emoji: "🍝" },
   ],
   vietnamese: [
     { slug: "pho", name: "Pho", emoji: "🍲" },
+    { slug: "banh-mi", name: "Banh Mi", emoji: "🥖" },
   ],
   american: [
     { slug: "burger", name: "Burger", emoji: "🍔" },
     { slug: "brisket", name: "Brisket", emoji: "🥩" },
+    { slug: "wings", name: "Wings", emoji: "🍗" },
   ],
   mediterranean: [
     { slug: "kebab", name: "Kebab", emoji: "🥙" },
+    { slug: "falafel", name: "Falafel", emoji: "🧆" },
   ],
 };

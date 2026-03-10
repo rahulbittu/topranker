@@ -5267,7 +5267,17 @@ async function seedDatabase() {
     { dishName: "Pho", dishSlug: "pho", dishEmoji: "\u{1F372}", displayOrder: 7 },
     { dishName: "Dosa", dishSlug: "dosa", dishEmoji: "\u{1FAD3}", displayOrder: 8 },
     { dishName: "Kebab", dishSlug: "kebab", dishEmoji: "\u{1F959}", displayOrder: 9 },
-    { dishName: "Brisket", dishSlug: "brisket", dishEmoji: "\u{1F969}", displayOrder: 10 }
+    { dishName: "Brisket", dishSlug: "brisket", dishEmoji: "\u{1F969}", displayOrder: 10 },
+    // Sprint 315: Expanded dish leaderboards
+    { dishName: "Butter Chicken", dishSlug: "butter-chicken", dishEmoji: "\u{1F357}", displayOrder: 11 },
+    { dishName: "Samosa", dishSlug: "samosa", dishEmoji: "\u{1F95F}", displayOrder: 12 },
+    { dishName: "Burrito", dishSlug: "burrito", dishEmoji: "\u{1F32F}", displayOrder: 13 },
+    { dishName: "Enchilada", dishSlug: "enchilada", dishEmoji: "\u{1FAD4}", displayOrder: 14 },
+    { dishName: "Sushi", dishSlug: "sushi", dishEmoji: "\u{1F363}", displayOrder: 15 },
+    { dishName: "Pasta", dishSlug: "pasta", dishEmoji: "\u{1F35D}", displayOrder: 16 },
+    { dishName: "Banh Mi", dishSlug: "banh-mi", dishEmoji: "\u{1F956}", displayOrder: 17 },
+    { dishName: "Wings", dishSlug: "wings", dishEmoji: "\u{1F357}", displayOrder: 18 },
+    { dishName: "Falafel", dishSlug: "falafel", dishEmoji: "\u{1F9C6}", displayOrder: 19 }
   ];
   for (const board of SEED_DISH_BOARDS) {
     const [lb] = await db.insert(dishLeaderboards).values({
@@ -5279,9 +5289,11 @@ async function seedDatabase() {
       displayOrder: board.displayOrder,
       source: "system"
     }).returning();
+    const slugPattern = "%" + board.dishSlug + "%";
+    const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
     const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq23(dishes.businessId, businesses.id)).where(and15(
       eq23(businesses.city, "Dallas"),
-      sql13`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`
+      sql13`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
     for (let i = 0; i < uniqueBizIds.length; i++) {
@@ -5639,6 +5651,65 @@ var init_seed = __esm({
         { name: "Al Pastor Taco", voteCount: 112 },
         { name: "Salsa Verde", voteCount: 67 },
         { name: "Fresh Tortillas", voteCount: 45 }
+      ] },
+      // ── Sprint 315: Expanded dishes for new leaderboards ──
+      // Samosa
+      { businessSlug: "desi-district-richardson", dishes: [
+        { name: "Aloo Samosa", voteCount: 89 }
+      ] },
+      { businessSlug: "chennai-cafe-frisco", dishes: [
+        { name: "Samosa Chaat", voteCount: 54 }
+      ] },
+      { businessSlug: "tandoori-flames-irving", dishes: [
+        { name: "Keema Samosa", voteCount: 67 }
+      ] },
+      // Burrito
+      { businessSlug: "abuelas-kitchen-dallas", dishes: [
+        { name: "Carne Asada Burrito", voteCount: 76 }
+      ] },
+      { businessSlug: "el-rincon-del-sabor-dallas", dishes: [
+        { name: "Burrito Mojado", voteCount: 89 }
+      ] },
+      { businessSlug: "taqueria-la-ventana-dallas", dishes: [
+        { name: "Al Pastor Burrito", voteCount: 56 }
+      ] },
+      // Enchilada (covers enchilada ILIKE match)
+      { businessSlug: "casa-oaxaca-dallas", dishes: [
+        { name: "Enchilada Suizas", voteCount: 65 }
+      ] },
+      // Sushi
+      { businessSlug: "uchi-dallas", dishes: [
+        { name: "Omakase Sushi", voteCount: 112 }
+      ] },
+      { businessSlug: "tei-an-dallas", dishes: [
+        { name: "Chirashi Sushi Bowl", voteCount: 65 }
+      ] },
+      // Pasta
+      { businessSlug: "lucia-dallas", dishes: [
+        { name: "Ricotta Gnudi Pasta", voteCount: 78 }
+      ] },
+      { businessSlug: "nonnas-trattoria-dallas", dishes: [
+        { name: "Pasta Bolognese", voteCount: 87 }
+      ] },
+      { businessSlug: "cane-rosso-dallas", dishes: [
+        { name: "Truffle Pasta", voteCount: 56 }
+      ] },
+      // Wings
+      { businessSlug: "the-yard-kitchen-dallas", dishes: [
+        { name: "Smoked Wings", voteCount: 78 }
+      ] },
+      { businessSlug: "raising-canes-dallas", dishes: [
+        { name: "Buffalo Wings", voteCount: 65 }
+      ] },
+      { businessSlug: "fearings-dallas", dishes: [
+        { name: "Jalape\xF1o Wings", voteCount: 54 }
+      ] },
+      // Falafel
+      { businessSlug: "istanbul-grill-dallas", dishes: [
+        { name: "Crispy Falafel Plate", voteCount: 65 }
+      ] },
+      { businessSlug: "kabob-king-dallas", dishes: [
+        { name: "Falafel Wrap", voteCount: 54 }
       ] }
     ];
   }
