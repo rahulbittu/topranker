@@ -5561,7 +5561,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql16, eq as eq25, and as and17 } from "drizzle-orm";
+import { sql as sql16, eq as eq26, and as and17 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 function getHoursForCategory(category) {
   switch (category) {
@@ -5697,8 +5697,8 @@ async function seedDatabase() {
     }).returning();
     const slugPattern = "%" + board.dishSlug + "%";
     const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq25(dishes.businessId, businesses.id)).where(and17(
-      eq25(businesses.city, "Dallas"),
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq26(dishes.businessId, businesses.id)).where(and17(
+      eq26(businesses.city, "Dallas"),
       sql16`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
@@ -6657,7 +6657,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq26, isNotNull as isNotNull4, and as and18 } from "drizzle-orm";
+import { eq as eq27, isNotNull as isNotNull4, and as and18 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -6671,7 +6671,7 @@ async function processOwnerOutreach() {
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
       and18(
-        eq26(businesses.isClaimed, false),
+        eq27(businesses.isClaimed, false),
         isNotNull4(businesses.rankPosition)
       )
     );
@@ -6690,9 +6690,9 @@ async function processOwnerOutreach() {
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
       and18(
-        eq26(businesses.isClaimed, true),
+        eq27(businesses.isClaimed, true),
         isNotNull4(businesses.ownerId),
-        eq26(businesses.subscriptionStatus, "none")
+        eq27(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -6702,7 +6702,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq26(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq27(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -6956,8 +6956,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq27(members4.id, member.id));
+    const { eq: eq28 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq28(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -8528,7 +8528,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq28, asc: asc3 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -8539,7 +8539,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq27(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq28(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -10442,15 +10442,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27 } = await import("drizzle-orm");
+    const { eq: eq28 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq27(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq28(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq27(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq27(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq28(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq28(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -11890,11 +11890,163 @@ function registerAdminDietaryRoutes(app2) {
   });
 }
 
+// server/routes-admin-enrichment.ts
+init_logger();
+init_db();
+init_schema();
+import { eq as eq24 } from "drizzle-orm";
+var enrichLog = log.tag("AdminEnrichment");
+function registerAdminEnrichmentRoutes(app2) {
+  app2.get("/api/admin/enrichment/dashboard", async (_req, res) => {
+    enrichLog.info("Generating enrichment dashboard");
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags,
+      openingHours: businesses.openingHours
+    }).from(businesses).where(eq24(businesses.isActive, true));
+    const dietaryTagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    const dietaryUntagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    const tagCounts = {};
+    for (const b of dietaryTagged) {
+      for (const tag of b.dietaryTags) {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+    const hasHours = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return h && h.periods && h.periods.length > 0;
+    });
+    const missingHours = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return !h || !h.periods || h.periods.length === 0;
+    });
+    let openLateCount = 0;
+    let openWeekendsCount = 0;
+    let has24Hour = 0;
+    let avgPeriodsPerBiz = 0;
+    let totalPeriods = 0;
+    for (const b of hasHours) {
+      const h = b.openingHours;
+      if (isOpenLate(h)) openLateCount++;
+      if (isOpenWeekends(h)) openWeekendsCount++;
+      if (h.periods && h.periods.length === 1 && !h.periods[0].close) has24Hour++;
+      totalPeriods += h.periods?.length || 0;
+    }
+    avgPeriodsPerBiz = hasHours.length > 0 ? Math.round(totalPeriods / hasHours.length * 10) / 10 : 0;
+    const cities = [...new Set(allBiz.map((b) => b.city).filter(Boolean))];
+    const cityBreakdown = cities.map((city) => {
+      const cityBiz = allBiz.filter((b) => b.city === city);
+      const cityDietary = cityBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+      const cityHours = cityBiz.filter((b) => {
+        const h = b.openingHours;
+        return h && h.periods && h.periods.length > 0;
+      });
+      return {
+        city,
+        total: cityBiz.length,
+        dietaryTagged: cityDietary.length,
+        dietaryCoveragePct: cityBiz.length > 0 ? Math.round(cityDietary.length / cityBiz.length * 100) : 0,
+        hoursPresent: cityHours.length,
+        hoursCoveragePct: cityBiz.length > 0 ? Math.round(cityHours.length / cityBiz.length * 100) : 0
+      };
+    }).sort((a, b) => b.total - a.total);
+    const missingBoth = allBiz.filter((b) => {
+      const noDietary = !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
+      const noHours = !b.openingHours?.periods?.length;
+      return noDietary && noHours;
+    }).map((b) => ({ id: b.id, name: b.name, city: b.city, cuisine: b.cuisine }));
+    res.json({
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      total: allBiz.length,
+      dietary: {
+        tagged: dietaryTagged.length,
+        untagged: dietaryUntagged.length,
+        coveragePct: allBiz.length > 0 ? Math.round(dietaryTagged.length / allBiz.length * 100) : 0,
+        tagCounts
+      },
+      hours: {
+        present: hasHours.length,
+        missing: missingHours.length,
+        coveragePct: allBiz.length > 0 ? Math.round(hasHours.length / allBiz.length * 100) : 0,
+        openLateCount,
+        openWeekendsCount,
+        has24Hour,
+        avgPeriodsPerBiz
+      },
+      missingBoth: {
+        count: missingBoth.length,
+        businesses: missingBoth.slice(0, 50)
+        // cap at 50 for response size
+      },
+      cityBreakdown
+    });
+  });
+  app2.get("/api/admin/enrichment/hours-gaps", async (req, res) => {
+    const city = req.query.city;
+    enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      openingHours: businesses.openingHours
+    }).from(businesses).where(eq24(businesses.isActive, true));
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const gaps = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return !h || !h.periods || h.periods.length === 0;
+    }).map((b) => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      cuisine: b.cuisine,
+      hasWeekdayText: !!b.openingHours?.weekday_text?.length
+    }));
+    res.json({
+      total: allBiz.length,
+      missingHours: gaps.length,
+      gaps
+    });
+  });
+  app2.get("/api/admin/enrichment/dietary-gaps", async (req, res) => {
+    const city = req.query.city;
+    enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq24(businesses.isActive, true));
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const gaps = allBiz.filter((b) => {
+      return !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
+    }).map((b) => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      cuisine: b.cuisine
+    }));
+    res.json({
+      total: allBiz.length,
+      missingDietary: gaps.length,
+      gaps
+    });
+  });
+}
+
 // server/routes-city-stats.ts
 init_logger();
 init_db();
 init_schema();
-import { eq as eq24, and as and16, gte as gte8 } from "drizzle-orm";
+import { eq as eq25, and as and16, gte as gte8 } from "drizzle-orm";
 var cityLog = log.tag("CityStats");
 function registerCityStatsRoutes(app2) {
   app2.get("/api/city-stats/:city", async (req, res) => {
@@ -11905,7 +12057,7 @@ function registerCityStatsRoutes(app2) {
       weightedScore: businesses.weightedScore,
       totalRatings: businesses.totalRatings
     }).from(businesses).where(
-      and16(eq24(businesses.city, city), eq24(businesses.isActive, true))
+      and16(eq25(businesses.city, city), eq25(businesses.isActive, true))
     );
     if (activeBiz.length === 0) {
       return res.json({
@@ -12464,7 +12616,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq27 } = await import("drizzle-orm");
+      const { eq: eq28 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -12480,7 +12632,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq27(ratings5.id, ratingId));
+      }).where(eq28(ratings5.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -12510,8 +12662,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq27(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq28 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq28(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -12525,7 +12677,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27, and: and19, sql: sql18, count: count15 } = await import("drizzle-orm");
+    const { eq: eq28, and: and19, sql: sql18, count: count15 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings5.visitType,
       foodScore: ratings5.foodScore,
@@ -12545,8 +12697,8 @@ function registerScoreBreakdownRoutes(app2) {
       wouldReturn: ratings5.wouldReturn,
       createdAt: ratings5.createdAt
     }).from(ratings5).where(and19(
-      eq27(ratings5.businessId, businessId),
-      eq27(ratings5.isFlagged, false)
+      eq28(ratings5.businessId, businessId),
+      eq28(ratings5.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -12621,11 +12773,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq27, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq28, asc: asc3 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq27(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq28(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)
@@ -13109,6 +13261,7 @@ async function registerRoutes(app2) {
   registerAdminHealthRoutes(app2);
   registerAdminPhotoRoutes(app2);
   registerAdminDietaryRoutes(app2);
+  registerAdminEnrichmentRoutes(app2);
   registerCityStatsRoutes(app2);
   registerPushRoutes(app2);
   registerSearchRoutes(app2);
