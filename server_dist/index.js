@@ -3636,6 +3636,178 @@ var init_analytics2 = __esm({
   }
 });
 
+// shared/city-config.ts
+var city_config_exports = {};
+__export(city_config_exports, {
+  CITY_REGISTRY: () => CITY_REGISTRY,
+  getActiveCities: () => getActiveCities,
+  getBetaCities: () => getBetaCities,
+  getCityBadge: () => getCityBadge,
+  getCityConfig: () => getCityConfig,
+  getCityStats: () => getCityStats,
+  getPlannedCities: () => getPlannedCities,
+  isCityActive: () => isCityActive
+});
+function getActiveCities() {
+  return Object.values(CITY_REGISTRY).filter((c) => c.status === "active").map((c) => c.name);
+}
+function getPlannedCities() {
+  return Object.values(CITY_REGISTRY).filter((c) => c.status === "planned").map((c) => c.name);
+}
+function getCityConfig(name) {
+  return CITY_REGISTRY[name];
+}
+function isCityActive(name) {
+  return CITY_REGISTRY[name]?.status === "active";
+}
+function getCityStats() {
+  const cities = Object.values(CITY_REGISTRY);
+  return {
+    active: cities.filter((c) => c.status === "active").length,
+    beta: cities.filter((c) => c.status === "beta").length,
+    planned: cities.filter((c) => c.status === "planned").length,
+    total: cities.length
+  };
+}
+function getBetaCities() {
+  return Object.values(CITY_REGISTRY).filter((c) => c.status === "beta").map((c) => c.name);
+}
+function getCityBadge(name) {
+  return CITY_REGISTRY[name]?.status ?? "unknown";
+}
+var CITY_REGISTRY;
+var init_city_config = __esm({
+  "shared/city-config.ts"() {
+    "use strict";
+    CITY_REGISTRY = {
+      Dallas: {
+        name: "Dallas",
+        state: "Texas",
+        stateCode: "TX",
+        region: "DFW Metroplex",
+        timezone: "America/Chicago",
+        coordinates: { lat: 32.7767, lng: -96.797 },
+        status: "active",
+        launchDate: "2026-03-09",
+        minBusinesses: 10
+      },
+      Austin: {
+        name: "Austin",
+        state: "Texas",
+        stateCode: "TX",
+        region: "Central Texas",
+        timezone: "America/Chicago",
+        coordinates: { lat: 30.2672, lng: -97.7431 },
+        status: "active",
+        launchDate: "2026-03-09",
+        minBusinesses: 10
+      },
+      Houston: {
+        name: "Houston",
+        state: "Texas",
+        stateCode: "TX",
+        region: "Greater Houston",
+        timezone: "America/Chicago",
+        coordinates: { lat: 29.7604, lng: -95.3698 },
+        status: "active",
+        launchDate: "2026-03-09",
+        minBusinesses: 8
+      },
+      "San Antonio": {
+        name: "San Antonio",
+        state: "Texas",
+        stateCode: "TX",
+        region: "South Texas",
+        timezone: "America/Chicago",
+        coordinates: { lat: 29.4241, lng: -98.4936 },
+        status: "active",
+        launchDate: "2026-03-09",
+        minBusinesses: 7
+      },
+      "Fort Worth": {
+        name: "Fort Worth",
+        state: "Texas",
+        stateCode: "TX",
+        region: "DFW Metroplex",
+        timezone: "America/Chicago",
+        coordinates: { lat: 32.7555, lng: -97.3308 },
+        status: "active",
+        launchDate: "2026-03-09",
+        minBusinesses: 7
+      },
+      // Phase 2 — planned for post-launch expansion
+      "Oklahoma City": {
+        name: "Oklahoma City",
+        state: "Oklahoma",
+        stateCode: "OK",
+        region: "Central Oklahoma",
+        timezone: "America/Chicago",
+        coordinates: { lat: 35.4676, lng: -97.5164 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 10
+      },
+      "New Orleans": {
+        name: "New Orleans",
+        state: "Louisiana",
+        stateCode: "LA",
+        region: "Greater New Orleans",
+        timezone: "America/Chicago",
+        coordinates: { lat: 29.9511, lng: -90.0715 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 10
+      },
+      // Phase 3 — Tennessee expansion (Sprint 234)
+      Memphis: {
+        name: "Memphis",
+        state: "Tennessee",
+        stateCode: "TN",
+        region: "West Tennessee",
+        timezone: "America/Chicago",
+        coordinates: { lat: 35.1495, lng: -90.049 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 30
+      },
+      Nashville: {
+        name: "Nashville",
+        state: "Tennessee",
+        stateCode: "TN",
+        region: "Middle Tennessee",
+        timezone: "America/Chicago",
+        coordinates: { lat: 36.1627, lng: -86.7816 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 40
+      },
+      // Phase 4 — North Carolina expansion (Sprint 248)
+      Charlotte: {
+        name: "Charlotte",
+        state: "North Carolina",
+        stateCode: "NC",
+        region: "Piedmont",
+        timezone: "America/New_York",
+        coordinates: { lat: 35.2271, lng: -80.8431 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 40
+      },
+      Raleigh: {
+        name: "Raleigh",
+        state: "North Carolina",
+        stateCode: "NC",
+        region: "Research Triangle",
+        timezone: "America/New_York",
+        coordinates: { lat: 35.7796, lng: -78.6382 },
+        status: "beta",
+        launchDate: "2026-03-09",
+        minBusinesses: 30
+      }
+    };
+  }
+});
+
 // server/seed-cities.ts
 var seed_cities_exports = {};
 __export(seed_cities_exports, {
@@ -7594,146 +7766,8 @@ init_tier_staleness();
 init_logger();
 init_db();
 init_schema();
+init_city_config();
 import { sql as sql12, eq as eq19, count as count14 } from "drizzle-orm";
-
-// shared/city-config.ts
-var CITY_REGISTRY = {
-  Dallas: {
-    name: "Dallas",
-    state: "Texas",
-    stateCode: "TX",
-    region: "DFW Metroplex",
-    timezone: "America/Chicago",
-    coordinates: { lat: 32.7767, lng: -96.797 },
-    status: "active",
-    launchDate: "2026-03-09",
-    minBusinesses: 10
-  },
-  Austin: {
-    name: "Austin",
-    state: "Texas",
-    stateCode: "TX",
-    region: "Central Texas",
-    timezone: "America/Chicago",
-    coordinates: { lat: 30.2672, lng: -97.7431 },
-    status: "active",
-    launchDate: "2026-03-09",
-    minBusinesses: 10
-  },
-  Houston: {
-    name: "Houston",
-    state: "Texas",
-    stateCode: "TX",
-    region: "Greater Houston",
-    timezone: "America/Chicago",
-    coordinates: { lat: 29.7604, lng: -95.3698 },
-    status: "active",
-    launchDate: "2026-03-09",
-    minBusinesses: 8
-  },
-  "San Antonio": {
-    name: "San Antonio",
-    state: "Texas",
-    stateCode: "TX",
-    region: "South Texas",
-    timezone: "America/Chicago",
-    coordinates: { lat: 29.4241, lng: -98.4936 },
-    status: "active",
-    launchDate: "2026-03-09",
-    minBusinesses: 7
-  },
-  "Fort Worth": {
-    name: "Fort Worth",
-    state: "Texas",
-    stateCode: "TX",
-    region: "DFW Metroplex",
-    timezone: "America/Chicago",
-    coordinates: { lat: 32.7555, lng: -97.3308 },
-    status: "active",
-    launchDate: "2026-03-09",
-    minBusinesses: 7
-  },
-  // Phase 2 — planned for post-launch expansion
-  "Oklahoma City": {
-    name: "Oklahoma City",
-    state: "Oklahoma",
-    stateCode: "OK",
-    region: "Central Oklahoma",
-    timezone: "America/Chicago",
-    coordinates: { lat: 35.4676, lng: -97.5164 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 10
-  },
-  "New Orleans": {
-    name: "New Orleans",
-    state: "Louisiana",
-    stateCode: "LA",
-    region: "Greater New Orleans",
-    timezone: "America/Chicago",
-    coordinates: { lat: 29.9511, lng: -90.0715 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 10
-  },
-  // Phase 3 — Tennessee expansion (Sprint 234)
-  Memphis: {
-    name: "Memphis",
-    state: "Tennessee",
-    stateCode: "TN",
-    region: "West Tennessee",
-    timezone: "America/Chicago",
-    coordinates: { lat: 35.1495, lng: -90.049 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 30
-  },
-  Nashville: {
-    name: "Nashville",
-    state: "Tennessee",
-    stateCode: "TN",
-    region: "Middle Tennessee",
-    timezone: "America/Chicago",
-    coordinates: { lat: 36.1627, lng: -86.7816 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 40
-  },
-  // Phase 4 — North Carolina expansion (Sprint 248)
-  Charlotte: {
-    name: "Charlotte",
-    state: "North Carolina",
-    stateCode: "NC",
-    region: "Piedmont",
-    timezone: "America/New_York",
-    coordinates: { lat: 35.2271, lng: -80.8431 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 40
-  },
-  Raleigh: {
-    name: "Raleigh",
-    state: "North Carolina",
-    stateCode: "NC",
-    region: "Research Triangle",
-    timezone: "America/New_York",
-    coordinates: { lat: 35.7796, lng: -78.6382 },
-    status: "beta",
-    launchDate: "2026-03-09",
-    minBusinesses: 30
-  }
-};
-function getActiveCities() {
-  return Object.values(CITY_REGISTRY).filter((c) => c.status === "active").map((c) => c.name);
-}
-function getCityConfig(name) {
-  return CITY_REGISTRY[name];
-}
-function getBetaCities() {
-  return Object.values(CITY_REGISTRY).filter((c) => c.status === "beta").map((c) => c.name);
-}
-
-// server/city-engagement.ts
 var engLog = log.tag("CityEngagement");
 async function getCityEngagement(city) {
   engLog.debug(`Fetching engagement for city: ${city}`);
@@ -10268,7 +10302,9 @@ init_logger();
 
 // server/city-promotion.ts
 init_logger();
+init_city_config();
 var promoLog = log.tag("CityPromotion");
+var promotionHistory = [];
 var thresholds = {
   minBusinesses: 50,
   minMembers: 100,
@@ -10296,6 +10332,11 @@ async function getPromotionStatus(city) {
   if (engagement.totalMembers < thresholds.minMembers) missing.push("members");
   if (engagement.totalRatings < thresholds.minRatings) missing.push("ratings");
   if (daysInBeta < thresholds.minDaysInBeta) missing.push("daysInBeta");
+  const pctBiz = Math.min(100, Math.round(engagement.totalBusinesses / thresholds.minBusinesses * 100));
+  const pctMem = Math.min(100, Math.round(engagement.totalMembers / thresholds.minMembers * 100));
+  const pctRat = Math.min(100, Math.round(engagement.totalRatings / thresholds.minRatings * 100));
+  const pctDays = Math.min(100, Math.round(daysInBeta / thresholds.minDaysInBeta * 100));
+  const overall = Math.round((pctBiz + pctMem + pctRat + pctDays) / 4);
   return {
     city,
     eligible: missing.length === 0,
@@ -10305,11 +10346,12 @@ async function getPromotionStatus(city) {
       ratings: engagement.totalRatings,
       daysInBeta
     },
+    progress: { businesses: pctBiz, members: pctMem, ratings: pctRat, daysInBeta: pctDays, overall },
     thresholds: { ...thresholds },
     missingCriteria: missing
   };
 }
-function promoteCity(city) {
+function promoteCity(city, metrics) {
   const config2 = getCityConfig(city);
   if (!config2 || config2.status !== "beta") {
     promoLog.warn(`Cannot promote ${city}: not a beta city`);
@@ -10317,8 +10359,22 @@ function promoteCity(city) {
   }
   CITY_REGISTRY[city].status = "active";
   CITY_REGISTRY[city].launchDate = CITY_REGISTRY[city].launchDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  promotionHistory.push({
+    city,
+    promotedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    metricsAtPromotion: metrics || { businesses: 0, members: 0, ratings: 0, daysInBeta: 0 }
+  });
   promoLog.info(`Promoted ${city} from beta to active`);
   return true;
+}
+async function getAllBetaPromotionStatus() {
+  const { getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
+  const betaCities = getBetaCities2();
+  const results = await Promise.all(betaCities.map((c) => getPromotionStatus(c)));
+  return results.filter((r) => r !== null);
+}
+function getPromotionHistory() {
+  return [...promotionHistory];
 }
 
 // server/routes-admin-promotion.ts
@@ -10334,14 +10390,18 @@ function registerAdminPromotionRoutes(app2) {
       res.json(status);
     })
   );
-  app2.post("/api/admin/promote/:city", (req, res) => {
-    const result = promoteCity(req.params.city);
-    if (!result) {
-      return res.status(400).json({ error: "Cannot promote city" });
-    }
-    adminPromoLog.info(`Admin promoted ${req.params.city}`);
-    res.json({ success: true, city: req.params.city, newStatus: "active" });
-  });
+  app2.post(
+    "/api/admin/promote/:city",
+    wrapAsync(async (req, res) => {
+      const status = await getPromotionStatus(req.params.city);
+      const result = promoteCity(req.params.city, status?.currentMetrics);
+      if (!result) {
+        return res.status(400).json({ error: "Cannot promote city" });
+      }
+      adminPromoLog.info(`Admin promoted ${req.params.city}`);
+      res.json({ success: true, city: req.params.city, newStatus: "active" });
+    })
+  );
   app2.get("/api/admin/promotion-thresholds", (_req, res) => {
     res.json(getPromotionThresholds());
   });
@@ -10349,6 +10409,16 @@ function registerAdminPromotionRoutes(app2) {
     const updated = setPromotionThresholds(req.body);
     adminPromoLog.info("Promotion thresholds updated");
     res.json(updated);
+  });
+  app2.get(
+    "/api/admin/promotion-status",
+    wrapAsync(async (_req, res) => {
+      const statuses = await getAllBetaPromotionStatus();
+      res.json({ cities: statuses, count: statuses.length });
+    })
+  );
+  app2.get("/api/admin/promotion-history", (_req, res) => {
+    res.json(getPromotionHistory());
   });
 }
 
