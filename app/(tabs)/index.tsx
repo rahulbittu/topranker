@@ -337,6 +337,19 @@ export default function LeaderboardScreen() {
                 </View>
               )}
               {heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
+              {/* Sprint 299: Rankings summary — count + cuisine + last updated */}
+              {filteredBiz.length > 0 && (
+                <View style={styles.rankingSummary}>
+                  <Text style={styles.rankingSummaryText}>
+                    {filteredBiz.length} {selectedCuisine && CUISINE_DISPLAY[selectedCuisine] ? `${CUISINE_DISPLAY[selectedCuisine].label} ` : ""}{getCategoryDisplay(activeCategory).label.toLowerCase()} ranked
+                  </Text>
+                  {dataUpdatedAt > 0 && (
+                    <Text style={styles.rankingSummaryTime}>
+                      Updated {formatTimeAgo(dataUpdatedAt)}
+                    </Text>
+                  )}
+                </View>
+              )}
             </>
           }
           ListFooterComponent={
@@ -431,6 +444,16 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 4 },
+  rankingSummary: {
+    flexDirection: "row" as const, alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingVertical: 6, marginBottom: 4,
+  },
+  rankingSummaryText: {
+    fontSize: 12, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+  },
+  rankingSummaryTime: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
   listFooter: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 20, paddingHorizontal: 16 },
   listFooterLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   listFooterText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
