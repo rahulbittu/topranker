@@ -180,13 +180,14 @@ describe("File Size Compliance", () => {
 // ─── 3. Component Extraction Integrity (6 tests) ───────────────────
 
 describe("Component Extraction Integrity", () => {
+  // Sprint 426: MapView extracted to MapView.tsx, re-exported from SubComponents
   it("search/SubComponents exports MapView and card components", () => {
     const src = readFile("components/search/SubComponents.tsx");
-    expect(src).toContain("export function MapView");
+    expect(src).toContain("MapView");
     expect(src).toContain("export const DiscoverPhotoStrip");
     expect(src).toContain("export const BusinessCard");
     expect(src).toContain("export function MapBusinessCard");
-    expect(src).toContain("export function haversineKm");
+    expect(src).toContain("haversineKm");
   });
 
   it("search/SubComponents exports DiscoverPhotoStrip, BusinessCard, MapBusinessCard, haversineKm", () => {
@@ -307,20 +308,21 @@ describe("Search Page Regression", () => {
     expect(searchSrc).toContain("DiscoverFilters");
   });
 
-  it("Google Maps related utilities accessible (in SubComponents after extraction)", () => {
-    // After extraction, Google Maps imports moved to search/SubComponents.tsx
-    expect(searchSubSrc).toContain("@googlemaps/js-api-loader");
-    expect(searchSubSrc).toContain("setGoogleMapsOptions");
-    expect(searchSubSrc).toContain("importLibrary");
+  // Sprint 426: Google Maps utilities moved to MapView.tsx, re-exported from SubComponents
+  it("Google Maps related utilities accessible (in MapView.tsx after extraction)", () => {
+    const mapViewSrc = readFile("components/search/MapView.tsx");
+    expect(mapViewSrc).toContain("@googlemaps/js-api-loader");
+    expect(mapViewSrc).toContain("setGoogleMapsOptions");
+    expect(mapViewSrc).toContain("importLibrary");
   });
 
-  it("city coordinates still accessible (in SubComponents after extraction)", () => {
-    // CITY_COORDS was extracted alongside MapView to search/SubComponents
-    expect(searchSubSrc).toContain("CITY_COORDS");
-    expect(searchSubSrc).toContain("Dallas");
-    expect(searchSubSrc).toContain("Austin");
-    expect(searchSubSrc).toContain("Houston");
-    expect(searchSubSrc).toContain("San Antonio");
-    expect(searchSubSrc).toContain("Fort Worth");
+  it("city coordinates still accessible (in MapView.tsx after extraction)", () => {
+    const mapViewSrc = readFile("components/search/MapView.tsx");
+    expect(mapViewSrc).toContain("CITY_COORDS");
+    expect(mapViewSrc).toContain("Dallas");
+    expect(mapViewSrc).toContain("Austin");
+    expect(mapViewSrc).toContain("Houston");
+    expect(mapViewSrc).toContain("San Antonio");
+    expect(mapViewSrc).toContain("Fort Worth");
   });
 });

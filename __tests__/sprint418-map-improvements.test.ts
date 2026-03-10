@@ -20,7 +20,8 @@ const readFile = (relPath: string) =>
 // 1. CITY_COORDS — beta cities
 // ---------------------------------------------------------------------------
 describe("CITY_COORDS — beta city support", () => {
-  const src = readFile("components/search/SubComponents.tsx");
+  // Sprint 426: MapView extracted to its own file
+  const src = readFile("components/search/MapView.tsx");
 
   it("includes Oklahoma City coordinates", () => {
     expect(src).toContain('"Oklahoma City"');
@@ -57,7 +58,8 @@ describe("CITY_COORDS — beta city support", () => {
 // 2. Search this area button
 // ---------------------------------------------------------------------------
 describe("MapView — search this area", () => {
-  const src = readFile("components/search/SubComponents.tsx");
+  // Sprint 426: MapView extracted to its own file
+  const src = readFile("components/search/MapView.tsx");
 
   it("has showSearchArea state", () => {
     expect(src).toContain("showSearchArea");
@@ -93,7 +95,8 @@ describe("MapView — search this area", () => {
 // 3. Info window on marker click
 // ---------------------------------------------------------------------------
 describe("MapView — marker info window", () => {
-  const src = readFile("components/search/SubComponents.tsx");
+  // Sprint 426: MapView extracted to its own file
+  const src = readFile("components/search/MapView.tsx");
 
   it("has infoWindowRef", () => {
     expect(src).toContain("infoWindowRef");
@@ -119,7 +122,8 @@ describe("MapView — marker info window", () => {
 // 4. Pan/zoom tracking
 // ---------------------------------------------------------------------------
 describe("MapView — pan/zoom triggers search area", () => {
-  const src = readFile("components/search/SubComponents.tsx");
+  // Sprint 426: MapView extracted to its own file
+  const src = readFile("components/search/MapView.tsx");
 
   it("listens for dragend event", () => {
     expect(src).toContain("dragend");
