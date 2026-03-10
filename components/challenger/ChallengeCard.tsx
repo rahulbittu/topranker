@@ -22,6 +22,7 @@ import {
   WinnerReveal,
   CommunityReviews,
 } from "@/components/challenger/SubComponents";
+import { ComparisonDetails } from "@/components/challenger/ComparisonDetails";
 
 const AMBER = "#E8A317";
 
@@ -134,6 +135,12 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
       </View>
 
       <VoteBar challenger={challengerVotes} defender={defenderVotes} />
+
+      {/* Sprint 417: Side-by-side comparison details */}
+      <ComparisonDetails
+        defender={challenge.defenderBusiness}
+        challenger={challenge.challengerBusiness}
+      />
 
       <View style={styles.timerSection}>
         <Ionicons name="time-outline" size={14} color={urgencyColor} />
