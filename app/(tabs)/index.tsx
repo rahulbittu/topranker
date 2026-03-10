@@ -256,6 +256,7 @@ export default function LeaderboardScreen() {
               filteredCount={filteredBiz.length}
               dataUpdatedAt={dataUpdatedAt}
               city={city}
+              businesses={filteredBiz}
             />
           }
           ListFooterComponent={

@@ -17,6 +17,7 @@ import { MappedBusiness } from "@/types/business";
 import { HeroCard } from "@/components/leaderboard/SubComponents";
 import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { Analytics } from "@/lib/analytics";
+import { WeeklySummaryCard } from "@/components/leaderboard/WeeklySummaryCard";
 
 const AMBER = BRAND.colors.amber;
 
@@ -48,6 +49,7 @@ export interface RankingsListHeaderProps {
   filteredCount: number;
   dataUpdatedAt: number;
   city: string;
+  businesses: MappedBusiness[];
 }
 
 export function RankingsListHeader({
@@ -65,6 +67,7 @@ export function RankingsListHeader({
   filteredCount,
   dataUpdatedAt,
   city,
+  businesses,
 }: RankingsListHeaderProps) {
   return (
     <>
@@ -162,6 +165,9 @@ export function RankingsListHeader({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Weekly summary — Sprint 423 */}
+      <WeeklySummaryCard businesses={businesses} city={city} />
 
       {/* Hero card */}
       {heroBiz ? <HeroCard item={heroBiz} categoryLabel={getCategoryDisplay(activeCategory).label} /> : null}
