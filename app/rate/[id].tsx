@@ -327,7 +327,7 @@ export default function RateScreen() {
 
       <View style={styles.businessHeader}>
         <Text style={styles.rateLabel}>RATE</Text>
-        <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
+        <Text style={styles.businessName} numberOfLines={1} accessibilityRole="header">{business.name}</Text>
         <StepDescription step={step} />
       </View>
 
@@ -394,7 +394,7 @@ export default function RateScreen() {
             </Animated.View>
             {/* Sprint 274: Live composite score preview */}
             {rawScore > 0 && (
-              <Animated.View entering={FadeIn.duration(200)} style={styles.liveScorePreview}>
+              <Animated.View entering={FadeIn.duration(200)} style={styles.liveScorePreview} accessibilityLiveRegion="polite" accessibilityLabel={`Your score: ${rawScore.toFixed(1)}, weighted: ${weightedScore.toFixed(1)}`}>
                 <Text style={styles.liveScoreLabel}>YOUR SCORE</Text>
                 <Text style={styles.liveScoreValue}>{rawScore.toFixed(1)}</Text>
                 <Text style={styles.liveScoreWeight}>×{voteWeight} weight = {weightedScore.toFixed(1)}</Text>

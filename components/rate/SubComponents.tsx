@@ -74,7 +74,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
   const pct = ((step + 1) / total) * 100;
   return (
     <View style={s.progressOuter}>
-      <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`}>
+      <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`} accessibilityValue={{ min: 0, max: total, now: step + 1, text: `${pct}% complete` }}>
         <View style={[s.progressFill, { width: `${pct}%` as any }]} />
       </View>
       <View style={s.progressLabels}>
@@ -98,7 +98,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
 export function StepIndicator({ step, total }: { step: number; total: number }) {
   const pct = Math.round(((step + 1) / total) * 100);
   return (
-    <View style={s.stepIndicatorRow}>
+    <View style={s.stepIndicatorRow} accessibilityRole="text" accessibilityLabel={`Step ${step + 1} of ${total}, ${pct}% complete`}>
       <Text style={s.stepIndicator}>
         {step + 1} <Text style={s.stepIndicatorOf}>of</Text> {total}
       </Text>
@@ -110,7 +110,7 @@ export function StepIndicator({ step, total }: { step: number; total: number }) 
 export function StepDescription({ step }: { step: number }) {
   const desc = STEP_DESCRIPTIONS[step];
   if (!desc) return null;
-  return <Text style={s.stepDescription}>{desc}</Text>;
+  return <Text style={s.stepDescription} accessibilityRole="text" accessibilityLabel={`Current step: ${desc}`}>{desc}</Text>;
 }
 
 export function DishPill({ dish, selected, onPress }: { dish: ApiDish; selected: boolean; onPress: () => void }) {
@@ -122,6 +122,10 @@ export function DishPill({ dish, selected, onPress }: { dish: ApiDish; selected:
         onPress();
       }}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${dish.name}${dish.voteCount > 0 ? `, ${dish.voteCount} votes` : ""}`}
+      accessibilityState={{ selected }}
+      accessibilityHint={selected ? "Double tap to deselect" : "Double tap to select this dish"}
     >
       <Text style={[s.dishPillText, selected && s.dishPillTextSelected]}>
         {dish.name}

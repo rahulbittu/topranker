@@ -163,6 +163,8 @@ export function RatingExtrasStep({
             value={dishInput}
             onChangeText={handleDishSearch}
             maxLength={80}
+            accessibilityLabel="Dish name input"
+            accessibilityHint="Type a dish name to search or add a new one"
           />
           {dishSearching && (
             <ActivityIndicator size="small" color={Colors.gold} style={{ marginTop: 8 }} />
@@ -178,6 +180,8 @@ export function RatingExtrasStep({
                     handleDishSearch("");
                     setDishSearchResults([]);
                   }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select ${d.name}, ${d.voteCount} votes`}
                 >
                   <Text style={s.dishSuggestionText}>{d.name}</Text>
                   <Text style={s.dishSuggestionCount}>{d.voteCount} votes</Text>
@@ -192,7 +196,7 @@ export function RatingExtrasStep({
         <View style={s.dishSelectedDisplay}>
           <Ionicons name="restaurant" size={16} color={Colors.gold} />
           <Text style={s.dishSelectedText}>{selectedDish}</Text>
-          <TouchableOpacity onPress={() => setSelectedDish("")}>
+          <TouchableOpacity onPress={() => setSelectedDish("")} accessibilityRole="button" accessibilityLabel={`Remove ${selectedDish} selection`}>
             <Ionicons name="close" size={18} color={Colors.textTertiary} />
           </TouchableOpacity>
         </View>
@@ -208,6 +212,8 @@ export function RatingExtrasStep({
           onChangeText={t => t.length <= 160 && setNote(t)}
           multiline
           maxLength={160}
+          accessibilityLabel="Quick note"
+          accessibilityHint="Optional note about your experience, 160 characters max"
         />
         <Text style={[
           s.noteCounter,
@@ -331,7 +337,7 @@ export function RatingExtrasStep({
       )}
 
       {/* Score summary */}
-      <View style={s.summaryCard}>
+      <View style={s.summaryCard} accessibilityRole="summary" accessibilityLabel={`Your rating summary: Quality ${q1Score}, Value ${q2Score}, Service ${q3Score}, Would return: ${wouldReturn ? "yes" : "no"}, weighted score ${weightedScore.toFixed(1)}`}>
         <Text style={s.summaryTitle}>YOUR RATING</Text>
         <View style={s.summaryGrid}>
           <View style={s.summaryItem}>
