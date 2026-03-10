@@ -30,6 +30,7 @@ import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/S
 import { FilterChips, PriceChips, SortChips } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
+import { TrendingSection } from "@/components/search/TrendingSection";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -474,37 +475,8 @@ export default function SearchScreen() {
               {/* Featured / Promoted Listings */}
               {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
 
-              {/* Trending This Week — PRD requirement */}
-              {!debouncedQuery && trending.length > 0 && (
-                <View style={styles.trendingSection}>
-                  <View style={styles.trendingHeader}>
-                    <Ionicons name="trending-up" size={16} color={AMBER} />
-                    <Text style={styles.trendingTitle}>Trending This Week</Text>
-                  </View>
-                  {trending.map((biz: MappedBusiness) => (
-                    <TouchableOpacity
-                      key={biz.id}
-                      style={styles.trendingRow}
-                      onPress={() => router.push({ pathname: "/business/[id]", params: { id: biz.slug } })}
-                      activeOpacity={0.7}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${biz.name}, moved up ${biz.rankDelta} spots`}
-                    >
-                      <View style={styles.trendingRank}>
-                        <Text style={styles.trendingRankText}>{getRankDisplay(biz.rank)}</Text>
-                      </View>
-                      <View style={styles.trendingInfo}>
-                        <Text style={styles.trendingName} numberOfLines={1}>{biz.name}</Text>
-                        <Text style={styles.trendingMeta}>{getCategoryDisplay(biz.category).emoji} {getCategoryDisplay(biz.category).label}</Text>
-                      </View>
-                      <View style={styles.trendingDelta}>
-                        <Ionicons name="arrow-up" size={12} color={Colors.green} />
-                        <Text style={styles.trendingDeltaText}>{biz.rankDelta}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              {/* Sprint 404: Trending section — extracted component */}
+              {!debouncedQuery && <TrendingSection trending={trending} />}
               {/* Best In [City] — Dish Leaderboards (Sprint 167) */}
               {!debouncedQuery && <DishLeaderboardSection city={city} />}
 
@@ -579,42 +551,6 @@ const styles = StyleSheet.create({
   // Sprint 332: filterChip/price/sort styles moved to DiscoverFilters component
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
-
-  trendingSection: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
-    marginBottom: 12, ...Colors.cardShadow,
-  },
-  trendingHeader: {
-    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4,
-  },
-  trendingTitle: {
-    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  trendingRow: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    paddingVertical: 8, borderTopWidth: 1, borderTopColor: Colors.border,
-  },
-  trendingRank: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: AMBER,
-    alignItems: "center", justifyContent: "center",
-  },
-  trendingRankText: {
-    fontSize: 11, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
-  },
-  trendingInfo: { flex: 1, gap: 2 },
-  trendingName: {
-    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  trendingMeta: {
-    ...TYPOGRAPHY.ui.caption, color: Colors.textSecondary,
-  },
-  trendingDelta: {
-    flexDirection: "row", alignItems: "center", gap: 2,
-    backgroundColor: `${Colors.green}15`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-  },
-  trendingDeltaText: {
-    fontSize: 12, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
-  },
 
   discoverTip: {
     flexDirection: "row", alignItems: "flex-start", gap: 10,
