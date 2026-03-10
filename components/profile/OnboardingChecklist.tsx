@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
+import { pct as pctDim } from "@/lib/style-helpers";
 import { useQuery } from "@tanstack/react-query";
 import { fetchOnboardingProgress, type OnboardingStep } from "@/lib/api";
 
@@ -51,7 +52,7 @@ export function OnboardingChecklist() {
       </View>
 
       <View style={styles.progressBarTrack}>
-        <View style={[styles.progressBarFill, { width: `${pct}%` as any }]} />
+        <View style={[styles.progressBarFill, { width: pctDim(pct) }]} />
       </View>
 
       {progress.steps.map((step) => (

@@ -9,6 +9,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
+import { pct } from "@/lib/style-helpers";
 
 
 const CONSENT_KEY = "cookie_consent_v1";
@@ -67,7 +68,7 @@ export function CookieConsent() {
 
 const styles = StyleSheet.create({
   container: {
-    position: "absolute" as any,
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -78,8 +79,8 @@ const styles = StyleSheet.create({
   },
   content: {
     maxWidth: 960,
-    alignSelf: "center" as any,
-    width: "100%" as any,
+    alignSelf: "center",
+    width: pct(100),
   },
   text: {
     fontSize: 13,
@@ -90,10 +91,10 @@ const styles = StyleSheet.create({
   },
   link: {
     color: "#C49A1A",
-    textDecorationLine: "underline" as any,
+    textDecorationLine: "underline",
   },
   buttons: {
-    flexDirection: "row" as any,
+    flexDirection: "row",
     gap: 10,
   },
   declineBtn: {

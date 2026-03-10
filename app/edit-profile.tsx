@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     fontFamily: "DMSans_600SemiBold",
     marginBottom: 6,
-    textTransform: "uppercase" as any,
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   fieldInput: {

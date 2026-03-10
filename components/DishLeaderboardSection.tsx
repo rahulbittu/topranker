@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BRAND } from "@/constants/brand";
 import { SafeImage } from "@/components/SafeImage";
 import { getApiUrl } from "@/lib/query-client";
+import { pct } from "@/lib/style-helpers";
 import { TYPOGRAPHY } from "@/constants/typography";
 
 const AMBER = BRAND.colors.amber;
@@ -425,8 +426,8 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  entryPhoto: { height: 130, width: "100%" as any },
-  entryPhotoImg: { width: "100%" as any, height: "100%" as any },
+  entryPhoto: { height: 130, width: pct(100) },
+  entryPhotoImg: { width: pct(100), height: pct(100) },
   rankBadge: {
     position: "absolute", bottom: 8, left: 8, width: 32, height: 32,
     borderRadius: 16, backgroundColor: AMBER,

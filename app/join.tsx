@@ -8,6 +8,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { pct } from "@/lib/style-helpers";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
     color: AMBER,
   },
   valueSection: {
-    width: "100%" as any,
+    width: pct(100),
     maxWidth: 480,
     marginBottom: 28,
   },
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 14,
-    width: "100%" as any,
+    width: pct(100),
     maxWidth: 380,
   },
   joinButtonText: {

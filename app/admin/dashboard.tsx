@@ -17,6 +17,7 @@ import Colors from "../../constants/colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
 import { getApiUrl } from "../../lib/query-client";
+import { pct } from "@/lib/style-helpers";
 
 interface StatCard {
   label: string;
@@ -245,7 +246,7 @@ export default function AdminDashboard() {
                 <View
                   style={[
                     styles.funnelBarFill,
-                    { width: `${Math.max(2, (stage.count / maxCount) * 100)}%` as any },
+                    { width: pct(Math.max(2, (stage.count / maxCount) * 100)) },
                   ]}
                 />
               </View>
@@ -274,7 +275,7 @@ export default function AdminDashboard() {
                 <Text style={styles.funnelCount}>{stage.count}</Text>
               </View>
               <View style={styles.funnelBarTrack}>
-                <View style={[styles.funnelBarFill, { width: `${Math.max(2, (stage.count / Math.max(betaFunnel.invitesSent, 1)) * 100)}%` as any }]} />
+                <View style={[styles.funnelBarFill, { width: pct(Math.max(2, (stage.count / Math.max(betaFunnel.invitesSent, 1)) * 100)) }]} />
               </View>
               {stage.rate && stage.rate !== "N/A" && (
                 <Text style={styles.funnelConversion}>↓ {stage.rate} conversion</Text>
@@ -347,11 +348,11 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   statCard: {
-    width: "48%" as any,
+    width: pct(48),
     backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 16,
-    margin: "1%" as any,
+    margin: pct(1),
     borderWidth: 1,
     borderColor: Colors.border,
   },

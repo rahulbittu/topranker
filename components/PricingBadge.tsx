@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
-    alignSelf: "flex-start" as any,
+    alignSelf: "flex-start",
   },
   compactAmount: {
     fontSize: 13,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_500Medium",
     color: Colors.textSecondary,
     marginBottom: 4,
-    textTransform: "uppercase" as any,
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   fullAmount: {

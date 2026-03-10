@@ -13,6 +13,7 @@ import {
 import { Head } from "expo-router/head";
 import { router, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { pct } from "@/lib/style-helpers";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { SafeImage } from "@/components/SafeImage";
@@ -309,8 +310,8 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  entryPhoto: { height: 150, width: "100%" as any },
-  entryPhotoImg: { width: "100%" as any, height: "100%" as any },
+  entryPhoto: { height: 150, width: pct(100) },
+  entryPhotoImg: { width: pct(100), height: pct(100) },
   rankBadge: {
     position: "absolute", bottom: 8, left: 8, width: 32, height: 32,
     borderRadius: 16, backgroundColor: AMBER,
