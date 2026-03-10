@@ -60,7 +60,7 @@ describe("1. Enumerate all tier-emitting endpoints", () => {
   it("identifies every route file that references credibilityTier", () => {
     // Exhaustive list of all route files in the server
     const routeFiles: Record<string, string> = {
-      "server/routes.ts": routesSrc,
+      "server/routes-ratings.ts": readSource("server/routes-ratings.ts"),
       "server/routes-admin.ts": routesAdminSrc,
       "server/routes-badges.ts": routesBadgesSrc,
       "server/routes-payments.ts": routesPaymentsSrc,
@@ -80,7 +80,7 @@ describe("1. Enumerate all tier-emitting endpoints", () => {
     }
 
     // Files that DO reference tier data (must have freshness guards)
-    expect(filesWithTierRef).toContain("server/routes.ts");
+    expect(filesWithTierRef).toContain("server/routes-ratings.ts");
     expect(filesWithTierRef).toContain("server/routes-admin.ts");
     expect(filesWithTierRef).toContain("server/auth.ts");
 
@@ -153,7 +153,7 @@ describe("1. Enumerate all tier-emitting endpoints", () => {
 // ===========================================================================
 describe("2. SSE broadcasts do not emit uncorrected tier data", () => {
   const sseSrc = readSource("server/sse.ts");
-  const routesSrc = readSource("server/routes.ts");
+  const routesRatingsSrc = readSource("server/routes-ratings.ts");
   const routesPaymentsSrc = readSource("server/routes-payments.ts");
 
   it("SSE event types are signal-only and contain no member/tier payloads", () => {
@@ -172,7 +172,7 @@ describe("2. SSE broadcasts do not emit uncorrected tier data", () => {
 
   it("broadcast() calls never include tier data in their payloads", () => {
     // Find all broadcast() invocations across the codebase
-    const allSrc = routesSrc + routesPaymentsSrc;
+    const allSrc = routesRatingsSrc + routesPaymentsSrc;
     const broadcastCalls = [...allSrc.matchAll(/broadcast\(\s*["'][^"']+["']\s*,\s*(\{[^}]*\})/g)];
 
     expect(broadcastCalls.length).toBeGreaterThan(0);
@@ -187,9 +187,9 @@ describe("2. SSE broadcasts do not emit uncorrected tier data", () => {
 
     // Specific verification of each broadcast call:
     // 1. broadcast("rating_submitted", { businessId, memberId }) -- no tier
-    expect(routesSrc).toMatch(/broadcast\("rating_submitted",\s*\{\s*businessId.*memberId\s*\}/);
+    expect(routesRatingsSrc).toMatch(/broadcast\("rating_submitted",\s*\{\s*businessId.*memberId\s*\}/);
     // 2. broadcast("ranking_updated", { businessId }) -- no tier
-    expect(routesSrc).toMatch(/broadcast\("ranking_updated",\s*\{/);
+    expect(routesRatingsSrc).toMatch(/broadcast\("ranking_updated",\s*\{/);
     // 3. broadcast("featured_updated", ...) -- business data only
     expect(routesPaymentsSrc).toMatch(/broadcast\("featured_updated"/);
   });
@@ -336,8 +336,12 @@ describe("6. Business dashboard ratings show memberTier as SNAPSHOT", () => {
 // ===========================================================================
 describe("7. TIER_SEMANTICS completeness cross-reference", () => {
   it("every FRESH path in TIER_SEMANTICS has a corresponding checkAndRefreshTier call in source", () => {
+    // Sprint 491: rating endpoints extracted from routes.ts to routes-ratings.ts
+    const fileSourceMap: Record<string, string> = {
+      "server/routes.ts": "server/routes-ratings.ts",
+    };
     const fileSources: Record<string, string> = {
-      "server/routes.ts": readSource("server/routes.ts"),
+      "server/routes-ratings.ts": readSource("server/routes-ratings.ts"),
       "server/routes-members.ts": readSource("server/routes-members.ts"),
       "server/routes-auth.ts": readSource("server/routes-auth.ts"),
       "server/routes-admin.ts": readSource("server/routes-admin.ts"),
@@ -345,7 +349,8 @@ describe("7. TIER_SEMANTICS completeness cross-reference", () => {
     };
 
     for (const entry of TIER_SEMANTICS.fresh) {
-      const src = fileSources[entry.file];
+      const resolvedFile = fileSourceMap[entry.file] || entry.file;
+      const src = fileSources[resolvedFile];
       expect(src).toBeDefined();
 
       // The file must contain checkAndRefreshTier

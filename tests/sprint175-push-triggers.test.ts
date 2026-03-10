@@ -77,7 +77,7 @@ describe("notification-triggers.ts — trigger handlers", () => {
 // 2. Tier upgrade wired into rating route
 // ---------------------------------------------------------------------------
 describe("rating route — tier upgrade push trigger", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes-ratings.ts");
 
   it("checks tierUpgraded flag", () => {
     expect(routesSrc).toContain("result.tierUpgraded");

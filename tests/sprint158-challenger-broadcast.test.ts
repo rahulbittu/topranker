@@ -12,7 +12,7 @@ import * as path from "path";
 
 describe("Challenger real-time broadcast", () => {
   const routesSrc = fs.readFileSync(
-    path.resolve(__dirname, "../server/routes.ts"),
+    path.resolve(__dirname, "../server/routes-ratings.ts"),
     "utf-8"
   );
   const realtimeSrc = fs.readFileSync(

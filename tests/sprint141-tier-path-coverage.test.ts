@@ -114,7 +114,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
     fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");
 
   it("server/routes.ts imports checkAndRefreshTier", () => {
-    const src = readFile("server/routes.ts");
+    const src = readFile("server/routes-ratings.ts");
     expect(src).toContain('import { checkAndRefreshTier }');
   });
 
@@ -144,7 +144,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
   });
 
   it("POST /api/ratings calls checkAndRefreshTier on response", () => {
-    const src = readFile("server/routes.ts");
+    const src = readFile("server/routes-ratings.ts");
     const ratingsMatch = src.match(
       /api\/ratings[\s\S]{0,2000}checkAndRefreshTier/
     );

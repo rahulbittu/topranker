@@ -166,7 +166,7 @@ describe("Moderation — reviewAutoFlaggedRating", () => {
 // 6. API endpoints
 // ---------------------------------------------------------------------------
 describe("Rating API — edit/delete/flag endpoints", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes-ratings.ts");
 
   it("has PATCH /api/ratings/:id for edit", () => {
     expect(routesSrc).toContain('"/api/ratings/:id"');

@@ -145,7 +145,7 @@ describe("Sprint 387 — profile integration", () => {
 // ── 4. Server routes (pre-existing) ─────────────────────────────────
 
 describe("Sprint 387 — server routes exist", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes-ratings.ts");
 
   it("has PATCH /api/ratings/:id route", () => {
     expect(routesSrc).toContain('app.patch("/api/ratings/:id"');

@@ -169,7 +169,7 @@ describe("Rating sanitization — q1/q2/q3 score clamping", () => {
 // ---------------------------------------------------------------------------
 describe("Structural — rate gate tracking in routes.ts", () => {
   const routesSrc = fs.readFileSync(
-    path.resolve(__dirname, "../server/routes.ts"),
+    path.resolve(__dirname, "../server/routes-ratings.ts"),
     "utf-8",
   );
 
@@ -223,7 +223,7 @@ describe("Structural — admin rate-gate-stats endpoint", () => {
 // ---------------------------------------------------------------------------
 describe("Structural — rating sanitization uses correct field names", () => {
   const routesSrc = fs.readFileSync(
-    path.resolve(__dirname, "../server/routes.ts"),
+    path.resolve(__dirname, "../server/routes-ratings.ts"),
     "utf-8",
   );
 

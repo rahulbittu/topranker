@@ -262,8 +262,9 @@ describe("routes.ts — retained core routes", () => {
     expect(routesSrc).toContain("/api/featured");
   });
 
-  it("retains /api/ratings", () => {
-    expect(routesSrc).toContain("/api/ratings");
+  it("retains /api/ratings (via routes-ratings.ts registration)", () => {
+    // Sprint 491: rating endpoints extracted to routes-ratings.ts, registered via registerRatingRoutes
+    expect(routesSrc).toContain("registerRatingRoutes");
   });
 
   it("retains /api/challengers/active", () => {

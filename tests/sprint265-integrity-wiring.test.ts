@@ -21,7 +21,7 @@ const readFile = (relPath: string) =>
   fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 265: Rating Integrity Wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes-ratings.ts");
   const storageSrc = readFile("server/storage/ratings.ts");
   const schemaSrc = readFile("shared/schema.ts");
   const hookSrc = readFile("lib/hooks/useRatingSubmit.ts");

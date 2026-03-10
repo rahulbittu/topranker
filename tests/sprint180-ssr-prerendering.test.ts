@@ -246,7 +246,7 @@ describe("Server — prerender middleware registration", () => {
 // 9. Rating submission triggers cache invalidation
 // ---------------------------------------------------------------------------
 describe("Rating submission — prerender cache invalidation", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes-ratings.ts");
 
   it("invalidates prerender cache after rating", () => {
     expect(routesSrc).toContain("invalidatePrerenderCache");

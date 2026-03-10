@@ -32,7 +32,7 @@ function readSource(relPath: string): string {
 // 1. FRESH Path Enforcement — checkAndRefreshTier must be called
 // ---------------------------------------------------------------------------
 describe("FRESH path enforcement — checkAndRefreshTier is called on every user-facing tier response", () => {
-  const routesSrc = readSource("server/routes.ts");
+  const routesRatingsSrc = readSource("server/routes-ratings.ts");
   const routesMembersSrc = readSource("server/routes-members.ts");
   const routesAuthSrc = readSource("server/routes-auth.ts");
   const routesAdminSrc = readSource("server/routes-admin.ts");
@@ -41,13 +41,13 @@ describe("FRESH path enforcement — checkAndRefreshTier is called on every user
 
   describe("server/routes.ts", () => {
     it("imports checkAndRefreshTier from tier-staleness", () => {
-      expect(routesSrc).toContain('import { checkAndRefreshTier }');
-      expect(routesSrc).toContain('from "./tier-staleness"');
+      expect(routesRatingsSrc).toContain('import { checkAndRefreshTier }');
+      expect(routesRatingsSrc).toContain('from "./tier-staleness"');
     });
 
     it("POST /api/ratings calls checkAndRefreshTier after submitRating", () => {
       // The ratings route must call checkAndRefreshTier on the result
-      const match = routesSrc.match(
+      const match = routesRatingsSrc.match(
         /app\.post\(["']\/api\/ratings["'][\s\S]{0,2000}checkAndRefreshTier\(/
       );
       expect(match).not.toBeNull();

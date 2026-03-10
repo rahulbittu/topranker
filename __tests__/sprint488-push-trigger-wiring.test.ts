@@ -14,7 +14,7 @@ import * as path from "path";
 describe("Sprint 488: Push Trigger Wiring", () => {
   describe("routes.ts rating submission trigger wiring", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../server/routes.ts"),
+      path.resolve(__dirname, "../server/routes-ratings.ts"),
       "utf-8"
     );
 
