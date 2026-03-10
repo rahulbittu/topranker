@@ -5362,8 +5362,27 @@ async function seedDatabase() {
         photoUrl: biz.photoUrl
       });
     }
+    const MIN_ENTRIES = 5;
+    if (uniqueBizIds.length < MIN_ENTRIES) {
+      const remaining = MIN_ENTRIES - uniqueBizIds.length;
+      const usedIds = new Set(uniqueBizIds);
+      const candidates = insertedBusinesses.filter((b) => !usedIds.has(b.id) && b.city === "Dallas");
+      const offset = board.displayOrder * 3 % candidates.length;
+      for (let j = 0; j < remaining && j < candidates.length; j++) {
+        const biz = candidates[(offset + j) % candidates.length];
+        const rank = uniqueBizIds.length + j + 1;
+        await db.insert(dishLeaderboardEntries).values({
+          leaderboardId: lb.id,
+          businessId: biz.id,
+          dishScore: (4 - j * 0.25).toFixed(2),
+          dishRatingCount: Math.max(2, 8 - j * 2),
+          rankPosition: rank,
+          photoUrl: biz.photoUrl
+        });
+      }
+    }
   }
-  console.log("Seeded dish leaderboards (5 boards for Dallas)");
+  console.log("Seeded dish leaderboards (27 boards for Dallas, min 5 entries each)");
   const spiceGarden = insertedBusinesses.find((b) => b.slug === "spice-garden-dallas");
   const yardKitchen = insertedBusinesses.find((b) => b.slug === "the-yard-kitchen-dallas");
   const luckyCat = insertedBusinesses.find((b) => b.slug === "lucky-cat-ramen-dallas");
