@@ -102,7 +102,7 @@ describe("claim notification emails", () => {
 // 3. Dashboard access control
 // ---------------------------------------------------------------------------
 describe("dashboard access control", () => {
-  const bizRoutesSrc = readFile("server/routes-businesses.ts");
+  const bizRoutesSrc = readFile("server/routes-business-analytics.ts");
 
   it("dashboard route requires authentication", () => {
     expect(bizRoutesSrc).toContain('"/api/businesses/:slug/dashboard", requireAuth');
@@ -223,6 +223,8 @@ describe("claim lifecycle — submission to approval", () => {
   });
 
   it("dashboard gated to verified owner after claim approval", () => {
-    expect(bizRoutesSrc).toContain("business.ownerId === req.user!.id");
+    // Sprint 486: Dashboard extracted to routes-business-analytics.ts
+    const analyticsSrc = readFile("server/routes-business-analytics.ts");
+    expect(analyticsSrc).toContain("business.ownerId === req.user!.id");
   });
 });

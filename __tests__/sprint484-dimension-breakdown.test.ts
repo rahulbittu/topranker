@@ -126,9 +126,9 @@ describe("Sprint 484: Dimension Breakdown", () => {
     });
   });
 
-  describe("routes-businesses.ts endpoint", () => {
+  describe("routes-business-analytics.ts endpoint", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../server/routes-businesses.ts"),
+      path.resolve(__dirname, "../server/routes-business-analytics.ts"),
       "utf-8"
     );
 

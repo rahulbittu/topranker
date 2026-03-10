@@ -10227,120 +10227,6 @@ function sortByRelevance(data, query) {
   );
 }
 
-// server/dashboard-analytics.ts
-function computeWeeklyVolume(ratings5, weeks = 12) {
-  const now = /* @__PURE__ */ new Date();
-  const result = [];
-  for (let w = weeks - 1; w >= 0; w--) {
-    const weekStart = new Date(now.getTime() - (w + 1) * 7 * 864e5);
-    const weekEnd = new Date(now.getTime() - w * 7 * 864e5);
-    const weekRatings = ratings5.filter((r) => {
-      const d = new Date(r.createdAt).getTime();
-      return d >= weekStart.getTime() && d < weekEnd.getTime();
-    });
-    const scores = weekRatings.map((r) => parseFloat(r.rawScore));
-    result.push({
-      period: weekStart.toISOString().split("T")[0],
-      count: weekRatings.length,
-      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
-    });
-  }
-  return result;
-}
-function computeMonthlyVolume(ratings5, months = 6) {
-  const now = /* @__PURE__ */ new Date();
-  const result = [];
-  for (let m = months - 1; m >= 0; m--) {
-    const monthStart = new Date(now.getFullYear(), now.getMonth() - m, 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() - m + 1, 1);
-    const monthRatings = ratings5.filter((r) => {
-      const d = new Date(r.createdAt).getTime();
-      return d >= monthStart.getTime() && d < monthEnd.getTime();
-    });
-    const scores = monthRatings.map((r) => parseFloat(r.rawScore));
-    result.push({
-      period: monthStart.toISOString().split("T")[0],
-      count: monthRatings.length,
-      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
-    });
-  }
-  return result;
-}
-function computeVelocityChange(weeklyVolume) {
-  if (weeklyVolume.length < 4) return 0;
-  const recent = weeklyVolume.slice(-2).reduce((sum2, w) => sum2 + w.count, 0);
-  const previous = weeklyVolume.slice(-4, -2).reduce((sum2, w) => sum2 + w.count, 0);
-  if (previous === 0) return recent > 0 ? 100 : 0;
-  return Math.round((recent - previous) / previous * 100);
-}
-function extractSparklineScores(ratings5, limit = 20) {
-  return ratings5.slice(0, limit).map((r) => parseFloat(r.rawScore)).reverse();
-}
-function buildDashboardTrend(ratings5) {
-  const weeklyVolume = computeWeeklyVolume(ratings5);
-  const monthlyVolume = computeMonthlyVolume(ratings5);
-  return {
-    weeklyVolume,
-    monthlyVolume,
-    velocityChange: computeVelocityChange(weeklyVolume),
-    sparklineScores: extractSparklineScores(ratings5)
-  };
-}
-
-// server/dimension-breakdown.ts
-function avgOrZero(scores) {
-  if (scores.length === 0) return 0;
-  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10;
-}
-function toNum(val) {
-  if (val == null) return null;
-  const n = typeof val === "string" ? parseFloat(val) : val;
-  return isNaN(n) ? null : n;
-}
-function computeDimensionBreakdown(ratings5) {
-  const dist = { dineIn: 0, delivery: 0, takeaway: 0 };
-  const food = [];
-  const service = [];
-  const vibe = [];
-  const packaging = [];
-  const waitTime = [];
-  const value = [];
-  for (const r of ratings5) {
-    const vt = (r.visitType || "dine_in").toLowerCase().replace(/[-\s]/g, "_");
-    if (vt === "dine_in" || vt === "dinein") dist.dineIn++;
-    else if (vt === "delivery") dist.delivery++;
-    else if (vt === "takeaway" || vt === "pickup") dist.takeaway++;
-    else dist.dineIn++;
-    const f = toNum(r.foodScore);
-    if (f !== null) food.push(f);
-    const s = toNum(r.serviceScore);
-    if (s !== null) service.push(s);
-    const v = toNum(r.vibeScore);
-    if (v !== null) vibe.push(v);
-    const p = toNum(r.packagingScore);
-    if (p !== null) packaging.push(p);
-    const w = toNum(r.waitTimeScore);
-    if (w !== null) waitTime.push(w);
-    const val = toNum(r.valueScore);
-    if (val !== null) value.push(val);
-  }
-  const maxVisit = Math.max(dist.dineIn, dist.delivery, dist.takeaway);
-  const primaryVisitType = maxVisit === dist.delivery ? "delivery" : maxVisit === dist.takeaway ? "takeaway" : "dineIn";
-  return {
-    dimensions: {
-      food: avgOrZero(food),
-      service: avgOrZero(service),
-      vibe: avgOrZero(vibe),
-      packaging: avgOrZero(packaging),
-      waitTime: avgOrZero(waitTime),
-      value: avgOrZero(value)
-    },
-    visitTypeDistribution: dist,
-    totalRatings: ratings5.length,
-    primaryVisitType
-  };
-}
-
 // server/routes-businesses.ts
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
@@ -10470,6 +10356,169 @@ function registerBusinessRoutes(app2) {
     });
     return res.json({ data: { id: claim.id, status: claim.status } });
   }));
+  app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const memberId = req.user.id;
+    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
+    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
+    const caption = sanitizeString(rawCaption, 500) || "";
+    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
+    }
+    if (!photoData || typeof photoData !== "string") {
+      return res.status(400).json({ error: "Photo data is required (base64)" });
+    }
+    const buffer2 = Buffer.from(photoData, "base64");
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const MIN_SIZE = 1024;
+    if (buffer2.length > MAX_SIZE) {
+      return res.status(400).json({ error: "Photo too large (max 10MB)" });
+    }
+    if (buffer2.length < MIN_SIZE) {
+      return res.status(400).json({ error: "Photo too small (min 1KB)" });
+    }
+    const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
+    const ext = mimeType.split("/")[1] || "jpeg";
+    const crypto12 = await import("crypto");
+    const key2 = `community-photos/${businessId}/${memberId}-${crypto12.randomUUID()}.${ext}`;
+    const url = await fileStorage2.upload(key2, buffer2, mimeType);
+    const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
+    const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
+    if ("error" in result) {
+      return res.status(400).json({ error: result.error });
+    }
+    log.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
+    return res.status(201).json({
+      data: {
+        id: result.id,
+        url: result.url,
+        status: result.status,
+        message: "Photo submitted for review"
+      }
+    });
+  }));
+}
+
+// server/routes-business-analytics.ts
+init_storage();
+
+// server/dashboard-analytics.ts
+function computeWeeklyVolume(ratings5, weeks = 12) {
+  const now = /* @__PURE__ */ new Date();
+  const result = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const weekStart = new Date(now.getTime() - (w + 1) * 7 * 864e5);
+    const weekEnd = new Date(now.getTime() - w * 7 * 864e5);
+    const weekRatings = ratings5.filter((r) => {
+      const d = new Date(r.createdAt).getTime();
+      return d >= weekStart.getTime() && d < weekEnd.getTime();
+    });
+    const scores = weekRatings.map((r) => parseFloat(r.rawScore));
+    result.push({
+      period: weekStart.toISOString().split("T")[0],
+      count: weekRatings.length,
+      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
+    });
+  }
+  return result;
+}
+function computeMonthlyVolume(ratings5, months = 6) {
+  const now = /* @__PURE__ */ new Date();
+  const result = [];
+  for (let m = months - 1; m >= 0; m--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - m + 1, 1);
+    const monthRatings = ratings5.filter((r) => {
+      const d = new Date(r.createdAt).getTime();
+      return d >= monthStart.getTime() && d < monthEnd.getTime();
+    });
+    const scores = monthRatings.map((r) => parseFloat(r.rawScore));
+    result.push({
+      period: monthStart.toISOString().split("T")[0],
+      count: monthRatings.length,
+      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
+    });
+  }
+  return result;
+}
+function computeVelocityChange(weeklyVolume) {
+  if (weeklyVolume.length < 4) return 0;
+  const recent = weeklyVolume.slice(-2).reduce((sum2, w) => sum2 + w.count, 0);
+  const previous = weeklyVolume.slice(-4, -2).reduce((sum2, w) => sum2 + w.count, 0);
+  if (previous === 0) return recent > 0 ? 100 : 0;
+  return Math.round((recent - previous) / previous * 100);
+}
+function extractSparklineScores(ratings5, limit = 20) {
+  return ratings5.slice(0, limit).map((r) => parseFloat(r.rawScore)).reverse();
+}
+function buildDashboardTrend(ratings5) {
+  const weeklyVolume = computeWeeklyVolume(ratings5);
+  const monthlyVolume = computeMonthlyVolume(ratings5);
+  return {
+    weeklyVolume,
+    monthlyVolume,
+    velocityChange: computeVelocityChange(weeklyVolume),
+    sparklineScores: extractSparklineScores(ratings5)
+  };
+}
+
+// server/dimension-breakdown.ts
+function avgOrZero(scores) {
+  if (scores.length === 0) return 0;
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10;
+}
+function toNum(val) {
+  if (val == null) return null;
+  const n = typeof val === "string" ? parseFloat(val) : val;
+  return isNaN(n) ? null : n;
+}
+function computeDimensionBreakdown(ratings5) {
+  const dist = { dineIn: 0, delivery: 0, takeaway: 0 };
+  const food = [];
+  const service = [];
+  const vibe = [];
+  const packaging = [];
+  const waitTime = [];
+  const value = [];
+  for (const r of ratings5) {
+    const vt = (r.visitType || "dine_in").toLowerCase().replace(/[-\s]/g, "_");
+    if (vt === "dine_in" || vt === "dinein") dist.dineIn++;
+    else if (vt === "delivery") dist.delivery++;
+    else if (vt === "takeaway" || vt === "pickup") dist.takeaway++;
+    else dist.dineIn++;
+    const f = toNum(r.foodScore);
+    if (f !== null) food.push(f);
+    const s = toNum(r.serviceScore);
+    if (s !== null) service.push(s);
+    const v = toNum(r.vibeScore);
+    if (v !== null) vibe.push(v);
+    const p = toNum(r.packagingScore);
+    if (p !== null) packaging.push(p);
+    const w = toNum(r.waitTimeScore);
+    if (w !== null) waitTime.push(w);
+    const val = toNum(r.valueScore);
+    if (val !== null) value.push(val);
+  }
+  const maxVisit = Math.max(dist.dineIn, dist.delivery, dist.takeaway);
+  const primaryVisitType = maxVisit === dist.delivery ? "delivery" : maxVisit === dist.takeaway ? "takeaway" : "dineIn";
+  return {
+    dimensions: {
+      food: avgOrZero(food),
+      service: avgOrZero(service),
+      vibe: avgOrZero(vibe),
+      packaging: avgOrZero(packaging),
+      waitTime: avgOrZero(waitTime),
+      value: avgOrZero(value)
+    },
+    visitTypeDistribution: dist,
+    totalRatings: ratings5.length,
+    primaryVisitType
+  };
+}
+
+// server/routes-business-analytics.ts
+function registerBusinessAnalyticsRoutes(app2) {
   app2.get("/api/businesses/:slug/dashboard", requireAuth, wrapAsync(async (req, res) => {
     const business = await getBusinessBySlug(req.params.slug);
     if (!business) {
@@ -10538,48 +10587,6 @@ function registerBusinessRoutes(app2) {
     const { ratings: ratings5 } = await getBusinessRatings(req.params.id, 1, 200);
     const data = computeDimensionBreakdown(ratings5);
     return res.json({ data });
-  }));
-  app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
-    const businessId = req.params.id;
-    const memberId = req.user.id;
-    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
-    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
-    const caption = sanitizeString(rawCaption, 500) || "";
-    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
-    if (!ALLOWED_MIME.includes(mimeType)) {
-      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
-    }
-    if (!photoData || typeof photoData !== "string") {
-      return res.status(400).json({ error: "Photo data is required (base64)" });
-    }
-    const buffer2 = Buffer.from(photoData, "base64");
-    const MAX_SIZE = 10 * 1024 * 1024;
-    const MIN_SIZE = 1024;
-    if (buffer2.length > MAX_SIZE) {
-      return res.status(400).json({ error: "Photo too large (max 10MB)" });
-    }
-    if (buffer2.length < MIN_SIZE) {
-      return res.status(400).json({ error: "Photo too small (min 1KB)" });
-    }
-    const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
-    const ext = mimeType.split("/")[1] || "jpeg";
-    const crypto12 = await import("crypto");
-    const key2 = `community-photos/${businessId}/${memberId}-${crypto12.randomUUID()}.${ext}`;
-    const url = await fileStorage2.upload(key2, buffer2, mimeType);
-    const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
-    const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
-    if ("error" in result) {
-      return res.status(400).json({ error: result.error });
-    }
-    log.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
-    return res.status(201).json({
-      data: {
-        id: result.id,
-        url: result.url,
-        status: result.status,
-        message: "Photo submitted for review"
-      }
-    });
   }));
 }
 
@@ -13505,6 +13512,7 @@ async function registerRoutes(app2) {
     return res.json({ data });
   }));
   registerBusinessRoutes(app2);
+  registerBusinessAnalyticsRoutes(app2);
   registerPaymentRoutes(app2);
   app2.get("/api/dishes/search", wrapAsync(async (req, res) => {
     const businessId = req.query.business_id;

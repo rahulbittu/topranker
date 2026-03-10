@@ -310,7 +310,8 @@ describe("5. Serialization paths audit for tier data", () => {
 // ===========================================================================
 describe("6. Business dashboard ratings show memberTier as SNAPSHOT", () => {
   it("GET /businesses/:slug/dashboard returns tier: r.memberTier from joined ratings query", () => {
-    const routesSrc = readSource("server/routes-businesses.ts");
+    // Sprint 486: Dashboard extracted to routes-business-analytics.ts
+    const routesSrc = readSource("server/routes-business-analytics.ts");
     // The business dashboard handler maps ratings to include `tier: r.memberTier`
     expect(routesSrc).toMatch(/tier:\s*r\.memberTier\s*\|\|\s*["']community["']/);
   });

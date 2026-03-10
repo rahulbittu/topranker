@@ -179,16 +179,25 @@ describe("routes-businesses.ts — business endpoints", () => {
     expect(bizSrc).toContain("/api/businesses/:slug/claim");
   });
 
+  it("uses requireAuth on claim", () => {
+    expect(bizSrc).toContain("requireAuth");
+  });
+});
+
+// Sprint 486: Dashboard, rank-history, dimension-breakdown extracted to routes-business-analytics.ts
+describe("routes-business-analytics.ts — analytics endpoints", () => {
+  const analyticsSrc = readFile("server/routes-business-analytics.ts");
+
   it("handles GET /api/businesses/:slug/dashboard", () => {
-    expect(bizSrc).toContain("/api/businesses/:slug/dashboard");
+    expect(analyticsSrc).toContain("/api/businesses/:slug/dashboard");
   });
 
   it("handles GET /api/businesses/:id/rank-history", () => {
-    expect(bizSrc).toContain("/api/businesses/:id/rank-history");
+    expect(analyticsSrc).toContain("/api/businesses/:id/rank-history");
   });
 
-  it("uses requireAuth on claim and dashboard", () => {
-    expect(bizSrc).toContain("requireAuth");
+  it("uses requireAuth on dashboard", () => {
+    expect(analyticsSrc).toContain("requireAuth");
   });
 });
 

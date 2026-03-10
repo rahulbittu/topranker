@@ -185,8 +185,8 @@ describe("routes-payments.ts — subscription endpoints", () => {
 // ---------------------------------------------------------------------------
 // 5. Dashboard — free vs pro data tiering
 // ---------------------------------------------------------------------------
-describe("routes-businesses.ts — dashboard tiering", () => {
-  const bizRoutesSrc = readFile("server/routes-businesses.ts");
+describe("routes-business-analytics.ts — dashboard tiering", () => {
+  const bizRoutesSrc = readFile("server/routes-business-analytics.ts");
 
   it("checks subscription status for pro access", () => {
     expect(bizRoutesSrc).toContain("isPro");

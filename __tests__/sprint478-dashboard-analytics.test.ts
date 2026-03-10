@@ -94,9 +94,9 @@ describe("Sprint 478: Dashboard Analytics", () => {
     });
   });
 
-  describe("routes-businesses.ts dashboard integration", () => {
+  describe("routes-business-analytics.ts dashboard integration", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../server/routes-businesses.ts"),
+      path.resolve(__dirname, "../server/routes-business-analytics.ts"),
       "utf-8"
     );
 
