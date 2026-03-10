@@ -35,6 +35,7 @@ import { SavedPlacesSection } from "@/components/profile/SavedPlacesSection";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
+import { TierProgressNotification } from "@/components/profile/TierProgressNotification";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
@@ -163,6 +164,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         ratingHistory={profile.ratingHistory}
         currentStreak={profile.currentStreak ?? 0}
         joinedAt={profile.joinedAt}
+      />
+
+      {/* Sprint 573: Tier progress notification */}
+      <TierProgressNotification
+        tier={tier}
+        credibilityScore={profile.credibilityScore}
+        totalRatings={profile.totalRatings}
+        delay={200}
       />
 
       {/* Sprint 393: Achievements & Milestones */}
