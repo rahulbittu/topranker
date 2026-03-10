@@ -42,6 +42,7 @@ import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 import { ONBOARDING_KEY } from "@/app/onboarding";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useRealtimeEvents } from "@/lib/use-realtime";
+import { Analytics } from "@/lib/analytics";
 
 async function savePushToken(token: string) {
   try {
@@ -372,6 +373,8 @@ export default function RootLayout() {
       // Sprint 501: Report notification open for analytics
       const notifId = response.notification.request.identifier;
       reportNotificationOpened(notifId, notifType || "unknown").catch(() => {});
+      // Sprint 507: Client-side notification analytics
+      Analytics.notificationOpenReported(notifId, notifType || "unknown");
 
       if (screen === "business" && slug) {
         router.push({ pathname: "/business/[id]", params: { id: slug } });

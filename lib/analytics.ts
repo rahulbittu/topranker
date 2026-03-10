@@ -72,6 +72,10 @@ export type AnalyticsEvent =
   // Notifications
   | "notification_tap"
   | "notification_settings_change"
+  // Sprint 507: Expanded notification analytics
+  | "notification_received"
+  | "notification_dismissed"
+  | "notification_open_reported"
 
   // Legal
   | "view_terms"
@@ -268,4 +272,12 @@ export const Analytics = {
     track("dish_search_match_tap", { dish_slug: dishSlug }),
   relatedDishTap: (dishSlug: string, fromDish: string) =>
     track("related_dish_tap", { dish_slug: dishSlug, from_dish: fromDish }),
+
+  // Sprint 507: Client-side notification analytics
+  notificationReceived: (category: string) =>
+    track("notification_received", { category }),
+  notificationDismissed: (notificationId: string, category: string) =>
+    track("notification_dismissed", { notification_id: notificationId, category }),
+  notificationOpenReported: (notificationId: string, category: string) =>
+    track("notification_open_reported", { notification_id: notificationId, category }),
 };
