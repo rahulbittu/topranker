@@ -631,3 +631,34 @@ export async function getImportStats(): Promise<Array<{ city: string; dataSource
     .orderBy(businesses.city);
   return rows.map(r => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
 }
+
+/**
+ * Sprint 493: Get top dishes for autocomplete matching.
+ * Returns dish names with their business info for search suggestions.
+ */
+export async function getTopDishesForAutocomplete(
+  city: string,
+  limit: number = 50,
+): Promise<{ name: string; businessName: string; businessSlug: string; businessId: string; voteCount: number }[]> {
+  const { dishes } = await import("@shared/schema");
+  const rows = await db
+    .select({
+      name: dishes.name,
+      businessName: businesses.name,
+      businessSlug: businesses.slug,
+      businessId: dishes.businessId,
+      voteCount: dishes.voteCount,
+    })
+    .from(dishes)
+    .innerJoin(businesses, eq(dishes.businessId, businesses.id))
+    .where(and(eq(businesses.city, city), eq(dishes.isActive, true), eq(businesses.isActive, true)))
+    .orderBy(desc(dishes.voteCount))
+    .limit(limit);
+  return rows.map(r => ({
+    name: r.name,
+    businessName: r.businessName,
+    businessSlug: r.businessSlug,
+    businessId: r.businessId,
+    voteCount: r.voteCount,
+  }));
+}

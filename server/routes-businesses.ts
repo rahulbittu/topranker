@@ -36,8 +36,22 @@ export function registerBusinessRoutes(app: Express) {
     if (!query || query.trim().length === 0) {
       return res.json({ data: [] });
     }
-    const suggestions = await autocompleteBusinesses(query, city);
-    return res.json({ data: suggestions });
+    const [bizSuggestions, dishData] = await Promise.all([
+      autocompleteBusinesses(query, city),
+      import("./storage/businesses").then(m => m.getTopDishesForAutocomplete(city, 50)),
+    ]);
+    const { buildDishSuggestions, mergeSuggestions, scoreSuggestion } = await import("./search-autocomplete");
+    const bizMapped = bizSuggestions.map(b => ({
+      id: b.id,
+      text: b.name,
+      subtext: [b.cuisine, b.neighborhood].filter(Boolean).join(" · ") || b.category,
+      type: "business" as const,
+      slug: b.slug,
+      score: scoreSuggestion(query, b.name, "business"),
+    }));
+    const dishSuggestions = buildDishSuggestions(query, dishData);
+    const merged = mergeSuggestions([...bizMapped, ...dishSuggestions], 8);
+    return res.json({ data: merged });
   }));
 
   // Sprint 184: Popular categories — dynamic suggestion chips by city
