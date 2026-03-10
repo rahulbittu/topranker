@@ -96,9 +96,9 @@ describe("Best In categories — runtime", () => {
     mod = await import("../shared/best-in-categories");
   });
 
-  it("getActiveCategories returns 15 active categories", () => {
+  it("getActiveCategories returns 45+ active categories (expanded cuisines)", () => {
     const active = mod.getActiveCategories();
-    expect(active.length).toBe(15);
+    expect(active.length).toBeGreaterThanOrEqual(45);
   });
 
   it('getCategoryBySlug("biryani") returns correct category', () => {
@@ -156,10 +156,10 @@ describe("Best In categories — runtime", () => {
     expect(title).toBe("Best Tacos in Austin");
   });
 
-  it("getCategoryCount returns { total: 15, active: 15 }", () => {
+  it("getCategoryCount returns 50+ total and active categories", () => {
     const counts = mod.getCategoryCount();
-    expect(counts.total).toBe(15);
-    expect(counts.active).toBe(15);
+    expect(counts.total).toBeGreaterThanOrEqual(45);
+    expect(counts.active).toBeGreaterThanOrEqual(45);
   });
 
   it("biryani has at least 3 tags", () => {

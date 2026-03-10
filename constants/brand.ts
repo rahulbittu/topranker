@@ -43,6 +43,20 @@ export const CATEGORY_LABELS: Record<string, string> = {
   brunch:        "Brunch",
   dessert_bar:   "Dessert Bars",
   food_hall:     "Food Halls",
+  // Cuisine types
+  indian:        "Indian",
+  mexican:       "Mexican",
+  japanese:      "Japanese",
+  chinese:       "Chinese",
+  vietnamese:    "Vietnamese",
+  korean:        "Korean",
+  thai:          "Thai",
+  italian:       "Italian",
+  mediterranean: "Mediterranean",
+  bbq:           "BBQ",
+  pizza:         "Pizza",
+  seafood:       "Seafood",
+  dessert:       "Desserts",
 };
 
 export const CATEGORY_EMOJI: Record<string, string> = {
@@ -68,6 +82,20 @@ export const CATEGORY_EMOJI: Record<string, string> = {
   brunch:        "\u{1F95E}",
   dessert_bar:   "\u{1F370}",
   food_hall:     "\u{1F3EA}",
+  // Cuisine types
+  indian:        "\u{1F35B}",
+  mexican:       "\u{1F32E}",
+  japanese:      "\u{1F363}",
+  chinese:       "\u{1F95F}",
+  vietnamese:    "\u{1F35C}",
+  korean:        "\u{1F969}",
+  thai:          "\u{1F35B}",
+  italian:       "\u{1F355}",
+  mediterranean: "\u{1F959}",
+  bbq:           "\u{1F525}",
+  pizza:         "\u{1F355}",
+  seafood:       "\u{1F990}",
+  dessert:       "\u{1F370}",
 };
 
 export function getCategoryDisplay(slug: string): { emoji: string; label: string } {

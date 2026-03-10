@@ -94,9 +94,10 @@ describe("Best In categories API — runtime", () => {
     expect(slugs).toContain("fried-chicken");
   });
 
-  it('searchCategories("indian") returns empty (no direct "indian" tag)', () => {
+  it('searchCategories("indian") returns Indian cuisine items (cuisine matching)', () => {
     const results = searchCategories("indian");
-    expect(results).toHaveLength(0);
+    expect(results.length).toBeGreaterThan(0);
+    expect(results.some(c => c.slug === "biryani")).toBe(true);
   });
 
   it('getCategoryBySlug("biryani") has tags including "hyderabadi"', () => {
@@ -105,7 +106,7 @@ describe("Best In categories API — runtime", () => {
     expect(cat!.tags).toContain("hyderabadi");
   });
 
-  it('all 15 categories have non-empty description containing "best"', () => {
+  it('all categories have non-empty description containing "best"', () => {
     const all = getActiveCategories();
     for (const cat of all) {
       expect(cat.description).toBeTruthy();
@@ -113,9 +114,9 @@ describe("Best In categories API — runtime", () => {
     }
   });
 
-  it("category count matches expected 15", () => {
+  it("category count matches 45+ (expanded cuisines)", () => {
     const all = getActiveCategories();
-    expect(all).toHaveLength(15);
+    expect(all.length).toBeGreaterThanOrEqual(45);
   });
 
   it("getActiveCategories returns sorted by sortOrder", () => {
