@@ -34,6 +34,8 @@ import { TrendingSection } from "@/components/search/TrendingSection";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { decodeSearchParams, encodeSearchParams, type SearchFilterState } from "@/lib/search-url-params";
+import { PresetChips } from "@/components/search/PresetChips";
+import type { FilterPreset } from "@/lib/search-filter-presets";
 
 const AMBER = BRAND.colors.amber;
 
@@ -63,6 +65,8 @@ export default function SearchScreen() {
   const [distanceFilter, setDistanceFilter] = useState<DistanceOption>(null);
   // Sprint 447: Hours-based filters
   const [hoursFilters, setHoursFilters] = useState<HoursFilter[]>([]);
+  // Sprint 471: Filter preset chips
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
   // Sprint 451: Read URL params on mount to restore filter state
   const urlParams = useLocalSearchParams();
@@ -197,6 +201,40 @@ export default function SearchScreen() {
       setLocationLoading(false);
     }
   }, [userLocation]);
+
+  // Sprint 471: Preset apply/clear handlers
+  const currentFilters = useMemo((): SearchFilterState => ({
+    cuisine: selectedCuisine || undefined,
+    dietary: dietaryTags.length > 0 ? dietaryTags : undefined,
+    distance: distanceFilter,
+    hours: hoursFilters.length > 0 ? hoursFilters : undefined,
+    price: priceFilter || undefined,
+    sort: sortBy,
+    filter: activeFilter !== "All" ? activeFilter : undefined,
+  }), [selectedCuisine, dietaryTags, distanceFilter, hoursFilters, priceFilter, sortBy, activeFilter]);
+
+  const handleApplyPreset = useCallback((preset: FilterPreset) => {
+    const f = preset.filters;
+    if (f.cuisine) setSelectedCuisine(f.cuisine); else setSelectedCuisine(null);
+    if (f.dietary) setDietaryTags(f.dietary); else setDietaryTags([]);
+    if (f.distance) setDistanceFilter(f.distance); else setDistanceFilter(null);
+    if (f.hours) setHoursFilters(f.hours); else setHoursFilters([]);
+    if (f.price) setPriceFilter(f.price); else setPriceFilter(null);
+    if (f.sort) setSortBy(f.sort); else setSortBy("ranked");
+    if (f.filter) setActiveFilter(f.filter as any); else setActiveFilter("All" as any);
+    setActivePresetId(preset.id);
+  }, []);
+
+  const handleClearPreset = useCallback(() => {
+    setSelectedCuisine(null);
+    setDietaryTags([]);
+    setDistanceFilter(null);
+    setHoursFilters([]);
+    setPriceFilter(null);
+    setSortBy("ranked");
+    setActiveFilter("All" as any);
+    setActivePresetId(null);
+  }, []);
 
   const filtered = useMemo(() => {
     let list = allBusinesses;
@@ -458,6 +496,13 @@ export default function SearchScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Sprint 471: Filter preset chips */}
+              <PresetChips
+                activePresetId={activePresetId}
+                onApplyPreset={handleApplyPreset}
+                onClearPreset={handleClearPreset}
+                currentFilters={currentFilters}
+              />
               {/* Sprint 332: Filter/price/sort extracted to DiscoverFilters */}
               <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} locationLoading={locationLoading} onNearMe={requestLocation} />
               <PriceChips priceFilter={priceFilter} onPriceChange={setPriceFilter} />
