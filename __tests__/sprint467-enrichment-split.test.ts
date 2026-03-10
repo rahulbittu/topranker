@@ -54,8 +54,8 @@ describe("Enrichment bulk — routes-admin-enrichment-bulk.ts", () => {
 describe("Enrichment dashboard — routes-admin-enrichment.ts", () => {
   const src = readFile("server/routes-admin-enrichment.ts");
 
-  it("is under 210 LOC (was 382)", () => {
-    expect(countLines(src)).toBeLessThan(210);
+  it("is under 225 LOC (was 382, +auth middleware Sprint 472)", () => {
+    expect(countLines(src)).toBeLessThan(225);
   });
 
   it("still has dashboard endpoint", () => {

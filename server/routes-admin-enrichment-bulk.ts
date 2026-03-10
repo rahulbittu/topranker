@@ -1,7 +1,8 @@
 /**
  * Sprint 467: Admin Enrichment Bulk Operations
- * Extracted from routes-admin-enrichment.ts (Sprints 458, 463)
+ * Sprint 472: Added requireAuth + requireAdmin middleware to all endpoints
  *
+ * Extracted from routes-admin-enrichment.ts (Sprints 458, 463)
  * Bulk dietary tagging (by IDs and by cuisine) and bulk hours updates.
  */
 
@@ -10,8 +11,18 @@ import { log } from "./logger";
 import { db } from "./db";
 import { businesses } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "./middleware";
+import { isAdminEmail } from "@shared/admin";
 
 const bulkLog = log.tag("AdminEnrichmentBulk");
+
+// Sprint 472: Admin auth middleware — resolves 4-cycle critique item
+function requireAdmin(req: Request, res: Response, next: Function) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
 
 interface HoursData {
   periods?: { open: { day: number; time: string }; close?: { day: number; time: string } }[];
@@ -22,7 +33,7 @@ const VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
 
 export function registerAdminEnrichmentBulkRoutes(app: Router): void {
   // Sprint 458: POST /api/admin/enrichment/bulk-dietary — batch tag multiple businesses
-  app.post("/api/admin/enrichment/bulk-dietary", async (req: Request, res: Response) => {
+  app.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     const { businessIds, tags, mode = "merge" } = req.body || {};
 
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
@@ -69,7 +80,7 @@ export function registerAdminEnrichmentBulkRoutes(app: Router): void {
   });
 
   // Sprint 458: POST /api/admin/enrichment/bulk-dietary-by-cuisine — tag all businesses with a cuisine
-  app.post("/api/admin/enrichment/bulk-dietary-by-cuisine", async (req: Request, res: Response) => {
+  app.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     const { cuisine, tags, city, dryRun = true } = req.body || {};
 
     if (!cuisine || typeof cuisine !== "string") {
@@ -131,7 +142,7 @@ export function registerAdminEnrichmentBulkRoutes(app: Router): void {
   });
 
   // Sprint 463: POST /api/admin/enrichment/bulk-hours — batch update opening hours
-  app.post("/api/admin/enrichment/bulk-hours", async (req: Request, res: Response) => {
+  app.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
 
     if (!Array.isArray(businessIds) || businessIds.length === 0) {

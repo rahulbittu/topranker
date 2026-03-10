@@ -1,5 +1,7 @@
 /**
  * Sprint 452: Admin Enrichment Dashboard
+ * Sprint 472: Added requireAuth + requireAdmin middleware to all endpoints
+ *
  * Aggregated view of dietary tag coverage and hours data completeness.
  * Gives ops team visibility into enrichment progress across all active businesses.
  */
@@ -10,8 +12,18 @@ import { db } from "./db";
 import { businesses } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { isOpenLate, isOpenWeekends } from "./hours-utils";
+import { requireAuth } from "./middleware";
+import { isAdminEmail } from "@shared/admin";
 
 const enrichLog = log.tag("AdminEnrichment");
+
+// Sprint 472: Admin auth middleware — resolves 4-cycle critique item
+function requireAdmin(req: Request, res: Response, next: Function) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
 
 interface EnrichmentRow {
   id: string;
@@ -29,7 +41,7 @@ interface HoursData {
 
 export function registerAdminEnrichmentRoutes(app: Router): void {
   // GET /api/admin/enrichment/dashboard — full enrichment overview
-  app.get("/api/admin/enrichment/dashboard", async (_req: Request, res: Response) => {
+  app.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
     enrichLog.info("Generating enrichment dashboard");
 
     const allBiz = await db.select({
@@ -130,7 +142,7 @@ export function registerAdminEnrichmentRoutes(app: Router): void {
   });
 
   // GET /api/admin/enrichment/hours-gaps — businesses with missing/incomplete hours
-  app.get("/api/admin/enrichment/hours-gaps", async (req: Request, res: Response) => {
+  app.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     const city = req.query.city as string | undefined;
     enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
 
@@ -165,7 +177,7 @@ export function registerAdminEnrichmentRoutes(app: Router): void {
   });
 
   // GET /api/admin/enrichment/dietary-gaps — businesses with no dietary tags
-  app.get("/api/admin/enrichment/dietary-gaps", async (req: Request, res: Response) => {
+  app.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin, async (req: Request, res: Response) => {
     const city = req.query.city as string | undefined;
     enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
 

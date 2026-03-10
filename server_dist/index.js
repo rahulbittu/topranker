@@ -11907,9 +11907,16 @@ init_logger();
 init_db();
 init_schema();
 import { eq as eq24 } from "drizzle-orm";
+init_admin();
 var enrichLog = log.tag("AdminEnrichment");
+function requireAdmin4(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
 function registerAdminEnrichmentRoutes(app2) {
-  app2.get("/api/admin/enrichment/dashboard", async (_req, res) => {
+  app2.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin4, async (_req, res) => {
     enrichLog.info("Generating enrichment dashboard");
     const allBiz = await db.select({
       id: businesses.id,
@@ -11996,7 +12003,7 @@ function registerAdminEnrichmentRoutes(app2) {
       cityBreakdown
     });
   });
-  app2.get("/api/admin/enrichment/hours-gaps", async (req, res) => {
+  app2.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin4, async (req, res) => {
     const city = req.query.city;
     enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
     let allBiz = await db.select({
@@ -12025,7 +12032,7 @@ function registerAdminEnrichmentRoutes(app2) {
       gaps
     });
   });
-  app2.get("/api/admin/enrichment/dietary-gaps", async (req, res) => {
+  app2.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin4, async (req, res) => {
     const city = req.query.city;
     enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
     let allBiz = await db.select({
@@ -12059,10 +12066,17 @@ init_logger();
 init_db();
 init_schema();
 import { eq as eq25 } from "drizzle-orm";
+init_admin();
 var bulkLog = log.tag("AdminEnrichmentBulk");
+function requireAdmin5(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
 var VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
 function registerAdminEnrichmentBulkRoutes(app2) {
-  app2.post("/api/admin/enrichment/bulk-dietary", async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin5, async (req, res) => {
     const { businessIds, tags, mode = "merge" } = req.body || {};
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
       return res.status(400).json({ error: "businessIds must be a non-empty array" });
@@ -12094,7 +12108,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
     bulkLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
     res.json({ updated: results.length, requested: businessIds.length, mode, results });
   });
-  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin5, async (req, res) => {
     const { cuisine, tags, city, dryRun = true } = req.body || {};
     if (!cuisine || typeof cuisine !== "string") {
       return res.status(400).json({ error: "cuisine is required" });
@@ -12141,7 +12155,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
       // cap for response size
     });
   });
-  app2.post("/api/admin/enrichment/bulk-hours", async (req, res) => {
+  app2.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin5, async (req, res) => {
     const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
     if (!Array.isArray(businessIds) || businessIds.length === 0) {
       return res.status(400).json({ error: "businessIds must be a non-empty array" });
