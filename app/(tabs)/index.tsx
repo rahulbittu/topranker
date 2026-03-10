@@ -411,11 +411,47 @@ export default function LeaderboardScreen() {
           }
           ListEmptyComponent={
             !heroBiz ? (
-              <EmptyStateAnimation
-                message={searchQuery.trim() ? `No matches for "${searchQuery}"` : "No businesses found. Try a different category."}
-                icon="search-outline"
-                style={{ marginTop: 24 }}
-              />
+              <View style={styles.emptyStateContainer}>
+                <EmptyStateAnimation
+                  message={
+                    searchQuery.trim()
+                      ? `No matches for "${searchQuery}"`
+                      : selectedCuisine && CUISINE_DISPLAY[selectedCuisine]
+                        ? `No ${CUISINE_DISPLAY[selectedCuisine].label.toLowerCase()} ${getCategoryDisplay(activeCategory).label.toLowerCase()} ranked yet`
+                        : "No businesses found. Try a different category."
+                  }
+                  icon="search-outline"
+                  style={{ marginTop: 24 }}
+                />
+                {/* Sprint 319: Cuisine-aware empty state with dish suggestions */}
+                {selectedCuisine && dishShortcuts.length > 0 && !searchQuery.trim() && (
+                  <View style={styles.emptyDishSuggestions}>
+                    <Text style={styles.emptyDishTitle}>
+                      Explore {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine} dish rankings:
+                    </Text>
+                    {dishShortcuts.map((dish) => (
+                      <TouchableOpacity
+                        key={dish.slug}
+                        style={styles.emptyDishChip}
+                        onPress={() => router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } })}
+                      >
+                        <Text style={styles.emptyDishChipText}>
+                          {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount} ranked` : ""}
+                        </Text>
+                        <Ionicons name="chevron-forward" size={14} color={AMBER} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {selectedCuisine && !searchQuery.trim() && (
+                  <TouchableOpacity
+                    style={styles.emptyClearFilter}
+                    onPress={() => { setSelectedCuisine(null); }}
+                  >
+                    <Text style={styles.emptyClearFilterText}>Show all cuisines</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             ) : null
           }
         />
@@ -585,4 +621,26 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(196,154,26,0.25)",
   },
   dishShortcutText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
+  // Sprint 319: Cuisine-aware empty state
+  emptyStateContainer: { alignItems: "center" as const },
+  emptyDishSuggestions: {
+    marginTop: 16, marginHorizontal: 16, width: "100%" as any,
+  },
+  emptyDishTitle: {
+    fontSize: 13, fontWeight: "600" as const, color: Colors.textSecondary,
+    fontFamily: "DMSans_600SemiBold", marginBottom: 8, textAlign: "center" as const,
+  },
+  emptyDishChip: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+    paddingVertical: 10, paddingHorizontal: 14,
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.15)", marginBottom: 6,
+  },
+  emptyDishChipText: { flex: 1, fontSize: 14, fontWeight: "600" as const, color: AMBER },
+  emptyClearFilter: {
+    marginTop: 12, paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 });
