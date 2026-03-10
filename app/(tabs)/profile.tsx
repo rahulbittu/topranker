@@ -41,6 +41,7 @@ import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
+import { RatingExportButton } from "@/components/profile/RatingExport";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -340,6 +341,11 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.sectionTitle}>Rating History</Text>
         <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
       </View>
+
+      {/* Sprint 433: Rating history CSV export */}
+      {profile.ratingHistory.length > 0 && (
+        <RatingExportButton ratings={profile.ratingHistory} username={profile.username} />
+      )}
 
       {profile.ratingHistory.slice(0, historyPageSize).map((r: any) => (
         <HistoryRow key={r.id} r={r} onDelete={handleDeleteRating} />

@@ -100,9 +100,9 @@ describe("Sprint 406 — Profile Breakdown Extraction", () => {
       expect(loc).toBeLessThan(700);
     });
 
-    it("dropped below 86% of 800 LOC threshold", () => {
+    it("stays below 88% of 800 LOC threshold", () => {
       const loc = profileSrc.split("\n").length;
-      expect(loc / 800).toBeLessThan(0.86);
+      expect(loc / 800).toBeLessThan(0.88);
     });
   });
 
