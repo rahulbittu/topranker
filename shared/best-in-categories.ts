@@ -165,3 +165,30 @@ export const CUISINE_DISPLAY: Record<string, { label: string; emoji: string }> =
   mediterranean: { label: "Mediterranean", emoji: "\u{1F3D6}" },
   universal: { label: "Popular", emoji: "\u2B50" },
 };
+
+// Sprint 306: Cuisine → dish leaderboard mapping for drill-down
+export const CUISINE_DISH_MAP: Record<string, { slug: string; name: string; emoji: string }[]> = {
+  indian: [
+    { slug: "biryani", name: "Biryani", emoji: "🍛" },
+    { slug: "dosa", name: "Dosa", emoji: "🫓" },
+  ],
+  mexican: [
+    { slug: "taco", name: "Taco", emoji: "🌮" },
+  ],
+  japanese: [
+    { slug: "ramen", name: "Ramen", emoji: "🍜" },
+  ],
+  italian: [
+    { slug: "pizza", name: "Pizza", emoji: "🍕" },
+  ],
+  vietnamese: [
+    { slug: "pho", name: "Pho", emoji: "🍲" },
+  ],
+  american: [
+    { slug: "burger", name: "Burger", emoji: "🍔" },
+    { slug: "brisket", name: "Brisket", emoji: "🥩" },
+  ],
+  mediterranean: [
+    { slug: "kebab", name: "Kebab", emoji: "🥙" },
+  ],
+};

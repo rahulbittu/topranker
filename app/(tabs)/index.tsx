@@ -12,7 +12,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, CUISINE_DISH_MAP, BestInCategory } from "@/shared/best-in-categories";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
@@ -278,6 +278,34 @@ export default function LeaderboardScreen() {
         })}
       </ScrollView>
 
+      {/* Sprint 306: Dish leaderboard shortcuts when cuisine is selected */}
+      {selectedCuisine && CUISINE_DISH_MAP[selectedCuisine] && CUISINE_DISH_MAP[selectedCuisine].length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dishShortcutsContainer}
+          style={styles.dishShortcutsRow}
+        >
+          <Text style={styles.dishShortcutsLabel}>Dish Rankings:</Text>
+          {CUISINE_DISH_MAP[selectedCuisine].map((dish) => (
+            <TouchableOpacity
+              key={dish.slug}
+              onPress={() => {
+                Haptics.selectionAsync();
+                Analytics.dishDeepLinkTap(dish.slug);
+                router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
+              }}
+              style={styles.dishShortcutChip}
+              accessibilityRole="link"
+              accessibilityLabel={`Best ${dish.name} leaderboard`}
+            >
+              <Text style={styles.dishShortcutText}>{dish.emoji} Best {dish.name}</Text>
+              <Ionicons name="chevron-forward" size={14} color={AMBER} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
       <Modal visible={showSuggest} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <SuggestCategory
@@ -528,4 +556,14 @@ const styles = StyleSheet.create({
   welcomeBannerClose: {
     position: "absolute" as const, top: 12, right: 12,
   },
+  dishShortcutsRow: { flexGrow: 0, minHeight: 38, marginBottom: 4 },
+  dishShortcutsContainer: { paddingHorizontal: 16, flexDirection: "row", alignItems: "center", paddingVertical: 2 },
+  dishShortcutsLabel: { fontSize: 11, fontFamily: "DMSans_600SemiBold", color: Colors.textTertiary, marginRight: 8 },
+  dishShortcutChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    marginRight: 8, backgroundColor: "rgba(196,154,26,0.08)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.25)",
+  },
+  dishShortcutText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
 });
