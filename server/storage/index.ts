@@ -28,6 +28,7 @@ export {
   updateMemberAvatar,
   updateMemberEmail,
   getOnboardingProgress,
+  getDishVoteStreakStats,
   generateEmailVerificationToken,
   verifyEmailToken,
   isEmailVerified,

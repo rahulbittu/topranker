@@ -937,6 +937,7 @@ __export(members_exports, {
   generateEmailVerificationToken: () => generateEmailVerificationToken,
   generatePasswordResetToken: () => generatePasswordResetToken,
   getAdminMemberList: () => getAdminMemberList,
+  getDishVoteStreakStats: () => getDishVoteStreakStats,
   getMemberByAuthId: () => getMemberByAuthId,
   getMemberByEmail: () => getMemberByEmail,
   getMemberById: () => getMemberById,
@@ -959,15 +960,15 @@ __export(members_exports, {
   updatePushToken: () => updatePushToken,
   verifyEmailToken: () => verifyEmailToken
 });
-import { eq as eq2, and, sql as sql2, count, countDistinct, desc } from "drizzle-orm";
+import { eq as eq2, and, sql as sql2, count, countDistinct, desc, isNotNull } from "drizzle-orm";
 import crypto from "node:crypto";
 async function getMemberById(id) {
   const [member] = await db.select().from(members).where(eq2(members.id, id));
   return member;
 }
 async function getMembersWithPushTokenByCity(city, limit = 500) {
-  const { isNotNull: isNotNull5 } = await import("drizzle-orm");
-  const results = await db.select({ id: members.id, pushToken: members.pushToken }).from(members).where(and(eq2(members.city, city), isNotNull5(members.pushToken))).limit(limit);
+  const { isNotNull: isNotNull6 } = await import("drizzle-orm");
+  const results = await db.select({ id: members.id, pushToken: members.pushToken }).from(members).where(and(eq2(members.city, city), isNotNull6(members.pushToken))).limit(limit);
   return results.filter((m) => !!m.pushToken);
 }
 async function getMemberByUsername(username) {
@@ -1155,6 +1156,43 @@ async function getSeasonalRatingCounts(memberId) {
     else winter += c;
   }
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
+}
+async function getDishVoteStreakStats(memberId) {
+  const [totalRow] = await db.select({ cnt: count() }).from(dishVotes).where(and(eq2(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId)));
+  const totalDishVotes = totalRow?.cnt ?? 0;
+  if (totalDishVotes === 0) return { dishVoteStreak: 0, longestDishStreak: 0, totalDishVotes: 0, topDish: null };
+  const topDishRows = await db.select({ name: dishes.name, cnt: count() }).from(dishVotes).innerJoin(dishes, eq2(dishVotes.dishId, dishes.id)).where(and(eq2(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId))).groupBy(dishes.name).orderBy(sql2`count(*) DESC`).limit(1);
+  const topDish = topDishRows[0]?.name ?? null;
+  const dayRows = await db.selectDistinct({ day: sql2`DATE(${dishVotes.createdAt})` }).from(dishVotes).where(and(eq2(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId))).orderBy(sql2`DATE(${dishVotes.createdAt}) DESC`);
+  const days = dayRows.map((r) => r.day);
+  if (days.length === 0) return { dishVoteStreak: 0, longestDishStreak: 0, totalDishVotes, topDish };
+  const toMs = (d) => (/* @__PURE__ */ new Date(d + "T00:00:00Z")).getTime();
+  const ONE_DAY = 864e5;
+  const today = /* @__PURE__ */ new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+  let current = 0, longest = 1, streak = 1;
+  const firstDayMs = toMs(days[0]);
+  const isCurrent = todayMs - firstDayMs <= ONE_DAY;
+  for (let i = 1; i < days.length; i++) {
+    const prev = toMs(days[i - 1]);
+    const curr = toMs(days[i]);
+    if (prev - curr === ONE_DAY) {
+      streak++;
+    } else {
+      if (streak > longest) longest = streak;
+      streak = 1;
+    }
+  }
+  if (streak > longest) longest = streak;
+  if (isCurrent) {
+    current = 1;
+    for (let i = 1; i < days.length; i++) {
+      if (toMs(days[i - 1]) - toMs(days[i]) === ONE_DAY) current++;
+      else break;
+    }
+  }
+  return { dishVoteStreak: current, longestDishStreak: longest, totalDishVotes, topDish };
 }
 async function updateMemberProfile(memberId, updates) {
   const updateData = {};
@@ -3571,6 +3609,7 @@ __export(storage_exports, {
   getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
   getDishLeaderboards: () => getDishLeaderboards,
   getDishSuggestions: () => getDishSuggestions,
+  getDishVoteStreakStats: () => getDishVoteStreakStats,
   getEarnedBadgeIds: () => getEarnedBadgeIds,
   getFeedbackStats: () => getFeedbackStats,
   getFlagCount: () => getFlagCount,
@@ -6682,13 +6721,13 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq32, isNotNull: isNotNull5, and: and21 } = await import("drizzle-orm");
+    const { eq: eq32, isNotNull: isNotNull6, and: and21 } = await import("drizzle-orm");
     const raters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(ratings6).innerJoin(members4, eq32(ratings6.memberId, members4.id)).where(and21(eq32(ratings6.businessId, businessId), isNotNull5(members4.pushToken)));
+    }).from(ratings6).innerJoin(members4, eq32(ratings6.memberId, members4.id)).where(and21(eq32(ratings6.businessId, businessId), isNotNull6(members4.pushToken)));
     let sent = 0;
     for (const rater of raters) {
       if (!rater.pushToken) continue;
@@ -6722,7 +6761,7 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq32, isNotNull: isNotNull5, and: and21, ne: ne2 } = await import("drizzle-orm");
+    const { eq: eq32, isNotNull: isNotNull6, and: and21, ne: ne2 } = await import("drizzle-orm");
     const otherRaters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
@@ -6731,7 +6770,7 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
     }).from(ratings6).innerJoin(members4, eq32(ratings6.memberId, members4.id)).where(and21(
       eq32(ratings6.businessId, businessId),
       ne2(ratings6.memberId, ratingMemberId),
-      isNotNull5(members4.pushToken)
+      isNotNull6(members4.pushToken)
     ));
     let sent = 0;
     for (const rater of otherRaters) {
@@ -6765,7 +6804,7 @@ async function sendCityHighlightsPush(city) {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq32, isNotNull: isNotNull5, and: and21, gte: gte9, desc: desc18 } = await import("drizzle-orm");
+    const { eq: eq32, isNotNull: isNotNull6, and: and21, gte: gte9, desc: desc18 } = await import("drizzle-orm");
     const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
     const recentChanges = await db2.select({
       businessId: rankHistory2.businessId,
@@ -6789,7 +6828,7 @@ async function sendCityHighlightsPush(city) {
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(members4).where(and21(eq32(members4.city, city), isNotNull5(members4.pushToken)));
+    }).from(members4).where(and21(eq32(members4.city, city), isNotNull6(members4.pushToken)));
     let sent = 0;
     for (const user of cityUsers) {
       if (!user.pushToken) continue;
@@ -6925,14 +6964,14 @@ async function sendWeeklyDigestPush() {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull5 } = await import("drizzle-orm");
+    const { isNotNull: isNotNull6 } = await import("drizzle-orm");
     const usersWithTokens = await db2.select({
       id: members4.id,
       pushToken: members4.pushToken,
       displayName: members4.displayName,
       notificationPrefs: members4.notificationPrefs,
       selectedCity: members4.selectedCity
-    }).from(members4).where(isNotNull5(members4.pushToken));
+    }).from(members4).where(isNotNull6(members4.pushToken));
     let sent = 0;
     for (const user of usersWithTokens) {
       if (!user.pushToken) continue;
@@ -7795,7 +7834,7 @@ __export(drip_scheduler_exports, {
   processDripEmails: () => processDripEmails,
   startDripScheduler: () => startDripScheduler
 });
-import { isNotNull as isNotNull3 } from "drizzle-orm";
+import { isNotNull as isNotNull4 } from "drizzle-orm";
 async function processDripEmails() {
   try {
     const allMembers = await db.select({
@@ -7806,7 +7845,7 @@ async function processDripEmails() {
       username: members.username,
       joinedAt: members.joinedAt,
       notificationPrefs: members.notificationPrefs
-    }).from(members).where(isNotNull3(members.email));
+    }).from(members).where(isNotNull4(members.email));
     const now = Date.now();
     let sent = 0;
     for (const member of allMembers) {
@@ -7982,7 +8021,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq31, isNotNull as isNotNull4, and as and20 } from "drizzle-orm";
+import { eq as eq31, isNotNull as isNotNull5, and as and20 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -7997,7 +8036,7 @@ async function processOwnerOutreach() {
     }).from(businesses).where(
       and20(
         eq31(businesses.isClaimed, false),
-        isNotNull4(businesses.rankPosition)
+        isNotNull5(businesses.rankPosition)
       )
     );
     for (const biz of claimCandidates) {
@@ -8016,7 +8055,7 @@ async function processOwnerOutreach() {
     }).from(businesses).where(
       and20(
         eq31(businesses.isClaimed, true),
-        isNotNull4(businesses.ownerId),
+        isNotNull5(businesses.ownerId),
         eq31(businesses.subscriptionStatus, "none")
       )
     );
@@ -10840,8 +10879,9 @@ function registerMemberRoutes(app2) {
     const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
     const tier = checkAndRefreshTier(computedTier, score);
     const { ratings: ratings6, total } = await getMemberRatings(member.id);
-    const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const { getSeasonalRatingCounts: getSeasonalRatingCounts2, getDishVoteStreakStats: getDishVoteStreakStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const seasonal = await getSeasonalRatingCounts2(member.id);
+    const streakStats = await getDishVoteStreakStats2(member.id);
     const daysActive = Math.floor(
       (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
     );
@@ -10864,7 +10904,8 @@ function registerMemberRoutes(app2) {
         ratingVariance: parseFloat(member.ratingVariance),
         credibilityBreakdown: breakdown,
         ratingHistory: ratings6,
-        ...seasonal
+        ...seasonal,
+        ...streakStats
       }
     });
   }));
@@ -13565,7 +13606,7 @@ function registerAdminReceiptRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
-import { eq as eq26, and as and17, isNotNull } from "drizzle-orm";
+import { eq as eq26, and as and17, isNotNull as isNotNull2 } from "drizzle-orm";
 var dietaryLog = log.tag("AdminDietary");
 var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
 var CUISINE_TAG_SUGGESTIONS = {
@@ -13632,7 +13673,7 @@ function registerAdminDietaryRoutes(app2) {
     }).from(businesses).where(
       and17(
         eq26(businesses.isActive, true),
-        isNotNull(businesses.cuisine)
+        isNotNull2(businesses.cuisine)
       )
     );
     const suggestions = [];

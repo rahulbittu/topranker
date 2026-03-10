@@ -83,8 +83,9 @@ export function registerMemberRoutes(app: Express) {
     const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
     const tier = checkAndRefreshTier(computedTier, score);
     const { ratings, total } = await getMemberRatings(member.id);
-    const { getSeasonalRatingCounts } = await import("./storage");
+    const { getSeasonalRatingCounts, getDishVoteStreakStats } = await import("./storage");
     const seasonal = await getSeasonalRatingCounts(member.id);
+    const streakStats = await getDishVoteStreakStats(member.id);
 
     const daysActive = Math.floor(
       (Date.now() - new Date(member.joinedAt).getTime()) / (1000 * 60 * 60 * 24),
@@ -110,6 +111,7 @@ export function registerMemberRoutes(app: Express) {
         credibilityBreakdown: breakdown,
         ratingHistory: ratings,
         ...seasonal,
+        ...streakStats,
       },
     });
   }));

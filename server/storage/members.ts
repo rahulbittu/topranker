@@ -1,6 +1,6 @@
-import { eq, and, ne, sql, count, countDistinct, gte, desc } from "drizzle-orm";
+import { eq, and, ne, sql, count, countDistinct, gte, desc, isNotNull } from "drizzle-orm";
 import {
-  members, ratings, businesses, credibilityPenalties,
+  members, ratings, businesses, credibilityPenalties, dishVotes, dishes,
   type Member,
 } from "@shared/schema";
 import { db } from "../db";
@@ -315,6 +315,67 @@ export async function getSeasonalRatingCounts(memberId: string) {
   }
 
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
+}
+
+/**
+ * Sprint 577: Compute dish vote streak stats for a member.
+ * Returns current streak (consecutive days ending today/yesterday),
+ * longest streak ever, total dish votes, and top dish name.
+ */
+export async function getDishVoteStreakStats(memberId: string): Promise<{
+  dishVoteStreak: number; longestDishStreak: number; totalDishVotes: number; topDish: string | null;
+}> {
+  // Total dish votes (exclude noNotableDish)
+  const [totalRow] = await db.select({ cnt: count() }).from(dishVotes)
+    .where(and(eq(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId)));
+  const totalDishVotes = totalRow?.cnt ?? 0;
+  if (totalDishVotes === 0) return { dishVoteStreak: 0, longestDishStreak: 0, totalDishVotes: 0, topDish: null };
+
+  // Top dish by vote frequency
+  const topDishRows = await db.select({ name: dishes.name, cnt: count() }).from(dishVotes)
+    .innerJoin(dishes, eq(dishVotes.dishId, dishes.id))
+    .where(and(eq(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId)))
+    .groupBy(dishes.name).orderBy(sql`count(*) DESC`).limit(1);
+  const topDish = topDishRows[0]?.name ?? null;
+
+  // Distinct vote days (UTC date), ordered descending
+  const dayRows = await db.selectDistinct({ day: sql<string>`DATE(${dishVotes.createdAt})` })
+    .from(dishVotes)
+    .where(and(eq(dishVotes.memberId, memberId), isNotNull(dishVotes.dishId)))
+    .orderBy(sql`DATE(${dishVotes.createdAt}) DESC`);
+
+  const days = dayRows.map(r => r.day);
+  if (days.length === 0) return { dishVoteStreak: 0, longestDishStreak: 0, totalDishVotes, topDish };
+
+  // Calculate streaks from sorted (desc) distinct days
+  const toMs = (d: string) => new Date(d + "T00:00:00Z").getTime();
+  const ONE_DAY = 86400000;
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const todayMs = today.getTime();
+
+  let current = 0, longest = 1, streak = 1;
+  const firstDayMs = toMs(days[0]);
+  // Current streak: must include today or yesterday
+  const isCurrent = (todayMs - firstDayMs) <= ONE_DAY;
+
+  for (let i = 1; i < days.length; i++) {
+    const prev = toMs(days[i - 1]);
+    const curr = toMs(days[i]);
+    if (prev - curr === ONE_DAY) { streak++; }
+    else { if (streak > longest) longest = streak; streak = 1; }
+  }
+  if (streak > longest) longest = streak;
+
+  // Current streak: walk from most recent day backwards
+  if (isCurrent) {
+    current = 1;
+    for (let i = 1; i < days.length; i++) {
+      if (toMs(days[i - 1]) - toMs(days[i]) === ONE_DAY) current++;
+      else break;
+    }
+  }
+
+  return { dishVoteStreak: current, longestDishStreak: longest, totalDishVotes, topDish };
 }
 
 export async function updateMemberProfile(
