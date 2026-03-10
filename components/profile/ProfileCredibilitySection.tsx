@@ -2,7 +2,7 @@
  * Sprint 536: Extracted from app/(tabs)/profile.tsx
  * Credibility card, stats rows, getting started prompt, growth prompt.
  */
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,13 +16,14 @@ import {
   type CredibilityTier,
 } from "@/lib/data";
 import ScoreCountUp from "@/components/animations/ScoreCountUp";
+import { CredibilityBreakdownTooltip, type CredibilityBreakdown } from "./CredibilityBreakdownTooltip";
 
 const AMBER = BRAND.colors.amber;
 
 interface ProfileCredibilitySectionProps {
   tier: CredibilityTier;
   credibilityScore: number;
-  credibilityBreakdown: any;
+  credibilityBreakdown: CredibilityBreakdown;
   totalRatings: number;
   distinctBusinesses: number;
   totalCategories: number;
@@ -36,6 +37,7 @@ interface ProfileCredibilitySectionProps {
 export function ProfileCredibilitySection({
   tier,
   credibilityScore,
+  credibilityBreakdown,
   totalRatings,
   distinctBusinesses,
   totalCategories,
@@ -45,6 +47,7 @@ export function ProfileCredibilitySection({
   currentStreak,
   joinedAt,
 }: ProfileCredibilitySectionProps) {
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const tierColor = TIER_COLORS[tier];
   const scoreRange = TIER_SCORE_RANGES[tier];
 
@@ -62,7 +65,7 @@ export function ProfileCredibilitySection({
       {/* Credibility Card */}
       <View style={s.credibilityCard}>
         <View style={s.credScoreRow}>
-          <View>
+          <TouchableOpacity onPress={() => setShowBreakdown(!showBreakdown)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Tap to see credibility breakdown">
             <Text style={s.credScoreLabel}>Credibility</Text>
             <ScoreCountUp
               targetValue={credibilityScore}
@@ -71,7 +74,7 @@ export function ProfileCredibilitySection({
               style={[s.credScore, { color: tierColor }]}
               highlightThreshold={999}
             />
-          </View>
+          </TouchableOpacity>
           <View style={s.credWeightBox}>
             <Text style={s.credWeightLabel}>{TIER_INFLUENCE_LABELS[tier]}</Text>
             <Text style={[s.credWeight, { color: tierColor }]}>{TIER_DISPLAY_NAMES[tier]}</Text>
@@ -93,6 +96,15 @@ export function ProfileCredibilitySection({
               {Math.max(nextRange.min - credibilityScore, 0)} points to {TIER_DISPLAY_NAMES[nextTier]}
             </Text>
           </View>
+        )}
+
+        {/* Sprint 569: Credibility breakdown tooltip */}
+        {credibilityBreakdown && (
+          <CredibilityBreakdownTooltip
+            breakdown={credibilityBreakdown}
+            totalScore={credibilityScore}
+            visible={showBreakdown}
+          />
         )}
       </View>
 
