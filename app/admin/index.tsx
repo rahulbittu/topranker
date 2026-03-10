@@ -20,6 +20,8 @@ import {
   type CategorySuggestionItem,
   type AdminClaim, type AdminFlag, type AdminMember,
 } from "@/lib/api";
+import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
+import { getApiUrl } from "@/lib/query-client";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
 
@@ -148,6 +150,17 @@ export default function AdminScreen() {
     enabled: !!isAdmin,
   });
 
+  // Sprint 506: Notification insights for admin dashboard
+  const { data: notifInsights } = useQuery<{ data: NotificationInsightsData }>({
+    queryKey: ["admin-notification-insights"],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/notifications/insights?daysBack=7`, { credentials: "include" });
+      return res.json();
+    },
+    enabled: !!isAdmin,
+    staleTime: 60000,
+  });
+
   const reviewMutation = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "approved" | "rejected" }) =>
       reviewCategorySuggestion(id, status),
@@ -266,6 +279,11 @@ export default function AdminScreen() {
               <StatCard label="Revenue (MTD)" value="$891" icon="card-outline" color={Colors.green} />
               <StatCard label="Avg Rating" value="3.8" icon="analytics-outline" color="#EC4899" />
             </View>
+
+            {/* Sprint 506: Notification analytics */}
+            {notifInsights?.data && (
+              <NotificationInsightsCard data={notifInsights.data} />
+            )}
 
             <Text style={styles.sectionTitle}>Review Queue</Text>
           </>
