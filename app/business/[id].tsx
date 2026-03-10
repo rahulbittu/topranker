@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, type ApiDish } from "@/lib/api";
+import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, fetchCityStats, type ApiDish } from "@/lib/api";
 import { type CredibilityTier } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
@@ -44,6 +44,7 @@ import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
 import { PhotoUploadSheet } from "@/components/business/PhotoUploadSheet";
 import { ReviewSummaryCard } from "@/components/business/ReviewSummaryCard";
+import { CityComparisonCard } from "@/components/business/CityComparisonCard";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -84,6 +85,14 @@ export default function BusinessProfileScreen() {
     queryFn: fetchMemberProfile,
     enabled: !!user,
     staleTime: 60000,
+  });
+
+  // Sprint 448: City stats for comparison card
+  const { data: cityStats } = useQuery({
+    queryKey: ["cityStats", business?.city],
+    queryFn: () => fetchCityStats(business!.city || "Dallas"),
+    enabled: !!business?.city,
+    staleTime: 120000,
   });
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
@@ -332,6 +341,26 @@ export default function BusinessProfileScreen() {
 
           {/* Sprint 444: Review Summary Card — aggregated insights */}
           <ReviewSummaryCard ratings={ratings} />
+
+          {/* Sprint 448: City Comparison Card */}
+          {cityStats && cityStats.totalBusinesses > 0 && business && (
+            <CityComparisonCard
+              businessName={business.name}
+              city={business.city || "Dallas"}
+              bizScore={business.weightedScore}
+              bizRatingCount={business.ratingCount || 0}
+              bizWouldReturnPct={ratings.length > 0 ? Math.round((ratings.filter(r => r.wouldReturn).length / Math.max(1, ratings.filter(r => r.wouldReturn != null).length)) * 100) : null}
+              cityAvgScore={cityStats.avgWeightedScore}
+              cityAvgRatingCount={cityStats.avgRatingCount}
+              cityAvgWouldReturnPct={cityStats.avgWouldReturnPct}
+              cityTotalBusinesses={cityStats.totalBusinesses}
+              dimensionComparisons={Object.entries(cityStats.dimensionAvgs).map(([label, cityAvg]) => ({
+                label: label.charAt(0).toUpperCase() + label.slice(1),
+                bizAvg: 0, // Will be populated from ratings when available
+                cityAvg,
+              }))}
+            />
+          )}
 
           {/* Sprint 268: Score Breakdown — visit-type separation */}
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}

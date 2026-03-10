@@ -390,6 +390,21 @@ export async function fetchRankHistory(businessId: string, days: number = 30) {
   );
 }
 
+// Sprint 448: City stats for comparison
+export interface CityStats {
+  city: string;
+  totalBusinesses: number;
+  avgWeightedScore: number;
+  avgRatingCount: number;
+  avgWouldReturnPct: number;
+  recentRatingsCount: number;
+  dimensionAvgs: Record<string, number>;
+}
+
+export async function fetchCityStats(city: string): Promise<CityStats> {
+  return apiFetch<CityStats>(`/api/city-stats/${encodeURIComponent(city)}`);
+}
+
 export interface ApiMemberImpact {
   businessesMovedUp: number;
   businessesMovedToFirst?: number;

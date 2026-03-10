@@ -78,9 +78,9 @@ describe("Sprint 396 — Business detail (slim)", () => {
     expect(src).not.toContain("claimBtnText:");
   });
 
-  it("is under 530 LOC", () => {
-    // Sprint 438: +10 LOC for PhotoUploadSheet integration
+  it("is under 550 LOC", () => {
+    // Sprint 448: +16 LOC for CityComparisonCard integration
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(530);
+    expect(lines).toBeLessThan(550);
   });
 });
