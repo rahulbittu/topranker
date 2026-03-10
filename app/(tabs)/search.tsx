@@ -239,7 +239,7 @@ export default function SearchScreen() {
 
       {/* Sprint 193: Extracted to SearchOverlays component */}
       {searchFocused && query.length >= 2 && (
-        <AutocompleteDropdown results={autocompleteResults} dishMatches={dishSearchMatches} onDismiss={() => setSearchFocused(false)} />
+        <AutocompleteDropdown results={autocompleteResults} dishMatches={dishSearchMatches} query={query} onCuisineSelect={(cuisine) => { setSelectedCuisine(cuisine); setQuery(""); }} onDismiss={() => setSearchFocused(false)} />
       )}
 
       {searchFocused && query.length === 0 && (

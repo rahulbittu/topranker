@@ -31,7 +31,7 @@ describe("Sprint 313 — Dish-Specific Search", () => {
   });
 
   it("dish matches show 'Best {name}' text", () => {
-    expect(overlaySrc).toContain("Best {dish.name}");
+    expect(overlaySrc).toContain("Best ${dish.name}");
   });
 
   it("dish matches navigate to /dish/[slug]", () => {
