@@ -9,7 +9,9 @@ const ROOT = path.resolve(__dirname, "..");
 const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 556: Hours Pre-fill", () => {
-  const src = readFile("app/business/dashboard.tsx");
+  // Sprint 561: HoursEditor extracted to components/dashboard/HoursEditor.tsx
+  const src = readFile("components/dashboard/HoursEditor.tsx");
+  const dashSrc = readFile("app/business/dashboard.tsx");
 
   it("fetches existing hours via useQuery", () => {
     expect(src).toContain('"business-hours"');
@@ -44,7 +46,7 @@ describe("Sprint 556: Hours Pre-fill", () => {
   });
 
   it("dashboard.tsx stays under 600 LOC", () => {
-    const loc = src.split("\n").length;
+    const loc = dashSrc.split("\n").length;
     expect(loc).toBeLessThan(600);
   });
 });

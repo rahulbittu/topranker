@@ -90,49 +90,59 @@ describe("Sprint 554: Business Hours Owner Update", () => {
 
   describe("Client — dashboard.tsx (HoursEditor)", () => {
     const src = readFile("app/business/dashboard.tsx");
+    // Sprint 561: HoursEditor extracted to components/dashboard/HoursEditor.tsx
+    const editorSrc = readFile("components/dashboard/HoursEditor.tsx");
 
     it("has HoursEditor component", () => {
       expect(src).toContain("HoursEditor");
     });
 
     it("has DAY_NAMES constant", () => {
-      expect(src).toContain("DAY_NAMES");
-      expect(src).toContain("Sunday");
-      expect(src).toContain("Saturday");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("DAY_NAMES");
+      expect(editorSrc).toContain("Sunday");
+      expect(editorSrc).toContain("Saturday");
     });
 
     it("has edit/save toggle", () => {
-      expect(src).toContain("editing");
-      expect(src).toContain("setEditing");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("editing");
+      expect(editorSrc).toContain("setEditing");
     });
 
     it("uses useMutation for hours update", () => {
-      expect(src).toContain("useMutation");
-      expect(src).toContain("updateBusinessHours");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("useMutation");
+      expect(editorSrc).toContain("updateBusinessHours");
     });
 
     it("shows TextInput in edit mode", () => {
-      expect(src).toContain("TextInput");
-      expect(src).toContain("hoursInput");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("TextInput");
+      expect(editorSrc).toContain("hoursInput");
     });
 
     it("has cancel button", () => {
-      expect(src).toContain("Cancel");
-      expect(src).toContain("hoursCancelBtn");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("Cancel");
+      expect(editorSrc).toContain("hoursCancelBtn");
     });
 
     it("shows success alert on save", () => {
-      expect(src).toContain("Hours Updated");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("Hours Updated");
     });
 
     it("invalidates dashboard query on success", () => {
-      expect(src).toContain("invalidateQueries");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("invalidateQueries");
     });
 
     it("has hours card styles", () => {
-      expect(src).toContain("hoursCard:");
-      expect(src).toContain("hoursRow:");
-      expect(src).toContain("hoursTitle:");
+      // Sprint 561: moved to extracted component
+      expect(editorSrc).toContain("hoursCard:");
+      expect(editorSrc).toContain("hoursRow:");
+      expect(editorSrc).toContain("hoursTitle:");
     });
 
     it("renders HoursEditor in overview tab", () => {
