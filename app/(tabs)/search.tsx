@@ -54,6 +54,7 @@ export default function SearchScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteSuggestion[]>([]);
+  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
 
   // Load recent searches from storage
   useEffect(() => {
@@ -106,8 +107,8 @@ export default function SearchScreen() {
   }, [query]);
 
   const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["search", city, debouncedQuery],
-    queryFn: () => fetchBusinessSearch(debouncedQuery, city),
+    queryKey: ["search", city, debouncedQuery, selectedCuisine],
+    queryFn: () => fetchBusinessSearch(debouncedQuery, city, undefined, selectedCuisine || undefined),
     staleTime: 30000,
   });
 
@@ -219,7 +220,7 @@ export default function SearchScreen() {
           placeholder="Restaurants, neighborhoods, categories..."
           placeholderTextColor={Colors.textTertiary}
           value={query}
-          onChangeText={(t) => { setQuery(t); setSearchFocused(true); }}
+          onChangeText={(t) => { setQuery(t); setSearchFocused(true); if (t.length > 0) setSelectedCuisine(null); }}
           onFocus={() => setSearchFocused(true)}
           maxLength={100}
           accessibilityLabel="Search for restaurants, neighborhoods, or categories"
@@ -475,6 +476,7 @@ export default function SearchScreen() {
                   city={city}
                   onSelectCategory={(name) => { setQuery(name); setActiveFilter("All"); }}
                   onSeeAll={() => setQuery("best in " + city.toLowerCase())}
+                  onCuisineChange={(cuisine) => setSelectedCuisine(cuisine)}
                 />
               )}
 

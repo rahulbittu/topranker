@@ -12,9 +12,10 @@ interface BestInSectionProps {
   city: string;
   onSelectCategory: (displayName: string) => void;
   onSeeAll: () => void;
+  onCuisineChange?: (cuisine: string | null) => void;
 }
 
-export function BestInSection({ city, onSelectCategory, onSeeAll }: BestInSectionProps) {
+export function BestInSection({ city, onSelectCategory, onSeeAll, onCuisineChange }: BestInSectionProps) {
   const [bestInCuisine, setBestInCuisine] = useState<string | null>(null);
   const bestInCuisines = useMemo(() => getAvailableCuisines(), []);
   const bestInItems = useMemo(() =>
@@ -43,7 +44,7 @@ export function BestInSection({ city, onSelectCategory, onSeeAll }: BestInSectio
         contentContainerStyle={styles.cuisineTabsScroll}
       >
         <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setBestInCuisine(null); }}
+          onPress={() => { Haptics.selectionAsync(); setBestInCuisine(null); onCuisineChange?.(null); }}
           style={[styles.cuisineTab, bestInCuisine === null && styles.cuisineTabActive]}
         >
           <Text style={[styles.cuisineTabText, bestInCuisine === null && styles.cuisineTabTextActive]}>All</Text>
@@ -53,7 +54,7 @@ export function BestInSection({ city, onSelectCategory, onSeeAll }: BestInSectio
           return (
             <TouchableOpacity
               key={cuisine}
-              onPress={() => { Haptics.selectionAsync(); setBestInCuisine(cuisine); }}
+              onPress={() => { Haptics.selectionAsync(); setBestInCuisine(cuisine); onCuisineChange?.(cuisine); }}
               style={[styles.cuisineTab, bestInCuisine === cuisine && styles.cuisineTabActive]}
             >
               <Text style={[styles.cuisineTabText, bestInCuisine === cuisine && styles.cuisineTabTextActive]}>
