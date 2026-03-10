@@ -9,7 +9,7 @@
     "lib/api.ts": { "maxLOC": 570, "current": 550, "notes": "Sprint 562: owner API extracted" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 198, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
-    "app/(tabs)/search.tsx": { "maxLOC": 680, "current": 666, "notes": "Search page" },
+    "app/(tabs)/search.tsx": { "maxLOC": 680, "current": 670, "notes": "Sprint 568: +CityComparisonOverlay" },
     "app/business/dashboard.tsx": { "maxLOC": 510, "current": 502, "notes": "Sprint 567: +RatingVelocityWidget" },
     "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 111, "notes": "Sprint 561: extracted from dashboard.tsx" },
     "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 169, "notes": "Sprint 567: velocity widget" },
@@ -17,14 +17,15 @@
     "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 70, "notes": "Sprint 563: extracted from CollapsibleReviews" },
     "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 100, "current": 80, "notes": "Sprint 553: new" },
     "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 414, "notes": "Sprint 546: dedup" },
-    "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" }
+    "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" },
+    "components/search/CityComparisonOverlay.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 568: city comparison overlay" }
   },
   "build": {
     "maxSizeKb": 720,
     "currentSizeKb": 712.1
   },
   "tests": {
-    "minCount": 10600,
-    "currentCount": 10695
+    "minCount": 10700,
+    "currentCount": 10719
   }
 }

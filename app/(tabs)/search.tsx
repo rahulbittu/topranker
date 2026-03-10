@@ -31,6 +31,7 @@ import { AutocompleteDropdown, RecentSearchesPanel, PopularQueriesPanel } from "
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
+import { CityComparisonOverlay } from "@/components/search/CityComparisonOverlay";
 import { TrendingSection } from "@/components/search/TrendingSection";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -488,6 +489,9 @@ export default function SearchScreen() {
                   </TouchableOpacity>
                 </View>
               )}
+
+              {/* Sprint 568: City comparison overlay */}
+              {!debouncedQuery && <CityComparisonOverlay currentCity={city} delay={200} />}
 
               {/* Best In [City] — Category Browsing (extracted Sprint 287) */}
               {!debouncedQuery && (
