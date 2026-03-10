@@ -85,7 +85,7 @@ describe("Sprint 277: Top Dishes API", () => {
 });
 
 describe("Sprint 277: Business Page Integration", () => {
-  const bizPageSrc = readFile("app/business/[id].tsx");
+  const bizPageSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("business page imports TopDishes", () => {
     expect(bizPageSrc).toContain("TopDishes");

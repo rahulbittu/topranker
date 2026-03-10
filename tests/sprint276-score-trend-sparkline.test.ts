@@ -90,7 +90,7 @@ describe("Sprint 276: Score Trend API", () => {
 });
 
 describe("Sprint 276: Business Page Integration", () => {
-  const bizPageSrc = readFile("app/business/[id].tsx");
+  const bizPageSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("business page imports ScoreTrendSparkline", () => {
     expect(bizPageSrc).toContain("ScoreTrendSparkline");

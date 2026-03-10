@@ -6,7 +6,8 @@ const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");
 
 describe("Sprint 373: Business detail breadcrumb navigation", () => {
-  const bizSrc = readFile("app/business/[id].tsx");
+  // Sprint 589: Breadcrumb moved to BusinessHeroSection
+  const bizSrc = readFile("components/business/BusinessHeroSection.tsx");
 
   // ── Breadcrumb structure ────────────────────────────────
 
@@ -85,7 +86,7 @@ describe("Sprint 373: Business detail breadcrumb navigation", () => {
   describe("Breadcrumb placement", () => {
     it("should appear after HeroCarousel and before BusinessNameCard in JSX", () => {
       const heroIdx = bizSrc.indexOf("<HeroCarousel");
-      const breadcrumbIdx = bizSrc.indexOf("Breadcrumb Navigation");
+      const breadcrumbIdx = bizSrc.indexOf("styles.breadcrumb");
       const nameCardIdx = bizSrc.indexOf("<BusinessNameCard");
       expect(heroIdx).toBeLessThan(breadcrumbIdx);
       expect(breadcrumbIdx).toBeLessThan(nameCardIdx);

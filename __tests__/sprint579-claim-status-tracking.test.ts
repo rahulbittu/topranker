@@ -165,7 +165,7 @@ describe("Sprint 579: ClaimStatusCard Component", () => {
 });
 
 describe("Sprint 579: Business Detail Integration", () => {
-  const src = readFile("app/business/[id].tsx");
+  const src = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("imports ClaimStatusCard", () => {
     expect(src).toContain("import { ClaimStatusCard }");

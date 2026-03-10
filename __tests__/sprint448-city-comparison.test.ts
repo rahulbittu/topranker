@@ -170,9 +170,10 @@ describe("API client — fetchCityStats", () => {
 // ---------------------------------------------------------------------------
 describe("Business page — city comparison", () => {
   const src = readFile("app/business/[id].tsx");
+  const analyticsSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("imports CityComparisonCard", () => {
-    expect(src).toContain("CityComparisonCard");
+    expect(analyticsSrc).toContain("CityComparisonCard");
   });
 
   it("imports fetchCityStats", () => {
@@ -184,12 +185,12 @@ describe("Business page — city comparison", () => {
   });
 
   it("renders CityComparisonCard", () => {
-    expect(src).toContain("<CityComparisonCard");
+    expect(analyticsSrc).toContain("<CityComparisonCard");
   });
 
   it("passes city stats props", () => {
-    expect(src).toContain("cityAvgScore={cityStats.avgWeightedScore}");
-    expect(src).toContain("cityTotalBusinesses={cityStats.totalBusinesses}");
+    expect(analyticsSrc).toContain("cityAvgScore={cityStats.avgWeightedScore}");
+    expect(analyticsSrc).toContain("cityTotalBusinesses={cityStats.totalBusinesses}");
   });
 });
 

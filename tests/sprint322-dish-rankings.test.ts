@@ -92,7 +92,8 @@ describe("Sprint 322 — Storage function", () => {
 });
 
 describe("Sprint 322 — Business page integration", () => {
-  const pageSrc = readFile("app/business/[id].tsx");
+  // Sprint 589: DishRankings moved to BusinessAnalyticsSection
+  const pageSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("imports DishRankings component", () => {
     expect(pageSrc).toContain("DishRankings");

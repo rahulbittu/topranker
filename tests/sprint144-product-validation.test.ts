@@ -265,14 +265,18 @@ describe("Component Extraction Integrity", () => {
       expect(challCardSrc).toContain(exp);
     }
 
+    // Sprint 589: Hero/analytics sections extracted — SubComponents consumed by [id].tsx + BusinessHeroSection + BusinessAnalyticsSection
     const businessSrc = readFile("app/business/[id].tsx");
+    const heroSrc = readFile("components/business/BusinessHeroSection.tsx");
+    const analyticsSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
     const businessSubExports = [
       "BusinessActionBar", "CollapsibleReviews", "HeroCarousel",
       "BusinessNameCard", "QuickStatsBar", "ScoreCard",
       "TrustExplainerCard", "SubScoresCard",
     ];
     for (const exp of businessSubExports) {
-      expect(businessSrc).toContain(exp);
+      const found = businessSrc.includes(exp) || heroSrc.includes(exp) || analyticsSrc.includes(exp);
+      expect(found).toBe(true);
     }
 
     const searchSrc = readFile("app/(tabs)/search.tsx");

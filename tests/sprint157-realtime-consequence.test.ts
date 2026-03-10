@@ -140,18 +140,22 @@ describe("Business detail page has impact banner support", () => {
     path.resolve(__dirname, "../app/business/[id].tsx"),
     "utf-8"
   );
+  const heroSrc = fs.readFileSync(
+    path.resolve(__dirname, "../components/business/BusinessHeroSection.tsx"),
+    "utf-8"
+  );
 
   it("imports getRatingImpact", () => {
     expect(bizDetailSrc).toContain("getRatingImpact");
   });
 
   it("renders impact banner when rank changed", () => {
-    expect(bizDetailSrc).toContain("impactBanner");
-    expect(bizDetailSrc).toContain("Your rating moved this");
+    expect(heroSrc).toContain("impactBanner");
+    expect(heroSrc).toContain("Your rating moved this");
   });
 
   it("shows rank numbers in banner", () => {
-    expect(bizDetailSrc).toContain("prevRank");
-    expect(bizDetailSrc).toContain("newRank");
+    expect(heroSrc).toContain("prevRank");
+    expect(heroSrc).toContain("newRank");
   });
 });

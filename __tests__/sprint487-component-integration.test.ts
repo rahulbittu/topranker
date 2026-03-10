@@ -87,7 +87,7 @@ describe("Sprint 487: Component Integration", () => {
 
   describe("business/[id].tsx DimensionScoreCard wiring", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../app/business/[id].tsx"),
+      path.resolve(__dirname, "../components/business/BusinessAnalyticsSection.tsx"),
       "utf-8"
     );
 
@@ -100,7 +100,7 @@ describe("Sprint 487: Component Integration", () => {
     });
 
     it("conditionally renders DimensionScoreCard when business exists", () => {
-      expect(src).toContain("business?.id && <DimensionScoreCard");
+      expect(src).toContain("business.id && <DimensionScoreCard");
     });
   });
 });

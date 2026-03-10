@@ -1,3 +1,4 @@
+// Sprint 589: Hero + analytics sections extracted to BusinessHeroSection + BusinessAnalyticsSection
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
@@ -7,7 +8,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeImage } from "@/components/SafeImage";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { fetchBusinessBySlug, fetchRankHistory, fetchMemberProfile, fetchCityStats, type ApiDish } from "@/lib/api";
@@ -16,7 +16,7 @@ import { type CredibilityTier } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
-import { BRAND, getCategoryDisplay } from "@/constants/brand";
+import { BRAND } from "@/constants/brand";
 import { Analytics } from "@/lib/analytics";
 import { getRatingImpact, clearRatingImpact } from "@/lib/rating-impact";
 import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
@@ -24,23 +24,11 @@ import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
   CollapsibleReviews, DishPill,
-  RatingDistribution, RankHistoryChart,
   OpeningHoursCard, LocationCard,
-  HeroCarousel, BusinessNameCard, QuickStatsBar,
-  RankConfidenceIndicator, ScoreCard, TrustExplainerCard,
-  SubScoresCard, YourRatingCard,
+  YourRatingCard,
   type MappedRating, type RankHistoryPoint,
 } from "@/components/business/SubComponents";
-import { evaluateBusinessBadges, type BusinessBadgeContext } from "@/lib/badges";
-import { BadgeRowCompact } from "@/components/profile/BadgeGrid";
 import { SlideUpView } from "@/components/animations/SlideUpView";
-import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
-import { DimensionScoreCard } from "@/components/business/DimensionScoreCard";
-import { DimensionComparisonCard } from "@/components/business/DimensionComparisonCard";
-import { ClaimStatusCard } from "@/components/business/ClaimStatusCard";
-import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
-import { TopDishes } from "@/components/business/TopDishes";
-import { DishRankings } from "@/components/business/DishRankings";
 import { PhotoGallery } from "@/components/business/PhotoGallery";
 import { RatingPhotoGallery } from "@/components/business/RatingPhotoGallery";
 import { PhotoLightbox } from "@/components/business/PhotoLightbox";
@@ -48,8 +36,8 @@ import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
 import { PhotoUploadSheet } from "@/components/business/PhotoUploadSheet";
-import { ReviewSummaryCard } from "@/components/business/ReviewSummaryCard";
-import { CityComparisonCard } from "@/components/business/CityComparisonCard";
+import { BusinessHeroSection } from "@/components/business/BusinessHeroSection";
+import { BusinessAnalyticsSection } from "@/components/business/BusinessAnalyticsSection";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -187,10 +175,6 @@ export default function BusinessProfileScreen() {
     );
   }
 
-  const avgQ1 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q1, 0) / ratings.length : 0;
-  const avgQ2 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q2, 0) / ratings.length : 0;
-  const avgQ3 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q3, 0) / ratings.length : 0;
-
   const handleMaps = () => {
     if (business.googleMapsUrl) {
       Linking.openURL(business.googleMapsUrl);
@@ -243,90 +227,21 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
-        {/* Hero Image Carousel */}
-        <HeroCarousel
+        {/* Sprint 589: Extracted hero section */}
+        <BusinessHeroSection
           photoUrls={photoUrls}
           heroPhotoIdx={heroPhotoIdx}
           screenWidth={screenWidth}
-          businessName={business.name}
-          category={business.category}
+          business={business}
+          ratings={ratings}
           saved={saved}
           topPad={topPad}
+          ratingImpact={ratingImpact}
           onHeroScroll={onHeroScroll}
-          onBack={() => router.back()}
           onToggleBookmark={handleToggleBookmark}
           onShare={handleShare}
           onPhotoPress={openLightbox}
         />
-
-        {/* Breadcrumb Navigation */}
-        <View style={styles.breadcrumb}>
-          <TouchableOpacity onPress={() => router.push("/")} accessibilityRole="link" accessibilityLabel="Go to Rankings">
-            <Text style={styles.breadcrumbLink}>Rankings</Text>
-          </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={10} color={Colors.textTertiary} />
-          <TouchableOpacity onPress={() => router.push({ pathname: "/(tabs)/search", params: { category: business.category } })} accessibilityRole="link" accessibilityLabel={`View ${getCategoryDisplay(business.category).label}`}>
-            <Text style={styles.breadcrumbLink}>{getCategoryDisplay(business.category).label}</Text>
-          </TouchableOpacity>
-          <Ionicons name="chevron-forward" size={10} color={Colors.textTertiary} />
-          <Text style={styles.breadcrumbCurrent} numberOfLines={1}>{business.name}</Text>
-        </View>
-
-        {/* Business Name Card */}
-        <BusinessNameCard
-          name={business.name}
-          isClaimed={business.isClaimed}
-          category={business.category}
-          neighborhood={business.neighborhood}
-          city={business.city}
-          isOpenNow={business.isOpenNow}
-          priceRange={business.priceRange}
-        />
-
-        {/* Quick Stats Bar */}
-        <QuickStatsBar
-          rank={business.rank}
-          rankDelta={business.rankDelta}
-          ratingCount={business.ratingCount}
-          ratings={ratings}
-        />
-
-        {/* Your Rating Impact Banner — 10s auto-dismiss */}
-        {ratingImpact && (
-          <View style={styles.impactBanner}>
-            <Ionicons name={ratingImpact.newRank < ratingImpact.prevRank ? "trending-up" : "trending-down"} size={18} color="#fff" />
-            <Text style={styles.impactBannerText}>
-              Your rating moved this from #{ratingImpact.prevRank} to #{ratingImpact.newRank}
-            </Text>
-          </View>
-        )}
-
-        {/* Ranking Confidence Indicator */}
-        <RankConfidenceIndicator ratingCount={business.ratingCount} category={business.category} />
-
-        {/* Business Badges — CVO owned */}
-        {(() => {
-          const badgeCtx: BusinessBadgeContext = {
-            totalRatings: business.ratingCount,
-            averageScore: business.weightedScore,
-            categoryRank: business.rank,
-            trustedRaterCount: ratings.filter(r => r.userTier === "trusted" || r.userTier === "top").length,
-            topJudgeHighRatings: ratings.filter(r => r.userTier === "top" && r.rawScore >= 4).length,
-            consecutiveWeeksImproved: 0,
-            isVerified: business.isClaimed,
-            challengerWins: 0,
-            isNew: business.ratingCount <= 3,
-          };
-          const badges = evaluateBusinessBadges(badgeCtx);
-          const earned = badges.filter(b => b.earnedAt > 0);
-          if (earned.length === 0) return null;
-          return (
-            <View style={styles.badgeSection}>
-              <Text style={styles.badgeSectionTitle}>Achievements</Text>
-              <BadgeRowCompact badges={badges} />
-            </View>
-          );
-        })()}
 
         <View style={styles.body}>
           {/* Description */}
@@ -336,73 +251,13 @@ export default function BusinessProfileScreen() {
 
           <View style={styles.sectionDivider} />
 
-          {/* Score */}
-          <ScoreCard
-            weightedScore={business.weightedScore}
-            ratingCount={business.ratingCount}
-            rank={business.rank}
-            googleRating={business.googleRating}
-          />
-
-          {/* Trust Explainer */}
-          <TrustExplainerCard
-            ratingCount={business.ratingCount}
-            weightedScore={business.weightedScore}
-            category={business.category}
+          {/* Sprint 589: Extracted analytics section */}
+          <BusinessAnalyticsSection
+            business={business}
             ratings={ratings}
-            trustedRaterCount={ratings.filter(r => r.userTier === "trusted" || r.userTier === "top").length}
-            lastRatedDate={ratings.length > 0 ? new Date(ratings[0].createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : undefined}
+            cityStats={cityStats}
+            rankHistoryData={rankHistoryData as RankHistoryPoint[] | undefined}
           />
-
-          {/* Sub-scores */}
-          {ratings.length > 0 && (
-            <SubScoresCard avgQ1={avgQ1} avgQ2={avgQ2} avgQ3={avgQ3} ratings={ratings} />
-          )}
-
-          {/* Sprint 444: Review Summary Card — aggregated insights */}
-          <ReviewSummaryCard ratings={ratings} />
-
-          {/* Sprint 448: City Comparison Card */}
-          {cityStats && cityStats.totalBusinesses > 0 && business && (
-            <CityComparisonCard
-              businessName={business.name}
-              city={business.city || "Dallas"}
-              bizScore={business.weightedScore}
-              bizRatingCount={business.ratingCount || 0}
-              bizWouldReturnPct={ratings.length > 0 ? Math.round((ratings.filter(r => r.wouldReturn).length / Math.max(1, ratings.filter(r => r.wouldReturn != null).length)) * 100) : null}
-              cityAvgScore={cityStats.avgWeightedScore}
-              cityAvgRatingCount={cityStats.avgRatingCount}
-              cityAvgWouldReturnPct={cityStats.avgWouldReturnPct}
-              cityTotalBusinesses={cityStats.totalBusinesses}
-              dimensionComparisons={Object.entries(cityStats.dimensionAvgs).map(([label, cityAvg]) => ({
-                label: label.charAt(0).toUpperCase() + label.slice(1),
-                bizAvg: 0, // Will be populated from ratings when available
-                cityAvg,
-              }))}
-            />
-          )}
-
-          {/* Sprint 579: Claim status card */}
-          {business?.id && business?.slug && <ClaimStatusCard businessId={business.id} businessSlug={business.slug} businessName={business.name} />}
-
-          {/* Sprint 268: Score Breakdown — visit-type separation */}
-          {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
-          {/* Sprint 487: Dimension score breakdown with per-dimension bars */}
-          {business?.id && <DimensionScoreCard businessId={business.id} />}
-          {business?.id && business?.city && <DimensionComparisonCard businessId={business.id} city={business.city} />}
-          {business?.id && <ScoreTrendSparkline businessId={business.id} />}
-          {business?.id && <DishRankings businessId={business.id} />}
-          {business?.id && <TopDishes businessId={business.id} businessName={business.name} />}
-
-          {/* Rating Distribution — Anti-fraud transparency */}
-          {ratings.length >= 3 && <RatingDistribution ratings={ratings} />}
-
-          {/* Rank History Chart — 30-day trend */}
-          {rankHistoryData && rankHistoryData.length >= 2 && (
-            <RankHistoryChart points={rankHistoryData as RankHistoryPoint[]} />
-          )}
-
-          <View style={styles.sectionDivider} />
 
           {/* Action Bar — extracted component (Sprint 381) */}
           <BusinessActionBar
@@ -527,20 +382,6 @@ export default function BusinessProfileScreen() {
 
 const styles = StyleSheet.create({
   screenContainer: { flex: 1, backgroundColor: Colors.background },
-  impactBanner: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: "#1B5E20", marginHorizontal: 16, marginTop: 8,
-    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
-  },
-  impactBannerText: {
-    color: "#fff", fontSize: 14, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
-  },
-  badgeSection: {
-    paddingHorizontal: 16, paddingVertical: 10, gap: 8,
-  },
-  badgeSectionTitle: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
   notFound: {
     flex: 1, backgroundColor: Colors.background,
     alignItems: "center", justifyContent: "center", gap: 12,
@@ -556,30 +397,14 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
   },
-
-  breadcrumb: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4,
-  },
-  breadcrumbLink: {
-    fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_500Medium",
-  },
-  breadcrumbCurrent: {
-    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    flexShrink: 1,
-  },
   content: { gap: 0 },
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
   descriptionText: {
     ...TYPOGRAPHY.ui.body, color: Colors.textSecondary,
     lineHeight: 20,
   },
-
-
   sectionContainer: { gap: 10 },
   sectionDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-
 });

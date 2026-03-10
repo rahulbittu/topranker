@@ -22,7 +22,7 @@ describe("Sprint 268: Score Breakdown API + Visit-Type Display", () => {
   const routesSrc = readFile("server/routes.ts");
   const breakdownSrc = readFile("server/routes-score-breakdown.ts");
   const componentSrc = readFile("components/business/ScoreBreakdown.tsx");
-  const bizPageSrc = readFile("app/business/[id].tsx");
+  const bizPageSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   // ── API Endpoint ──────────────────────────────────────────────
 

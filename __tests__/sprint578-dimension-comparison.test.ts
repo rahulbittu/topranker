@@ -175,7 +175,7 @@ describe("Sprint 578: DimensionComparisonCard Component", () => {
 });
 
 describe("Sprint 578: Business Detail Integration", () => {
-  const src = readFile("app/business/[id].tsx");
+  const src = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("imports DimensionComparisonCard", () => {
     expect(src).toContain("import { DimensionComparisonCard }");

@@ -199,18 +199,19 @@ describe("ReviewSummaryCard — dimension averages", () => {
 // ---------------------------------------------------------------------------
 describe("Business page — ReviewSummaryCard wiring", () => {
   const src = readFile("app/business/[id].tsx");
+  const analyticsSrc = readFile("components/business/BusinessAnalyticsSection.tsx");
 
   it("imports ReviewSummaryCard", () => {
-    expect(src).toContain("import { ReviewSummaryCard }");
-    expect(src).toContain("components/business/ReviewSummaryCard");
+    expect(analyticsSrc).toContain("import { ReviewSummaryCard }");
+    expect(analyticsSrc).toContain("components/business/ReviewSummaryCard");
   });
 
   it("renders <ReviewSummaryCard>", () => {
-    expect(src).toContain("<ReviewSummaryCard");
+    expect(analyticsSrc).toContain("<ReviewSummaryCard");
   });
 
   it("passes ratings prop", () => {
-    expect(src).toContain("ratings={ratings}");
+    expect(analyticsSrc).toContain("ratings={ratings}");
   });
 
   it("business/[id].tsx under 650 LOC", () => {

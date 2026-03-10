@@ -13,7 +13,8 @@ let businessDetailSrc = "";
 
 beforeAll(() => {
   trustCardSrc = fs.readFileSync(path.resolve("components/business/TrustExplainerCard.tsx"), "utf-8");
-  businessDetailSrc = fs.readFileSync(path.resolve("app/business/[id].tsx"), "utf-8");
+  // Sprint 589: TrustExplainerCard moved to BusinessAnalyticsSection
+  businessDetailSrc = fs.readFileSync(path.resolve("components/business/BusinessAnalyticsSection.tsx"), "utf-8");
 });
 
 // ── Trust card props ─────────────────────────────────────────────
