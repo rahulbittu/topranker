@@ -195,11 +195,11 @@ describe("Profile.tsx — import compatibility", () => {
     expect(profileSrc).toContain('@/components/profile/SubComponents');
   });
 
-  it("imports all 11 components", () => {
+  it("imports all 11 components (SavedRow via SavedPlacesSection)", () => {
     expect(profileSrc).toContain("TierBadge");
     expect(profileSrc).toContain("HistoryRow");
     expect(profileSrc).toContain("BreakdownRow");
-    expect(profileSrc).toContain("SavedRow");
+    expect(profileSrc).toContain("SavedPlacesSection");
     expect(profileSrc).toContain("ImpactCard");
     expect(profileSrc).toContain("PaymentHistoryRow");
     expect(profileSrc).toContain("CredibilityJourney");

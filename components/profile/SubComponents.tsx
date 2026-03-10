@@ -14,3 +14,5 @@ export { TierRewardsSection } from "./TierRewardsSection";
 export { NotificationSettingsLink } from "./NotificationSettingsLink";
 export { LegalLinksSection } from "./LegalLinksSection";
 export { LoggedOutView } from "./LoggedOutView";
+export { SavedPlacesSection } from "./SavedPlacesSection";
+export type { SavedPlacesSectionProps } from "./SavedPlacesSection";

@@ -7,114 +7,115 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 369: Profile saved places improvements", () => {
   const profileSrc = readFile("app/(tabs)/profile.tsx");
+  const savedSrc = readFile("components/profile/SavedPlacesSection.tsx");
 
-  // ── Saved summary stats ───────────────────────────────────
+  // ── Saved summary stats (now in SavedPlacesSection) ─────
 
   describe("Saved places summary", () => {
     it("should show savedSummary section", () => {
-      expect(profileSrc).toContain("savedSummary");
+      expect(savedSrc).toContain("savedSummary");
     });
 
     it("should display places count", () => {
-      expect(profileSrc).toContain("{bookmarkCount}");
-      expect(profileSrc).toContain("Places");
+      expect(savedSrc).toContain("{bookmarkCount}");
+      expect(savedSrc).toContain("Places");
     });
 
     it("should display unique category count", () => {
-      expect(profileSrc).toContain("new Set(savedList.map(e => e.category)).size");
-      expect(profileSrc).toContain("Categories");
+      expect(savedSrc).toContain("new Set(savedList.map(e => e.category)).size");
+      expect(savedSrc).toContain("Categories");
     });
 
     it("should display last saved date", () => {
-      expect(profileSrc).toContain("Math.max(...savedList.map(e => e.savedAt))");
-      expect(profileSrc).toContain("Last Saved");
+      expect(savedSrc).toContain("Math.max(...savedList.map(e => e.savedAt))");
+      expect(savedSrc).toContain("Last Saved");
     });
 
     it("should format date with month and day", () => {
-      expect(profileSrc).toContain('month: "short"');
-      expect(profileSrc).toContain('day: "numeric"');
+      expect(savedSrc).toContain('month: "short"');
+      expect(savedSrc).toContain('day: "numeric"');
     });
 
     it("should only show summary when saved list has items", () => {
-      expect(profileSrc).toContain("savedList.length > 0 && (");
+      expect(savedSrc).toContain("savedList.length > 0 && (");
     });
 
     it("should have summary dividers between items", () => {
-      expect(profileSrc).toContain("savedSummaryDivider");
+      expect(savedSrc).toContain("savedSummaryDivider");
     });
   });
 
-  // ── Empty state improvement ───────────────────────────────
+  // ── Empty state improvement (now in SavedPlacesSection) ─
 
   describe("Empty state CTA", () => {
     it("should have Discover Places CTA button", () => {
-      expect(profileSrc).toContain("savedCtaButton");
-      expect(profileSrc).toContain("Discover Places");
+      expect(savedSrc).toContain("savedCtaButton");
+      expect(savedSrc).toContain("Discover Places");
     });
 
     it("should navigate to search tab", () => {
-      expect(profileSrc).toContain('router.push("/(tabs)/search")');
+      expect(savedSrc).toContain('router.push("/(tabs)/search")');
     });
 
     it("should use search icon on CTA", () => {
-      expect(profileSrc).toContain('"search-outline"');
+      expect(savedSrc).toContain('"search-outline"');
     });
 
     it("should use amber accent on CTA", () => {
-      expect(profileSrc).toContain("borderColor: BRAND.colors.amber");
+      expect(savedSrc).toContain("borderColor: AMBER");
     });
   });
 
-  // ── View All link ─────────────────────────────────────────
+  // ── View All link (now in SavedPlacesSection) ───────────
 
   describe("View All link", () => {
     it("should have View All styled link", () => {
-      expect(profileSrc).toContain("viewAllLink");
+      expect(savedSrc).toContain("viewAllLink");
     });
 
     it("should navigate to /saved", () => {
-      expect(profileSrc).toContain('router.push("/saved")');
+      expect(savedSrc).toContain('router.push("/saved")');
     });
   });
 
-  // ── Style definitions ─────────────────────────────────────
+  // ── Style definitions (now in SavedPlacesSection) ───────
 
   describe("New styles", () => {
     it("should define savedSummary style", () => {
-      expect(profileSrc).toContain("savedSummary:");
+      expect(savedSrc).toContain("savedSummary:");
     });
 
     it("should define savedSummaryItem style", () => {
-      expect(profileSrc).toContain("savedSummaryItem:");
+      expect(savedSrc).toContain("savedSummaryItem:");
     });
 
     it("should define savedSummaryValue style", () => {
-      expect(profileSrc).toContain("savedSummaryValue:");
+      expect(savedSrc).toContain("savedSummaryValue:");
     });
 
     it("should define savedSummaryLabel style", () => {
-      expect(profileSrc).toContain("savedSummaryLabel:");
+      expect(savedSrc).toContain("savedSummaryLabel:");
     });
 
     it("should define savedCtaButton style", () => {
-      expect(profileSrc).toContain("savedCtaButton:");
+      expect(savedSrc).toContain("savedCtaButton:");
     });
 
     it("should define savedCtaText style", () => {
-      expect(profileSrc).toContain("savedCtaText:");
+      expect(savedSrc).toContain("savedCtaText:");
     });
 
     it("should define viewAllLink style", () => {
-      expect(profileSrc).toContain("viewAllLink:");
+      expect(savedSrc).toContain("viewAllLink:");
     });
   });
 
   // ── Existing functionality preserved ─────────────────────
 
   describe("Existing saved places preserved", () => {
-    it("should still show SavedRow for each entry", () => {
-      expect(profileSrc).toContain("SavedRow");
-      expect(profileSrc).toContain("savedList.slice(0, 10)");
+    it("should still show SavedRow for each entry (in extracted component)", () => {
+      expect(savedSrc).toContain("SavedRow");
+      expect(savedSrc).toContain("savedList.slice(0, 10)");
     });
 
     it("should still show bookmark count", () => {
@@ -122,7 +123,21 @@ describe("Sprint 369: Profile saved places improvements", () => {
     });
 
     it("should still show empty state message", () => {
-      expect(profileSrc).toContain("No saved places yet");
+      expect(savedSrc).toContain("No saved places yet");
+    });
+  });
+
+  // ── Profile uses extracted component ────────────────────
+
+  describe("Profile uses SavedPlacesSection", () => {
+    it("should import SavedPlacesSection", () => {
+      expect(profileSrc).toContain("SavedPlacesSection");
+    });
+
+    it("should render SavedPlacesSection with props", () => {
+      expect(profileSrc).toContain("<SavedPlacesSection");
+      expect(profileSrc).toContain("savedList={savedList}");
+      expect(profileSrc).toContain("bookmarkCount={bookmarkCount}");
     });
   });
 });
