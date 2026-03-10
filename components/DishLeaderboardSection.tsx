@@ -117,6 +117,9 @@ export function DishLeaderboardSection({ city }: { city: string }) {
               <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
                 {board.dishName}
               </Text>
+              <View style={[styles.chipCount, isActive && styles.chipCountActive]}>
+                <Text style={[styles.chipCountText, isActive && styles.chipCountTextActive]}>{board.entryCount}</Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -227,9 +230,27 @@ export function DishLeaderboardSection({ city }: { city: string }) {
                         <Text style={styles.earlyDataText}>Early data</Text>
                       </View>
                     )}
+                    {entry.dishRatingCount >= 10 && (
+                      <View style={styles.highConfidenceBadge}>
+                        <Ionicons name="shield-checkmark" size={10} color="#2E7D32" />
+                        <Text style={styles.highConfidenceText}>High confidence</Text>
+                      </View>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
+
+              {/* Rate this dish CTA */}
+              <TouchableOpacity
+                style={styles.dishRateCta}
+                onPress={() => router.push("/(tabs)/search")}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="star-outline" size={14} color={AMBER} />
+                <Text style={styles.dishRateCtaText}>
+                  Rate {activeBoard?.dishName || "this dish"} at a restaurant you've tried
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -449,6 +470,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start", marginTop: 6,
   },
   earlyDataText: { fontSize: 10, color: AMBER, fontWeight: "600" },
+  highConfidenceBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(46,125,50,0.1)", borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start", marginTop: 6,
+  },
+  highConfidenceText: { fontSize: 10, color: "#2E7D32", fontWeight: "600" },
+  chipCount: {
+    backgroundColor: "rgba(0,0,0,0.08)", borderRadius: 8,
+    paddingHorizontal: 5, paddingVertical: 1, minWidth: 18, alignItems: "center",
+  },
+  chipCountActive: { backgroundColor: "rgba(255,255,255,0.25)" },
+  chipCountText: { fontSize: 10, fontWeight: "700", color: "#636366" },
+  chipCountTextActive: { color: "#fff" },
+  dishRateCta: {
+    marginHorizontal: 16, marginTop: 4, marginBottom: 8,
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: "rgba(196,154,26,0.08)",
+  },
+  dishRateCtaText: { fontSize: 12, color: AMBER, fontWeight: "600" },
 
   // Modal
   modalOverlay: {
