@@ -2,10 +2,10 @@
  * Sprint 284 — Cuisine Picker on Discover/Search Page
  *
  * Validates:
- * 1. Search page imports cuisine picker functions
- * 2. Cuisine tabs render in Best In section
+ * 1. Search page uses BestInSection component (extracted Sprint 287)
+ * 2. BestInSection has cuisine picker logic
  * 3. Best In items filter by selected cuisine
- * 4. Cuisine tab styles exist
+ * 4. Cuisine tab styles exist in component
  */
 
 import { describe, it, expect } from "vitest";
@@ -18,49 +18,51 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 284: Search Page Cuisine Picker", () => {
   const searchSrc = readFile("app/(tabs)/search.tsx");
+  const bestInSrc = readFile("components/search/BestInSection.tsx");
 
-  it("imports getCategoriesByCuisine", () => {
-    expect(searchSrc).toContain("getCategoriesByCuisine");
+  it("search.tsx uses BestInSection component", () => {
+    expect(searchSrc).toContain("BestInSection");
+    expect(searchSrc).toContain("<BestInSection");
   });
 
-  it("imports getAvailableCuisines", () => {
-    expect(searchSrc).toContain("getAvailableCuisines");
+  it("BestInSection imports getCategoriesByCuisine", () => {
+    expect(bestInSrc).toContain("getCategoriesByCuisine");
   });
 
-  it("imports CUISINE_DISPLAY", () => {
-    expect(searchSrc).toContain("CUISINE_DISPLAY");
+  it("BestInSection imports getAvailableCuisines", () => {
+    expect(bestInSrc).toContain("getAvailableCuisines");
   });
 
-  it("has bestInCuisine state", () => {
-    expect(searchSrc).toContain("bestInCuisine");
+  it("BestInSection imports CUISINE_DISPLAY", () => {
+    expect(bestInSrc).toContain("CUISINE_DISPLAY");
+  });
+
+  it("has bestInCuisine state in component", () => {
+    expect(bestInSrc).toContain("bestInCuisine");
   });
 
   it("filters bestInItems by cuisine", () => {
-    expect(searchSrc).toContain("getCategoriesByCuisine(bestInCuisine)");
+    expect(bestInSrc).toContain("getCategoriesByCuisine(bestInCuisine)");
   });
 
   it("limits All mode to 15 items", () => {
-    expect(searchSrc).toContain("getActiveCategories().slice(0, 15)");
+    expect(bestInSrc).toContain("getActiveCategories().slice(0, 15)");
   });
 
   it("has cuisineTab style", () => {
-    expect(searchSrc).toContain("cuisineTab:");
+    expect(bestInSrc).toContain("cuisineTab:");
   });
 
   it("has cuisineTabActive style", () => {
-    expect(searchSrc).toContain("cuisineTabActive:");
+    expect(bestInSrc).toContain("cuisineTabActive:");
   });
 
   it("has cuisineTabsScroll style", () => {
-    expect(searchSrc).toContain("cuisineTabsScroll:");
+    expect(bestInSrc).toContain("cuisineTabsScroll:");
   });
 
   it("renders cuisine display emoji and label", () => {
-    expect(searchSrc).toContain("display.emoji");
-    expect(searchSrc).toContain("display.label");
-  });
-
-  it("uses bestInItems instead of getActiveCategories() directly", () => {
-    expect(searchSrc).toContain("bestInItems.map");
+    expect(bestInSrc).toContain("display.emoji");
+    expect(bestInSrc).toContain("display.label");
   });
 });
