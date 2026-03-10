@@ -18,7 +18,7 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { usePersistedSort, usePersistedCuisine, useRecentSearches, useDiscoverTip } from "@/lib/hooks/useSearchPersistence";
+import { usePersistedSort, usePersistedCuisine, usePersistedFilter, usePersistedPrice, usePersistedViewMode, useRecentSearches, useDiscoverTip } from "@/lib/hooks/useSearchPersistence";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { MappedBusiness } from "@/types/business";
@@ -34,20 +34,16 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
 
-type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now" | "Near Me";
-
-type ViewMode = "list" | "map";
-
 export default function SearchScreen() {
 
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterType>("All");
+  const { activeFilter, setActiveFilter } = usePersistedFilter();
   const { city, setCity } = useCity();
   const [showCityPicker, setShowCityPicker] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [priceFilter, setPriceFilter] = useState<string | null>(null);
+  const { viewMode, setViewMode } = usePersistedViewMode();
+  const { priceFilter, setPriceFilter } = usePersistedPrice();
   // Sprint 361: Extracted persistence hooks
   const { sortBy, setSortBy } = usePersistedSort();
   const { selectedCuisine, setSelectedCuisine } = usePersistedCuisine();

@@ -69,6 +69,63 @@ export function useRecentSearches() {
   return { recentSearches, saveRecentSearch, clearRecentSearches };
 }
 
+type FilterType = "All" | "Top 10" | "Challenging" | "Trending" | "Open Now" | "Near Me";
+const VALID_FILTERS: FilterType[] = ["All", "Top 10", "Challenging", "Trending", "Open Now", "Near Me"];
+
+export function usePersistedFilter(defaultFilter: FilterType = "All") {
+  const [activeFilter, setActiveFilterRaw] = useState<FilterType>(defaultFilter);
+  const setActiveFilter = useCallback((filter: FilterType) => {
+    setActiveFilterRaw(filter);
+    AsyncStorage.setItem("discover_filter", filter);
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem("discover_filter").then((val) => {
+      if (val && VALID_FILTERS.includes(val as FilterType)) setActiveFilterRaw(val as FilterType);
+    });
+  }, []);
+
+  return { activeFilter, setActiveFilter };
+}
+
+export function usePersistedPrice() {
+  const [priceFilter, setPriceFilterRaw] = useState<string | null>(null);
+  const setPriceFilter = useCallback((price: string | null) => {
+    setPriceFilterRaw(price);
+    if (price) {
+      AsyncStorage.setItem("discover_price", price);
+    } else {
+      AsyncStorage.removeItem("discover_price");
+    }
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem("discover_price").then((val) => {
+      if (val) setPriceFilterRaw(val);
+    });
+  }, []);
+
+  return { priceFilter, setPriceFilter };
+}
+
+type ViewMode = "list" | "map";
+
+export function usePersistedViewMode(defaultMode: ViewMode = "list") {
+  const [viewMode, setViewModeRaw] = useState<ViewMode>(defaultMode);
+  const setViewMode = useCallback((mode: ViewMode) => {
+    setViewModeRaw(mode);
+    AsyncStorage.setItem("discover_view_mode", mode);
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.getItem("discover_view_mode").then((val) => {
+      if (val === "list" || val === "map") setViewModeRaw(val);
+    });
+  }, []);
+
+  return { viewMode, setViewMode };
+}
+
 export function useDiscoverTip() {
   const [showDiscoverTip, setShowDiscoverTip] = useState(false);
 

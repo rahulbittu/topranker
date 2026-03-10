@@ -43,9 +43,9 @@ describe("Sprint 292 — search.tsx cuisine state wiring", () => {
     path.resolve("app/(tabs)/search.tsx"), "utf-8",
   );
 
-  it("declares selectedCuisine state", () => {
-    expect(src).toMatch(/useState<string\s*\|\s*null>\(null\)/);
+  it("declares selectedCuisine state (via persistence hook)", () => {
     expect(src).toContain("selectedCuisine");
+    expect(src).toContain("usePersistedCuisine");
   });
 
   it("passes selectedCuisine to fetchBusinessSearch", () => {
