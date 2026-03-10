@@ -8,7 +8,7 @@ import { log } from "./logger";
 import { db } from "./db";
 import { members, businesses, ratings } from "@shared/schema";
 import { sql, eq, count } from "drizzle-orm";
-import { getActiveCities, getBetaCities } from "@shared/city-config";
+import { getActiveCities, getBetaCities, isCityActive } from "@shared/city-config";
 
 const engLog = log.tag("CityEngagement");
 
@@ -19,6 +19,7 @@ export interface CityEngagement {
   totalRatings: number;
   avgRatingsPerMember: number;
   topCategory: string;
+  status: "active" | "beta" | "planned";
 }
 
 export async function getCityEngagement(city: string): Promise<CityEngagement> {
@@ -70,6 +71,7 @@ export async function getCityEngagement(city: string): Promise<CityEngagement> {
     totalRatings,
     avgRatingsPerMember,
     topCategory,
+    status: isCityActive(city) ? "active" as const : "beta" as const,
   };
 }
 

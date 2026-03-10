@@ -198,3 +198,48 @@ export async function deleteNotificationTemplate(id: string) {
     method: "DELETE",
   });
 }
+
+// ─── Sprint 543: City Expansion Dashboard ───────────────────
+
+export interface CityHealthSummary {
+  total: number;
+  healthy: number;
+  degraded: number;
+  critical: number;
+}
+
+export interface CityEngagementData {
+  city: string;
+  totalMembers: number;
+  totalBusinesses: number;
+  totalRatings: number;
+  avgRatingsPerMember: number;
+  topCategory: string;
+  status: "active" | "beta" | "planned";
+}
+
+export interface BetaPromotionStatus {
+  city: string;
+  eligible: boolean;
+  currentMetrics: { businesses: number; members: number; ratings: number };
+  progress: number;
+  missingCriteria: string[];
+}
+
+export async function fetchCityHealthSummary() {
+  return apiFetch<CityHealthSummary>("/api/admin/city-health/summary");
+}
+
+export async function fetchAllCityEngagement() {
+  return apiFetch<CityEngagementData[]>("/api/admin/city-engagement");
+}
+
+export async function fetchBetaPromotionStatuses() {
+  return apiFetch<BetaPromotionStatus[]>("/api/admin/promotion-status");
+}
+
+export async function promoteCity(city: string) {
+  return apiRequest<{ promoted: boolean }>(`/api/admin/promote/${encodeURIComponent(city)}`, {
+    method: "POST",
+  });
+}

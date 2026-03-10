@@ -24,7 +24,9 @@ import {
 import { ClaimsTabContent } from "@/components/admin/ClaimsTabContent";
 import { NotificationAdminSection } from "@/components/admin/NotificationAdminSection";
 
-type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
+import { CityExpansionDashboard } from "@/components/admin/CityExpansionDashboard";
+
+type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions" | "cities";
 
 function StatCard({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) {
   return (
@@ -249,6 +251,7 @@ export default function AdminScreen() {
           ["challengers", "flash-outline", "Challengers"],
           ["users", "people-outline", "Users"],
           ["suggestions", "bulb-outline", "Suggestions"],
+          ["cities", "map-outline", "Cities"],
         ] as const).map(([key, icon, label]) => (
           <TouchableOpacity
             key={key}
@@ -387,6 +390,9 @@ export default function AdminScreen() {
             <Text style={styles.emptySub}>No items in the review queue</Text>
           </View>
         )}
+
+        {/* Sprint 543: City Expansion Dashboard */}
+        {activeTab === "cities" && <CityExpansionDashboard />}
       </ScrollView>
     </View>
   );

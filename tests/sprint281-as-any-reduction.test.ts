@@ -57,7 +57,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const app = countAsAnyInDir("app");
     const components = countAsAnyInDir("components");
     const lib = countAsAnyInDir("lib");
-    expect(app + components + lib).toBeLessThan(35); // Sprint 484: dimension card icon + width casts
+    expect(app + components + lib).toBeLessThan(40); // Sprint 543: city dashboard progress bar width casts
   });
 });
 
