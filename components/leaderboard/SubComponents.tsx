@@ -19,6 +19,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { pct } from "@/lib/style-helpers";
 import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
 
@@ -208,6 +209,7 @@ export function HeroCard({ item, categoryLabel }: { item: MappedBusiness; catego
         <View style={s.heroStripLeft}>
           <Text style={s.heroStripCategory}>
             {catDisplay.emoji} {catDisplay.label}
+            {item.cuisine && CUISINE_DISPLAY[item.cuisine] ? ` \u00B7 ${CUISINE_DISPLAY[item.cuisine].emoji} ${CUISINE_DISPLAY[item.cuisine].label}` : ""}
             {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
             {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
           </Text>
@@ -298,6 +300,7 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
         </View>
         <Text style={s.rankedMeta} numberOfLines={1}>
           {catDisplay.emoji} {catDisplay.label}
+          {item.cuisine && CUISINE_DISPLAY[item.cuisine] ? ` \u00B7 ${CUISINE_DISPLAY[item.cuisine].emoji} ${CUISINE_DISPLAY[item.cuisine].label}` : ""}
           {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>

@@ -19,6 +19,7 @@ import { SafeImage } from "@/components/SafeImage";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
+import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { useExperiment } from "@/lib/use-experiment";
 import { setOptions as setGoogleMapsOptions, importLibrary } from "@googlemaps/js-api-loader";
 
@@ -132,6 +133,12 @@ export const BusinessCard = React.memo(function BusinessCard({
         <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
         <View style={s.cardRow2}>
           <Text style={s.cardCategory}>{catDisplay.emoji} {catDisplay.label}</Text>
+          {item.cuisine && CUISINE_DISPLAY[item.cuisine] ? (
+            <>
+              <Text style={s.cardDot}> {"\u00B7"} </Text>
+              <Text style={s.cardNeighborhood}>{CUISINE_DISPLAY[item.cuisine].emoji} {CUISINE_DISPLAY[item.cuisine].label}</Text>
+            </>
+          ) : null}
           {item.neighborhood ? (
             <>
               <Text style={s.cardDot}> {"\u00B7"} </Text>
