@@ -115,6 +115,70 @@ function formatTime(time: string): string {
   return `${h.toString().padStart(2, "0")}:${m}`;
 }
 
+// Sprint 557: Convert weekday_text → periods format
+// weekday_text is Mon-Sun: ["Monday: 11:00 AM – 10:00 PM", ...]
+// periods uses day 0=Sun, time "0900" format
+export function weekdayTextToPeriods(weekdayText: string[]): Period[] {
+  const dayMap = [1, 2, 3, 4, 5, 6, 0]; // Mon→1, Tue→2, ..., Sun→0
+  const periods: Period[] = [];
+  for (let i = 0; i < weekdayText.length && i < 7; i++) {
+    const line = weekdayText[i];
+    const dayNum = dayMap[i];
+    // Remove day prefix like "Monday: " if present
+    const cleaned = line.replace(/^[A-Za-z]+:\s*/, "").trim();
+    if (/closed/i.test(cleaned)) continue;
+    if (/24\s*hours/i.test(cleaned)) {
+      periods.push({ open: { day: dayNum, time: "0000" } });
+      continue;
+    }
+    const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–\-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) continue;
+    const openH = to24(parseInt(match[1]), match[3].toUpperCase());
+    const openM = match[2];
+    const closeH = to24(parseInt(match[4]), match[6].toUpperCase());
+    const closeM = match[5];
+    periods.push({
+      open: { day: dayNum, time: `${pad2(openH)}${openM}` },
+      close: { day: closeH < openH ? (dayNum + 1) % 7 : dayNum, time: `${pad2(closeH)}${closeM}` },
+    });
+  }
+  return periods;
+}
+
+function to24(h: number, ampm: string): number {
+  if (ampm === "AM" && h === 12) return 0;
+  if (ampm === "PM" && h !== 12) return h + 12;
+  return h;
+}
+
+function pad2(n: number): string { return n.toString().padStart(2, "0"); }
+
+// Sprint 557: Convert periods → weekday_text format
+export function periodsToWeekdayText(periods: Period[]): string[] {
+  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const dayMap = [6, 0, 1, 2, 3, 4, 5]; // period.day 0=Sun→index 6, 1=Mon→index 0
+  const result: string[] = dayNames.map(d => `${d}: Closed`);
+  for (const p of periods) {
+    const idx = dayMap[p.open.day];
+    if (!p.close) {
+      result[idx] = `${dayNames[idx]}: Open 24 hours`;
+      continue;
+    }
+    const openStr = formatTime12(p.open.time);
+    const closeStr = formatTime12(p.close.time);
+    result[idx] = `${dayNames[idx]}: ${openStr} – ${closeStr}`;
+  }
+  return result;
+}
+
+function formatTime12(time: string): string {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m} ${ampm}`;
+}
+
 /**
  * Check if a business is open late (has closing time at or after 22:00 / 10 PM).
  */
