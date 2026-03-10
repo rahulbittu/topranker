@@ -402,7 +402,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </>
       )}
 
-      <CredibilityJourney currentTier={tier} />
+      <CredibilityJourney currentTier={tier} credibilityScore={profile.credibilityScore} totalRatings={profile.totalRatings} />
 
       {/* Achievement Badges */}
       <BadgeGridFull
