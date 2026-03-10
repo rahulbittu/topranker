@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  LayoutAnimation, Platform, UIManager,
+  LayoutAnimation, Platform, UIManager, Modal,
+  FlatList, Dimensions, ActivityIndicator,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { fetchRatingPhotos, type RatingPhotoData } from "@/lib/api";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 
@@ -46,9 +48,63 @@ export const DistributionChart = React.memo(function DistributionChart({ ratings
   );
 });
 
+// Sprint 552: Photo carousel modal — shows rating photos in horizontal swipeable view
+const SCREEN_WIDTH = Dimensions.get("window").width;
+function PhotoCarouselModal({ visible, photos, loading, onClose }: {
+  visible: boolean; photos: RatingPhotoData[]; loading: boolean; onClose: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={s.carouselOverlay}>
+        <TouchableOpacity style={s.carouselClose} onPress={onClose}>
+          <Ionicons name="close-circle" size={32} color="#fff" />
+        </TouchableOpacity>
+        {loading ? (
+          <ActivityIndicator size="large" color={BRAND.colors.amber} />
+        ) : photos.length === 0 ? (
+          <Text style={s.carouselEmpty}>No photos available</Text>
+        ) : (
+          <FlatList
+            data={photos}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(p) => p.id}
+            renderItem={({ item }) => (
+              <View style={s.carouselSlide}>
+                <Image source={{ uri: item.photoUrl }} style={s.carouselImage} contentFit="contain" />
+                {item.isVerifiedReceipt && (
+                  <View style={s.carouselReceiptBadge}>
+                    <Ionicons name="receipt-outline" size={14} color="#fff" />
+                    <Text style={s.carouselReceiptText}>Receipt</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          />
+        )}
+        <Text style={s.carouselCount}>{photos.length} photo{photos.length !== 1 ? "s" : ""}</Text>
+      </View>
+    </Modal>
+  );
+}
+
 export const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRating }) {
   const tierColor = TIER_COLORS[rating.userTier];
   const tierName = TIER_DISPLAY_NAMES[rating.userTier];
+  // Sprint 552: Photo carousel state
+  const [carouselOpen, setCarouselOpen] = useState(false);
+  const [photos, setPhotos] = useState<RatingPhotoData[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+  const openCarousel = useCallback(async () => {
+    setCarouselOpen(true);
+    setPhotosLoading(true);
+    try {
+      const data = await fetchRatingPhotos(rating.id);
+      setPhotos(data);
+    } catch { /* fire-and-forget */ }
+    setPhotosLoading(false);
+  }, [rating.id]);
   return (
     <View style={s.ratingRow}>
       <View style={s.ratingTop}>
@@ -95,13 +151,13 @@ export const RatingRow = React.memo(function RatingRow({ rating }: { rating: Map
           />
         </View>
       </View>
-      {/* Sprint 548: Photo/receipt verification indicators */}
+      {/* Sprint 552: Tappable photo/receipt badges → carousel */}
       {(rating.hasPhoto || rating.hasReceipt) && (
-        <View style={s.photoIndicatorRow}>
+        <TouchableOpacity style={s.photoIndicatorRow} onPress={openCarousel} activeOpacity={0.7}>
           {rating.hasPhoto && (
             <View style={s.photoIndicator}>
               <Ionicons name="camera-outline" size={12} color={BRAND.colors.amber} />
-              <Text style={s.photoIndicatorText}>Photo Verified</Text>
+              <Text style={s.photoIndicatorText}>View Photos</Text>
             </View>
           )}
           {rating.hasReceipt && (
@@ -110,11 +166,18 @@ export const RatingRow = React.memo(function RatingRow({ rating }: { rating: Map
               <Text style={s.receiptIndicatorText}>Receipt Verified</Text>
             </View>
           )}
-        </View>
+          <Ionicons name="chevron-forward" size={12} color={Colors.textSecondary} />
+        </TouchableOpacity>
       )}
       {rating.comment && (
         <Text style={s.ratingComment}>"{rating.comment}"</Text>
       )}
+      <PhotoCarouselModal
+        visible={carouselOpen}
+        photos={photos}
+        loading={photosLoading}
+        onClose={() => setCarouselOpen(false)}
+      />
     </View>
   );
 });
@@ -324,4 +387,21 @@ const s = StyleSheet.create({
     fontSize: 13, color: BRAND.colors.amber, fontWeight: "600",
     fontFamily: "DMSans_600SemiBold",
   },
+  // Sprint 552: Photo carousel modal styles
+  carouselOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.92)",
+    justifyContent: "center", alignItems: "center",
+  },
+  carouselClose: { position: "absolute" as const, top: 50, right: 20, zIndex: 10 },
+  carouselSlide: { width: SCREEN_WIDTH, justifyContent: "center" as const, alignItems: "center" as const },
+  carouselImage: { width: SCREEN_WIDTH - 32, height: SCREEN_WIDTH - 32, borderRadius: 12 },
+  carouselReceiptBadge: {
+    position: "absolute" as const, bottom: 16, left: 32,
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 4,
+    backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  carouselReceiptText: { fontSize: 11, color: "#fff", fontWeight: "600" as const },
+  carouselEmpty: { fontSize: 14, color: "#fff", fontFamily: "DMSans_400Regular" },
+  carouselCount: { position: "absolute" as const, bottom: 40, fontSize: 12, color: "rgba(255,255,255,0.6)" },
 });

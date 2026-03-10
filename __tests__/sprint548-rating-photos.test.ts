@@ -93,8 +93,9 @@ describe("Sprint 548: Rating Photo Indicators", () => {
       expect(src).toContain("receipt-outline");
     });
 
-    it("shows Photo Verified text", () => {
-      expect(src).toContain("Photo Verified");
+    it("shows View Photos text", () => {
+      // Sprint 552: "Photo Verified" → "View Photos" (tappable carousel)
+      expect(src).toContain("View Photos");
     });
 
     it("shows Receipt Verified text", () => {
@@ -140,10 +141,10 @@ describe("Sprint 548: Rating Photo Indicators", () => {
       expect(loc).toBeLessThan(690);
     });
 
-    it("CollapsibleReviews.tsx stays under 340 LOC", () => {
-      // Sprint 548: +27 LOC for photo/receipt indicators + styles
+    it("CollapsibleReviews.tsx stays under 420 LOC", () => {
+      // Sprint 552: +80 LOC for photo carousel modal + tappable badges
       const loc = readFile("components/business/CollapsibleReviews.tsx").split("\n").length;
-      expect(loc).toBeLessThan(340);
+      expect(loc).toBeLessThan(420);
     });
 
     it("types.ts stays under 30 LOC", () => {
