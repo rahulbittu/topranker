@@ -9,8 +9,9 @@ const ROOT = path.resolve(__dirname, "..");
 const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 509: Claim V2 Dashboard Integration", () => {
-  describe("lib/api.ts — claim evidence types", () => {
-    const src = readFile("lib/api.ts");
+  // Sprint 524: Admin functions extracted to api-admin.ts
+  describe("lib/api-admin.ts — claim evidence types", () => {
+    const src = readFile("lib/api-admin.ts");
 
     it("defines ClaimEvidence interface", () => {
       expect(src).toContain("export interface ClaimEvidence");

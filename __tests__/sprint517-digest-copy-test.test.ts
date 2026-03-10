@@ -129,8 +129,9 @@ describe("Sprint 517: Weekly Digest Copy Test", () => {
     });
   });
 
-  describe("lib/api.ts — digest copy test client API", () => {
-    const src = readFile("lib/api.ts");
+  // Sprint 524: Admin functions extracted to api-admin.ts
+  describe("lib/api-admin.ts — digest copy test client API", () => {
+    const src = readFile("lib/api-admin.ts");
 
     it("defines DigestCopyTestStatus interface", () => {
       expect(src).toContain("export interface DigestCopyTestStatus");

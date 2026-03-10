@@ -564,173 +564,32 @@ export async function fetchBadgeLeaderboard(limit: number = 20) {
   return apiFetch<BadgeLeaderboardEntry[]>(`/api/badges/leaderboard?limit=${limit}`);
 }
 
-// ── Admin Claims & Flags ─────────────────────────────────────
-
-export interface AdminClaim {
-  id: string;
-  businessId: string;
-  businessName: string | null;
-  memberId: string;
-  memberName: string | null;
-  verificationMethod: string;
-  status: string;
-  submittedAt: string;
-}
-
-export interface AdminFlag {
-  id: string;
-  ratingId: string;
-  flaggerName: string | null;
-  explanation: string | null;
-  aiFraudProbability: number | null;
-  status: string;
-  createdAt: string;
-}
-
-// Sprint 509: Claim V2 evidence types
-export interface ClaimDocumentMetadata {
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  uploadedAt: string;
-  documentType: "business_license" | "utility_bill" | "tax_document" | "lease_agreement" | "other";
-}
-
-export interface ClaimEvidence {
-  claimId: string;
-  documents: ClaimDocumentMetadata[];
-  businessNameMatch: boolean;
-  addressMatch: boolean;
-  phoneMatch: boolean;
-  verificationScore: number;
-  autoApproved: boolean;
-  reviewNotes: string[];
-  scoredAt: string;
-}
-
-export async function fetchPendingClaims() {
-  return apiFetch<AdminClaim[]>("/api/admin/claims");
-}
-
-export async function fetchClaimEvidence(claimId: string) {
-  return apiFetch<ClaimEvidence>(`/api/admin/claims/${claimId}/evidence`);
-}
-
-export async function fetchAllClaimEvidence() {
-  return apiFetch<ClaimEvidence[]>("/api/admin/claims/evidence/all");
-}
-
-// Sprint 517: Digest copy test API
-export interface DigestCopyTestStatus {
-  active: boolean;
-  experimentId: string;
-  variantCount: number;
-  dashboard: Record<string, unknown> | null;
-}
-
-export async function fetchDigestCopyTestStatus() {
-  return apiFetch<DigestCopyTestStatus>("/api/admin/digest-copy-test/status");
-}
-
-export async function seedDigestCopyTest() {
-  return apiRequest<{ created: boolean; experimentId: string }>("/api/admin/digest-copy-test/seed", {
-    method: "POST",
-  });
-}
-
-export async function stopDigestCopyTest() {
-  return apiRequest<{ stopped: boolean }>("/api/admin/digest-copy-test/stop", {
-    method: "POST",
-  });
-}
-
-// Sprint 519: Push notification template API
-export interface NotificationTemplate {
-  id: string;
-  name: string;
-  category: string;
-  title: string;
-  body: string;
-  variables: string[];
-  active: boolean;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export async function fetchNotificationTemplates(category?: string) {
-  const query = category ? `?category=${encodeURIComponent(category)}` : "";
-  return apiFetch<NotificationTemplate[]>(`/api/admin/notification-templates${query}`);
-}
-
-export async function fetchTemplateVariables() {
-  return apiFetch<string[]>("/api/admin/notification-templates/variables");
-}
-
-export async function createNotificationTemplate(input: {
-  id: string; name: string; category: string; title: string; body: string;
-}) {
-  return apiRequest<NotificationTemplate>("/api/admin/notification-templates", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export async function updateNotificationTemplate(id: string, updates: Partial<NotificationTemplate>) {
-  return apiRequest<NotificationTemplate>(`/api/admin/notification-templates/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(updates),
-  });
-}
-
-export async function deleteNotificationTemplate(id: string) {
-  return apiRequest<{ deleted: boolean }>(`/api/admin/notification-templates/${id}`, {
-    method: "DELETE",
-  });
-}
-
-export async function fetchPendingFlags() {
-  return apiFetch<AdminFlag[]>("/api/admin/flags");
-}
-
-export async function reviewAdminClaim(id: string, status: "approved" | "rejected") {
-  const res = await fetch(`${getApiUrl()}/api/admin/claims/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ status }),
-  });
-  if (!res.ok) throw new Error(`Review claim failed: ${res.status}`);
-  return res.json();
-}
-
-export interface AdminMember {
-  id: string;
-  displayName: string;
-  username: string;
-  email: string;
-  city: string;
-  credibilityTier: string;
-  credibilityScore: number;
-  totalRatings: number;
-  isBanned: boolean;
-  isFoundingMember: boolean;
-  joinedAt: string;
-}
-
-export async function fetchAdminMembers(limit: number = 50) {
-  return apiFetch<AdminMember[]>(`/api/admin/members?limit=${limit}`);
-}
-
-export async function reviewAdminFlag(id: string, status: "confirmed" | "dismissed") {
-  const res = await fetch(`${getApiUrl()}/api/admin/flags/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ status }),
-  });
-  if (!res.ok) throw new Error(`Review flag failed: ${res.status}`);
-  return res.json();
-}
+// ── Sprint 524: Admin functions extracted to api-admin.ts ────
+// Re-exported for backward compatibility
+export {
+  type AdminClaim,
+  type AdminFlag,
+  type ClaimDocumentMetadata,
+  type ClaimEvidence,
+  type DigestCopyTestStatus,
+  type NotificationTemplate,
+  type AdminMember,
+  fetchPendingClaims,
+  fetchClaimEvidence,
+  fetchAllClaimEvidence,
+  reviewAdminClaim,
+  fetchPendingFlags,
+  reviewAdminFlag,
+  fetchAdminMembers,
+  fetchDigestCopyTestStatus,
+  seedDigestCopyTest,
+  stopDigestCopyTest,
+  fetchNotificationTemplates,
+  fetchTemplateVariables,
+  createNotificationTemplate,
+  updateNotificationTemplate,
+  deleteNotificationTemplate,
+} from "./api-admin";
 
 // Sprint 387: Rating edit/delete
 export async function editRatingApi(ratingId: string, updates: {

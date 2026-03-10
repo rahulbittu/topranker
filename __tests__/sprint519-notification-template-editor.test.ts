@@ -143,8 +143,9 @@ describe("Sprint 519: Notification Template Editor", () => {
     });
   });
 
-  describe("lib/api.ts — template client API", () => {
-    const src = readFile("lib/api.ts");
+  // Sprint 524: Admin functions extracted to api-admin.ts
+  describe("lib/api-admin.ts — template client API", () => {
+    const src = readFile("lib/api-admin.ts");
 
     it("defines NotificationTemplate interface", () => {
       expect(src).toContain("export interface NotificationTemplate");
