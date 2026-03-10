@@ -20,7 +20,7 @@ const readFile = (relPath: string) =>
 // 1. Bulk hours endpoint
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk hours endpoint", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("registers POST /api/admin/enrichment/bulk-hours", () => {
     expect(src).toContain('"/api/admin/enrichment/bulk-hours"');
@@ -53,7 +53,7 @@ describe("Enrichment — bulk hours endpoint", () => {
 // 2. Input validation
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk hours validation", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("validates businessIds is non-empty", () => {
     expect(src).toContain("businessIds must be a non-empty array");
@@ -77,7 +77,7 @@ describe("Enrichment — bulk hours validation", () => {
 // 3. Hours data structure validation
 // ---------------------------------------------------------------------------
 describe("Enrichment — hours structure validation", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("validates periods is an array", () => {
     expect(src).toContain("hoursData.periods must be an array");
@@ -104,7 +104,7 @@ describe("Enrichment — hours structure validation", () => {
 // 4. Dry run and response
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk hours response", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("caps response at 50 results", () => {
     // Already uses slice(0, 50) pattern

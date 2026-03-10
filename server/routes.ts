@@ -32,6 +32,7 @@ import { registerAdminHealthRoutes } from "./routes-admin-health";
 import { registerAdminPhotoRoutes } from "./routes-admin-photos";
 import { registerAdminDietaryRoutes } from "./routes-admin-dietary";
 import { registerAdminEnrichmentRoutes } from "./routes-admin-enrichment";
+import { registerAdminEnrichmentBulkRoutes } from "./routes-admin-enrichment-bulk";
 import { registerCityStatsRoutes } from "./routes-city-stats";
 import { registerPushRoutes } from "./routes-push";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
@@ -512,6 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminPhotoRoutes(app);
   registerAdminDietaryRoutes(app);
   registerAdminEnrichmentRoutes(app);
+  registerAdminEnrichmentBulkRoutes(app);
   registerCityStatsRoutes(app);
   registerPushRoutes(app);
   registerSearchRoutes(app);

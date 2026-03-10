@@ -19,7 +19,7 @@ const readFile = (relPath: string) =>
 // 1. Bulk dietary by business IDs
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk dietary by IDs", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("registers POST /api/admin/enrichment/bulk-dietary", () => {
     expect(src).toContain('"/api/admin/enrichment/bulk-dietary"');
@@ -62,7 +62,7 @@ describe("Enrichment — bulk dietary by IDs", () => {
 // 2. Bulk dietary by cuisine
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk dietary by cuisine", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("registers POST /api/admin/enrichment/bulk-dietary-by-cuisine", () => {
     expect(src).toContain('"/api/admin/enrichment/bulk-dietary-by-cuisine"');
@@ -98,7 +98,7 @@ describe("Enrichment — bulk dietary by cuisine", () => {
 // 3. Validation
 // ---------------------------------------------------------------------------
 describe("Enrichment — bulk validation", () => {
-  const src = readFile("server/routes-admin-enrichment.ts");
+  const src = readFile("server/routes-admin-enrichment-bulk.ts");
 
   it("validates businessIds is non-empty array", () => {
     expect(src).toContain("businessIds must be a non-empty array");
