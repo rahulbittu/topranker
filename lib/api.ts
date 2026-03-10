@@ -1,16 +1,7 @@
 import { getApiUrl } from "@/lib/query-client";
 import { fetch } from "expo/fetch";
 import { CATEGORY_MAP, type CredibilityTier } from "@/lib/data";
-import {
-  MOCK_BUSINESSES,
-  MOCK_RATINGS,
-  MOCK_DISHES,
-  MOCK_CHALLENGERS,
-  MOCK_MEMBER_PROFILE,
-  MOCK_MEMBER_IMPACT,
-  MOCK_RANK_HISTORY,
-  MOCK_CATEGORIES,
-} from "@/lib/mock-data";
+import { getMockData, isServingMockData, resetMockDataFlag, setServingMockData } from "@/lib/mock-router";
 
 export interface ApiBusiness {
   id: string;
@@ -225,55 +216,8 @@ export function mapApiRating(rating: ApiRating) {
   };
 }
 
-/** Returns mock data for a given API path when backend is unreachable */
-function getMockData(path: string): unknown | null {
-  if (path.startsWith("/api/leaderboard/categories")) return MOCK_CATEGORIES;
-  if (path.startsWith("/api/leaderboard/neighborhoods")) return [...new Set(MOCK_BUSINESSES.map(b => b.neighborhood).filter(Boolean))];
-  if (path.startsWith("/api/leaderboard/cuisines")) return [...new Set(MOCK_BUSINESSES.map(b => b.cuisine).filter(Boolean))];
-  if (path.startsWith("/api/leaderboard/dish-shortcuts")) return [];
-  if (path.startsWith("/api/leaderboard/best-in")) return [];
-  if (path.startsWith("/api/leaderboard") && !path.startsWith("/api/leaderboard/")) return MOCK_BUSINESSES;
-  if (path.startsWith("/api/trending")) return MOCK_BUSINESSES.filter(b => b.rankDelta > 0).slice(0, 3);
-  if (path.startsWith("/api/challengers")) return MOCK_CHALLENGERS;
-  if (path.startsWith("/api/members/me/impact")) return MOCK_MEMBER_IMPACT;
-  if (path.startsWith("/api/members/me")) return MOCK_MEMBER_PROFILE;
-  if (path.includes("/rank-history")) return MOCK_RANK_HISTORY;
-  if (path.startsWith("/api/businesses/search")) {
-    const urlParams = new URLSearchParams(path.split("?")[1] || "");
-    const q = (urlParams.get("q") || "").toLowerCase().trim();
-    const city = urlParams.get("city") || "";
-    let results = MOCK_BUSINESSES.filter(b => b.isActive);
-    if (city) results = results.filter(b => b.city.toLowerCase() === city.toLowerCase());
-    if (q) {
-      results = results.filter(b =>
-        b.name.toLowerCase().includes(q) ||
-        (b.neighborhood || "").toLowerCase().includes(q) ||
-        (b.category || "").toLowerCase().includes(q) ||
-        (b.description || "").toLowerCase().includes(q)
-      );
-    }
-    return results.slice(0, 20);
-  }
-  // Guard: only match direct slug lookups like /api/businesses/pecan-lodge
-  // Skip sub-resource paths like /api/businesses/autocomplete, /api/businesses/:id/score-breakdown, etc.
-  if (path.startsWith("/api/businesses/autocomplete")) return [];
-  if (path.startsWith("/api/businesses/popular-categories")) return [];
-  if (path.startsWith("/api/search/")) return [];
-  if (path.startsWith("/api/city-stats")) return null;
-  if (path.startsWith("/api/businesses/") && !path.split("/api/businesses/")[1]?.includes("/")) {
-    const slug = path.split("/api/businesses/")[1]?.split("?")[0];
-    if (slug) {
-      const biz = MOCK_BUSINESSES.find(b => b.slug === slug) || MOCK_BUSINESSES[0];
-      return { ...biz, recentRatings: MOCK_RATINGS, dishes: MOCK_DISHES };
-    }
-  }
-  return null;
-}
-
-/** Track whether mock data has been served in this session */
-let _servingMockData = false;
-export function isServingMockData(): boolean { return _servingMockData; }
-export function resetMockDataFlag(): void { _servingMockData = false; }
+// Re-export mock state helpers (Sprint 576: extracted to mock-router.ts)
+export { isServingMockData, resetMockDataFlag };
 
 async function apiFetch<T>(path: string): Promise<T> {
   const baseUrl = getApiUrl();
@@ -292,7 +236,7 @@ async function apiFetch<T>(path: string): Promise<T> {
       throw new Error(`${res.status}: ${message}`);
     }
     const json = await res.json();
-    _servingMockData = false;
+    resetMockDataFlag();
     return json.data;
   } catch (err) {
     // Fallback to mock data ONLY in development — never serve fake data in production
@@ -300,7 +244,7 @@ async function apiFetch<T>(path: string): Promise<T> {
       const mock = getMockData(path);
       if (mock !== null) {
         console.warn(`[MockData] Backend unreachable — serving demo data for: ${path}`);
-        _servingMockData = true;
+        setServingMockData();
         return mock as T;
       }
     }
@@ -411,7 +355,7 @@ export async function fetchBusinessSearchPaginated(
     if (__DEV__) {
       const mock = getMockData(path) as ApiBusiness[] | null;
       if (mock) {
-        _servingMockData = true;
+        setServingMockData();
         const mapped = mock.map(mapApiBusiness);
         return { businesses: mapped, pagination: { total: mapped.length, limit: 20, offset: 0, hasMore: false } };
       }

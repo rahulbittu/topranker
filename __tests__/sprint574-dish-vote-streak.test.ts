@@ -192,17 +192,18 @@ describe("Sprint 574: Mock Data", () => {
 });
 
 describe("Sprint 574: getMockData Fix (Rankings Bug)", () => {
-  const apiSrc = readFile("lib/api.ts");
+  // Sprint 576: getMockData extracted to mock-router.ts
+  const mockRouterSrc = readFile("lib/mock-router.ts");
 
   it("getMockData handles /api/leaderboard/neighborhoods separately", () => {
-    expect(apiSrc).toContain("/api/leaderboard/neighborhoods");
+    expect(mockRouterSrc).toContain("/api/leaderboard/neighborhoods");
   });
 
   it("getMockData handles /api/leaderboard/cuisines separately", () => {
-    expect(apiSrc).toContain("/api/leaderboard/cuisines");
+    expect(mockRouterSrc).toContain("/api/leaderboard/cuisines");
   });
 
   it("leaderboard catch-all excludes sub-paths", () => {
-    expect(apiSrc).toContain("!path.startsWith(\"/api/leaderboard/\")");
+    expect(mockRouterSrc).toContain("!path.startsWith(\"/api/leaderboard/\")");
   });
 });
