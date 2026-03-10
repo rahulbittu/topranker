@@ -5261,7 +5261,13 @@ async function seedDatabase() {
     { dishName: "Ramen", dishSlug: "ramen", dishEmoji: "\u{1F35C}", displayOrder: 2 },
     { dishName: "Taco", dishSlug: "taco", dishEmoji: "\u{1F32E}", displayOrder: 3 },
     { dishName: "Burger", dishSlug: "burger", dishEmoji: "\u{1F354}", displayOrder: 4 },
-    { dishName: "Coffee", dishSlug: "coffee", dishEmoji: "\u2615", displayOrder: 5 }
+    { dishName: "Coffee", dishSlug: "coffee", dishEmoji: "\u2615", displayOrder: 5 },
+    // Sprint 303: Expanded dish leaderboards
+    { dishName: "Pizza", dishSlug: "pizza", dishEmoji: "\u{1F355}", displayOrder: 6 },
+    { dishName: "Pho", dishSlug: "pho", dishEmoji: "\u{1F372}", displayOrder: 7 },
+    { dishName: "Dosa", dishSlug: "dosa", dishEmoji: "\u{1FAD3}", displayOrder: 8 },
+    { dishName: "Kebab", dishSlug: "kebab", dishEmoji: "\u{1F959}", displayOrder: 9 },
+    { dishName: "Brisket", dishSlug: "brisket", dishEmoji: "\u{1F969}", displayOrder: 10 }
   ];
   for (const board of SEED_DISH_BOARDS) {
     const [lb] = await db.insert(dishLeaderboards).values({
@@ -5547,6 +5553,92 @@ var init_seed = __esm({
       { businessSlug: "raising-canes-dallas", dishes: [
         { name: "The Box Combo", voteCount: 156 },
         { name: "Extra Cane's Sauce", voteCount: 89 }
+      ] },
+      // ── Sprint 303: Dish seed expansion — Sprint 298 businesses ──
+      { businessSlug: "golden-dragon-palace-dallas", dishes: [
+        { name: "Cantonese Roast Duck", voteCount: 67 },
+        { name: "Dim Sum Platter", voteCount: 54 },
+        { name: "Wonton Noodle Soup", voteCount: 38 }
+      ] },
+      { businessSlug: "nonnas-trattoria-dallas", dishes: [
+        { name: "Cacio e Pepe", voteCount: 78 },
+        { name: "Margherita Pizza", voteCount: 65 },
+        { name: "Tiramisu", voteCount: 43 }
+      ] },
+      { businessSlug: "seoul-bbq-house-dallas", dishes: [
+        { name: "Korean BBQ Combo", voteCount: 72 },
+        { name: "Kimchi Jjigae", voteCount: 56 },
+        { name: "Bulgogi", voteCount: 41 }
+      ] },
+      { businessSlug: "thai-orchid-garden-dallas", dishes: [
+        { name: "Green Curry", voteCount: 65 },
+        { name: "Pad See Ew", voteCount: 48 },
+        { name: "Mango Sticky Rice", voteCount: 34 }
+      ] },
+      { businessSlug: "pho-95-dallas", dishes: [
+        { name: "Pho Dac Biet", voteCount: 58 },
+        { name: "Vermicelli Bowl", voteCount: 42 },
+        { name: "Banh Mi", voteCount: 31 }
+      ] },
+      { businessSlug: "istanbul-grill-dallas", dishes: [
+        { name: "Adana Kebab", voteCount: 72 },
+        { name: "Hummus Platter", voteCount: 54 },
+        { name: "Lamb Pide", voteCount: 38 }
+      ] },
+      { businessSlug: "shawarma-point-dallas", dishes: [
+        { name: "Chicken Shawarma Wrap", voteCount: 65 },
+        { name: "Falafel Plate", voteCount: 48 },
+        { name: "Garlic Toum Fries", voteCount: 29 }
+      ] },
+      // ── Sprint 303: Additional dishes for existing businesses ──
+      { businessSlug: "koryo-kalbi-dallas", dishes: [
+        { name: "Galbi", voteCount: 78 },
+        { name: "Japchae", voteCount: 45 },
+        { name: "Kimchi Pancake", voteCount: 34 }
+      ] },
+      { businessSlug: "asian-mint-dallas", dishes: [
+        { name: "Pad Thai", voteCount: 89 },
+        { name: "Green Curry", voteCount: 54 },
+        { name: "Tom Kha Gai", voteCount: 38 }
+      ] },
+      { businessSlug: "saigon-bites-dallas", dishes: [
+        { name: "Banh Mi", voteCount: 76 },
+        { name: "Spring Rolls", voteCount: 54 },
+        { name: "Broken Rice Plate", voteCount: 38 }
+      ] },
+      { businessSlug: "sichuan-house-dallas", dishes: [
+        { name: "Mapo Tofu", voteCount: 87 },
+        { name: "Dan Dan Noodles", voteCount: 65 },
+        { name: "Dry Pot Chicken", voteCount: 43 }
+      ] },
+      { businessSlug: "kabob-king-dallas", dishes: [
+        { name: "Seekh Kabob", voteCount: 89 },
+        { name: "Lamb Chops", voteCount: 67 },
+        { name: "Chicken Tikka", voteCount: 45 }
+      ] },
+      { businessSlug: "smoke-and-vine-dallas", dishes: [
+        { name: "Smoked Brisket", voteCount: 98 },
+        { name: "Pulled Pork", voteCount: 67 },
+        { name: "Mac and Cheese", voteCount: 45 }
+      ] },
+      { businessSlug: "fearings-dallas", dishes: [
+        { name: "Tortilla Soup", voteCount: 87 },
+        { name: "Barbecued Shrimp Taco", voteCount: 65 },
+        { name: "Rattlesnake Queso", voteCount: 43 }
+      ] },
+      { businessSlug: "tei-an-dallas", dishes: [
+        { name: "Hand-Cut Soba", voteCount: 76 },
+        { name: "Tempura Assortment", voteCount: 54 }
+      ] },
+      { businessSlug: "casa-oaxaca-dallas", dishes: [
+        { name: "Tlayuda", voteCount: 78 },
+        { name: "Chapulines Taco", voteCount: 56 },
+        { name: "Mezcal Flight", voteCount: 34 }
+      ] },
+      { businessSlug: "taqueria-la-ventana-dallas", dishes: [
+        { name: "Al Pastor Taco", voteCount: 112 },
+        { name: "Salsa Verde", voteCount: 67 },
+        { name: "Fresh Tortillas", voteCount: 45 }
       ] }
     ];
   }
