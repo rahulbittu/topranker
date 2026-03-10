@@ -40,6 +40,7 @@ import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
+import { ActivityFeed } from "@/components/profile/ActivityFeed";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -297,6 +298,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         totalRatings={profile.totalRatings}
         daysActive={profile.daysActive}
       />
+
+      {/* Sprint 419: Activity Feed Timeline */}
+      <ActivityFeed ratings={profile.ratingHistory} tier={tier} />
 
       {/* Last Rating Consequence */}
       {impact?.lastRating && (
