@@ -72,23 +72,24 @@ export interface DimensionTooltipData {
   description: string;
   weight: string;
   examples: string;
+  scoringTip: string; // Sprint 468: scoring guidance
 }
 
 const DIMENSION_TOOLTIPS: Record<VisitType, DimensionTooltipData[]> = {
   dine_in: [
-    { label: "Food Quality", description: "Taste, freshness, temperature, and presentation of the food.", weight: "50%", examples: "Was the biryani flavorful? Was the naan fresh?" },
-    { label: "Service", description: "Attentiveness, friendliness, and speed of staff.", weight: "25%", examples: "Were you greeted? Was water refilled? How long did you wait?" },
-    { label: "Vibe & Atmosphere", description: "Ambiance, cleanliness, noise level, and comfort.", weight: "25%", examples: "Was it clean? Good lighting? Comfortable seating?" },
+    { label: "Food Quality", description: "Taste, freshness, temperature, and presentation of the food.", weight: "50%", examples: "Was the biryani flavorful? Was the naan fresh?", scoringTip: "10 = exceptional dish you'd recommend. 5 = average, nothing special. 1 = inedible." },
+    { label: "Service", description: "Attentiveness, friendliness, and speed of staff.", weight: "25%", examples: "Were you greeted? Was water refilled? How long did you wait?", scoringTip: "10 = felt like a VIP. 5 = functional but forgettable. 1 = ignored or rude staff." },
+    { label: "Vibe & Atmosphere", description: "Ambiance, cleanliness, noise level, and comfort.", weight: "25%", examples: "Was it clean? Good lighting? Comfortable seating?", scoringTip: "10 = perfect for the occasion. 5 = clean but generic. 1 = uncomfortable or dirty." },
   ],
   delivery: [
-    { label: "Food Quality", description: "Taste, freshness, and temperature on arrival.", weight: "60%", examples: "Was the food still hot? Did flavors hold up during transit?" },
-    { label: "Packaging Quality", description: "How well the food was packaged for delivery.", weight: "25%", examples: "No spills? Containers sealed? Food separated properly?" },
-    { label: "Value for Money", description: "Whether the portion size and quality justified the price.", weight: "15%", examples: "Fair portions? Worth the delivery premium?" },
+    { label: "Food Quality", description: "Taste, freshness, and temperature on arrival.", weight: "60%", examples: "Was the food still hot? Did flavors hold up during transit?", scoringTip: "10 = arrived hot, fresh, restaurant-quality. 5 = lukewarm but edible. 1 = cold or wrong order." },
+    { label: "Packaging Quality", description: "How well the food was packaged for delivery.", weight: "25%", examples: "No spills? Containers sealed? Food separated properly?", scoringTip: "10 = no leaks, items separated, food intact. 5 = adequate but messy. 1 = spills, crushed food." },
+    { label: "Value for Money", description: "Whether the portion size and quality justified the price.", weight: "15%", examples: "Fair portions? Worth the delivery premium?", scoringTip: "10 = great deal even with delivery fees. 5 = fair for what you got. 1 = overpriced." },
   ],
   takeaway: [
-    { label: "Food Quality", description: "Taste, freshness, and temperature at pickup.", weight: "65%", examples: "Was the food ready and hot? Fresh ingredients?" },
-    { label: "Wait Time Accuracy", description: "Whether the estimated pickup time was accurate.", weight: "20%", examples: "Was it ready on time? Did you wait long?" },
-    { label: "Value for Money", description: "Whether the portion size and quality justified the price.", weight: "15%", examples: "Fair portions? Good value compared to dine-in?" },
+    { label: "Food Quality", description: "Taste, freshness, and temperature at pickup.", weight: "65%", examples: "Was the food ready and hot? Fresh ingredients?", scoringTip: "10 = hot, fresh, ready as expected. 5 = fine but not exciting. 1 = cold or stale." },
+    { label: "Wait Time Accuracy", description: "Whether the estimated pickup time was accurate.", weight: "20%", examples: "Was it ready on time? Did you wait long?", scoringTip: "10 = ready when promised. 5 = 10-15 min late. 1 = 30+ min wait or not ready." },
+    { label: "Value for Money", description: "Whether the portion size and quality justified the price.", weight: "15%", examples: "Fair portions? Good value compared to dine-in?", scoringTip: "10 = great value, saves time. 5 = fair price. 1 = overpriced for takeaway." },
   ],
 };
 
@@ -127,6 +128,9 @@ export function DimensionTooltip({ tooltip, visible, onToggle }: DimensionToolti
           </View>
           <Text style={s.tooltipDesc}>{tooltip.description}</Text>
           <Text style={s.tooltipExamples}>{tooltip.examples}</Text>
+          {tooltip.scoringTip && (
+            <Text style={s.tooltipScoringTip}>{tooltip.scoringTip}</Text>
+          )}
         </View>
       )}
     </View>
@@ -212,5 +216,16 @@ const s = StyleSheet.create({
     fontFamily: "DMSans_400Regular",
     fontStyle: "italic" as const,
     lineHeight: 16,
+  },
+  // Sprint 468: Scoring tip style
+  tooltipScoringTip: {
+    fontSize: 10,
+    color: BRAND.colors.amber,
+    fontFamily: "DMSans_500Medium",
+    lineHeight: 14,
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(196,154,26,0.15)",
   },
 });
