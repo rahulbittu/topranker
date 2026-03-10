@@ -3739,6 +3739,51 @@ var init_storage = __esm({
   }
 });
 
+// server/config.ts
+function required(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}. Server cannot start.`);
+  }
+  return value;
+}
+function optional(name, fallback) {
+  return process.env[name] || fallback;
+}
+var config;
+var init_config = __esm({
+  "server/config.ts"() {
+    "use strict";
+    config = {
+      // Database (required)
+      databaseUrl: required("DATABASE_URL"),
+      // Session (required — no fallback, C1 audit finding)
+      sessionSecret: required("SESSION_SECRET"),
+      // Server
+      port: parseInt(optional("PORT", "5000"), 10),
+      nodeEnv: optional("NODE_ENV", "development"),
+      isProduction: process.env.NODE_ENV === "production",
+      // Google OAuth (optional — feature disabled if not set)
+      googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+      // Stripe (optional — mock payments if not set)
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY || null,
+      // GitHub deploy webhook (optional)
+      githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || null,
+      // Push notifications (optional)
+      ntfyTopic: optional("NTFY_TOPIC", "topranker-deploy"),
+      // Google Maps (optional)
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
+      // Email (optional — console fallback if not set)
+      resendApiKey: process.env.RESEND_API_KEY || null,
+      // Hosting platform (optional — for CORS)
+      replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
+      replitDomains: process.env.REPLIT_DOMAINS || null,
+      railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+      corsOrigins: process.env.CORS_ORIGINS || null
+    };
+  }
+});
+
 // shared/admin.ts
 var admin_exports = {};
 __export(admin_exports, {
@@ -3757,6 +3802,127 @@ var init_admin = __esm({
       "rahul@topranker.com",
       "admin@topranker.com"
     ]);
+  }
+});
+
+// server/google-places.ts
+async function fetchPlacePhotos(googlePlaceId, limit = 5) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) {
+    log.tag("GooglePlaces").warn("No API key configured \u2014 skipping photo fetch");
+    return [];
+  }
+  const url = `${API_BASE}/places/${googlePlaceId}?fields=photos&key=${apiKey}`;
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      log.tag("GooglePlaces").error(
+        `Place details failed for ${googlePlaceId}: ${response.status} \u2014 ${body.slice(0, 200)}`
+      );
+      return [];
+    }
+    const data = await response.json();
+    if (!data.photos || data.photos.length === 0) {
+      log.tag("GooglePlaces").info(`No photos found for ${googlePlaceId}`);
+      return [];
+    }
+    return data.photos.slice(0, limit).map((p) => p.name);
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      log.tag("GooglePlaces").error(`Timeout fetching photos for ${googlePlaceId}`);
+    } else {
+      log.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
+    }
+    return [];
+  }
+}
+async function searchNearbyRestaurants(city, category = "restaurant", maxResults = 20) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) {
+    log.tag("GooglePlaces").warn("No API key \u2014 skipping nearby search");
+    return [];
+  }
+  const typeQuery = category === "restaurant" ? "restaurants" : category === "cafe" ? "cafes" : category === "bar" ? "bars" : category === "bakery" ? "bakeries" : category === "street_food" ? "street food" : category === "fast_food" ? "fast food" : "restaurants";
+  try {
+    const response = await fetch(`${API_BASE}/places:searchText`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.priceLevel,places.types"
+      },
+      body: JSON.stringify({
+        textQuery: `best ${typeQuery} in ${city}`,
+        maxResultCount: Math.min(maxResults, 20)
+      }),
+      signal: AbortSignal.timeout(15e3)
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      log.tag("GooglePlaces").error(`Nearby search failed: ${response.status} \u2014 ${body.slice(0, 200)}`);
+      return [];
+    }
+    const data = await response.json();
+    if (!data.places || data.places.length === 0) return [];
+    const priceLevelMap = {
+      PRICE_LEVEL_FREE: "$",
+      PRICE_LEVEL_INEXPENSIVE: "$",
+      PRICE_LEVEL_MODERATE: "$$",
+      PRICE_LEVEL_EXPENSIVE: "$$$",
+      PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
+    };
+    return data.places.map((p) => ({
+      placeId: p.id,
+      name: p.displayName?.text || "Unknown",
+      address: p.formattedAddress || "",
+      lat: p.location?.latitude || 0,
+      lng: p.location?.longitude || 0,
+      rating: p.rating || null,
+      priceLevel: priceLevelMap[p.priceLevel] || "$$",
+      types: p.types || []
+    }));
+  } catch (err) {
+    log.tag("GooglePlaces").error(`Nearby search error: ${err.message}`);
+    return [];
+  }
+}
+function normalizeCategory(types) {
+  if (types.includes("cafe") || types.includes("coffee_shop")) return "cafe";
+  if (types.includes("bar") || types.includes("night_club")) return "bar";
+  if (types.includes("bakery")) return "bakery";
+  if (types.includes("meal_delivery") || types.includes("meal_takeaway")) return "fast_food";
+  return "restaurant";
+}
+async function fetchAndStorePhotos(businessId, googlePlaceId) {
+  const photoRefs = await fetchPlacePhotos(googlePlaceId, 5);
+  if (photoRefs.length === 0) return 0;
+  const { insertBusinessPhotos: insertBusinessPhotos2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+  await insertBusinessPhotos2(
+    businessId,
+    photoRefs.map((ref, i) => ({
+      photoUrl: ref,
+      isHero: i === 0,
+      sortOrder: i
+    }))
+  );
+  log.tag("GooglePlaces").info(
+    `Stored ${photoRefs.length} photos for business ${businessId} (place: ${googlePlaceId})`
+  );
+  return photoRefs.length;
+}
+var API_BASE;
+var init_google_places = __esm({
+  "server/google-places.ts"() {
+    "use strict";
+    init_config();
+    init_logger();
+    API_BASE = "https://places.googleapis.com/v1";
   }
 });
 
@@ -7061,13 +7227,13 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, isNotNull: isNotNull8, and: and22 } = await import("drizzle-orm");
+    const { eq: eq36, isNotNull: isNotNull8, and: and22 } = await import("drizzle-orm");
     const raters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(ratings6).innerJoin(members4, eq35(ratings6.memberId, members4.id)).where(and22(eq35(ratings6.businessId, businessId), isNotNull8(members4.pushToken)));
+    }).from(ratings6).innerJoin(members4, eq36(ratings6.memberId, members4.id)).where(and22(eq36(ratings6.businessId, businessId), isNotNull8(members4.pushToken)));
     let sent = 0;
     for (const rater of raters) {
       if (!rater.pushToken) continue;
@@ -7101,14 +7267,14 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, isNotNull: isNotNull8, and: and22, ne: ne2 } = await import("drizzle-orm");
+    const { eq: eq36, isNotNull: isNotNull8, and: and22, ne: ne2 } = await import("drizzle-orm");
     const otherRaters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(ratings6).innerJoin(members4, eq35(ratings6.memberId, members4.id)).where(and22(
-      eq35(ratings6.businessId, businessId),
+    }).from(ratings6).innerJoin(members4, eq36(ratings6.memberId, members4.id)).where(and22(
+      eq36(ratings6.businessId, businessId),
       ne2(ratings6.memberId, ratingMemberId),
       isNotNull8(members4.pushToken)
     ));
@@ -7144,14 +7310,14 @@ async function sendCityHighlightsPush(city) {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, isNotNull: isNotNull8, and: and22, gte: gte9, desc: desc18 } = await import("drizzle-orm");
+    const { eq: eq36, isNotNull: isNotNull8, and: and22, gte: gte9, desc: desc18 } = await import("drizzle-orm");
     const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
     const recentChanges = await db2.select({
       businessId: rankHistory2.businessId,
       businessName: businesses2.name,
       oldRank: rankHistory2.previousRank,
       newRank: rankHistory2.rank
-    }).from(rankHistory2).innerJoin(businesses2, eq35(rankHistory2.businessId, businesses2.id)).where(and22(eq35(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc18(rankHistory2.createdAt)).limit(50);
+    }).from(rankHistory2).innerJoin(businesses2, eq36(rankHistory2.businessId, businesses2.id)).where(and22(eq36(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc18(rankHistory2.createdAt)).limit(50);
     if (recentChanges.length === 0) return 0;
     let biggestMover = recentChanges[0];
     let biggestDelta = 0;
@@ -7168,7 +7334,7 @@ async function sendCityHighlightsPush(city) {
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(members4).where(and22(eq35(members4.city, city), isNotNull8(members4.pushToken)));
+    }).from(members4).where(and22(eq36(members4.city, city), isNotNull8(members4.pushToken)));
     let sent = 0;
     for (const user of cityUsers) {
       if (!user.pushToken) continue;
@@ -8016,6 +8182,86 @@ var init_seed = __esm({
   }
 });
 
+// server/google-places-import.ts
+var google_places_import_exports = {};
+__export(google_places_import_exports, {
+  autoImportGooglePlaces: () => autoImportGooglePlaces
+});
+import { eq as eq34 } from "drizzle-orm";
+async function autoImportGooglePlaces() {
+  if (!config.googleMapsApiKey) {
+    log.tag("GoogleImport").info("No Google Maps API key \u2014 skipping auto-import");
+    return;
+  }
+  const existing = await db.select({ id: businesses.id }).from(businesses).where(eq34(businesses.dataSource, "google_bulk_import")).limit(1);
+  if (existing.length > 0) {
+    log.tag("GoogleImport").info("Google Places data already imported \u2014 skipping");
+    return;
+  }
+  log.tag("GoogleImport").info("Starting auto-import of real Google Places data...");
+  let totalImported = 0;
+  for (const { city, query } of IMPORT_QUERIES) {
+    try {
+      const places = await searchNearbyRestaurants(city, "restaurant", 20);
+      if (places.length === 0) continue;
+      const importData = places.map((p) => ({
+        placeId: p.placeId,
+        name: p.name,
+        address: p.address,
+        city,
+        category: normalizeCategory(p.types),
+        lat: p.lat,
+        lng: p.lng,
+        googleRating: p.rating,
+        priceRange: p.priceLevel || "$$"
+      }));
+      const result = await bulkImportBusinesses(importData);
+      totalImported += result.imported;
+      if (result.imported > 0) {
+        log.tag("GoogleImport").info(`${city}: imported ${result.imported} restaurants`);
+        for (const r of result.results) {
+          if (r.status === "imported") {
+            const match = importData.find((d) => d.name === r.name);
+            if (match) {
+              const [biz] = await db.select({ id: businesses.id }).from(businesses).where(eq34(businesses.googlePlaceId, match.placeId));
+              if (biz) {
+                await fetchAndStorePhotos(biz.id, match.placeId).catch(() => {
+                });
+              }
+            }
+          }
+        }
+      }
+      await new Promise((resolve2) => setTimeout(resolve2, 500));
+    } catch (err) {
+      log.tag("GoogleImport").error(`Failed for "${query}": ${err.message}`);
+    }
+  }
+  log.tag("GoogleImport").info(`Auto-import complete: ${totalImported} restaurants imported`);
+}
+var IMPORT_QUERIES;
+var init_google_places_import = __esm({
+  "server/google-places-import.ts"() {
+    "use strict";
+    init_config();
+    init_logger();
+    init_db();
+    init_schema();
+    init_google_places();
+    init_businesses();
+    IMPORT_QUERIES = [
+      { city: "Irving", query: "Indian restaurants in Irving TX" },
+      { city: "Irving", query: "best restaurants in Irving TX" },
+      { city: "Plano", query: "Indian restaurants in Plano TX" },
+      { city: "Plano", query: "best restaurants in Plano TX" },
+      { city: "Frisco", query: "Indian restaurants in Frisco TX" },
+      { city: "Dallas", query: "Indian restaurants in Dallas TX" },
+      { city: "Dallas", query: "best biryani in Dallas TX" },
+      { city: "Dallas", query: "best restaurants in Dallas TX" }
+    ];
+  }
+});
+
 // server/email-drip.ts
 async function sendEmail2(to, subject, html, text2) {
   dripLog.info(`Sending drip: ${to} | ${subject}`);
@@ -8361,7 +8607,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq34, isNotNull as isNotNull7, and as and21 } from "drizzle-orm";
+import { eq as eq35, isNotNull as isNotNull7, and as and21 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -8375,7 +8621,7 @@ async function processOwnerOutreach() {
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
       and21(
-        eq34(businesses.isClaimed, false),
+        eq35(businesses.isClaimed, false),
         isNotNull7(businesses.rankPosition)
       )
     );
@@ -8394,9 +8640,9 @@ async function processOwnerOutreach() {
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
       and21(
-        eq34(businesses.isClaimed, true),
+        eq35(businesses.isClaimed, true),
         isNotNull7(businesses.ownerId),
-        eq34(businesses.subscriptionStatus, "none")
+        eq35(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -8406,7 +8652,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq34(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq35(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -8470,53 +8716,13 @@ import { createServer } from "node:http";
 // server/auth.ts
 init_db();
 init_storage();
+init_config();
+init_tier_staleness();
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcrypt";
-
-// server/config.ts
-function required(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}. Server cannot start.`);
-  }
-  return value;
-}
-function optional(name, fallback) {
-  return process.env[name] || fallback;
-}
-var config = {
-  // Database (required)
-  databaseUrl: required("DATABASE_URL"),
-  // Session (required — no fallback, C1 audit finding)
-  sessionSecret: required("SESSION_SECRET"),
-  // Server
-  port: parseInt(optional("PORT", "5000"), 10),
-  nodeEnv: optional("NODE_ENV", "development"),
-  isProduction: process.env.NODE_ENV === "production",
-  // Google OAuth (optional — feature disabled if not set)
-  googleClientId: process.env.GOOGLE_CLIENT_ID || null,
-  // Stripe (optional — mock payments if not set)
-  stripeSecretKey: process.env.STRIPE_SECRET_KEY || null,
-  // GitHub deploy webhook (optional)
-  githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || null,
-  // Push notifications (optional)
-  ntfyTopic: optional("NTFY_TOPIC", "topranker-deploy"),
-  // Google Maps (optional)
-  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
-  // Email (optional — console fallback if not set)
-  resendApiKey: process.env.RESEND_API_KEY || null,
-  // Hosting platform (optional — for CORS)
-  replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
-  replitDomains: process.env.REPLIT_DOMAINS || null,
-  railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
-  corsOrigins: process.env.CORS_ORIGINS || null
-};
-
-// server/auth.ts
-init_tier_staleness();
 function setupAuth(app2) {
   const PgStore = connectPgSimple(session);
   app2.use(
@@ -8660,8 +8866,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq35(members4.id, member.id));
+    const { eq: eq36 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq36(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -9039,120 +9245,7 @@ function sanitizeSlug(input) {
 
 // server/routes-admin.ts
 init_storage();
-
-// server/google-places.ts
-init_logger();
-var API_BASE = "https://places.googleapis.com/v1";
-async function fetchPlacePhotos(googlePlaceId, limit = 5) {
-  const apiKey = config.googleMapsApiKey;
-  if (!apiKey) {
-    log.tag("GooglePlaces").warn("No API key configured \u2014 skipping photo fetch");
-    return [];
-  }
-  const url = `${API_BASE}/places/${googlePlaceId}?fields=photos&key=${apiKey}`;
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json"
-      },
-      signal: AbortSignal.timeout(1e4)
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      log.tag("GooglePlaces").error(
-        `Place details failed for ${googlePlaceId}: ${response.status} \u2014 ${body.slice(0, 200)}`
-      );
-      return [];
-    }
-    const data = await response.json();
-    if (!data.photos || data.photos.length === 0) {
-      log.tag("GooglePlaces").info(`No photos found for ${googlePlaceId}`);
-      return [];
-    }
-    return data.photos.slice(0, limit).map((p) => p.name);
-  } catch (err) {
-    if (err.name === "TimeoutError") {
-      log.tag("GooglePlaces").error(`Timeout fetching photos for ${googlePlaceId}`);
-    } else {
-      log.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
-    }
-    return [];
-  }
-}
-async function searchNearbyRestaurants(city, category = "restaurant", maxResults = 20) {
-  const apiKey = config.googleMapsApiKey;
-  if (!apiKey) {
-    log.tag("GooglePlaces").warn("No API key \u2014 skipping nearby search");
-    return [];
-  }
-  const typeQuery = category === "restaurant" ? "restaurants" : category === "cafe" ? "cafes" : category === "bar" ? "bars" : category === "bakery" ? "bakeries" : category === "street_food" ? "street food" : category === "fast_food" ? "fast food" : "restaurants";
-  try {
-    const response = await fetch(`${API_BASE}/places:searchText`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": apiKey,
-        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.priceLevel,places.types"
-      },
-      body: JSON.stringify({
-        textQuery: `best ${typeQuery} in ${city}`,
-        maxResultCount: Math.min(maxResults, 20)
-      }),
-      signal: AbortSignal.timeout(15e3)
-    });
-    if (!response.ok) {
-      const body = await response.text();
-      log.tag("GooglePlaces").error(`Nearby search failed: ${response.status} \u2014 ${body.slice(0, 200)}`);
-      return [];
-    }
-    const data = await response.json();
-    if (!data.places || data.places.length === 0) return [];
-    const priceLevelMap = {
-      PRICE_LEVEL_FREE: "$",
-      PRICE_LEVEL_INEXPENSIVE: "$",
-      PRICE_LEVEL_MODERATE: "$$",
-      PRICE_LEVEL_EXPENSIVE: "$$$",
-      PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
-    };
-    return data.places.map((p) => ({
-      placeId: p.id,
-      name: p.displayName?.text || "Unknown",
-      address: p.formattedAddress || "",
-      lat: p.location?.latitude || 0,
-      lng: p.location?.longitude || 0,
-      rating: p.rating || null,
-      priceLevel: priceLevelMap[p.priceLevel] || "$$",
-      types: p.types || []
-    }));
-  } catch (err) {
-    log.tag("GooglePlaces").error(`Nearby search error: ${err.message}`);
-    return [];
-  }
-}
-function normalizeCategory(types) {
-  if (types.includes("cafe") || types.includes("coffee_shop")) return "cafe";
-  if (types.includes("bar") || types.includes("night_club")) return "bar";
-  if (types.includes("bakery")) return "bakery";
-  if (types.includes("meal_delivery") || types.includes("meal_takeaway")) return "fast_food";
-  return "restaurant";
-}
-async function fetchAndStorePhotos(businessId, googlePlaceId) {
-  const photoRefs = await fetchPlacePhotos(googlePlaceId, 5);
-  if (photoRefs.length === 0) return 0;
-  const { insertBusinessPhotos: insertBusinessPhotos2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-  await insertBusinessPhotos2(
-    businessId,
-    photoRefs.map((ref, i) => ({
-      photoUrl: ref,
-      isHero: i === 0,
-      sortOrder: i
-    }))
-  );
-  log.tag("GooglePlaces").info(
-    `Stored ${photoRefs.length} photos for business ${businessId} (place: ${googlePlaceId})`
-  );
-  return photoRefs.length;
-}
+init_google_places();
 
 // server/perf-monitor.ts
 init_logger();
@@ -10233,7 +10326,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, asc: asc4 } = await import("drizzle-orm");
+    const { eq: eq36, asc: asc4 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -10244,7 +10337,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq35(businesses2.isActive, true)).orderBy(asc4(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq36(businesses2.isActive, true)).orderBy(asc4(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -11412,6 +11505,7 @@ function registerMemberNotificationRoutes(app2) {
 init_logger();
 init_storage();
 init_photo_moderation();
+init_google_places();
 init_hours_utils();
 
 // server/search-ranking-v2.ts
@@ -12313,15 +12407,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35 } = await import("drizzle-orm");
+    const { eq: eq36 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq35(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq36(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq35(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq35(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq36(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq36(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -15075,7 +15169,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq35 } = await import("drizzle-orm");
+      const { eq: eq36 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -15126,7 +15220,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq35(ratings6.id, ratingId));
+      }).where(eq36(ratings6.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -15163,8 +15257,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq35(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq36 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq36(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -15178,7 +15272,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, and: and22, sql: sql21, count: count17 } = await import("drizzle-orm");
+    const { eq: eq36, and: and22, sql: sql21, count: count17 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings6.visitType,
       foodScore: ratings6.foodScore,
@@ -15198,8 +15292,8 @@ function registerScoreBreakdownRoutes(app2) {
       wouldReturn: ratings6.wouldReturn,
       createdAt: ratings6.createdAt
     }).from(ratings6).where(and22(
-      eq35(ratings6.businessId, businessId),
-      eq35(ratings6.isFlagged, false)
+      eq36(ratings6.businessId, businessId),
+      eq36(ratings6.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -15274,11 +15368,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq35, asc: asc4 } = await import("drizzle-orm");
+    const { eq: eq36, asc: asc4 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq35(rankHistory2.businessId, businessId)).orderBy(asc4(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq36(rankHistory2.businessId, businessId)).orderBy(asc4(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)
@@ -16227,6 +16321,8 @@ function setupErrorHandler(app2) {
   configureExpoAndLanding(app);
   const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
   seedDatabase2().catch((err) => log.error("Seed error:", err));
+  const { autoImportGooglePlaces: autoImportGooglePlaces2 } = await Promise.resolve().then(() => (init_google_places_import(), google_places_import_exports));
+  autoImportGooglePlaces2().catch((err) => log.error("Google Places auto-import error:", err));
   const { closeExpiredChallenges: closeExpiredChallenges2 } = await Promise.resolve().then(() => (init_challengers(), challengers_exports));
   closeExpiredChallenges2().catch((err) => log.error("Initial challenger closure error:", err));
   const challengerInterval = setInterval(() => {

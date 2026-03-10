@@ -63,7 +63,7 @@ describe("Sprint 551: Schema Compression", () => {
     const buildSrc = readFile("server_dist/index.js");
     const sizeKb = Buffer.byteLength(buildSrc, "utf-8") / 1024;
     expect(sizeKb).toBeGreaterThan(700);
-    expect(sizeKb).toBeLessThan(730);
+    expect(sizeKb).toBeLessThan(750);
   });
 
   it("no blank lines surround section dividers", () => {

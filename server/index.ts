@@ -385,6 +385,10 @@ function setupErrorHandler(app: express.Application) {
   const { seedDatabase } = await import("./seed");
   seedDatabase().catch((err) => logger.error("Seed error:", err));
 
+  // Sprint 593: Auto-import real Google Places data on startup (non-blocking)
+  const { autoImportGooglePlaces } = await import("./google-places-import");
+  autoImportGooglePlaces().catch((err) => logger.error("Google Places auto-import error:", err));
+
   // Challenger closure batch job — runs hourly (Sprint 161)
   const { closeExpiredChallenges } = await import("./storage/challengers");
   closeExpiredChallenges().catch((err) => logger.error("Initial challenger closure error:", err));
