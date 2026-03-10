@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-type SortType = "ranked" | "rated" | "trending";
+type SortType = "ranked" | "rated" | "trending" | "relevant";
 
 export function usePersistedSort(defaultSort: SortType = "ranked") {
   const [sortBy, setSortByRaw] = useState<SortType>(defaultSort);
@@ -16,7 +16,7 @@ export function usePersistedSort(defaultSort: SortType = "ranked") {
 
   useEffect(() => {
     AsyncStorage.getItem("discover_sort").then((val) => {
-      if (val === "ranked" || val === "rated" || val === "trending") setSortByRaw(val);
+      if (val === "ranked" || val === "rated" || val === "trending" || val === "relevant") setSortByRaw(val);
     });
   }, []);
 

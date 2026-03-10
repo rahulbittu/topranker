@@ -18,6 +18,7 @@ import {
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
+import { textRelevance, profileCompleteness } from "./search-ranking-v2";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
@@ -48,10 +49,33 @@ export function registerBusinessRoutes(app: Express) {
     const cuisine = sanitizeString(req.query.cuisine, 50) || undefined;
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
-    const data = bizList.map(b => ({
-      ...b,
-      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
-    }));
+
+    // Sprint 392: Relevance scoring — text match + profile completeness
+    const data = bizList.map(b => {
+      const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
+      const textScore = textRelevance(b.name, query);
+      const completeness = profileCompleteness({
+        query,
+        hasPhotos: photos.length > 0,
+        hasHours: !!b.closingTime,
+        hasCuisine: !!b.cuisine,
+        hasDescription: !!b.description,
+      });
+      const relevanceScore = query
+        ? Math.round((textScore * 0.6 + completeness * 0.2 + (parseFloat(b.weightedScore) / 5) * 0.2) * 100) / 100
+        : 0;
+      return {
+        ...b,
+        photoUrls: photos,
+        relevanceScore,
+      };
+    });
+
+    // Re-sort by relevance when a search query is present
+    if (query) {
+      data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
+    }
+
     return res.json({ data });
   }));
 

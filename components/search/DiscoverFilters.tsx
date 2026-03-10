@@ -77,17 +77,25 @@ export const PriceChips = React.memo(function PriceChips({
 });
 
 interface SortChipsProps {
-  sortBy: "ranked" | "rated" | "trending";
-  onSortChange: (sort: "ranked" | "rated" | "trending") => void;
+  sortBy: "ranked" | "rated" | "trending" | "relevant";
+  onSortChange: (sort: "ranked" | "rated" | "trending" | "relevant") => void;
+  showRelevant?: boolean;
 }
 
 export const SortChips = React.memo(function SortChips({
-  sortBy, onSortChange,
+  sortBy, onSortChange, showRelevant,
 }: SortChipsProps) {
+  type SortKey = "ranked" | "rated" | "trending" | "relevant";
+  const options: [SortKey, string][] = [
+    ...(showRelevant ? [["relevant", "Relevant"] as [SortKey, string]] : []),
+    ["ranked", "Ranked"],
+    ["rated", "Most Rated"],
+    ["trending", "Trending"],
+  ];
   return (
     <View style={styles.sortRow}>
       <Text style={styles.sortLabel}>Sort:</Text>
-      {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
+      {options.map(([key, label]) => (
         <TouchableOpacity
           key={key}
           onPress={() => { Haptics.selectionAsync(); onSortChange(key); }}

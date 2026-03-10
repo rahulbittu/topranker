@@ -180,6 +180,7 @@ export default function SearchScreen() {
       return list;
     }
     if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
+    if (sortBy === "relevant") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.relevanceScore || 0) - (a.relevanceScore || 0) || b.weightedScore - a.weightedScore);
     if (sortBy === "ranked") return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
     if (sortBy === "rated") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.ratingCount || 0) - (a.ratingCount || 0));
     if (sortBy === "trending") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.rankDelta || 0) - (a.rankDelta || 0));
@@ -416,7 +417,7 @@ export default function SearchScreen() {
               {/* Sprint 332: Filter/price/sort extracted to DiscoverFilters */}
               <FilterChips activeFilter={activeFilter} onFilterChange={setActiveFilter} locationLoading={locationLoading} onNearMe={requestLocation} />
               <PriceChips priceFilter={priceFilter} onPriceChange={setPriceFilter} />
-              <SortChips sortBy={sortBy} onSortChange={setSortBy} />
+              <SortChips sortBy={sortBy} onSortChange={setSortBy} showRelevant={!!debouncedQuery} />
               {showDiscoverTip && (
                 <View style={styles.discoverTip}>
                   <Ionicons name="compass-outline" size={20} color={AMBER} style={{ marginTop: 2 }} />

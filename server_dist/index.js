@@ -9637,6 +9637,59 @@ function registerMemberRoutes(app2) {
 
 // server/routes-businesses.ts
 init_storage();
+
+// server/search-ranking-v2.ts
+init_logger();
+var rankLog = log.tag("SearchRankingV2");
+var weights = {
+  reputationWeight: 0.6,
+  recencyBoost: 0.15,
+  ratingCountFloor: 10,
+  bayesianPrior: 3.5,
+  bayesianStrength: 5
+};
+function getRankingWeights() {
+  return { ...weights };
+}
+function setRankingWeights(w) {
+  weights = { ...weights, ...w };
+  rankLog.info("Ranking weights updated", weights);
+  return { ...weights };
+}
+function textRelevance(name, query) {
+  if (!query || !query.trim()) return 0;
+  const q = query.toLowerCase().trim();
+  const n = name.toLowerCase();
+  if (n === q) return 1;
+  if (n.startsWith(q)) return 0.8;
+  if (n.includes(q)) return 0.5;
+  const words = n.split(/\s+/);
+  if (words.some((w) => w.startsWith(q))) return 0.4;
+  return 0;
+}
+function profileCompleteness(ctx) {
+  let score = 0;
+  let total = 0;
+  if (ctx.hasPhotos !== void 0) {
+    total++;
+    if (ctx.hasPhotos) score++;
+  }
+  if (ctx.hasHours !== void 0) {
+    total++;
+    if (ctx.hasHours) score++;
+  }
+  if (ctx.hasCuisine !== void 0) {
+    total++;
+    if (ctx.hasCuisine) score++;
+  }
+  if (ctx.hasDescription !== void 0) {
+    total++;
+    if (ctx.hasDescription) score++;
+  }
+  return total > 0 ? score / total : 0;
+}
+
+// server/routes-businesses.ts
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
     const query = sanitizeString(req.query.q, 50);
@@ -9659,10 +9712,26 @@ function registerBusinessRoutes(app2) {
     const cuisine = sanitizeString(req.query.cuisine, 50) || void 0;
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-    const data = bizList.map((b) => ({
-      ...b,
-      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
-    }));
+    const data = bizList.map((b) => {
+      const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
+      const textScore = textRelevance(b.name, query);
+      const completeness = profileCompleteness({
+        query,
+        hasPhotos: photos.length > 0,
+        hasHours: !!b.closingTime,
+        hasCuisine: !!b.cuisine,
+        hasDescription: !!b.description
+      });
+      const relevanceScore = query ? Math.round((textScore * 0.6 + completeness * 0.2 + parseFloat(b.weightedScore) / 5 * 0.2) * 100) / 100 : 0;
+      return {
+        ...b,
+        photoUrls: photos,
+        relevanceScore
+      };
+    });
+    if (query) {
+      data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
+    }
     return res.json({ data });
   }));
   app2.get("/api/businesses/:slug", wrapAsync(async (req, res) => {
@@ -10876,27 +10945,6 @@ function registerAdminModerationRoutes(app2) {
 
 // server/routes-admin-ranking.ts
 init_logger();
-
-// server/search-ranking-v2.ts
-init_logger();
-var rankLog = log.tag("SearchRankingV2");
-var weights = {
-  reputationWeight: 0.6,
-  recencyBoost: 0.15,
-  ratingCountFloor: 10,
-  bayesianPrior: 3.5,
-  bayesianStrength: 5
-};
-function getRankingWeights() {
-  return { ...weights };
-}
-function setRankingWeights(w) {
-  weights = { ...weights, ...w };
-  rankLog.info("Ranking weights updated", weights);
-  return { ...weights };
-}
-
-// server/routes-admin-ranking.ts
 var adminRankLog = log.tag("AdminRanking");
 function registerAdminRankingRoutes(app2) {
   app2.get("/api/admin/ranking/weights", (_req, res) => {

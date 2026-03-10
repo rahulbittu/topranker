@@ -22,4 +22,5 @@ export interface MappedBusiness {
   lng?: number;
   googleRating?: number;
   isClaimed?: boolean;
+  relevanceScore?: number;
 }
