@@ -245,6 +245,16 @@ export default function DishLeaderboardPage() {
                   <Text style={styles.earlyDataText}>Early data</Text>
                 </View>
               )}
+              {/* Sprint 309: Rate dish at this business */}
+              <TouchableOpacity
+                style={styles.rateEntryButton}
+                onPress={() => router.push({ pathname: "/rate/[id]", params: { id: entry.businessSlug, dish: board.dishName } })}
+                accessibilityRole="button"
+                accessibilityLabel={`Rate ${board.dishName} at ${entry.businessName}`}
+              >
+                <Ionicons name="star-outline" size={14} color={AMBER} />
+                <Text style={styles.rateEntryText}>Rate {board.dishName}</Text>
+              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         ))}
@@ -269,11 +279,15 @@ export default function DishLeaderboardPage() {
           <Text style={styles.ctaText}>
             Know a great {board.dishName.toLowerCase()} spot?
           </Text>
+          <Text style={styles.ctaSubtext}>
+            Rate it to help build this leaderboard
+          </Text>
           <TouchableOpacity
             style={styles.ctaButton}
             onPress={() => router.push("/(tabs)/search")}
           >
-            <Text style={styles.ctaButtonText}>Rate a spot</Text>
+            <Ionicons name="search" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.ctaButtonText}>Find & Rate</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -359,6 +373,7 @@ const styles = StyleSheet.create({
   },
   ctaText: { fontSize: 15, color: "#555", marginBottom: 12 },
   ctaButton: {
+    flexDirection: "row", alignItems: "center",
     backgroundColor: AMBER, borderRadius: 22, paddingHorizontal: 24, paddingVertical: 12,
   },
   ctaButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
@@ -371,6 +386,15 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER,
   },
   backButtonText: { color: "#fff", fontWeight: "700" },
+  rateEntryButton: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    marginTop: 8, alignSelf: "flex-start",
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12,
+    backgroundColor: "rgba(196,154,26,0.08)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
+  },
+  rateEntryText: { fontSize: 12, fontWeight: "600", color: AMBER },
+  ctaSubtext: { fontSize: 13, color: "#999", marginBottom: 12 },
   showMoreButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
     marginHorizontal: 16, marginBottom: 12, paddingVertical: 12,
