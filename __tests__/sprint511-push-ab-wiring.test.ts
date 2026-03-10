@@ -46,31 +46,30 @@ describe("Sprint 511: Push A/B Trigger Wiring", () => {
       expect(src).toContain("./push-ab-testing");
     });
 
-    it("checks for rankingChange A/B variant", () => {
-      expect(src).toContain('getNotificationVariant(String(rater.memberId), "rankingChange")');
+    it("uses resolveNotificationContent for rankingChange (Sprint 533)", () => {
+      expect(src).toContain('"rankingChange"');
+      expect(src).toContain("resolveNotificationContent");
     });
 
-    it("checks for newRating A/B variant", () => {
-      expect(src).toContain('getNotificationVariant(String(rater.memberId), "newRating")');
+    it("uses resolveNotificationContent for newRating (Sprint 533)", () => {
+      expect(src).toContain('"newRating"');
     });
 
-    it("checks for cityHighlights A/B variant", () => {
-      expect(src).toContain('getNotificationVariant(String(user.id), "cityHighlights")');
+    it("uses resolveNotificationContent for cityHighlights (Sprint 533)", () => {
+      expect(src).toContain('"cityHighlights"');
     });
 
-    it("rankingChange variant supports template variables", () => {
-      expect(src).toContain('replace("{emoji}", emoji)');
-      expect(src).toContain('replace("{business}", businessName)');
+    it("resolveNotificationContent checks A/B variants via getNotificationVariant", () => {
+      expect(src).toContain("getNotificationVariant(memberId, category)");
     });
 
-    it("newRating variant supports template variables", () => {
-      expect(src).toContain('replace("{rater}", raterName)');
-      expect(src).toContain('replace("{score}", score.toFixed(1))');
+    it("resolveNotificationContent uses replaceAll for variables", () => {
+      expect(src).toContain('replaceAll(`{${key}}`, val)');
     });
 
-    it("cityHighlights variant supports template variables", () => {
-      expect(src).toContain('replace("{city}", city)');
-      expect(src).toContain('replace("{direction}", direction)');
+    it("resolveNotificationContent checks templates first", () => {
+      expect(src).toContain("getActiveTemplateForCategory(category)");
+      expect(src).toContain("applyTemplate(template, variables)");
     });
 
     it("retains original fallback copy for rankingChange", () => {
@@ -85,9 +84,9 @@ describe("Sprint 511: Push A/B Trigger Wiring", () => {
       expect(src).toContain("rankings update");
     });
 
-    it("notification-triggers-events.ts stays under 280 LOC", () => {
+    it("notification-triggers-events.ts stays under 330 LOC (Sprint 533)", () => {
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(280);
+      expect(lines).toBeLessThan(330);
     });
   });
 

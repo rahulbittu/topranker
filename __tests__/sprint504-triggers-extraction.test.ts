@@ -67,9 +67,9 @@ describe("Sprint 504: notification-triggers.ts Extraction", () => {
   });
 
   describe("file health", () => {
-    it("notification-triggers-events.ts under 280 LOC", () => {
+    it("notification-triggers-events.ts under 330 LOC (Sprint 533: added template resolution)", () => {
       const loc = readFile("server/notification-triggers-events.ts").split("\n").length;
-      expect(loc).toBeLessThan(280);
+      expect(loc).toBeLessThan(330);
     });
   });
 });

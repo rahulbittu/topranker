@@ -14,9 +14,45 @@ import { recordPushDelivery } from "./push-analytics";
 import { getNotificationVariant } from "./push-ab-testing";
 import { shouldSendImmediately, enqueueNotification } from "./notification-frequency";
 import type { FrequencyPrefs } from "./notification-frequency";
+import { getActiveTemplateForCategory, applyTemplate } from "./notification-templates";
 import { log } from "./logger";
 
 const triggerLog = log.tag("NotifyTrigger");
+
+/**
+ * Sprint 533: Resolve notification content with priority:
+ * 1. Active template for category (uses applyTemplate with replaceAll)
+ * 2. A/B variant (if experiment is running)
+ * 3. Hardcoded default
+ */
+function resolveNotificationContent(
+  category: string,
+  memberId: string,
+  variables: Record<string, string>,
+  defaultTitle: string,
+  defaultBody: string,
+): { title: string; body: string } {
+  // Priority 1: Active template
+  const template = getActiveTemplateForCategory(category);
+  if (template) {
+    return applyTemplate(template, variables);
+  }
+
+  // Priority 2: A/B variant
+  const abVariant = getNotificationVariant(memberId, category);
+  if (abVariant) {
+    let title = abVariant.variant.title;
+    let body = abVariant.variant.body;
+    for (const [key, val] of Object.entries(variables)) {
+      title = title.replaceAll(`{${key}}`, val);
+      body = body.replaceAll(`{${key}}`, val);
+    }
+    return { title, body };
+  }
+
+  // Priority 3: Hardcoded default
+  return { title: defaultTitle, body: defaultBody };
+}
 
 /**
  * Push notification when a business's rank position changes significantly.
@@ -60,10 +96,14 @@ export async function onRankingChange(
       if (prefs.rankingChanges === false) continue;
 
       const emoji = direction === "up" ? "📈" : "📉";
-      // Sprint 511: Check for A/B variant
-      const abVariant = getNotificationVariant(String(rater.memberId), "rankingChange");
-      const abTitle = abVariant ? abVariant.variant.title.replace("{emoji}", emoji).replace("{business}", businessName).replace("{direction}", direction) : `${emoji} ${businessName} moved ${direction}`;
-      const abBody = abVariant ? abVariant.variant.body.replace("{newRank}", String(newRank)).replace("{oldRank}", String(oldRank)).replace("{city}", city) : `Now ranked #${newRank} in ${city} (was #${oldRank})`;
+      // Sprint 533: Template-first notification content resolution
+      const { title: abTitle, body: abBody } = resolveNotificationContent(
+        "rankingChange",
+        String(rater.memberId),
+        { emoji, business: businessName, direction, newRank: String(newRank), oldRank: String(oldRank), city, delta: String(delta) },
+        `${emoji} ${businessName} moved ${direction}`,
+        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
+      );
       // Sprint 521: Check frequency preference
       const freqPrefs = (rater as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
       if (shouldSendImmediately(freqPrefs, "rankingChanges")) {
@@ -123,10 +163,14 @@ export async function onNewRatingForBusiness(
       // Sprint 514: Use dedicated newRatings preference (fallback to savedBusinessAlerts for backward compat)
       if (prefs.newRatings === false || (prefs.newRatings === undefined && prefs.savedBusinessAlerts === false)) continue;
 
-      // Sprint 511: Check for A/B variant
-      const abVariant = getNotificationVariant(String(rater.memberId), "newRating");
-      const nrTitle = abVariant ? abVariant.variant.title.replace("{business}", businessName) : `New rating for ${businessName}`;
-      const nrBody = abVariant ? abVariant.variant.body.replace("{rater}", raterName).replace("{score}", score.toFixed(1)) : `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`;
+      // Sprint 533: Template-first notification content resolution
+      const { title: nrTitle, body: nrBody } = resolveNotificationContent(
+        "newRating",
+        String(rater.memberId),
+        { business: businessName, rater: raterName, score: score.toFixed(1) },
+        `New rating for ${businessName}`,
+        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
+      );
       // Sprint 521: Check frequency preference
       const freqPrefs = (rater as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
       if (shouldSendImmediately(freqPrefs, "newRatings")) {
@@ -207,10 +251,14 @@ export async function sendCityHighlightsPush(city: string): Promise<number> {
       if (prefs.cityAlerts === false) continue;
 
       const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
-      // Sprint 511: Check for A/B variant
-      const abVariant = getNotificationVariant(String(user.id), "cityHighlights");
-      const chTitle = abVariant ? abVariant.variant.title.replace("{city}", city) : `${city} rankings update`;
-      const chBody = abVariant ? abVariant.variant.body.replace("{business}", biggestMover.businessName || "A restaurant").replace("{direction}", direction).replace("{delta}", String(biggestDelta)) : `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`;
+      // Sprint 533: Template-first notification content resolution
+      const { title: chTitle, body: chBody } = resolveNotificationContent(
+        "cityHighlights",
+        String(user.id),
+        { city, business: biggestMover.businessName || "A restaurant", direction, delta: String(biggestDelta) },
+        `${city} rankings update`,
+        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
+      );
       // Sprint 521: Check frequency preference
       const freqPrefs = (user as any).notificationFrequencyPrefs as Partial<FrequencyPrefs> | undefined;
       if (shouldSendImmediately(freqPrefs, "cityAlerts")) {

@@ -70,9 +70,9 @@ describe("Sprint 521: Frequency Trigger Wiring", () => {
       expect(matches!.length).toBeGreaterThanOrEqual(3);
     });
 
-    it("stays under 300 LOC", () => {
+    it("stays under 330 LOC (Sprint 533: added template resolution)", () => {
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(300);
+      expect(lines).toBeLessThan(330);
     });
   });
 });
