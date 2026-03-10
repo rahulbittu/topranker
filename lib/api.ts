@@ -310,10 +310,19 @@ export async function fetchMemberProfile() {
   return apiFetch<ApiMemberProfile>("/api/members/me");
 }
 
-export async function fetchBusinessSearch(query: string, city: string, category?: string, cuisine?: string) {
+// Sprint 442: Extended with dietary, lat/lng, maxDistance
+export async function fetchBusinessSearch(
+  query: string, city: string, category?: string, cuisine?: string,
+  opts?: { dietary?: string[]; lat?: number; lng?: number; maxDistance?: number },
+) {
   let path = `/api/businesses/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`;
   if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
   if (cuisine) path += `&cuisine=${encodeURIComponent(cuisine)}`;
+  if (opts?.dietary?.length) path += `&dietary=${encodeURIComponent(opts.dietary.join(","))}`;
+  if (opts?.lat != null && opts?.lng != null) {
+    path += `&lat=${opts.lat}&lng=${opts.lng}`;
+    if (opts?.maxDistance) path += `&maxDistance=${opts.maxDistance}`;
+  }
   const businesses = await apiFetch<ApiBusiness[]>(path);
   return businesses.map(mapApiBusiness);
 }

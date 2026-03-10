@@ -114,6 +114,91 @@ export const SortChips = React.memo(function SortChips({
   );
 });
 
+// Sprint 442: Dietary tag filter chips
+export type DietaryTag = "vegetarian" | "vegan" | "halal" | "gluten_free";
+const DIETARY_TAGS: { key: DietaryTag; label: string; icon: IoniconsName }[] = [
+  { key: "vegetarian", label: "Vegetarian", icon: "leaf-outline" },
+  { key: "vegan", label: "Vegan", icon: "nutrition-outline" },
+  { key: "halal", label: "Halal", icon: "checkmark-circle-outline" },
+  { key: "gluten_free", label: "Gluten-Free", icon: "ban-outline" },
+];
+
+interface DietaryTagChipsProps {
+  activeTags: DietaryTag[];
+  onTagToggle: (tag: DietaryTag) => void;
+}
+
+export const DietaryTagChips = React.memo(function DietaryTagChips({
+  activeTags, onTagToggle,
+}: DietaryTagChipsProps) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.dietaryScrollRow}>
+      {DIETARY_TAGS.map(({ key, label, icon }) => {
+        const active = activeTags.includes(key);
+        return (
+          <TouchableOpacity
+            key={key}
+            onPress={() => { Haptics.selectionAsync(); onTagToggle(key); }}
+            style={[styles.dietaryChip, active && styles.dietaryChipActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`${label} filter${active ? ", selected" : ""}`}
+            accessibilityState={{ selected: active }}
+          >
+            <Ionicons name={icon} size={12} color={active ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />
+            <Text style={[styles.dietaryText, active && styles.dietaryTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+});
+
+export function getDietaryTags(): typeof DIETARY_TAGS { return DIETARY_TAGS; }
+
+// Sprint 442: Distance filter chips
+export type DistanceOption = 1 | 3 | 5 | 10 | null;
+const DISTANCE_OPTIONS: { value: DistanceOption; label: string }[] = [
+  { value: 1, label: "1 km" },
+  { value: 3, label: "3 km" },
+  { value: 5, label: "5 km" },
+  { value: 10, label: "10 km" },
+];
+
+interface DistanceChipsProps {
+  activeDistance: DistanceOption;
+  onDistanceChange: (distance: DistanceOption) => void;
+  hasLocation: boolean;
+}
+
+export const DistanceChips = React.memo(function DistanceChips({
+  activeDistance, onDistanceChange, hasLocation,
+}: DistanceChipsProps) {
+  if (!hasLocation) return null; // Only show when location is available
+  return (
+    <View style={styles.distanceRow}>
+      <Ionicons name="location-outline" size={12} color={Colors.textTertiary} style={{ marginRight: 4 }} />
+      <Text style={styles.distanceLabel}>Distance:</Text>
+      {DISTANCE_OPTIONS.map(({ value, label }) => {
+        const active = activeDistance === value;
+        return (
+          <TouchableOpacity
+            key={value}
+            onPress={() => { Haptics.selectionAsync(); onDistanceChange(active ? null : value); }}
+            style={[styles.distanceChip, active && styles.distanceChipActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`Within ${label}${active ? ", selected" : ""}`}
+            accessibilityState={{ selected: active }}
+          >
+            <Text style={[styles.distanceChipText, active && styles.distanceChipTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
+export function getDistanceOptions(): typeof DISTANCE_OPTIONS { return DISTANCE_OPTIONS; }
+
 // Sprint 412: Sort-aware results header
 const SORT_DESCRIPTIONS: Record<string, { label: string; icon: string; hint: string }> = {
   ranked: { label: "By Rank", icon: "trophy-outline", hint: "Sorted by leaderboard position" },
@@ -205,4 +290,32 @@ const styles = StyleSheet.create({
   sortIndicatorText: {
     fontSize: 10, color: AMBER, fontFamily: "DMSans_500Medium",
   },
+
+  // Sprint 442: Dietary tag chips
+  dietaryScrollRow: { marginBottom: 6 },
+  dietaryChip: {
+    flexDirection: "row" as const, alignItems: "center" as const,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  dietaryChipActive: { backgroundColor: "#2D8F4E", borderColor: "#2D8F4E" },
+  dietaryText: { fontSize: 11, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  dietaryTextActive: { color: "#fff", fontWeight: "600" as const },
+
+  // Sprint 442: Distance chips
+  distanceRow: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 10,
+  },
+  distanceLabel: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
+  },
+  distanceChip: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  distanceChipActive: { backgroundColor: BRAND.colors.navy, borderColor: BRAND.colors.navy },
+  distanceChipText: {
+    fontSize: 11, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+  },
+  distanceChipTextActive: { color: "#fff", fontWeight: "600" as const },
 });

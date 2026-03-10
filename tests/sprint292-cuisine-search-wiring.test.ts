@@ -53,7 +53,9 @@ describe("Sprint 292 — search.tsx cuisine state wiring", () => {
   });
 
   it("includes selectedCuisine in React Query key", () => {
-    expect(src).toMatch(/queryKey:\s*\["search",\s*city,\s*debouncedQuery,\s*selectedCuisine\]/);
+    // Sprint 442: query key now also includes dietary + distance filters
+    expect(src).toContain("selectedCuisine");
+    expect(src).toMatch(/queryKey:\s*\["search",\s*city,\s*debouncedQuery,\s*selectedCuisine/);
   });
 
   it("passes onCuisineChange to BestInSection", () => {

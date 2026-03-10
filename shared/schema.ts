@@ -59,6 +59,7 @@ export const businesses = pgTable(
     slug: text("slug").unique().notNull(),
     category: text("category").notNull(),
     cuisine: text("cuisine"), // Sprint 286: indian, mexican, japanese, etc.
+    dietaryTags: jsonb("dietary_tags").default(sql`'[]'::jsonb`), // Sprint 442: ["vegetarian","vegan","halal","gluten_free"]
     city: text("city").notNull(),
     neighborhood: text("neighborhood"),
     address: text("address"),

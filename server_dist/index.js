@@ -122,6 +122,8 @@ var init_schema = __esm({
         category: text("category").notNull(),
         cuisine: text("cuisine"),
         // Sprint 286: indian, mexican, japanese, etc.
+        dietaryTags: jsonb("dietary_tags").default(sql`'[]'::jsonb`),
+        // Sprint 442: ["vegetarian","vegan","halal","gluten_free"]
         city: text("city").notNull(),
         neighborhood: text("neighborhood"),
         address: text("address"),
@@ -9917,6 +9919,13 @@ function combinedRelevance(name, ctx) {
 }
 
 // server/routes-businesses.ts
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
     const query = sanitizeString(req.query.q, 50);
@@ -9937,9 +9946,14 @@ function registerBusinessRoutes(app2) {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || void 0;
     const cuisine = sanitizeString(req.query.cuisine, 50) || void 0;
+    const dietaryParam = sanitizeString(req.query.dietary, 200) || "";
+    const dietaryTags = dietaryParam ? dietaryParam.split(",").map((t) => t.trim()).filter(Boolean) : [];
+    const userLat = req.query.lat ? parseFloat(req.query.lat) : void 0;
+    const userLng = req.query.lng ? parseFloat(req.query.lng) : void 0;
+    const maxDistanceKm = req.query.maxDistance ? parseFloat(req.query.maxDistance) : void 0;
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-    const data = bizList.map((b) => {
+    let data = bizList.map((b) => {
       const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
       const searchCtx = {
         query,
@@ -9953,12 +9967,26 @@ function registerBusinessRoutes(app2) {
         ratingCount: b.ratingCount ? Number(b.ratingCount) : 0
       };
       const relevanceScore = query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
+      let distanceKm = null;
+      if (userLat != null && userLng != null && b.lat && b.lng) {
+        distanceKm = haversineKm(userLat, userLng, parseFloat(b.lat), parseFloat(b.lng));
+      }
       return {
         ...b,
         photoUrls: photos,
-        relevanceScore
+        relevanceScore,
+        distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null
       };
     });
+    if (dietaryTags.length > 0) {
+      data = data.filter((b) => {
+        const bizTags = Array.isArray(b.dietaryTags) ? b.dietaryTags : [];
+        return dietaryTags.every((tag) => bizTags.includes(tag));
+      });
+    }
+    if (maxDistanceKm != null && userLat != null && userLng != null) {
+      data = data.filter((b) => b.distanceKm != null && b.distanceKm <= maxDistanceKm);
+    }
     if (query) {
       data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
     }

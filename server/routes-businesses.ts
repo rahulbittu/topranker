@@ -23,6 +23,17 @@ import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
 
+// Sprint 442: Haversine distance calculation (km)
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export function registerBusinessRoutes(app: Express) {
   // Sprint 184: Autocomplete — lightweight typeahead for search-as-you-type
   app.get("/api/businesses/autocomplete", wrapAsync(async (req: Request, res: Response) => {
@@ -47,11 +58,19 @@ export function registerBusinessRoutes(app: Express) {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || undefined;
     const cuisine = sanitizeString(req.query.cuisine, 50) || undefined;
+    // Sprint 442: Dietary tags filter (comma-separated)
+    const dietaryParam = sanitizeString(req.query.dietary, 200) || "";
+    const dietaryTags = dietaryParam ? dietaryParam.split(",").map(t => t.trim()).filter(Boolean) : [];
+    // Sprint 442: Distance filter (km) with user lat/lng
+    const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+    const maxDistanceKm = req.query.maxDistance ? parseFloat(req.query.maxDistance as string) : undefined;
+
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
 
     // Sprint 392+436: Relevance scoring — multi-signal combined relevance
-    const data = bizList.map(b => {
+    let data = bizList.map(b => {
       const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
       const searchCtx = {
         query,
@@ -67,12 +86,31 @@ export function registerBusinessRoutes(app: Express) {
       const relevanceScore = query
         ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100
         : 0;
+      // Sprint 442: Compute distance if user location provided
+      let distanceKm: number | null = null;
+      if (userLat != null && userLng != null && b.lat && b.lng) {
+        distanceKm = haversineKm(userLat, userLng, parseFloat(b.lat), parseFloat(b.lng));
+      }
       return {
         ...b,
         photoUrls: photos,
         relevanceScore,
+        distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null,
       };
     });
+
+    // Sprint 442: Filter by dietary tags (business must have ALL requested tags)
+    if (dietaryTags.length > 0) {
+      data = data.filter(b => {
+        const bizTags: string[] = Array.isArray((b as any).dietaryTags) ? (b as any).dietaryTags : [];
+        return dietaryTags.every(tag => bizTags.includes(tag));
+      });
+    }
+
+    // Sprint 442: Filter by distance
+    if (maxDistanceKm != null && userLat != null && userLng != null) {
+      data = data.filter(b => b.distanceKm != null && b.distanceKm <= maxDistanceKm);
+    }
 
     // Re-sort by relevance when a search query is present
     if (query) {
