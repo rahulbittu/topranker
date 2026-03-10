@@ -50,7 +50,9 @@ describe("Sprint 548: Rating Photo Indicators", () => {
   });
 
   describe("RatingPhotoData type + fetch function", () => {
-    const src = readFile("lib/api.ts");
+    // Sprint 562: Extracted to api-owner.ts, re-exported from api.ts
+    const src = readFile("lib/api-owner.ts");
+    const apiSrc = readFile("lib/api.ts");
 
     it("exports RatingPhotoData interface", () => {
       expect(src).toContain("export interface RatingPhotoData");
@@ -71,6 +73,11 @@ describe("Sprint 548: Rating Photo Indicators", () => {
     it("fetchRatingPhotos calls /api/ratings/:id/photos", () => {
       expect(src).toContain("/api/ratings/");
       expect(src).toContain("/photos");
+    });
+
+    it("api.ts re-exports RatingPhotoData", () => {
+      expect(apiSrc).toContain("RatingPhotoData");
+      expect(apiSrc).toContain('from "./api-owner"');
     });
   });
 

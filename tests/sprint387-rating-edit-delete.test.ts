@@ -92,7 +92,8 @@ describe("Sprint 387 — HistoryRow edit/delete", () => {
 // ── 2. API functions ─────────────────────────────────────────────────
 
 describe("Sprint 387 — rating API functions", () => {
-  const apiSrc = readFile("lib/api.ts");
+  // Sprint 562: Extracted to api-owner.ts, re-exported from api.ts
+  const apiSrc = readFile("lib/api-owner.ts");
 
   it("exports editRatingApi function", () => {
     expect(apiSrc).toContain("export async function editRatingApi");

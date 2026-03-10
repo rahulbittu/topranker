@@ -67,7 +67,8 @@ describe("Sprint 554: Business Hours Owner Update", () => {
   });
 
   describe("Client — lib/api.ts", () => {
-    const src = readFile("lib/api.ts");
+    // Sprint 562: Extracted to api-owner.ts, re-exported from api.ts
+    const src = readFile("lib/api-owner.ts");
 
     it("exports HoursUpdate interface", () => {
       expect(src).toContain("export interface HoursUpdate");

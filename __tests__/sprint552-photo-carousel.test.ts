@@ -81,7 +81,8 @@ describe("Sprint 552: Photo Carousel", () => {
   });
 
   describe("lib/api.ts (fetchRatingPhotos)", () => {
-    const src = readFile("lib/api.ts");
+    // Sprint 562: Extracted to api-owner.ts, re-exported from api.ts
+    const src = readFile("lib/api-owner.ts");
 
     it("exports fetchRatingPhotos function", () => {
       expect(src).toContain("export async function fetchRatingPhotos");

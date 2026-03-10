@@ -20,7 +20,8 @@ const readFile = (relPath: string) =>
 // 1. Referral API types and functions
 // ---------------------------------------------------------------------------
 describe("lib/api.ts — Referral API", () => {
-  const src = readFile("lib/api.ts");
+  // Sprint 562: Extracted to api-owner.ts, re-exported from api.ts
+  const src = readFile("lib/api-owner.ts");
 
   it("exports ReferralEntry interface", () => {
     expect(src).toContain("export interface ReferralEntry");
