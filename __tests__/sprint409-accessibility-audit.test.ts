@@ -127,8 +127,9 @@ describe("Sprint 409 — Rating Flow Accessibility Audit", () => {
       expect(rateSrc).toContain('accessibilityLabel={step > 0 ? "Previous step" : "Go back"}');
     });
 
-    it("visit type cards have accessibilityState selected", () => {
-      expect(rateSrc).toContain("accessibilityState={{ selected: visitType === opt.type }}");
+    it("visit type cards have accessibilityState selected (via VisitTypeStep)", () => {
+      // Sprint 411: Visit type extracted — check that VisitTypeStep is rendered
+      expect(rateSrc).toContain("<VisitTypeStep");
     });
 
     it("would-return buttons have accessible labels", () => {

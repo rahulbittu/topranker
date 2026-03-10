@@ -139,7 +139,7 @@ describe("rate/[id].tsx — integration with extracted modules", () => {
 
   it("still has step 1 scoring inline", () => {
     expect(rateSrc).toContain("CircleScorePicker");
-    expect(rateSrc).toContain("Value for Money");
+    expect(rateSrc).toContain("getDimensionLabels");
   });
 
   it("still has dish context banner", () => {

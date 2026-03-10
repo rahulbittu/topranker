@@ -24,6 +24,7 @@ import {
   CircleScorePicker, ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
 } from "@/components/rate/SubComponents";
 import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
+import { VisitTypeStep, getDimensionLabels, type VisitType } from "@/components/rate/VisitTypeStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
@@ -32,7 +33,6 @@ import {
 } from "@/lib/hooks/useRatingAnimations";
 
 type RatingStep = 0 | 1 | 2;
-type VisitType = "dine_in" | "delivery" | "takeaway";
 
 export default function RateScreen() {
   const insets = useSafeAreaInsets();
@@ -227,19 +227,8 @@ export default function RateScreen() {
   const category = business.category || "restaurant";
   const returnLabel = getWouldReturnLabel(category);
 
-  // Dimension gating based on visit type (Rating Integrity Phase 1a)
-  const getDimensionLabels = () => {
-    switch (visitType) {
-      case "delivery":
-        return { q1Label: "Food Quality", q2Label: "Packaging Quality", q3Label: "Value for Money" };
-      case "takeaway":
-        return { q1Label: "Food Quality", q2Label: "Wait Time Accuracy", q3Label: "Value for Money" };
-      case "dine_in":
-      default:
-        return { q1Label: "Food Quality", q2Label: "Service", q3Label: "Vibe & Atmosphere" };
-    }
-  };
-  const { q1Label, q2Label, q3Label } = getDimensionLabels();
+  // Sprint 411: Extracted to VisitTypeStep (Rating Integrity Phase 1a)
+  const { q1Label, q2Label, q3Label } = getDimensionLabels(visitType);
 
   const prevRank = business.rank ?? 1;
   const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
@@ -333,30 +322,7 @@ export default function RateScreen() {
 
       <ScrollView ref={scrollViewRef} style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
         {step === 0 ? (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.visitTypeContainer} key="step0">
-            <Text style={styles.visitTypeTitle}>How did you experience {business.name}?</Text>
-            {([
-              { type: "dine_in" as VisitType, icon: "\uD83C\uDF7D\uFE0F", label: "Dined In", desc: "I ate at the restaurant" },
-              { type: "delivery" as VisitType, icon: "\uD83D\uDEF5", label: "Delivery", desc: "I ordered delivery" },
-              { type: "takeaway" as VisitType, icon: "\uD83D\uDCE6", label: "Takeaway", desc: "I picked up my order" },
-            ]).map((opt) => (
-              <TouchableOpacity
-                key={opt.type}
-                style={[styles.visitTypeCard, visitType === opt.type && styles.visitTypeCardSelected]}
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setVisitType(opt.type); }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`${opt.label}: ${opt.desc}`}
-                accessibilityState={{ selected: visitType === opt.type }}
-              >
-                <Text style={styles.visitTypeIcon}>{opt.icon}</Text>
-                <View>
-                  <Text style={styles.visitTypeLabel}>{opt.label}</Text>
-                  <Text style={styles.visitTypeDesc}>{opt.desc}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </Animated.View>
+          <VisitTypeStep businessName={business.name} visitType={visitType} onSelect={setVisitType} />
         ) : step === 1 ? (
           <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
             {dishContext && (
@@ -555,49 +521,6 @@ const styles = StyleSheet.create({
   errorRetryText: {
     fontSize: 13, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
-  },
-  visitTypeContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    justifyContent: "center" as const,
-  },
-  visitTypeTitle: {
-    fontSize: 22,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    textAlign: "center" as const,
-    marginBottom: 32,
-    fontFamily: "DMSans_700Bold",
-  },
-  visitTypeCard: {
-    flexDirection: "row" as const,
-    alignItems: "center" as const,
-    padding: 20,
-    borderRadius: 16,
-    backgroundColor: Colors.surface,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  visitTypeCardSelected: {
-    borderColor: BRAND.colors.amber,
-    backgroundColor: "rgba(196, 154, 26, 0.08)",
-  },
-  visitTypeIcon: {
-    fontSize: 32,
-    marginRight: 16,
-  },
-  visitTypeLabel: {
-    fontSize: 17,
-    fontWeight: "700" as const,
-    color: Colors.text,
-    fontFamily: "DMSans_700Bold",
-  },
-  visitTypeDesc: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginTop: 2,
-    fontFamily: "DMSans_400Regular",
   },
   // Sprint 274: Live score preview
   liveScorePreview: {
