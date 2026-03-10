@@ -363,3 +363,44 @@ export async function voteDishSuggestion(
 
   return updated;
 }
+
+/**
+ * Sprint 322: Get dish leaderboard rankings for a specific business.
+ * Returns which leaderboards this business appears on with its rank position.
+ */
+export async function getBusinessDishRankings(businessId: string): Promise<{
+  dishSlug: string;
+  dishName: string;
+  dishEmoji: string | null;
+  rankPosition: number;
+  dishScore: string;
+  entryCount: number;
+}[]> {
+  const entries = await db
+    .select({
+      dishSlug: dishLeaderboards.dishSlug,
+      dishName: dishLeaderboards.dishName,
+      dishEmoji: dishLeaderboards.dishEmoji,
+      rankPosition: dishLeaderboardEntries.rankPosition,
+      dishScore: dishLeaderboardEntries.dishScore,
+    })
+    .from(dishLeaderboardEntries)
+    .innerJoin(dishLeaderboards, eq(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id))
+    .where(eq(dishLeaderboardEntries.businessId, businessId))
+    .orderBy(asc(dishLeaderboardEntries.rankPosition));
+
+  // Get entry count per leaderboard
+  const result = [];
+  for (const entry of entries) {
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(dishLeaderboardEntries)
+      .innerJoin(dishLeaderboards, eq(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id))
+      .where(eq(dishLeaderboards.dishSlug, entry.dishSlug));
+    result.push({
+      ...entry,
+      entryCount: countResult?.count || 0,
+    });
+  }
+  return result;
+}

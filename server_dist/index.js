@@ -2504,6 +2504,7 @@ var init_ratings = __esm({
 // server/storage/dishes.ts
 var dishes_exports = {};
 __export(dishes_exports, {
+  getBusinessDishRankings: () => getBusinessDishRankings,
   getBusinessDishes: () => getBusinessDishes,
   getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
   getDishLeaderboards: () => getDishLeaderboards,
@@ -2706,6 +2707,24 @@ async function voteDishSuggestion(memberId, suggestionId) {
     }
   }
   return updated;
+}
+async function getBusinessDishRankings(businessId) {
+  const entries = await db.select({
+    dishSlug: dishLeaderboards.dishSlug,
+    dishName: dishLeaderboards.dishName,
+    dishEmoji: dishLeaderboards.dishEmoji,
+    rankPosition: dishLeaderboardEntries.rankPosition,
+    dishScore: dishLeaderboardEntries.dishScore
+  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq8(dishLeaderboardEntries.businessId, businessId)).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  const result = [];
+  for (const entry of entries) {
+    const [countResult] = await db.select({ count: count6() }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq8(dishLeaderboards.dishSlug, entry.dishSlug));
+    result.push({
+      ...entry,
+      entryCount: countResult?.count || 0
+    });
+  }
+  return result;
 }
 var init_dishes = __esm({
   "server/storage/dishes.ts"() {
@@ -9801,6 +9820,12 @@ function registerDishRoutes(app2) {
       photoUrl: d.photoUrl
     }));
     return res.json({ data: enriched });
+  }));
+  app2.get("/api/businesses/:id/dish-rankings", wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const { getBusinessDishRankings: getBusinessDishRankings2 } = await Promise.resolve().then(() => (init_dishes(), dishes_exports));
+    const rankings = await getBusinessDishRankings2(businessId);
+    return res.json({ data: rankings });
   }));
 }
 

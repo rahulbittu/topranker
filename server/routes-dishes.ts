@@ -92,4 +92,15 @@ export function registerDishRoutes(app: Express) {
 
     return res.json({ data: enriched });
   }));
+
+  /**
+   * Sprint 322: GET /api/businesses/:id/dish-rankings
+   * Returns which dish leaderboards this business is ranked on.
+   */
+  app.get("/api/businesses/:id/dish-rankings", wrapAsync(async (req: Request, res: Response) => {
+    const businessId = req.params.id;
+    const { getBusinessDishRankings } = await import("./storage/dishes");
+    const rankings = await getBusinessDishRankings(businessId);
+    return res.json({ data: rankings });
+  }));
 }

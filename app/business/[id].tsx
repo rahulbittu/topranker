@@ -36,6 +36,7 @@ import { SlideUpView } from "@/components/animations/SlideUpView";
 import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
 import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
+import { DishRankings } from "@/components/business/DishRankings";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -302,6 +303,7 @@ export default function BusinessProfileScreen() {
           {/* Sprint 268: Score Breakdown — visit-type separation */}
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
           {business?.id && <ScoreTrendSparkline businessId={business.id} />}
+          {business?.id && <DishRankings businessId={business.id} />}
           {business?.id && <TopDishes businessId={business.id} businessName={business.name} />}
 
           {/* Rating Distribution — Anti-fraud transparency */}
