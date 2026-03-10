@@ -192,16 +192,16 @@ describe("combinedRelevance", () => {
     expect(rankingSrc).toContain("export function combinedRelevance");
   });
 
-  it("weights text match at 50%", () => {
-    expect(rankingSrc).toContain("text * 0.50");
+  it("weights text match at 40% (Sprint 534: rebalanced for dish signal)", () => {
+    expect(rankingSrc).toContain("text * 0.40");
   });
 
   it("weights category at 20%", () => {
     expect(rankingSrc).toContain("category * 0.20");
   });
 
-  it("weights completeness at 15%", () => {
-    expect(rankingSrc).toContain("completeness * 0.15");
+  it("weights completeness at 10% (Sprint 534: rebalanced for dish signal)", () => {
+    expect(rankingSrc).toContain("completeness * 0.10");
   });
 
   it("weights volume at 15%", () => {
@@ -275,8 +275,8 @@ describe("DiscoverFilters — sort hint", () => {
 // 10. File health
 // ---------------------------------------------------------------------------
 describe("file health", () => {
-  it("search-ranking-v2.ts stays under 300 LOC", () => {
-    expect(rankingSrc.split("\n").length).toBeLessThan(300);
+  it("search-ranking-v2.ts stays under 380 LOC (Sprint 534: added dish + intent parsing)", () => {
+    expect(rankingSrc.split("\n").length).toBeLessThan(380);
   });
 
   it("routes-businesses.ts stays functional", () => {

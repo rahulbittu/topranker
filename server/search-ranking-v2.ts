@@ -91,6 +91,7 @@ export function getConfidenceLevel(ratingCount: number): "low" | "medium" | "hig
 
 // Sprint 347: Search relevance signals
 // Sprint 436: Enhanced with multi-word, fuzzy, category/cuisine/neighborhood matching
+// Sprint 534: Added dishNames and city for query-weighted scoring
 export interface SearchContext {
   query?: string;
   hasPhotos?: boolean;
@@ -101,6 +102,59 @@ export interface SearchContext {
   cuisine?: string;
   neighborhood?: string;
   ratingCount?: number;
+  dishNames?: string[];  // Sprint 534: Top dish names for dish-aware scoring
+  city?: string;         // Sprint 534: City name for query intent parsing
+}
+
+/**
+ * Sprint 534: Stop words to strip from search queries.
+ * These words carry no relevance signal for business/dish matching.
+ */
+const SEARCH_STOP_WORDS = new Set([
+  "best", "top", "good", "great", "most", "popular", "famous",
+  "in", "the", "a", "of", "for", "near", "around", "at",
+]);
+
+/**
+ * Sprint 534: Parse query intent — strip stop words and city name.
+ * "Best biryani in Irving" → "biryani"
+ * "Top Indian restaurant" → "indian restaurant"
+ */
+export function parseQueryIntent(query: string, city?: string): string {
+  const tokens = query.toLowerCase().trim().split(/\s+/).filter(t => t.length > 0);
+  const cityLower = city?.toLowerCase();
+  const filtered = tokens.filter(t => {
+    if (SEARCH_STOP_WORDS.has(t)) return false;
+    if (cityLower && t === cityLower) return false;
+    return true;
+  });
+  return filtered.join(" ");
+}
+
+/**
+ * Sprint 534: Dish relevance signal (0-1).
+ * If the query matches a dish served by the business, boost relevance.
+ * Scoring: exact dish name = 1.0, starts-with = 0.8, contains = 0.6, fuzzy = 0.3.
+ */
+export function dishRelevance(dishNames: string[] | undefined, query?: string): number {
+  if (!query || !query.trim() || !dishNames || dishNames.length === 0) return 0;
+  const q = query.toLowerCase().trim();
+  const queryTokens = q.split(/\s+/).filter(t => t.length > 0);
+
+  let bestScore = 0;
+  for (const dish of dishNames) {
+    const d = dish.toLowerCase();
+    // Full dish name match
+    if (d === q) return 1.0;
+    if (d.includes(q) || q.includes(d)) { bestScore = Math.max(bestScore, 0.8); continue; }
+    // Per-token check
+    for (const token of queryTokens) {
+      if (token.length < 3) continue;
+      const s = wordScore(d, token);
+      if (s > bestScore) bestScore = s;
+    }
+  }
+  return bestScore;
 }
 
 /**
@@ -242,15 +296,20 @@ export function profileCompleteness(ctx: SearchContext): number {
 }
 
 /**
- * Sprint 436: Combined search relevance score (0-1).
- * Weights: text match 50%, category/cuisine 20%, completeness 15%, rating volume 15%.
+ * Sprint 436+534: Combined search relevance score (0-1).
+ * Sprint 534: Added dish signal and query intent parsing.
+ * Weights: text 40%, category/cuisine 20%, dish 15%, completeness 10%, volume 15%.
  */
 export function combinedRelevance(name: string, ctx: SearchContext): number {
-  const text = textRelevance(name, ctx.query);
-  const category = categoryRelevance(ctx);
+  // Sprint 534: Parse query intent (strip stop words + city)
+  const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
+  const intentCtx = { ...ctx, query: intentQuery || ctx.query };
+  const text = textRelevance(name, intentCtx.query);
+  const category = categoryRelevance(intentCtx);
+  const dish = dishRelevance(ctx.dishNames, intentCtx.query);
   const completeness = profileCompleteness(ctx);
   const volume = ratingVolumeSignal(ctx.ratingCount);
-  return text * 0.50 + category * 0.20 + completeness * 0.15 + volume * 0.15;
+  return text * 0.40 + category * 0.20 + dish * 0.15 + completeness * 0.10 + volume * 0.15;
 }
 
 export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[]; search?: SearchContext }[]): RankedBusiness[] {

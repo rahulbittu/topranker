@@ -22,6 +22,7 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
 
 export interface SearchProcessingOpts {
   query: string;
+  city?: string;            // Sprint 534: City for query intent parsing
   userLat?: number;
   userLng?: number;
   maxDistanceKm?: number;
@@ -51,6 +52,9 @@ export function enrichSearchResults(
       cuisine: b.cuisine,
       neighborhood: b.neighborhood,
       ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
+      // Sprint 534: Dish-aware and city-aware relevance scoring
+      dishNames: (b as any).topDishes || [],
+      city: (b as any).city || opts.city,
     };
     const relevanceScore = opts.query
       ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100
