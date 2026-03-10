@@ -140,7 +140,7 @@ export function useRatingSubmit({
 
       // Sprint 343: Track per-dimension timing analytics
       if (dimensionTimingMs && dimensionTimingMs.some(t => t > 0)) {
-        Analytics.track("rate_dimension_timing", {
+        const timingPayload = {
           businessId,
           visitType: visitType || "dine_in",
           q1Ms: dimensionTimingMs[0] || 0,
@@ -148,7 +148,10 @@ export function useRatingSubmit({
           q3Ms: dimensionTimingMs[2] || 0,
           returnMs: dimensionTimingMs[3] || 0,
           totalMs: dimensionTimingMs.reduce((a, b) => a + b, 0),
-        });
+        };
+        Analytics.track("rate_dimension_timing", timingPayload);
+        // Sprint 356: Report timing to server for admin aggregation
+        apiRequest("POST", "/api/analytics/dimension-timing", timingPayload).catch(() => {});
       }
 
       // Sprint 266: Async photo upload — doesn't block confirmation
