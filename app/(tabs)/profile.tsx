@@ -236,11 +236,35 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       </View>
 
-      {profile.joinedAt && (
-        <Text style={styles.joinedText}>
-          Member since {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
-        </Text>
-      )}
+      {/* Sprint 358: Enhanced stats row — weight, streak, avg score */}
+      <View style={styles.enhancedStatsRow}>
+        <View style={styles.enhancedStatBox}>
+          <Text style={[styles.enhancedStatNum, { color: tierColor }]}>{TIER_WEIGHTS[tier]}x</Text>
+          <Text style={styles.enhancedStatLabel}>Weight</Text>
+        </View>
+        {(profile.currentStreak ?? 0) > 0 && (
+          <View style={styles.enhancedStatBox}>
+            <Text style={[styles.enhancedStatNum, { color: AMBER }]}>{profile.currentStreak}</Text>
+            <Text style={styles.enhancedStatLabel}>Streak</Text>
+          </View>
+        )}
+        {profile.ratingHistory.length > 0 && (
+          <View style={styles.enhancedStatBox}>
+            <Text style={styles.enhancedStatNum}>
+              {(profile.ratingHistory.reduce((s, r) => s + r.rawScore, 0) / profile.ratingHistory.length).toFixed(1)}
+            </Text>
+            <Text style={styles.enhancedStatLabel}>Avg Given</Text>
+          </View>
+        )}
+        {profile.joinedAt && (
+          <View style={styles.enhancedStatBox}>
+            <Text style={styles.enhancedStatNum}>
+              {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
+            </Text>
+            <Text style={styles.enhancedStatLabel}>Joined</Text>
+          </View>
+        )}
+      </View>
 
       {/* Last Rating Consequence */}
       {impact?.lastRating && (
@@ -595,6 +619,20 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
 
   joinedText: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, textAlign: "center" },
+
+  // Sprint 358: Enhanced stats
+  enhancedStatsRow: {
+    flexDirection: "row", justifyContent: "space-evenly",
+    paddingVertical: 8, paddingHorizontal: 12, marginTop: 4,
+  },
+  enhancedStatBox: { alignItems: "center", gap: 2, minWidth: 60 },
+  enhancedStatNum: {
+    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  enhancedStatLabel: {
+    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textTransform: "uppercase" as any, letterSpacing: 0.5,
+  },
 
   // Last rating
   lastRatingCard: {
