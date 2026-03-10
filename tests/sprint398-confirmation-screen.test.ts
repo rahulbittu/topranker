@@ -14,7 +14,8 @@ const readFile = (relPath: string) =>
 // ── 1. Verification boost breakdown ─────────────────────────────────
 
 describe("Sprint 398 — Verification boost breakdown", () => {
-  const src = readFile("components/rate/SubComponents.tsx");
+  // Sprint 449: RatingConfirmation extracted to its own file
+  const src = readFile("components/rate/RatingConfirmation.tsx");
 
   it("shows verification boosts earned section", () => {
     expect(src).toContain("Verification Boosts Earned");
@@ -57,7 +58,7 @@ describe("Sprint 398 — Verification boost breakdown", () => {
 // ── 2. Share CTA ────────────────────────────────────────────────────
 
 describe("Sprint 398 — Share rating CTA", () => {
-  const src = readFile("components/rate/SubComponents.tsx");
+  const src = readFile("components/rate/RatingConfirmation.tsx");
 
   it("has share button in confirmation", () => {
     expect(src).toContain("shareButton");
@@ -82,7 +83,7 @@ describe("Sprint 398 — Share rating CTA", () => {
 // ── 3. Rate another place CTA ───────────────────────────────────────
 
 describe("Sprint 398 — Rate another place CTA", () => {
-  const src = readFile("components/rate/SubComponents.tsx");
+  const src = readFile("components/rate/RatingConfirmation.tsx");
 
   it("has rate another button", () => {
     expect(src).toContain("rateAnotherBtn");
@@ -133,7 +134,7 @@ describe("Sprint 398 — Props wired from rate/[id].tsx", () => {
 // ── 5. Existing features preserved ──────────────────────────────────
 
 describe("Sprint 398 — Existing confirmation features preserved", () => {
-  const src = readFile("components/rate/SubComponents.tsx");
+  const src = readFile("components/rate/RatingConfirmation.tsx");
 
   it("still shows rank change", () => {
     expect(src).toContain("rankChangeCard");

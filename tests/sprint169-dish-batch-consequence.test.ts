@@ -66,7 +66,8 @@ describe("Dish leaderboard batch job — server/index.ts", () => {
 // 2. RatingConfirmation — dishContext prop
 // ---------------------------------------------------------------------------
 describe("RatingConfirmation — dish rank consequence", () => {
-  const subSrc = readFile("components/rate/SubComponents.tsx");
+  // Sprint 449: RatingConfirmation extracted to its own file
+  const subSrc = readFile("components/rate/RatingConfirmation.tsx");
 
   it("accepts dishContext optional prop", () => {
     expect(subSrc).toContain("dishContext?:");

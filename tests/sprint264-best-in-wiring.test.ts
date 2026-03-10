@@ -48,7 +48,8 @@ describe("Routes best-in leaderboard — static analysis", () => {
 // ── 2. Rating confirmation Best In mention — static analysis (6 tests) ──
 
 describe("Rating confirmation Best In mention — static analysis", () => {
-  const subPath = path.resolve(__dirname, "../components/rate/SubComponents.tsx");
+  // Sprint 449: RatingConfirmation extracted to its own file
+  const subPath = path.resolve(__dirname, "../components/rate/RatingConfirmation.tsx");
   const src = fs.readFileSync(subPath, "utf-8");
 
   it('SubComponents.tsx contains "helping rank"', () => {
@@ -136,8 +137,8 @@ describe("Integration — Best In wiring", () => {
     expect(src).toContain("registerBestInRoutes(app)");
   });
 
-  it("SubComponents.tsx imports from best-in-categories", () => {
-    const subPath = path.resolve(__dirname, "../components/rate/SubComponents.tsx");
+  it("RatingConfirmation.tsx imports from best-in-categories", () => {
+    const subPath = path.resolve(__dirname, "../components/rate/RatingConfirmation.tsx");
     const src = fs.readFileSync(subPath, "utf-8");
     expect(src).toContain("best-in-categories");
   });
