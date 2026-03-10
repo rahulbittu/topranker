@@ -92,8 +92,9 @@ describe("Sprint 518: Notification Frequency Settings", () => {
     });
   });
 
-  describe("app/settings.tsx — frequency picker UI", () => {
-    const src = readFile("app/settings.tsx");
+  describe("NotificationSettings — frequency picker UI", () => {
+    // Sprint 537: extracted to standalone component
+    const src = readFile("components/settings/NotificationSettings.tsx");
 
     it("defines NotificationFrequency type", () => {
       expect(src).toContain("type NotificationFrequency");

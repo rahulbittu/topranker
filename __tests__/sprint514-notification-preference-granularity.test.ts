@@ -9,8 +9,9 @@ const ROOT = path.resolve(__dirname, "..");
 const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 514: Notification Preference Granularity", () => {
-  describe("app/settings.tsx — new preference toggles", () => {
-    const src = readFile("app/settings.tsx");
+  describe("NotificationSettings — new preference toggles", () => {
+    // Sprint 537: extracted to standalone component
+    const src = readFile("components/settings/NotificationSettings.tsx");
 
     it("defines claimUpdates key", () => {
       expect(src).toContain("claimUpdates:");

@@ -116,7 +116,8 @@ describe("Sprint 515: Governance", () => {
     });
 
     it("10 notification preference toggles", () => {
-      const src = readFile("app/settings.tsx");
+      // Sprint 537: notification toggles extracted to NotificationSettings
+      const src = readFile("components/settings/NotificationSettings.tsx");
       const toggleCount = (src.match(/onToggle={toggleNotif\(/g) || []).length;
       expect(toggleCount).toBe(10);
     });

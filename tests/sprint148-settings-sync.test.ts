@@ -76,11 +76,15 @@ describe("Members schema notification preferences column", () => {
 // ── 3. Client Settings Screen Tests ─────────────────────────────────
 
 describe("Settings screen notification sync", () => {
-  const settingsPath = path.resolve(__dirname, "..", "app", "settings.tsx");
+  // Sprint 537: notification settings extracted to standalone component
+  const notifPath = path.resolve(__dirname, "..", "components", "settings", "NotificationSettings.tsx");
+  const mainSettingsPath = path.resolve(__dirname, "..", "app", "settings.tsx");
   let settingsSource: string;
+  let mainSettingsSource: string;
 
   beforeEach(() => {
-    settingsSource = fs.readFileSync(settingsPath, "utf-8");
+    settingsSource = fs.readFileSync(notifPath, "utf-8");
+    mainSettingsSource = fs.readFileSync(mainSettingsPath, "utf-8");
   });
 
   it("should define all 5 notification keys", () => {
@@ -112,29 +116,29 @@ describe("Settings screen notification sync", () => {
   });
 
   it("should have city selection with all 5 Texas cities", () => {
-    expect(settingsSource).toContain("Dallas");
-    expect(settingsSource).toContain("Austin");
-    expect(settingsSource).toContain("Houston");
-    expect(settingsSource).toContain("San Antonio");
-    expect(settingsSource).toContain("Fort Worth");
+    expect(mainSettingsSource).toContain("Dallas");
+    expect(mainSettingsSource).toContain("Austin");
+    expect(mainSettingsSource).toContain("Houston");
+    expect(mainSettingsSource).toContain("San Antonio");
+    expect(mainSettingsSource).toContain("Fort Worth");
   });
 
   it("should have theme selection with 3 options", () => {
-    expect(settingsSource).toContain("system");
-    expect(settingsSource).toContain("light");
-    expect(settingsSource).toContain("dark");
+    expect(mainSettingsSource).toContain("system");
+    expect(mainSettingsSource).toContain("light");
+    expect(mainSettingsSource).toContain("dark");
   });
 
   it("should have sign out functionality", () => {
-    expect(settingsSource).toContain("Sign Out");
-    expect(settingsSource).toContain("logout");
+    expect(mainSettingsSource).toContain("Sign Out");
+    expect(mainSettingsSource).toContain("logout");
   });
 
   it("should have legal navigation links", () => {
-    expect(settingsSource).toContain("Terms of Service");
-    expect(settingsSource).toContain("Privacy Policy");
-    expect(settingsSource).toContain("/legal/terms");
-    expect(settingsSource).toContain("/legal/privacy");
+    expect(mainSettingsSource).toContain("Terms of Service");
+    expect(mainSettingsSource).toContain("Privacy Policy");
+    expect(mainSettingsSource).toContain("/legal/terms");
+    expect(mainSettingsSource).toContain("/legal/privacy");
   });
 });
 
@@ -174,8 +178,9 @@ describe("Backend setup documentation", () => {
 
 describe("Client-server notification key parity", () => {
   it("should have matching keys between settings screen and server", () => {
+    // Sprint 537: notification settings extracted to standalone component
     const settingsSource = fs.readFileSync(
-      path.resolve(__dirname, "..", "app", "settings.tsx"),
+      path.resolve(__dirname, "..", "components", "settings", "NotificationSettings.tsx"),
       "utf-8"
     );
     const routesSource = fs.readFileSync(

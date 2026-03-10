@@ -127,8 +127,9 @@ describe("Sprint 479: Notification Preferences UI", () => {
   });
 
   describe("Settings page sync", () => {
+    // Sprint 537: notification settings extracted to standalone component
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../app/settings.tsx"),
+      path.resolve(__dirname, "../components/settings/NotificationSettings.tsx"),
       "utf-8"
     );
 
