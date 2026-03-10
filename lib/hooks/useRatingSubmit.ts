@@ -9,6 +9,7 @@ import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
 import { setRatingImpact } from "@/lib/rating-impact";
 import { getBadgeById, type Badge } from "@/lib/badges";
 import { awardBadgeApi } from "@/lib/api";
+import { Analytics } from "@/lib/analytics";
 
 type VisitType = "dine_in" | "delivery" | "takeaway";
 
@@ -50,6 +51,8 @@ interface UseRatingSubmitOptions {
   note: string;
   photoUri: string | null;
   timeOnPageMs: number;
+  // Sprint 343: Per-dimension timing (ms spent on each scoring dimension)
+  dimensionTimingMs?: number[];
   onSuccess: () => void;
   onBadgeEarned: (badge: Badge) => void;
   setSubmitError: (msg: string) => void;
@@ -66,6 +69,7 @@ export function useRatingSubmit({
   note,
   photoUri,
   timeOnPageMs,
+  dimensionTimingMs,
   onSuccess,
   onBadgeEarned,
   setSubmitError,
@@ -133,6 +137,19 @@ export function useRatingSubmit({
       onSuccess();
       hapticRatingSuccess();
       setTimeout(() => hapticConfetti(), 300);
+
+      // Sprint 343: Track per-dimension timing analytics
+      if (dimensionTimingMs && dimensionTimingMs.some(t => t > 0)) {
+        Analytics.track("rate_dimension_timing", {
+          businessId,
+          visitType: visitType || "dine_in",
+          q1Ms: dimensionTimingMs[0] || 0,
+          q2Ms: dimensionTimingMs[1] || 0,
+          q3Ms: dimensionTimingMs[2] || 0,
+          returnMs: dimensionTimingMs[3] || 0,
+          totalMs: dimensionTimingMs.reduce((a, b) => a + b, 0),
+        });
+      }
 
       // Sprint 266: Async photo upload — doesn't block confirmation
       const ratingId = responseData?.data?.rating?.id;

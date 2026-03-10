@@ -72,6 +72,9 @@ export default function RateScreen() {
   // Sprint 339: Scroll-to-focus on small screens
   const scrollViewRef = useRef<ScrollView>(null);
   const dimensionYPositions = useRef<number[]>([0, 0, 0, 0]);
+  // Sprint 343: Per-dimension timing — tracks ms spent on each scoring dimension
+  const dimensionTimingRef = useRef<number[]>([0, 0, 0, 0]);
+  const dimensionStartRef = useRef<number>(0);
 
   useEffect(() => {
     if (submitError) {
@@ -89,6 +92,18 @@ export default function RateScreen() {
       if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
     };
   }, []);
+
+  // Sprint 343: Record dimension timing when focus changes
+  useEffect(() => {
+    const now = Date.now();
+    if (dimensionStartRef.current > 0 && focusedDimension > 0) {
+      const prevDim = focusedDimension - 1;
+      if (prevDim >= 0 && prevDim < 4) {
+        dimensionTimingRef.current[prevDim] += now - dimensionStartRef.current;
+      }
+    }
+    dimensionStartRef.current = now;
+  }, [focusedDimension]);
 
   // Sprint 339: Auto-scroll to focused dimension on small screens
   useEffect(() => {
@@ -231,6 +246,7 @@ export default function RateScreen() {
     note,
     photoUri,
     timeOnPageMs: Date.now() - pageEnteredAt,
+    dimensionTimingMs: dimensionTimingRef.current,
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowConfirm(true);
