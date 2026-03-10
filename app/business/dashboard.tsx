@@ -14,6 +14,9 @@ import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/query-client";
+import { SparklineChart } from "@/components/dashboard/SparklineChart";
+import { VolumeBarChart } from "@/components/dashboard/VolumeBarChart";
+import { VelocityIndicator } from "@/components/dashboard/VelocityIndicator";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -28,6 +31,12 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(days / 7)}w ago`;
 }
 
+interface VolumePoint {
+  period: string;
+  count: number;
+  avgScore: number;
+}
+
 interface DashboardData {
   totalRatings: number;
   avgScore: number;
@@ -37,6 +46,10 @@ interface DashboardData {
   topDish: { name: string; votes: number } | null;
   ratingTrend: number[];
   recentRatings: { id: string; user: string; score: number; tier: string; note: string | null; date: string }[];
+  weeklyVolume: VolumePoint[];
+  monthlyVolume: VolumePoint[];
+  velocityChange: number;
+  sparklineScores: number[];
 }
 
 function StatCard({ label, value, delta, icon, color, delay }: {
@@ -163,6 +176,10 @@ export default function BusinessDashboardScreen() {
     topDish: null,
     ratingTrend: [],
     recentRatings: [],
+    weeklyVolume: [],
+    monthlyVolume: [],
+    velocityChange: 0,
+    sparklineScores: [],
   };
 
   return (
@@ -212,12 +229,23 @@ export default function BusinessDashboardScreen() {
               <StatCard label="Would Return" value={`${a.wouldReturnPct}%`} icon="thumbs-up-outline" color="#3B82F6" delay={400} />
             </View>
 
-            {a.ratingTrend.length > 1 && (
+            {a.sparklineScores.length > 1 && (
               <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Score Trend ({a.ratingTrend.length} snapshots)</Text>
-                <MiniChart data={a.ratingTrend} color={BRAND.colors.amber} />
+                <Text style={styles.chartTitle}>Score Trend</Text>
+                <SparklineChart scores={a.sparklineScores} width={SCREEN_W - 64} label="RECENT SCORES" />
               </Animated.View>
             )}
+
+            {a.weeklyVolume.length > 0 && (
+              <Animated.View entering={FadeInDown.delay(550).duration(400)} style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Weekly Rating Volume</Text>
+                <VolumeBarChart data={a.weeklyVolume} width={SCREEN_W - 64} label="LAST 8 WEEKS" />
+              </Animated.View>
+            )}
+
+            <Animated.View entering={FadeInDown.delay(580).duration(400)}>
+              <VelocityIndicator velocityChange={a.velocityChange} />
+            </Animated.View>
 
             {a.topDish && (
               <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.highlightRow}>
@@ -299,6 +327,13 @@ export default function BusinessDashboardScreen() {
                 <Text style={styles.insightDesc}>{a.totalRatings} total ratings with a {a.avgScore.toFixed(1)} average. Currently ranked #{a.rankPosition}.</Text>
               </View>
             </Animated.View>
+
+            {a.monthlyVolume.length > 0 && (
+              <Animated.View entering={FadeInDown.delay(500).duration(400)} style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Monthly Volume</Text>
+                <VolumeBarChart data={a.monthlyVolume} width={SCREEN_W - 64} label="LAST 6 MONTHS" barColor="#6366F1" />
+              </Animated.View>
+            )}
           </>
         )}
       </ScrollView>
