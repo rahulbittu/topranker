@@ -14,6 +14,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { apiFetch } from "@/lib/query-client";
 import { useAuth } from "@/lib/auth-context";
+import { ClaimProgressTimeline } from "./ClaimProgressTimeline";
 
 const AMBER = BRAND.colors.amber;
 
@@ -64,6 +65,7 @@ export function ClaimStatusCard({ businessId, businessSlug, businessName }: Clai
           <Text style={s.date}>Submitted {date} via {claim.verificationMethod}</Text>
         </View>
       </View>
+      <ClaimProgressTimeline claimStatus={status} verificationMethod={claim.verificationMethod} submittedAt={claim.submittedAt} reviewedAt={claim.reviewedAt} />
       {status === "approved" && (
         <TouchableOpacity style={s.dashboardBtn} onPress={() => router.push(`/business/dashboard?slug=${businessSlug}`)} activeOpacity={0.8}>
           <Ionicons name="analytics-outline" size={16} color="#FFFFFF" />
