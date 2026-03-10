@@ -28,9 +28,8 @@ import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import ScoreCountUp from "@/components/animations/ScoreCountUp";
 import { FadeInView } from "@/components/animations/FadeInView";
-import { SlideUpView } from "@/components/animations/SlideUpView";
 import {
-  TierBadge, HistoryRow, LoggedOutView,
+  TierBadge, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
   TierRewardsSection, NotificationSettingsLink, LegalLinksSection,
 } from "@/components/profile/SubComponents";
@@ -42,7 +41,7 @@ import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
 import { ActivityTimeline } from "@/components/profile/ActivityTimeline";
-import { RatingExportButton } from "@/components/profile/RatingExport";
+import { RatingHistorySection } from "@/components/profile/RatingHistorySection";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -55,8 +54,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
-  const [historyPageSize, setHistoryPageSize] = useState(10);
-
   const handleDeleteRating = useCallback(async (ratingId: string) => {
     try {
       await deleteRatingApi(ratingId);
@@ -345,65 +342,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         tierColor={tierColor}
       />
 
-      <SlideUpView delay={200} distance={24}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Rating History</Text>
-        <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
-      </View>
-
-      {/* Sprint 433: Rating history CSV export */}
-      {profile.ratingHistory.length > 0 && (
-        <RatingExportButton ratings={profile.ratingHistory} username={profile.username} />
-      )}
-
-      {profile.ratingHistory.slice(0, historyPageSize).map((r: any) => (
-        <HistoryRow key={r.id} r={r} onDelete={handleDeleteRating} />
-      ))}
-
-      {profile.ratingHistory.length > historyPageSize && (
-        <TouchableOpacity
-          style={styles.showMoreBtn}
-          onPress={() => setHistoryPageSize(prev => prev + 10)}
-          accessibilityRole="button"
-          accessibilityLabel={`Show more ratings (${profile.ratingHistory.length - historyPageSize} remaining)`}
-        >
-          <Text style={styles.showMoreText}>
-            Show More ({profile.ratingHistory.length - historyPageSize} remaining)
-          </Text>
-          <Ionicons name="chevron-down" size={14} color={AMBER} />
-        </TouchableOpacity>
-      )}
-
-      {historyPageSize > 10 && profile.ratingHistory.length > 10 && (
-        <TouchableOpacity
-          style={styles.showLessBtn}
-          onPress={() => setHistoryPageSize(10)}
-          accessibilityRole="button"
-          accessibilityLabel="Show fewer ratings"
-        >
-          <Text style={styles.showLessText}>Show Less</Text>
-          <Ionicons name="chevron-up" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-      )}
-
-      {profile.ratingHistory.length === 0 && (
-        <TouchableOpacity
-          style={styles.emptyHistory}
-          onPress={() => router.push("/(tabs)/search")}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="star-outline" size={32} color={AMBER} />
-          <Text style={styles.emptyText}>No ratings yet</Text>
-          <Text style={styles.emptySubtext}>
-            Your first rating builds your credibility and shapes the rankings
-          </Text>
-          <View style={styles.emptyCtaRow}>
-            <Text style={styles.emptyCtaText}>Find a place to rate</Text>
-            <Ionicons name="arrow-forward" size={14} color={AMBER} />
-          </View>
-        </TouchableOpacity>
-      )}
-      </SlideUpView>
+      {/* Sprint 443: Extracted rating history to standalone component */}
+      <RatingHistorySection
+        ratingHistory={profile.ratingHistory}
+        username={profile.username}
+        onDelete={handleDeleteRating}
+      />
 
       {/* Saved Places — extracted component (Sprint 377) */}
       <SavedPlacesSection savedList={savedList} bookmarkCount={bookmarkCount} />
@@ -657,23 +601,7 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
-  // Empty states
-  emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
-  showMoreBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 12, marginTop: 4,
-    backgroundColor: `${AMBER}08`, borderRadius: 10,
-  },
-  showMoreText: { fontSize: 13, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold" },
-  showLessBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
-    paddingVertical: 8,
-  },
-  showLessText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  emptyCtaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
-  emptyCtaText: { fontSize: 13, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
+  // Sprint 443: emptyHistory, showMore/Less, emptyText styles moved to RatingHistorySection
 
   // Getting started / growth prompt
   gettingStartedCard: {

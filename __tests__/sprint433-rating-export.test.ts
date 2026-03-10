@@ -161,7 +161,8 @@ describe("RatingExport — button UI", () => {
 // 6. Profile integration
 // ---------------------------------------------------------------------------
 describe("RatingExport — profile integration", () => {
-  const src = readFile("app/(tabs)/profile.tsx");
+  // Sprint 443: RatingExportButton moved to RatingHistorySection
+  const src = readFile("components/profile/RatingHistorySection.tsx");
 
   it("imports RatingExportButton", () => {
     expect(src).toContain("RatingExportButton");
@@ -170,7 +171,7 @@ describe("RatingExport — profile integration", () => {
 
   it("renders export button with rating history", () => {
     expect(src).toContain("<RatingExportButton");
-    expect(src).toContain("ratings={profile.ratingHistory}");
+    expect(src).toContain("ratings={ratingHistory}");
   });
 });
 
