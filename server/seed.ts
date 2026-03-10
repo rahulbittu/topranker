@@ -414,6 +414,25 @@ const SEED_DISHES: { businessSlug: string; dishes: { name: string; voteCount: nu
   ]},
 ];
 
+// Sprint 338: Opening hours templates for production realism
+const HOURS_RESTAURANT = { mon: "11:00-22:00", tue: "11:00-22:00", wed: "11:00-22:00", thu: "11:00-22:00", fri: "11:00-23:00", sat: "11:00-23:00", sun: "11:00-21:00" };
+const HOURS_CAFE = { mon: "06:30-18:00", tue: "06:30-18:00", wed: "06:30-18:00", thu: "06:30-18:00", fri: "06:30-18:00", sat: "07:00-17:00", sun: "07:00-17:00" };
+const HOURS_BAR = { mon: "16:00-02:00", tue: "16:00-02:00", wed: "16:00-02:00", thu: "16:00-02:00", fri: "16:00-02:00", sat: "14:00-02:00", sun: "14:00-00:00" };
+const HOURS_BAKERY = { mon: "07:00-16:00", tue: "07:00-16:00", wed: "07:00-16:00", thu: "07:00-16:00", fri: "07:00-16:00", sat: "08:00-15:00", sun: "08:00-14:00" };
+const HOURS_FAST_FOOD = { mon: "10:00-23:00", tue: "10:00-23:00", wed: "10:00-23:00", thu: "10:00-23:00", fri: "10:00-00:00", sat: "10:00-00:00", sun: "10:00-22:00" };
+const HOURS_STREET_FOOD = { mon: "11:00-21:00", tue: "11:00-21:00", wed: "11:00-21:00", thu: "11:00-21:00", fri: "11:00-22:00", sat: "11:00-22:00", sun: "12:00-20:00" };
+
+function getHoursForCategory(category: string) {
+  switch (category) {
+    case "cafe": return HOURS_CAFE;
+    case "bar": return HOURS_BAR;
+    case "bakery": return HOURS_BAKERY;
+    case "fast_food": return HOURS_FAST_FOOD;
+    case "street_food": return HOURS_STREET_FOOD;
+    default: return HOURS_RESTAURANT;
+  }
+}
+
 export async function seedDatabase() {
   console.log("Seeding database...");
 
@@ -425,6 +444,10 @@ export async function seedDatabase() {
 
   const insertedBusinesses = [];
   for (const biz of SEED_BUSINESSES) {
+    // Sprint 338: Calculate leaderboard eligibility from seed data
+    const dineInCount = Math.max(3, Math.floor(biz.totalRatings * 0.6));
+    const credWeightedSum = (parseFloat(biz.weightedScore) * biz.totalRatings * 0.7).toFixed(4);
+    const eligible = biz.totalRatings >= 10 && dineInCount >= 1;
     const [inserted] = await db
       .insert(businesses)
       .values({
@@ -448,6 +471,11 @@ export async function seedDatabase() {
         priceRange: biz.priceRange,
         isOpenNow: biz.isOpenNow,
         photoUrl: biz.photoUrl || null,
+        openingHours: getHoursForCategory(biz.category),
+        hoursLastUpdated: new Date(),
+        dineInCount,
+        credibilityWeightedSum: credWeightedSum,
+        leaderboardEligible: eligible,
         isActive: true,
         dataSource: "admin",
       })

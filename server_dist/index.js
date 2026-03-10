@@ -5157,6 +5157,22 @@ __export(seed_exports, {
 });
 import { sql as sql13, eq as eq22, and as and14 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
+function getHoursForCategory(category) {
+  switch (category) {
+    case "cafe":
+      return HOURS_CAFE;
+    case "bar":
+      return HOURS_BAR;
+    case "bakery":
+      return HOURS_BAKERY;
+    case "fast_food":
+      return HOURS_FAST_FOOD;
+    case "street_food":
+      return HOURS_STREET_FOOD;
+    default:
+      return HOURS_RESTAURANT;
+  }
+}
 async function seedDatabase() {
   console.log("Seeding database...");
   const existingBusinesses = await db.select({ id: businesses.id }).from(businesses).limit(1);
@@ -5166,6 +5182,9 @@ async function seedDatabase() {
   }
   const insertedBusinesses = [];
   for (const biz of SEED_BUSINESSES) {
+    const dineInCount = Math.max(3, Math.floor(biz.totalRatings * 0.6));
+    const credWeightedSum = (parseFloat(biz.weightedScore) * biz.totalRatings * 0.7).toFixed(4);
+    const eligible = biz.totalRatings >= 10 && dineInCount >= 1;
     const [inserted] = await db.insert(businesses).values({
       name: biz.name,
       slug: biz.slug,
@@ -5187,6 +5206,11 @@ async function seedDatabase() {
       priceRange: biz.priceRange,
       isOpenNow: biz.isOpenNow,
       photoUrl: biz.photoUrl || null,
+      openingHours: getHoursForCategory(biz.category),
+      hoursLastUpdated: /* @__PURE__ */ new Date(),
+      dineInCount,
+      credibilityWeightedSum: credWeightedSum,
+      leaderboardEligible: eligible,
       isActive: true,
       dataSource: "admin"
     }).returning();
@@ -5365,7 +5389,7 @@ async function seedDatabase() {
   console.log("Seeded demo member: alex@demo.com / demo123");
   console.log("Database seeding complete!");
 }
-var SEED_BUSINESSES, SEED_DISHES;
+var SEED_BUSINESSES, SEED_DISHES, HOURS_RESTAURANT, HOURS_CAFE, HOURS_BAR, HOURS_BAKERY, HOURS_FAST_FOOD, HOURS_STREET_FOOD;
 var init_seed = __esm({
   "server/seed.ts"() {
     "use strict";
@@ -5765,6 +5789,12 @@ var init_seed = __esm({
         { name: "Sichuan Hot Pot", voteCount: 92 }
       ] }
     ];
+    HOURS_RESTAURANT = { mon: "11:00-22:00", tue: "11:00-22:00", wed: "11:00-22:00", thu: "11:00-22:00", fri: "11:00-23:00", sat: "11:00-23:00", sun: "11:00-21:00" };
+    HOURS_CAFE = { mon: "06:30-18:00", tue: "06:30-18:00", wed: "06:30-18:00", thu: "06:30-18:00", fri: "06:30-18:00", sat: "07:00-17:00", sun: "07:00-17:00" };
+    HOURS_BAR = { mon: "16:00-02:00", tue: "16:00-02:00", wed: "16:00-02:00", thu: "16:00-02:00", fri: "16:00-02:00", sat: "14:00-02:00", sun: "14:00-00:00" };
+    HOURS_BAKERY = { mon: "07:00-16:00", tue: "07:00-16:00", wed: "07:00-16:00", thu: "07:00-16:00", fri: "07:00-16:00", sat: "08:00-15:00", sun: "08:00-14:00" };
+    HOURS_FAST_FOOD = { mon: "10:00-23:00", tue: "10:00-23:00", wed: "10:00-23:00", thu: "10:00-23:00", fri: "10:00-00:00", sat: "10:00-00:00", sun: "10:00-22:00" };
+    HOURS_STREET_FOOD = { mon: "11:00-21:00", tue: "11:00-21:00", wed: "11:00-21:00", thu: "11:00-21:00", fri: "11:00-22:00", sat: "11:00-22:00", sun: "12:00-20:00" };
   }
 });
 
