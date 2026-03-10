@@ -17,6 +17,7 @@ import { TIER_INFLUENCE_LABELS, type CredibilityTier } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
 import { DishPill } from "@/components/rate/SubComponents";
 import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
+import { NoteSentimentIndicator } from "@/components/rate/NoteSentimentIndicator";
 
 const MAX_PHOTOS = 3;
 
@@ -272,6 +273,7 @@ export function RatingExtrasStep({
         ]}>
           {note.length}/160
         </Text>
+        <NoteSentimentIndicator note={note} />
       </View>
 
       {/* Photo Upload — Sprint 379/424: multi-photo + camera + boost meter */}
