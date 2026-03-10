@@ -43,6 +43,7 @@ import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
 import { PhotoUploadSheet } from "@/components/business/PhotoUploadSheet";
+import { ReviewSummaryCard } from "@/components/business/ReviewSummaryCard";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -328,6 +329,9 @@ export default function BusinessProfileScreen() {
           {ratings.length > 0 && (
             <SubScoresCard avgQ1={avgQ1} avgQ2={avgQ2} avgQ3={avgQ3} ratings={ratings} />
           )}
+
+          {/* Sprint 444: Review Summary Card — aggregated insights */}
+          <ReviewSummaryCard ratings={ratings} />
 
           {/* Sprint 268: Score Breakdown — visit-type separation */}
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
