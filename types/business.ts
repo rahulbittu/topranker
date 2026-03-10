@@ -15,6 +15,7 @@ export interface MappedBusiness {
   priceRange?: string;
   photoUrl?: string;
   photoUrls?: string[];
+  dishRankings?: { dishSlug: string; dishName: string; dishEmoji: string | null; rankPosition: number }[];
   lat?: number;
   lng?: number;
 }

@@ -404,3 +404,40 @@ export async function getBusinessDishRankings(businessId: string): Promise<{
   }
   return result;
 }
+
+/**
+ * Sprint 324: Batch fetch dish rankings for multiple businesses.
+ * Returns a map of businessId → top dish rankings (max 3 per business).
+ */
+export async function getBatchDishRankings(businessIds: string[]): Promise<
+  Record<string, { dishSlug: string; dishName: string; dishEmoji: string | null; rankPosition: number }[]>
+> {
+  if (businessIds.length === 0) return {};
+
+  const entries = await db
+    .select({
+      businessId: dishLeaderboardEntries.businessId,
+      dishSlug: dishLeaderboards.dishSlug,
+      dishName: dishLeaderboards.dishName,
+      dishEmoji: dishLeaderboards.dishEmoji,
+      rankPosition: dishLeaderboardEntries.rankPosition,
+    })
+    .from(dishLeaderboardEntries)
+    .innerJoin(dishLeaderboards, eq(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id))
+    .where(sql`${dishLeaderboardEntries.businessId} = ANY(ARRAY[${sql.join(businessIds.map(id => sql`${id}`), sql`,`)}]::text[])`)
+    .orderBy(asc(dishLeaderboardEntries.rankPosition));
+
+  const result: Record<string, { dishSlug: string; dishName: string; dishEmoji: string | null; rankPosition: number }[]> = {};
+  for (const entry of entries) {
+    if (!result[entry.businessId]) result[entry.businessId] = [];
+    if (result[entry.businessId].length < 3) {
+      result[entry.businessId].push({
+        dishSlug: entry.dishSlug,
+        dishName: entry.dishName,
+        dishEmoji: entry.dishEmoji,
+        rankPosition: entry.rankPosition,
+      });
+    }
+  }
+  return result;
+}

@@ -82,6 +82,7 @@ export {
   submitDishSuggestion,
   voteDishSuggestion,
   recalculateDishLeaderboard,
+  getBatchDishRankings,
 } from "./dishes";
 
 // Categories

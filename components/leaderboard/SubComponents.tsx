@@ -304,6 +304,24 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
           {item.neighborhood ? ` \u00B7 ${item.neighborhood}` : ""}
           {item.priceRange ? ` \u00B7 ${item.priceRange}` : ""}
         </Text>
+        {/* Sprint 324: Dish leaderboard badges */}
+        {item.dishRankings && item.dishRankings.length > 0 && (
+          <View style={s.dishBadgeRow}>
+            {item.dishRankings.map((dr) => (
+              <TouchableOpacity
+                key={dr.dishSlug}
+                style={s.dishBadge}
+                onPress={() => router.push({ pathname: "/dish/[slug]", params: { slug: dr.dishSlug } })}
+                accessibilityRole="link"
+                accessibilityLabel={`Ranked #${dr.rankPosition} for ${dr.dishName}`}
+              >
+                <Text style={s.dishBadgeText}>
+                  {dr.dishEmoji || "🍽️"} #{dr.rankPosition} {dr.dishName}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <View style={s.rankedRow3}>
           {(() => {
             const confidence = getRankConfidence(item.ratingCount ?? 0, item.category);
@@ -465,6 +483,13 @@ const s = StyleSheet.create({
     fontFamily: "PlayfairDisplay_700Bold", flex: 1, marginRight: 8,
   },
   rankedMeta: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
+  dishBadgeRow: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginTop: 4 },
+  dishBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
+    backgroundColor: "rgba(196,154,26,0.10)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.25)",
+  },
+  dishBadgeText: { fontSize: 10, fontFamily: "DMSans_600SemiBold", color: AMBER },
   rankedRow3: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   rankedScore: { fontSize: 15, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black" },
   rankedRatingCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },

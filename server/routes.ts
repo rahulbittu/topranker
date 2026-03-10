@@ -52,6 +52,7 @@ import {
   getBusinessPhotosMap,
   getMemberPayments,
   getActiveFeaturedInCity,
+  getBatchDishRankings,
 } from "./storage";
 import { insertRatingSchema, insertCategorySuggestionSchema } from "@shared/schema";
 import { sanitizeString, sanitizeNumber } from "./sanitize";
@@ -171,10 +172,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
 
     const bizList = await getLeaderboard(city, category, limit, cuisine);
-    const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+    const bizIds = bizList.map(b => b.id);
+    const [photoMap, dishRankingsMap] = await Promise.all([
+      getBusinessPhotosMap(bizIds),
+      getBatchDishRankings(bizIds),
+    ]);
     const data = bizList.map(b => ({
       ...b,
       photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+      dishRankings: dishRankingsMap[b.id] || [],
     }));
     return res.json({ data });
   }));

@@ -2504,6 +2504,7 @@ var init_ratings = __esm({
 // server/storage/dishes.ts
 var dishes_exports = {};
 __export(dishes_exports, {
+  getBatchDishRankings: () => getBatchDishRankings,
   getBusinessDishRankings: () => getBusinessDishRankings,
   getBusinessDishes: () => getBusinessDishes,
   getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
@@ -2723,6 +2724,29 @@ async function getBusinessDishRankings(businessId) {
       ...entry,
       entryCount: countResult?.count || 0
     });
+  }
+  return result;
+}
+async function getBatchDishRankings(businessIds) {
+  if (businessIds.length === 0) return {};
+  const entries = await db.select({
+    businessId: dishLeaderboardEntries.businessId,
+    dishSlug: dishLeaderboards.dishSlug,
+    dishName: dishLeaderboards.dishName,
+    dishEmoji: dishLeaderboards.dishEmoji,
+    rankPosition: dishLeaderboardEntries.rankPosition
+  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(sql7`${dishLeaderboardEntries.businessId} = ANY(ARRAY[${sql7.join(businessIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  const result = {};
+  for (const entry of entries) {
+    if (!result[entry.businessId]) result[entry.businessId] = [];
+    if (result[entry.businessId].length < 3) {
+      result[entry.businessId].push({
+        dishSlug: entry.dishSlug,
+        dishName: entry.dishName,
+        dishEmoji: entry.dishEmoji,
+        rankPosition: entry.rankPosition
+      });
+    }
   }
   return result;
 }
@@ -3361,6 +3385,7 @@ __export(storage_exports, {
   getAllCategories: () => getAllCategories,
   getAutoFlaggedRatings: () => getAutoFlaggedRatings,
   getBadgeLeaderboard: () => getBadgeLeaderboard,
+  getBatchDishRankings: () => getBatchDishRankings,
   getBetaInviteByEmail: () => getBetaInviteByEmail,
   getBetaInviteStats: () => getBetaInviteStats,
   getBusinessById: () => getBusinessById,
@@ -12396,10 +12421,15 @@ async function registerRoutes(app2) {
     const cuisine = sanitizeString(req.query.cuisine, 50) || void 0;
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const bizList = await getLeaderboard(city, category, limit, cuisine);
-    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const bizIds = bizList.map((b) => b.id);
+    const [photoMap, dishRankingsMap] = await Promise.all([
+      getBusinessPhotosMap(bizIds),
+      getBatchDishRankings(bizIds)
+    ]);
     const data = bizList.map((b) => ({
       ...b,
-      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+      dishRankings: dishRankingsMap[b.id] || []
     }));
     return res.json({ data });
   }));
