@@ -89,7 +89,47 @@ export function getConfidenceLevel(ratingCount: number): "low" | "medium" | "hig
   return "low";
 }
 
-export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[] }[]): RankedBusiness[] {
+// Sprint 347: Search relevance signals
+export interface SearchContext {
+  query?: string;
+  hasPhotos?: boolean;
+  hasHours?: boolean;
+  hasCuisine?: boolean;
+  hasDescription?: boolean;
+}
+
+/**
+ * Sprint 347: Text relevance score (0-1) for search query match.
+ * Exact name match = 1.0, starts-with = 0.8, contains = 0.5, no match = 0.
+ */
+export function textRelevance(name: string, query?: string): number {
+  if (!query || !query.trim()) return 0;
+  const q = query.toLowerCase().trim();
+  const n = name.toLowerCase();
+  if (n === q) return 1.0;
+  if (n.startsWith(q)) return 0.8;
+  if (n.includes(q)) return 0.5;
+  // Check each word
+  const words = n.split(/\s+/);
+  if (words.some(w => w.startsWith(q))) return 0.4;
+  return 0;
+}
+
+/**
+ * Sprint 347: Profile completeness score (0-1).
+ * Businesses with photos, hours, cuisine, and description rank higher.
+ */
+export function profileCompleteness(ctx: SearchContext): number {
+  let score = 0;
+  let total = 0;
+  if (ctx.hasPhotos !== undefined) { total++; if (ctx.hasPhotos) score++; }
+  if (ctx.hasHours !== undefined) { total++; if (ctx.hasHours) score++; }
+  if (ctx.hasCuisine !== undefined) { total++; if (ctx.hasCuisine) score++; }
+  if (ctx.hasDescription !== undefined) { total++; if (ctx.hasDescription) score++; }
+  return total > 0 ? score / total : 0;
+}
+
+export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[]; search?: SearchContext }[]): RankedBusiness[] {
   return businesses
     .map(biz => {
       const { rawScore, weightedScore } = calculateWeightedScore(biz.ratings);
@@ -98,11 +138,26 @@ export function rankBusinesses(businesses: { businessId: string; name: string; r
       if (biz.ratings.some(r => r.reputationScore >= 80)) boostFactors.push("authority_rated");
       if (biz.ratings.some(r => r.daysAgo <= 7)) boostFactors.push("recent_activity");
 
+      // Sprint 347: Apply search relevance and completeness boosts
+      let finalScore = weightedScore;
+      if (biz.search) {
+        const relevance = textRelevance(biz.name, biz.search.query);
+        const completeness = profileCompleteness(biz.search);
+        if (relevance > 0) {
+          finalScore += relevance * 0.3; // Up to 0.3 point boost for exact match
+          boostFactors.push("text_match");
+        }
+        if (completeness >= 0.75) {
+          finalScore += 0.1; // 0.1 point boost for complete profiles
+          boostFactors.push("complete_profile");
+        }
+      }
+
       return {
         businessId: biz.businessId,
         name: biz.name,
         rawScore,
-        weightedScore,
+        weightedScore: Math.round(finalScore * 100) / 100,
         ratingCount: biz.ratings.length,
         confidenceLevel: getConfidenceLevel(biz.ratings.length),
         boostFactors,
