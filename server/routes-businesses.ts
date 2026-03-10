@@ -22,6 +22,7 @@ import { textRelevance, profileCompleteness, combinedRelevance } from "./search-
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
+import { computeOpenStatus, isOpenLate, isOpenWeekends } from "./hours-utils";
 
 // Sprint 442: Haversine distance calculation (km)
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -65,6 +66,10 @@ export function registerBusinessRoutes(app: Express) {
     const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
     const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
     const maxDistanceKm = req.query.maxDistance ? parseFloat(req.query.maxDistance as string) : undefined;
+    // Sprint 447: Hours-based search filters
+    const openNow = req.query.openNow === "true";
+    const openLate = req.query.openLate === "true";
+    const openWeekends = req.query.openWeekends === "true";
 
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
@@ -91,11 +96,19 @@ export function registerBusinessRoutes(app: Express) {
       if (userLat != null && userLng != null && b.lat && b.lng) {
         distanceKm = haversineKm(userLat, userLng, parseFloat(b.lat), parseFloat(b.lng));
       }
+      // Sprint 447: Compute real-time open status from openingHours
+      const bHours = (b as any).openingHours;
+      const openStatus = computeOpenStatus(bHours);
+      const dynamicIsOpenNow = bHours ? openStatus.isOpen : (b.isOpenNow ?? false);
       return {
         ...b,
         photoUrls: photos,
         relevanceScore,
         distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null,
+        isOpenNow: dynamicIsOpenNow,
+        closingTime: openStatus.closingTime,
+        nextOpenTime: openStatus.nextOpenTime,
+        todayHours: openStatus.todayHours,
       };
     });
 
@@ -110,6 +123,17 @@ export function registerBusinessRoutes(app: Express) {
     // Sprint 442: Filter by distance
     if (maxDistanceKm != null && userLat != null && userLng != null) {
       data = data.filter(b => b.distanceKm != null && b.distanceKm <= maxDistanceKm);
+    }
+
+    // Sprint 447: Hours-based filters
+    if (openNow) {
+      data = data.filter(b => b.isOpenNow === true);
+    }
+    if (openLate) {
+      data = data.filter(b => { const h = (b as any).openingHours; return isOpenLate(h); });
+    }
+    if (openWeekends) {
+      data = data.filter(b => { const h = (b as any).openingHours; return isOpenWeekends(h); });
     }
 
     // Re-sort by relevance when a search query is present

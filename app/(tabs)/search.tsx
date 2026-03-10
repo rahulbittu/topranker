@@ -27,7 +27,7 @@ import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
-import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, type DietaryTag, type DistanceOption } from "@/components/search/DiscoverFilters";
+import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { TrendingSection } from "@/components/search/TrendingSection";
@@ -60,6 +60,8 @@ export default function SearchScreen() {
   // Sprint 442: Search filters v2 — dietary tags + distance
   const [dietaryTags, setDietaryTags] = useState<DietaryTag[]>([]);
   const [distanceFilter, setDistanceFilter] = useState<DistanceOption>(null);
+  // Sprint 447: Hours-based filters
+  const [hoursFilters, setHoursFilters] = useState<HoursFilter[]>([]);
 
   // Autocomplete: fast 150ms debounce for typeahead
   useEffect(() => {
@@ -84,15 +86,18 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Sprint 442: Include dietary + distance in query key and fetch
+  // Sprint 442+447: Include dietary, distance, and hours in query key and fetch
   const searchOpts = {
     dietary: dietaryTags.length > 0 ? dietaryTags : undefined,
     lat: userLocation?.lat,
     lng: userLocation?.lng,
     maxDistance: distanceFilter || undefined,
+    openNow: hoursFilters.includes("openNow") || undefined,
+    openLate: hoursFilters.includes("openLate") || undefined,
+    openWeekends: hoursFilters.includes("openWeekends") || undefined,
   };
   const { data: allBusinesses = [], isLoading, isError, refetch, isRefetching } = useQuery({
-    queryKey: ["search", city, debouncedQuery, selectedCuisine, dietaryTags, distanceFilter, userLocation?.lat, userLocation?.lng],
+    queryKey: ["search", city, debouncedQuery, selectedCuisine, dietaryTags, distanceFilter, hoursFilters, userLocation?.lat, userLocation?.lng],
     queryFn: () => fetchBusinessSearch(debouncedQuery, city, undefined, selectedCuisine || undefined, searchOpts),
     staleTime: 30000,
   });
@@ -441,6 +446,8 @@ export default function SearchScreen() {
               {/* Sprint 442: Dietary + distance filters */}
               <DietaryTagChips activeTags={dietaryTags} onTagToggle={(tag) => setDietaryTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])} />
               <DistanceChips activeDistance={distanceFilter} onDistanceChange={setDistanceFilter} hasLocation={!!userLocation} />
+              {/* Sprint 447: Hours-based filters */}
+              <HoursFilterChips activeFilters={hoursFilters} onFilterToggle={(f) => setHoursFilters(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])} />
               <SortChips sortBy={sortBy} onSortChange={setSortBy} showRelevant={!!debouncedQuery} />
               {showDiscoverTip && (
                 <View style={styles.discoverTip}>

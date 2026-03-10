@@ -199,6 +199,48 @@ export const DistanceChips = React.memo(function DistanceChips({
 
 export function getDistanceOptions(): typeof DISTANCE_OPTIONS { return DISTANCE_OPTIONS; }
 
+// Sprint 447: Hours-based filter chips
+export type HoursFilter = "openNow" | "openLate" | "openWeekends";
+const HOURS_FILTERS: { key: HoursFilter; label: string; icon: IoniconsName }[] = [
+  { key: "openNow", label: "Open Now", icon: "time-outline" },
+  { key: "openLate", label: "Open Late", icon: "moon-outline" },
+  { key: "openWeekends", label: "Weekends", icon: "calendar-outline" },
+];
+
+interface HoursFilterChipsProps {
+  activeFilters: HoursFilter[];
+  onFilterToggle: (filter: HoursFilter) => void;
+}
+
+export const HoursFilterChips = React.memo(function HoursFilterChips({
+  activeFilters, onFilterToggle,
+}: HoursFilterChipsProps) {
+  return (
+    <View style={styles.hoursRow}>
+      <Ionicons name="time-outline" size={12} color={Colors.textTertiary} style={{ marginRight: 4 }} />
+      <Text style={styles.hoursLabel}>Hours:</Text>
+      {HOURS_FILTERS.map(({ key, label, icon }) => {
+        const active = activeFilters.includes(key);
+        return (
+          <TouchableOpacity
+            key={key}
+            onPress={() => { Haptics.selectionAsync(); onFilterToggle(key); }}
+            style={[styles.hoursChip, active && styles.hoursChipActive]}
+            accessibilityRole="button"
+            accessibilityLabel={`${label} filter${active ? ", selected" : ""}`}
+            accessibilityState={{ selected: active }}
+          >
+            <Ionicons name={icon} size={10} color={active ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />
+            <Text style={[styles.hoursChipText, active && styles.hoursChipTextActive]}>{label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+});
+
+export function getHoursFilters(): typeof HOURS_FILTERS { return HOURS_FILTERS; }
+
 // Sprint 412: Sort-aware results header
 const SORT_DESCRIPTIONS: Record<string, { label: string; icon: string; hint: string }> = {
   ranked: { label: "By Rank", icon: "trophy-outline", hint: "Sorted by leaderboard position" },
@@ -318,4 +360,22 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
   },
   distanceChipTextActive: { color: "#fff", fontWeight: "600" as const },
+
+  // Sprint 447: Hours filter chips
+  hoursRow: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 10,
+  },
+  hoursLabel: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
+  },
+  hoursChip: {
+    flexDirection: "row" as const, alignItems: "center" as const,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  hoursChipActive: { backgroundColor: "#6B4EAA", borderColor: "#6B4EAA" },
+  hoursChipText: {
+    fontSize: 11, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+  },
+  hoursChipTextActive: { color: "#fff", fontWeight: "600" as const },
 });
