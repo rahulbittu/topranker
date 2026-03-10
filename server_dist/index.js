@@ -5746,6 +5746,18 @@ function getPushRecordCount() {
   return deliveryRecords.length;
 }
 function recordNotificationOpen(notificationId, category, memberId) {
+  const dedupKey = `${notificationId}:${memberId}`;
+  if (openDedupSet.has(dedupKey)) {
+    analyticsLog2.info(`Duplicate open skipped: ${category} by member ${memberId.slice(0, 8)}`);
+    return false;
+  }
+  openDedupSet.add(dedupKey);
+  if (openDedupSet.size > MAX_DEDUP_SIZE) {
+    const entries = Array.from(openDedupSet);
+    for (let i = 0; i < entries.length - MAX_DEDUP_SIZE; i++) {
+      openDedupSet.delete(entries[i]);
+    }
+  }
   const record = {
     notificationId,
     category,
@@ -5757,6 +5769,7 @@ function recordNotificationOpen(notificationId, category, memberId) {
     openRecords.splice(0, openRecords.length - MAX_OPEN_RECORDS);
   }
   analyticsLog2.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
+  return true;
 }
 function computeOpenAnalytics(daysBack = 7) {
   const cutoff = Date.now() - daysBack * 864e5;
@@ -5780,7 +5793,7 @@ function getNotificationInsights(daysBack = 7) {
   const openRate = delivery.totalSent > 0 ? Math.round(opens.totalOpens / delivery.totalSent * 1e3) / 10 : 0;
   return { delivery, opens, openRate };
 }
-var analyticsLog2, deliveryRecords, MAX_RECORDS, openRecords, MAX_OPEN_RECORDS;
+var analyticsLog2, deliveryRecords, MAX_RECORDS, openRecords, MAX_OPEN_RECORDS, openDedupSet, MAX_DEDUP_SIZE;
 var init_push_analytics = __esm({
   "server/push-analytics.ts"() {
     "use strict";
@@ -5790,6 +5803,8 @@ var init_push_analytics = __esm({
     MAX_RECORDS = 1e4;
     openRecords = [];
     MAX_OPEN_RECORDS = 1e4;
+    openDedupSet = /* @__PURE__ */ new Set();
+    MAX_DEDUP_SIZE = 5e4;
   }
 });
 
@@ -11250,12 +11265,12 @@ function registerNotificationRoutes(app2) {
     if (!notificationId || !category) {
       return res.status(400).json({ error: "notificationId and category required" });
     }
-    recordNotificationOpen(
+    const recorded = recordNotificationOpen(
       String(notificationId).slice(0, 100),
       String(category).slice(0, 50),
       memberId
     );
-    res.json({ success: true });
+    res.json({ success: true, recorded });
   });
   app2.get("/api/notifications/insights", (req, res) => {
     const daysBack = parseInt(req.query.daysBack) || 7;

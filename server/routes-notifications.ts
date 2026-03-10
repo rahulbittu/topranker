@@ -63,12 +63,13 @@ export function registerNotificationRoutes(app: Router): void {
     if (!notificationId || !category) {
       return res.status(400).json({ error: "notificationId and category required" });
     }
-    recordNotificationOpen(
+    // Sprint 502: recordNotificationOpen returns false if duplicate
+    const recorded = recordNotificationOpen(
       String(notificationId).slice(0, 100),
       String(category).slice(0, 50),
       memberId,
     );
-    res.json({ success: true });
+    res.json({ success: true, recorded });
   });
 
   // GET /api/notifications/insights — combined delivery + open analytics (admin)

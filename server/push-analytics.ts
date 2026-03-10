@@ -144,15 +144,37 @@ export interface NotificationOpenRecord {
 const openRecords: NotificationOpenRecord[] = [];
 const MAX_OPEN_RECORDS = 10000;
 
+// Sprint 502: Deduplication set — tracks notificationId:memberId pairs
+const openDedupSet = new Set<string>();
+const MAX_DEDUP_SIZE = 50000;
+
 /**
  * Record when a user opens/taps a push notification.
+ * Sprint 502: Deduplicates by notificationId+memberId — prevents double-tap counting.
  * Called from the client via POST /api/notifications/opened.
  */
 export function recordNotificationOpen(
   notificationId: string,
   category: string,
   memberId: string,
-): void {
+): boolean {
+  // Sprint 502: Deduplicate by notification+member
+  const dedupKey = `${notificationId}:${memberId}`;
+  if (openDedupSet.has(dedupKey)) {
+    analyticsLog.info(`Duplicate open skipped: ${category} by member ${memberId.slice(0, 8)}`);
+    return false;
+  }
+
+  openDedupSet.add(dedupKey);
+
+  // Evict oldest dedup entries if set grows too large
+  if (openDedupSet.size > MAX_DEDUP_SIZE) {
+    const entries = Array.from(openDedupSet);
+    for (let i = 0; i < entries.length - MAX_DEDUP_SIZE; i++) {
+      openDedupSet.delete(entries[i]);
+    }
+  }
+
   const record: NotificationOpenRecord = {
     notificationId,
     category,
@@ -167,6 +189,14 @@ export function recordNotificationOpen(
   }
 
   analyticsLog.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
+  return true;
+}
+
+/**
+ * Sprint 502: Get dedup set size for health monitoring.
+ */
+export function getOpenDedupSize(): number {
+  return openDedupSet.size;
 }
 
 /**
