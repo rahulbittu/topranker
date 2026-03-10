@@ -65,6 +65,7 @@ export default function RateScreen() {
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
   // Sprint 334: Auto-advance focus between dimensions
   const [focusedDimension, setFocusedDimension] = useState<number>(0);
@@ -177,6 +178,7 @@ export default function RateScreen() {
     dishInput,
     note,
     photoUri,
+    receiptUri,
     timeOnPageMs: Date.now() - pageEnteredAt,
     dimensionTimingMs: dimensionTimingRef.current,
     onSuccess: () => {
@@ -409,6 +411,8 @@ export default function RateScreen() {
             setPhotoUri={setPhotoUri}
             photoUris={photoUris}
             setPhotoUris={setPhotoUris}
+            receiptUri={receiptUri}
+            setReceiptUri={setReceiptUri}
             q1Score={q1Score}
             q2Score={q2Score}
             q3Score={q3Score}

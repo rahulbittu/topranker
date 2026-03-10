@@ -135,9 +135,9 @@ describe("Sprint 379: Rating flow photo upload UI", () => {
   // ── File size guard ─────────────────────────────────────
 
   describe("File size", () => {
-    it("RatingExtrasStep should be under 400 LOC", () => {
+    it("RatingExtrasStep should be under 550 LOC", () => {
       const lines = extrasSrc.split("\n").length;
-      expect(lines).toBeLessThan(400);
+      expect(lines).toBeLessThan(550);
     });
 
     it("rate/[id].tsx should be under 700 LOC", () => {

@@ -38,6 +38,29 @@ async function uploadRatingPhoto(ratingId: string, uri: string): Promise<void> {
   });
 }
 
+// Sprint 382: Receipt upload with isReceipt flag for +25% verification boost
+async function uploadRatingReceipt(ratingId: string, uri: string): Promise<void> {
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const reader = new FileReader();
+  const base64 = await new Promise<string>((resolve, reject) => {
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      const base64Data = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const mimeType = blob.type || "image/jpeg";
+  await apiRequest("POST", `/api/ratings/${ratingId}/photo`, {
+    data: base64,
+    mimeType,
+    isReceipt: true,
+  });
+}
+
 interface UseRatingSubmitOptions {
   slug: string;
   businessId?: string;
@@ -50,6 +73,7 @@ interface UseRatingSubmitOptions {
   dishInput: string;
   note: string;
   photoUri: string | null;
+  receiptUri?: string | null;
   timeOnPageMs: number;
   // Sprint 343: Per-dimension timing (ms spent on each scoring dimension)
   dimensionTimingMs?: number[];
@@ -68,6 +92,7 @@ export function useRatingSubmit({
   dishInput,
   note,
   photoUri,
+  receiptUri,
   timeOnPageMs,
   dimensionTimingMs,
   onSuccess,
@@ -161,6 +186,15 @@ export function useRatingSubmit({
           qc.invalidateQueries({ queryKey: ["business", slug] });
         }).catch(() => {
           // Photo upload failure is non-critical — rating already submitted
+        });
+      }
+
+      // Sprint 382: Async receipt upload — isReceipt flag for +25% verification boost
+      if (receiptUri && ratingId) {
+        uploadRatingReceipt(ratingId, receiptUri).then(() => {
+          qc.invalidateQueries({ queryKey: ["business", slug] });
+        }).catch(() => {
+          // Receipt upload failure is non-critical — rating already submitted
         });
       }
 
