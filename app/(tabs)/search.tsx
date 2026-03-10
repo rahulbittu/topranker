@@ -27,6 +27,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { BestInSection } from "@/components/search/BestInSection";
+import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
@@ -480,6 +481,28 @@ export default function SearchScreen() {
                 />
               )}
 
+              {/* Sprint 293: Active cuisine filter indicator */}
+              {selectedCuisine && (
+                <View style={styles.activeCuisineRow}>
+                  <View style={styles.activeCuisineChip}>
+                    <Text style={styles.activeCuisineText}>
+                      {CUISINE_DISPLAY[selectedCuisine]?.emoji || ""} {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); }}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Clear ${selectedCuisine} filter`}
+                    >
+                      <Ionicons name="close-circle" size={14} color={Colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.activeCuisineCount}>
+                    {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                  </Text>
+                </View>
+              )}
+
               {/* Featured / Promoted Listings */}
               {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
 
@@ -645,6 +668,22 @@ const styles = StyleSheet.create({
     position: "absolute" as const, top: 10, right: 10,
   },
 
+
+  activeCuisineRow: {
+    flexDirection: "row" as const, alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 4, paddingVertical: 6, marginBottom: 4,
+  },
+  activeCuisineChip: {
+    flexDirection: "row" as const, alignItems: "center", gap: 6,
+    backgroundColor: "rgba(196, 154, 26, 0.12)", paddingHorizontal: 10, paddingVertical: 5,
+    borderRadius: 14, borderWidth: 1, borderColor: "rgba(196, 154, 26, 0.3)",
+  },
+  activeCuisineText: {
+    fontSize: 12, fontWeight: "600" as const, color: "#8B6914", fontFamily: "DMSans_600SemiBold",
+  },
+  activeCuisineCount: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
