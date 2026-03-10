@@ -14,6 +14,13 @@ import {
   createExperiment,
 } from "./email-ab-testing";
 import { getEmailStats } from "./email-tracking";
+import {
+  createPushExperiment,
+  listPushExperiments,
+  getPushExperiment,
+  deactivatePushExperiment,
+} from "./push-ab-testing";
+import { computeExperimentDashboard } from "./experiment-tracker";
 
 function requireAdmin(req: Request, res: Response, next: Function) {
   if (!req.user || (req.user as any).role !== "admin") {
@@ -67,5 +74,42 @@ export function registerAdminExperimentRoutes(app: Express) {
     const { winnerVariantId } = req.body;
     completeExperiment(req.params.id, winnerVariantId);
     return res.json({ data: { completed: true } });
+  }));
+
+  // ── Sprint 508: Push Notification A/B Testing ──────────────
+
+  // List all push notification experiments
+  app.get("/api/admin/push-experiments", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+    const pushExperiments = listPushExperiments();
+    const withDashboards = pushExperiments.map((exp) => ({
+      ...exp,
+      dashboard: computeExperimentDashboard(exp.id),
+    }));
+    return res.json({ data: withDashboards });
+  }));
+
+  // Get single push experiment with dashboard
+  app.get("/api/admin/push-experiments/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const exp = getPushExperiment(req.params.id);
+    if (!exp) return res.status(404).json({ error: "Push experiment not found" });
+    return res.json({ data: { ...exp, dashboard: computeExperimentDashboard(exp.id) } });
+  }));
+
+  // Create push notification experiment
+  app.post("/api/admin/push-experiments", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const { id, description, category, variants } = req.body;
+    if (!id || !description || !category || !variants || variants.length < 2) {
+      return res.status(400).json({ error: "id, description, category, and 2+ variants required" });
+    }
+    const exp = createPushExperiment(id, description, category, variants);
+    if (!exp) return res.status(409).json({ error: "Experiment already exists or invalid" });
+    return res.json({ data: exp });
+  }));
+
+  // Deactivate push experiment
+  app.post("/api/admin/push-experiments/:id/deactivate", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+    const success = deactivatePushExperiment(req.params.id);
+    if (!success) return res.status(404).json({ error: "Push experiment not found" });
+    return res.json({ data: { deactivated: true } });
   }));
 }

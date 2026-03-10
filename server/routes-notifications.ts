@@ -10,6 +10,7 @@ import { log } from "./logger";
 import { requireAuth } from "./middleware";
 import { getNotifications, getUnreadCount, markAsRead, markAllRead, deleteNotification } from "./notifications";
 import { recordNotificationOpen, getNotificationInsights } from "./push-analytics";
+import { recordPushExperimentOpen } from "./push-ab-testing";
 
 const notifRouteLog = log.tag("NotifRoutes");
 
@@ -64,11 +65,16 @@ export function registerNotificationRoutes(app: Router): void {
       return res.status(400).json({ error: "notificationId and category required" });
     }
     // Sprint 502: recordNotificationOpen returns false if duplicate
+    const safeCategory = String(category).slice(0, 50);
     const recorded = recordNotificationOpen(
       String(notificationId).slice(0, 100),
-      String(category).slice(0, 50),
+      safeCategory,
       memberId,
     );
+    // Sprint 508: Track open as A/B experiment outcome if applicable
+    if (recorded) {
+      recordPushExperimentOpen(memberId, safeCategory);
+    }
     res.json({ success: true, recorded });
   });
 
