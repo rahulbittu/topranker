@@ -440,6 +440,23 @@ export async function fetchTrending(city: string, limit: number = 3) {
   return businesses.map(mapApiBusiness);
 }
 
+// Sprint 544: Popular search queries
+export type PopularQuery = { query: string; count: number; lastSearched: number };
+
+export async function fetchPopularQueries(city: string, limit: number = 8): Promise<PopularQuery[]> {
+  return apiFetch<PopularQuery[]>(
+    `/api/search/popular-queries?city=${encodeURIComponent(city)}&limit=${limit}`,
+  );
+}
+
+export async function trackSearchQuery(query: string, city: string): Promise<void> {
+  try {
+    await apiRequest("/api/search/track", { method: "POST", body: JSON.stringify({ query, city }) });
+  } catch {
+    // Non-critical — tracking failure doesn't affect UX
+  }
+}
+
 export async function fetchRankHistory(businessId: string, days: number = 30) {
   return apiFetch<{ date: string; rank: number; score: number }[]>(
     `/api/businesses/${encodeURIComponent(businessId)}/rank-history?days=${days}`,

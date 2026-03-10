@@ -193,6 +193,39 @@ export function RecentSearchesPanel({ searches, onSelect, onClear }: RecentSearc
   );
 }
 
+// Sprint 544: Popular search queries panel
+interface PopularQueriesPanelProps {
+  queries: { query: string; count: number }[];
+  onSelect: (term: string) => void;
+}
+
+export function PopularQueriesPanel({ queries, onSelect }: PopularQueriesPanelProps) {
+  if (queries.length === 0) return null;
+  return (
+    <View style={styles.popularQueriesContainer}>
+      <View style={styles.popularQueriesHeader}>
+        <Ionicons name="trending-up" size={14} color={AMBER} />
+        <Text style={styles.popularQueriesTitle}>Popular Searches</Text>
+      </View>
+      {queries.slice(0, 6).map((item) => (
+        <TouchableOpacity
+          key={item.query}
+          style={styles.popularQueryRow}
+          onPress={() => onSelect(item.query)}
+          accessibilityRole="button"
+          accessibilityLabel={`Search for ${item.query}`}
+        >
+          <Ionicons name="search-outline" size={13} color={Colors.textTertiary} />
+          <Text style={styles.popularQueryText}>{item.query}</Text>
+          <View style={styles.popularQueryCountBadge}>
+            <Text style={styles.popularQueryCountText}>{item.count}</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   autocompleteDropdown: {
     marginHorizontal: 16,
@@ -321,5 +354,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.text,
     fontFamily: "DMSans_400Regular",
+  },
+  // Sprint 544: Popular queries styles
+  popularQueriesContainer: {
+    marginHorizontal: 16,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  popularQueriesHeader: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  popularQueriesTitle: {
+    fontSize: 13,
+    fontWeight: "600" as const,
+    color: AMBER,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  popularQueryRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  popularQueryText: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.text,
+    fontFamily: "DMSans_400Regular",
+  },
+  popularQueryCountBadge: {
+    backgroundColor: "rgba(196,154,26,0.10)",
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  popularQueryCountText: {
+    fontSize: 10,
+    fontWeight: "700" as const,
+    color: AMBER,
+    fontFamily: "DMSans_700Bold",
   },
 });

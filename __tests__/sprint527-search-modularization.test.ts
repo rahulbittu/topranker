@@ -83,9 +83,10 @@ describe("Sprint 527: Search Modularization", () => {
       expect(src).not.toContain("mapSelectedCard:");
     });
 
-    it("stays under 660 LOC (down from 798)", () => {
+    it("stays under 670 LOC (down from 798)", () => {
+      // Sprint 544: +10 LOC for popular queries integration
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(660);
+      expect(lines).toBeLessThan(670);
     });
 
     it("retains list view rendering", () => {

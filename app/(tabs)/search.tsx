@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
-import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, type AutocompleteSuggestion } from "@/lib/api";
+import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
@@ -27,7 +27,7 @@ import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, haversineKm } from "@/components/search/SubComponents";
 import { SearchMapSplitView } from "@/components/search/SearchMapSplitView";
-import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
+import { AutocompleteDropdown, RecentSearchesPanel, PopularQueriesPanel } from "@/components/search/SearchOverlays";
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
@@ -134,9 +134,17 @@ export default function SearchScreen() {
     if (debouncedQuery.length > 0) {
       Analytics.searchQuery(debouncedQuery, allBusinesses.length);
       saveRecentSearch(debouncedQuery);
+      trackQuery(debouncedQuery, city); // Sprint 544: track for popular queries
       setSearchFocused(false); // hide autocomplete once search executes
     }
   }, [debouncedQuery, allBusinesses.length, saveRecentSearch]);
+
+  // Sprint 544: Popular search queries for search panel
+  const { data: popularQueries = [] } = useQuery({
+    queryKey: ["popularQueries", city],
+    queryFn: () => fetchPopularQueries(city, 6),
+    staleTime: 60000,
+  });
 
   const { data: trending = [] } = useQuery({
     queryKey: ["trending", city],
@@ -328,11 +336,17 @@ export default function SearchScreen() {
       )}
 
       {searchFocused && query.length === 0 && (
+        <>
         <RecentSearchesPanel
           searches={recentSearches}
           onSelect={(term) => { setQuery(term); setSearchFocused(false); }}
           onClear={clearRecentSearches}
         />
+        <PopularQueriesPanel
+          queries={popularQueries}
+          onSelect={(term) => { setQuery(term); setSearchFocused(false); }}
+        />
+        </>
       )}
 
       {/* Sprint 326: Only view toggle fixed; filters/price/sort scroll with content (DoorDash pattern) */}
