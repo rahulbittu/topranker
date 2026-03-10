@@ -21,7 +21,7 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { Confetti } from "@/components/Confetti";
 import {
-  CircleScorePicker, ProgressBar, StepIndicator, RatingConfirmation,
+  CircleScorePicker, ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
 } from "@/components/rate/SubComponents";
 import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
@@ -319,6 +319,7 @@ export default function RateScreen() {
       <View style={styles.businessHeader}>
         <Text style={styles.rateLabel}>RATE</Text>
         <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
+        <StepDescription step={step} />
       </View>
 
       <ScrollView ref={scrollViewRef} style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">

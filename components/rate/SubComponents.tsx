@@ -62,30 +62,54 @@ export function CircleScoreLabels({ circleSize }: { circleSize: number }) {
   );
 }
 
+const STEP_LABELS = ["Visit Type", "Score", "Details"];
+const STEP_DESCRIPTIONS = [
+  "How did you experience this place?",
+  "Rate the dimensions that matter",
+  "Add optional details to boost credibility",
+];
+
 export function ProgressBar({ step, total }: { step: number; total: number }) {
+  const pct = ((step + 1) / total) * 100;
   return (
-    <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`}>
-      {Array.from({ length: total }, (_, i) => (
-        <View
-          key={i}
-          style={[
-            s.progressDot,
-            i < step && s.progressDotComplete,
-            i === step && s.progressDotCurrent,
-          ]}
-          accessibilityLabel={`Step ${i + 1}${i < step ? ", completed" : i === step ? ", current" : ""}`}
-        />
-      ))}
+    <View style={s.progressOuter}>
+      <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`}>
+        <View style={[s.progressFill, { width: `${pct}%` as any }]} />
+      </View>
+      <View style={s.progressLabels}>
+        {Array.from({ length: total }, (_, i) => (
+          <Text
+            key={i}
+            style={[
+              s.progressLabel,
+              i <= step && s.progressLabelActive,
+              i === step && s.progressLabelCurrent,
+            ]}
+          >
+            {STEP_LABELS[i] || `Step ${i + 1}`}
+          </Text>
+        ))}
+      </View>
     </View>
   );
 }
 
 export function StepIndicator({ step, total }: { step: number; total: number }) {
+  const pct = Math.round(((step + 1) / total) * 100);
   return (
-    <Text style={s.stepIndicator}>
-      {step + 1} <Text style={s.stepIndicatorOf}>of</Text> {total}
-    </Text>
+    <View style={s.stepIndicatorRow}>
+      <Text style={s.stepIndicator}>
+        {step + 1} <Text style={s.stepIndicatorOf}>of</Text> {total}
+      </Text>
+      <Text style={s.stepPct}>{pct}%</Text>
+    </View>
   );
+}
+
+export function StepDescription({ step }: { step: number }) {
+  const desc = STEP_DESCRIPTIONS[step];
+  if (!desc) return null;
+  return <Text style={s.stepDescription}>{desc}</Text>;
 }
 
 export function DishPill({ dish, selected, onPress }: { dish: ApiDish; selected: boolean; onPress: () => void }) {
@@ -280,13 +304,38 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
 
-  progressContainer: { flexDirection: "row", gap: 4, paddingHorizontal: 20, marginTop: 8 },
-  progressDot: { flex: 1, height: 3, borderRadius: 2, backgroundColor: Colors.border },
-  progressDotComplete: { backgroundColor: Colors.gold },
-  progressDotCurrent: { backgroundColor: Colors.textTertiary },
+  progressOuter: { paddingHorizontal: 20, marginTop: 8, gap: 6 },
+  progressContainer: {
+    height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: "hidden" as const,
+  },
+  progressFill: {
+    height: "100%" as any, borderRadius: 2, backgroundColor: Colors.gold,
+  },
+  progressLabels: {
+    flexDirection: "row" as const, justifyContent: "space-between" as const,
+  },
+  progressLabel: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  progressLabelActive: {
+    color: Colors.textSecondary,
+  },
+  progressLabelCurrent: {
+    fontFamily: "DMSans_600SemiBold", color: Colors.gold,
+  },
 
+  stepIndicatorRow: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+  },
   stepIndicator: { fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   stepIndicatorOf: { color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  stepPct: {
+    fontSize: 11, color: Colors.gold, fontFamily: "DMSans_700Bold",
+  },
+  stepDescription: {
+    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    lineHeight: 16, marginTop: 2,
+  },
 
   dishPill: {
     flexDirection: "row", alignItems: "center", gap: 6,
