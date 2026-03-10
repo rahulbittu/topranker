@@ -1,21 +1,21 @@
 /**
  * Sprint 474: Rating History Date Range Filter UI
+ * Sprint 477: Tests redirected after DateRangeFilter extraction
  *
  * Tests:
- * 1. RatingHistorySection has date range state and filter chips
- * 2. Uses filterByDateRange from export utils
- * 3. Preset chips: All Time, 7 Days, 30 Days, 90 Days, Custom
- * 4. Filtered ratings passed to export and display
- * 5. Custom range indicator UI
+ * 1. DateRangeFilter component has date range types and presets
+ * 2. RatingHistorySection integrates with extracted filter
+ * 3. Filtered ratings passed to export and display
+ * 4. filterByDateRange utility
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
 describe("Sprint 474: Rating History Date Range Filter", () => {
-  describe("RatingHistorySection component", () => {
+  describe("DateRangeFilter component (extracted Sprint 477)", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../components/profile/RatingHistorySection.tsx"),
+      path.resolve(__dirname, "../components/profile/DateRangeFilter.tsx"),
       "utf-8"
     );
 
@@ -45,22 +45,7 @@ describe("Sprint 474: Rating History Date Range Filter", () => {
       expect(src).toContain("86400000");
     });
 
-    it("tracks datePreset state (default all)", () => {
-      expect(src).toContain("datePreset, setDatePreset");
-      expect(src).toContain('useState<DateRangePreset>("all")');
-    });
-
-    it("tracks custom start and end dates", () => {
-      expect(src).toContain("customStart, setCustomStart");
-      expect(src).toContain("customEnd, setCustomEnd");
-    });
-
-    it("computes filteredHistory using useMemo", () => {
-      expect(src).toContain("filteredHistory = useMemo");
-      expect(src).toContain("filterByDateRange(ratingHistory");
-    });
-
-    it("renders date filter chip row when ratings exist", () => {
+    it("renders date filter chip row", () => {
       expect(src).toContain("dateFilterRow");
       expect(src).toContain("DATE_RANGE_PRESETS.map");
     });
@@ -75,6 +60,33 @@ describe("Sprint 474: Rating History Date Range Filter", () => {
       expect(src).toContain("customRangeIndicator");
       expect(src).toContain("customStart &&");
       expect(src).toContain("onwards");
+    });
+
+    it("has active chip styling", () => {
+      expect(src).toContain("dateChipActive");
+      expect(src).toContain("dateChipTextActive");
+    });
+  });
+
+  describe("RatingHistorySection integration", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "../components/profile/RatingHistorySection.tsx"),
+      "utf-8"
+    );
+
+    it("tracks datePreset state (default all)", () => {
+      expect(src).toContain("datePreset, setDatePreset");
+      expect(src).toContain('useState<DateRangePreset>("all")');
+    });
+
+    it("tracks custom start and end dates", () => {
+      expect(src).toContain("customStart, setCustomStart");
+      expect(src).toContain("customEnd, setCustomEnd");
+    });
+
+    it("computes filteredHistory using useMemo", () => {
+      expect(src).toContain("filteredHistory = useMemo");
+      expect(src).toContain("applyDateFilter(ratingHistory");
     });
 
     it("passes filteredHistory to RatingExportButton", () => {
@@ -97,11 +109,6 @@ describe("Sprint 474: Rating History Date Range Filter", () => {
 
     it("resets page size when changing date preset", () => {
       expect(src).toContain("setHistoryPageSize(10)");
-    });
-
-    it("has active chip styling", () => {
-      expect(src).toContain("dateChipActive");
-      expect(src).toContain("dateChipTextActive");
     });
   });
 

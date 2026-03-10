@@ -1,12 +1,13 @@
 /**
  * Sprint 443: Rating History Section — extracted from profile.tsx
  * Sprint 474: Added date range filter UI with preset chips + custom range
+ * Sprint 477: Extracted date filter to DateRangeFilter.tsx
  * Displays paginated rating history with show more/less, export, and empty state.
  * Owner: Sarah Nakamura (Lead Eng)
  */
 
 import React, { useState, useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import Colors from "@/constants/colors";
@@ -14,26 +15,14 @@ import { BRAND } from "@/constants/brand";
 import { SlideUpView } from "@/components/animations/SlideUpView";
 import { HistoryRow } from "@/components/profile/SubComponents";
 import { RatingExportButton } from "@/components/profile/RatingExport";
-import { filterByDateRange } from "@/lib/rating-export-utils";
+// Sprint 477: Extracted date filter
+import { DateRangeFilter, applyDateFilter, type DateRangePreset } from "@/components/profile/DateRangeFilter";
+
+// Re-exports for backward compatibility
+export { DateRangeFilter, applyDateFilter, type DateRangePreset } from "@/components/profile/DateRangeFilter";
+export { getPresetDates, DATE_RANGE_PRESETS } from "@/components/profile/DateRangeFilter";
 
 const AMBER = BRAND.colors.amber;
-
-// Sprint 474: Date range presets
-type DateRangePreset = "all" | "7d" | "30d" | "90d" | "custom";
-const DATE_RANGE_PRESETS: { key: DateRangePreset; label: string }[] = [
-  { key: "all", label: "All Time" },
-  { key: "7d", label: "7 Days" },
-  { key: "30d", label: "30 Days" },
-  { key: "90d", label: "90 Days" },
-];
-
-function getPresetDates(preset: DateRangePreset): { start?: string; end?: string } {
-  if (preset === "all") return {};
-  const now = new Date();
-  const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 90;
-  const start = new Date(now.getTime() - days * 86400000);
-  return { start: start.toISOString().split("T")[0] };
-}
 
 export interface RatingHistorySectionProps {
   ratingHistory: any[];
@@ -49,35 +38,12 @@ export function RatingHistorySection({ ratingHistory, username, onDelete }: Rati
   const [customEnd, setCustomEnd] = useState<string | undefined>();
 
   const filteredHistory = useMemo(() => {
-    if (datePreset === "all") return ratingHistory;
-    if (datePreset === "custom") {
-      return filterByDateRange(ratingHistory, customStart, customEnd);
-    }
-    const { start } = getPresetDates(datePreset);
-    return filterByDateRange(ratingHistory, start);
+    return applyDateFilter(ratingHistory, datePreset, customStart, customEnd);
   }, [ratingHistory, datePreset, customStart, customEnd]);
 
-  const handleCustomRange = () => {
-    if (Platform.OS === "web") {
-      const start = prompt("Start date (YYYY-MM-DD):");
-      const end = prompt("End date (YYYY-MM-DD):");
-      if (start) {
-        setCustomStart(start);
-        setCustomEnd(end || undefined);
-        setDatePreset("custom");
-      }
-    } else {
-      Alert.prompt("Start Date", "Enter start date (YYYY-MM-DD):", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Set", onPress: (start?: string) => {
-          if (start) {
-            setCustomStart(start);
-            setCustomEnd(undefined);
-            setDatePreset("custom");
-          }
-        }},
-      ], "plain-text");
-    }
+  const handlePresetChange = (preset: DateRangePreset) => {
+    setDatePreset(preset);
+    setHistoryPageSize(10);
   };
 
   return (
@@ -89,44 +55,15 @@ export function RatingHistorySection({ ratingHistory, username, onDelete }: Rati
         </Text>
       </View>
 
-      {/* Sprint 474: Date range filter chips */}
+      {/* Sprint 477: Extracted DateRangeFilter component */}
       {ratingHistory.length > 0 && (
-        <View style={s.dateFilterRow}>
-          {DATE_RANGE_PRESETS.map(({ key, label }) => (
-            <TouchableOpacity
-              key={key}
-              style={[s.dateChip, datePreset === key && s.dateChipActive]}
-              onPress={() => { setDatePreset(key); setHistoryPageSize(10); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter by ${label}`}
-              accessibilityState={{ selected: datePreset === key }}
-            >
-              <Text style={[s.dateChipText, datePreset === key && s.dateChipTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity
-            style={[s.dateChip, datePreset === "custom" && s.dateChipActive]}
-            onPress={handleCustomRange}
-            accessibilityRole="button"
-            accessibilityLabel="Custom date range"
-          >
-            <Ionicons name="calendar-outline" size={11} color={datePreset === "custom" ? "#fff" : Colors.textSecondary} />
-            <Text style={[s.dateChipText, datePreset === "custom" && s.dateChipTextActive]}>Custom</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Sprint 474: Show custom range indicator */}
-      {datePreset === "custom" && customStart && (
-        <View style={s.customRangeIndicator}>
-          <Ionicons name="calendar" size={12} color={AMBER} />
-          <Text style={s.customRangeText}>
-            {customStart}{customEnd ? ` to ${customEnd}` : " onwards"}
-          </Text>
-          <TouchableOpacity onPress={() => setDatePreset("all")} hitSlop={8}>
-            <Ionicons name="close-circle" size={14} color={Colors.textTertiary} />
-          </TouchableOpacity>
-        </View>
+        <DateRangeFilter
+          activePreset={datePreset}
+          onPresetChange={handlePresetChange}
+          customStart={customStart}
+          customEnd={customEnd}
+          onCustomRangeSet={(start, end) => { setCustomStart(start); setCustomEnd(end); }}
+        />
       )}
 
       {/* Sprint 433: Rating history CSV export */}
@@ -204,52 +141,6 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: Colors.textTertiary,
     fontFamily: "DMSans_400Regular",
-  },
-  // Sprint 474: Date range filter styles
-  dateFilterRow: {
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 16,
-    marginBottom: 10,
-    flexWrap: "wrap",
-  },
-  dateChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  dateChipActive: {
-    backgroundColor: AMBER,
-    borderColor: AMBER,
-  },
-  dateChipText: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_500Medium",
-  },
-  dateChipTextActive: {
-    color: "#fff",
-    fontWeight: "600",
-  },
-  customRangeIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    marginBottom: 8,
-  },
-  customRangeText: {
-    flex: 1,
-    fontSize: 11,
-    color: AMBER,
-    fontFamily: "DMSans_500Medium",
   },
   showMoreBtn: {
     flexDirection: "row",
