@@ -9,6 +9,9 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { pct as pctDim } from "@/lib/style-helpers";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Animated, {
   useAnimatedStyle, FadeInDown, FadeInUp,
 } from "react-native-reanimated";
@@ -75,7 +78,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
   return (
     <View style={s.progressOuter}>
       <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`} accessibilityValue={{ min: 0, max: total, now: step + 1, text: `${pct}% complete` }}>
-        <View style={[s.progressFill, { width: `${pct}%` as any }]} />
+        <View style={[s.progressFill, { width: pctDim(((step + 1) / total) * 100) }]} />
       </View>
       <View style={s.progressLabels}>
         {Array.from({ length: total }, (_, i) => (
@@ -277,7 +280,7 @@ export function RatingConfirmation({
           </View>
           {boosts.map((b) => (
             <View key={b.label} style={s.boostRow}>
-              <Ionicons name={b.icon as any} size={14} color={Colors.textSecondary} />
+              <Ionicons name={b.icon as IoniconsName} size={14} color={Colors.textSecondary} />
               <Text style={s.boostLabel}>{b.label}</Text>
               <Text style={s.boostPct}>{b.pct}</Text>
             </View>
@@ -396,7 +399,7 @@ const s = StyleSheet.create({
     height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: "hidden" as const,
   },
   progressFill: {
-    height: "100%" as any, borderRadius: 2, backgroundColor: Colors.gold,
+    height: pctDim(100), borderRadius: 2, backgroundColor: Colors.gold,
   },
   progressLabels: {
     flexDirection: "row" as const, justifyContent: "space-between" as const,

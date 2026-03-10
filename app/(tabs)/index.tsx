@@ -20,6 +20,7 @@ import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
 import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
+import { pct } from "@/lib/style-helpers";
 import { MappedBusiness } from "@/types/business";
 import { RankedCard } from "@/components/leaderboard/SubComponents";
 import { RankingsListHeader } from "@/components/leaderboard/RankingsListHeader";
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
   // Sprint 319: Cuisine-aware empty state
   emptyStateContainer: { alignItems: "center" as const },
   emptyDishSuggestions: {
-    marginTop: 16, marginHorizontal: 16, width: "100%" as any,
+    marginTop: 16, marginHorizontal: 16, width: pct(100),
   },
   emptyDishTitle: {
     fontSize: 13, fontWeight: "600" as const, color: Colors.textSecondary,

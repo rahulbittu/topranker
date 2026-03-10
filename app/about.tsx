@@ -11,6 +11,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
@@ -82,7 +85,7 @@ export default function AboutPage() {
         {FEATURES.map((feature) => (
           <View key={feature.title} style={styles.featureCard}>
             <View style={styles.featureIcon}>
-              <Ionicons name={feature.icon as any} size={24} color={BRAND.colors.amber} />
+              <Ionicons name={feature.icon as IoniconsName} size={24} color={BRAND.colors.amber} />
             </View>
             <View style={styles.featureContent}>
               <Text style={styles.featureTitle}>{feature.title}</Text>

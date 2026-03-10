@@ -9,6 +9,8 @@ import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { formatTimeAgo, getQ1Label, getQ3Label } from "@/lib/data";
@@ -106,7 +108,7 @@ export const HistoryRow = React.memo(function HistoryRow({ r, onDelete }: Histor
         <View style={s.detailSection}>
           <View style={s.detailRow}>
             <View style={s.visitTypeBadge}>
-              <Ionicons name={visitInfo.icon as any} size={12} color={AMBER} />
+              <Ionicons name={visitInfo.icon as IoniconsName} size={12} color={AMBER} />
               <Text style={s.visitTypeText}>{visitInfo.label}</Text>
             </View>
             {r.wouldReturn !== undefined && r.wouldReturn !== null && (

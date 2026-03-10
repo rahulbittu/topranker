@@ -6,6 +6,9 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { formatTimeAgo } from "@/lib/data";
@@ -48,7 +51,7 @@ function ActivityRow({ rating, isLast }: { rating: RatingWithBusiness; isLast: b
       {/* Timeline dot + line */}
       <View style={s.timelineCol}>
         <View style={[s.timelineDot, { backgroundColor: icon.color }]}>
-          <Ionicons name={icon.name as any} size={10} color="#fff" />
+          <Ionicons name={icon.name as IoniconsName} size={10} color="#fff" />
         </View>
         {!isLast && <View style={s.timelineLine} />}
       </View>

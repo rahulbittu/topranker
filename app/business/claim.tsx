@@ -6,6 +6,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { PRICING } from "@/shared/pricing";
@@ -212,7 +215,7 @@ export default function ClaimBusinessScreen() {
                   onPress={() => { Haptics.selectionAsync(); setVerificationMethod(m.key); }}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name={m.icon as any} size={14} color={verificationMethod === m.key ? "#fff" : Colors.textSecondary} />
+                  <Ionicons name={m.icon as IoniconsName} size={14} color={verificationMethod === m.key ? "#fff" : Colors.textSecondary} />
                   <Text style={[styles.methodChipText, verificationMethod === m.key && styles.methodChipTextActive]}>{m.label}</Text>
                 </TouchableOpacity>
               ))}

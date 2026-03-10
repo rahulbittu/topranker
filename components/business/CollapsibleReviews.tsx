@@ -5,6 +5,9 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
@@ -139,7 +142,7 @@ export function ReviewSortChips({ activeSort, onSort }: { activeSort: ReviewSort
             accessibilityLabel={`Sort reviews by ${opt.label}`}
             accessibilityState={{ selected: active }}
           >
-            <Ionicons name={opt.icon as any} size={12} color={active ? "#fff" : Colors.textSecondary} />
+            <Ionicons name={opt.icon as IoniconsName} size={12} color={active ? "#fff" : Colors.textSecondary} />
             <Text style={[s.sortChipText, active && s.sortChipTextActive]}>{opt.label}</Text>
           </TouchableOpacity>
         );

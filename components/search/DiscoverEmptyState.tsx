@@ -7,6 +7,8 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Colors from "@/constants/colors";
 import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
@@ -133,7 +135,7 @@ export function DiscoverEmptyState({
   return (
     <View style={s.container}>
       <View style={s.iconCircle}>
-        <Ionicons name={icon as any} size={28} color={Colors.textTertiary} />
+        <Ionicons name={icon as IoniconsName} size={28} color={Colors.textTertiary} />
       </View>
       <Text style={s.message}>{message}</Text>
       <Text style={s.subtitle}>{subtitle}</Text>
@@ -167,7 +169,7 @@ export function DiscoverEmptyState({
           accessibilityRole="button"
           accessibilityLabel={filterAction.text}
         >
-          <Ionicons name={filterAction.icon as any} size={14} color={AMBER} />
+          <Ionicons name={filterAction.icon as IoniconsName} size={14} color={AMBER} />
           <Text style={s.filterResetText}>{filterAction.text}</Text>
         </TouchableOpacity>
       )}

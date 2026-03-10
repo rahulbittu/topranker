@@ -6,6 +6,8 @@ import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 
@@ -104,7 +106,7 @@ export const SortChips = React.memo(function SortChips({
           accessibilityState={{ selected: sortBy === key }}
           accessibilityLabel={`Sort by ${label}`}
         >
-          {sortBy === key && <Ionicons name={icon as any} size={10} color="#fff" style={{ marginRight: 3 }} />}
+          {sortBy === key && <Ionicons name={icon as IoniconsName} size={10} color="#fff" style={{ marginRight: 3 }} />}
           <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
         </TouchableOpacity>
       ))}
@@ -134,7 +136,7 @@ export function SortResultsHeader({ count, sortBy, activeFilter }: SortResultsHe
       <View style={styles.sortResultsLeft}>
         <Text style={styles.sortResultsCount}>{count} result{count !== 1 ? "s" : ""}</Text>
         <View style={styles.sortIndicator}>
-          <Ionicons name={sortInfo.icon as any} size={10} color={AMBER} />
+          <Ionicons name={sortInfo.icon as IoniconsName} size={10} color={AMBER} />
           <Text style={styles.sortIndicatorText}>{sortInfo.label}{filterLabel}</Text>
         </View>
       </View>

@@ -7,6 +7,7 @@
 import React, { useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { pct } from "@/lib/style-helpers";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   milestoneCard: {
-    width: "30%" as any,
+    width: pct(30),
     alignItems: "center",
     gap: 4,
     paddingVertical: 8,

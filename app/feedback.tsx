@@ -12,6 +12,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { useAuth } from "@/lib/auth-context";
@@ -118,7 +121,7 @@ export default function FeedbackScreen() {
               accessibilityLabel={cat.label}
             >
               <Ionicons
-                name={cat.icon as any}
+                name={cat.icon as IoniconsName}
                 size={18}
                 color={category === cat.key ? BRAND.colors.amber : Colors.textSecondary}
               />

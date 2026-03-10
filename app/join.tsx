@@ -11,6 +11,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { pct } from "@/lib/style-helpers";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { AppLogo } from "@/components/Logo";
@@ -115,7 +118,7 @@ function ValueProp({ icon, title, description }: { icon: string; title: string; 
   return (
     <View style={styles.valueProp}>
       <View style={styles.valueIcon}>
-        <Ionicons name={icon as any} size={22} color={AMBER} />
+        <Ionicons name={icon as IoniconsName} size={22} color={AMBER} />
       </View>
       <View style={styles.valueText}>
         <Text style={styles.valueTitle}>{title}</Text>

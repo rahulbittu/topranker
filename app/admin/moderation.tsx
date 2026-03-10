@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Colors from "../../constants/colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
@@ -277,7 +279,7 @@ export default function ModerationScreen() {
                 <TouchableOpacity onPress={() => toggleSelect(item.id)} style={styles.checkbox} accessibilityRole="checkbox">
                   <Ionicons name={selectedIds.has(item.id) ? "checkbox" : "square-outline"} size={18} color={BRAND.colors.amber} />
                 </TouchableOpacity>
-                <Ionicons name={CONTENT_TYPE_ICONS[item.contentType] as any} size={14} color={Colors.textSecondary} />
+                <Ionicons name={CONTENT_TYPE_ICONS[item.contentType] as IoniconsName} size={14} color={Colors.textSecondary} />
                 <Text style={styles.itemType}>{CONTENT_TYPE_LABELS[item.contentType]}</Text>
                 {item.violations.length > 0 && (
                   <View style={styles.violationBadge}>

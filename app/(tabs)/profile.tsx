@@ -171,7 +171,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
               targetValue={profile.credibilityScore}
               duration={1000}
               decimalPlaces={0}
-              style={[styles.credScore, { color: tierColor }] as any}
+              style={[styles.credScore, { color: tierColor }]}
               highlightThreshold={999}
             />
           </View>
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   },
   enhancedStatLabel: {
     fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    textTransform: "uppercase" as any, letterSpacing: 0.5,
+    textTransform: "uppercase" as const, letterSpacing: 0.5,
   },
 
   // Last rating

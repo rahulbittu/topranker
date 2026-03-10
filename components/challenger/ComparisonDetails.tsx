@@ -5,6 +5,9 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+
+type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
+
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
@@ -37,7 +40,7 @@ function StatRow({ label, icon, defenderValue, challengerValue, highlightWinner 
         {defenderValue}
       </Text>
       <View style={s.statCenter}>
-        <Ionicons name={icon as any} size={12} color={Colors.textTertiary} />
+        <Ionicons name={icon as IoniconsName} size={12} color={Colors.textTertiary} />
         <Text style={s.statLabel}>{label}</Text>
       </View>
       <Text style={[s.statValue, s.statValueRight, chalWins && s.statValueWinner]} numberOfLines={1}>
