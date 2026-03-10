@@ -60,7 +60,11 @@ describe("Sprint 292 — search.tsx cuisine state wiring", () => {
   });
 
   it("passes onCuisineChange to BestInSection", () => {
-    expect(src).toMatch(/onCuisineChange=\{.*setSelectedCuisine/);
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = fs.readFileSync(
+      path.resolve("components/search/DiscoverSections.tsx"), "utf-8",
+    );
+    expect(discoverSrc).toContain("onCuisineChange");
   });
 
   it("clears cuisine when user types manually", () => {
@@ -73,15 +77,16 @@ describe("Sprint 292 — search.tsx cuisine state wiring", () => {
 
 describe("Sprint 292 — full cuisine search flow", () => {
   it("BestInSection and search.tsx are properly connected", () => {
+    // Sprint 571: redirected to DiscoverSections
     const bestIn = fs.readFileSync(path.resolve("components/search/BestInSection.tsx"), "utf-8");
-    const search = fs.readFileSync(path.resolve("app/(tabs)/search.tsx"), "utf-8");
+    const discoverSrc = fs.readFileSync(path.resolve("components/search/DiscoverSections.tsx"), "utf-8");
 
     // BestInSection exports the callback
     expect(bestIn).toContain("onCuisineChange");
-    // search.tsx imports BestInSection
-    expect(search).toContain("BestInSection");
-    // search.tsx uses the callback
-    expect(search).toContain("onCuisineChange");
+    // DiscoverSections imports BestInSection
+    expect(discoverSrc).toContain("BestInSection");
+    // DiscoverSections uses the callback
+    expect(discoverSrc).toContain("onCuisineChange");
   });
 
   it("fetchBusinessSearch is called with cuisine from API module", () => {

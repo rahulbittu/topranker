@@ -78,15 +78,15 @@ describe("Sprint 295 — Cuisine pipeline completeness", () => {
   });
 
   it("active cuisine indicator visible in list view", () => {
-    const search = fs.readFileSync(path.resolve("app/(tabs)/search.tsx"), "utf-8");
-    expect(search).toContain("activeCuisineChip");
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = fs.readFileSync(path.resolve("components/search/DiscoverSections.tsx"), "utf-8");
+    expect(discoverSrc).toContain("activeCuisineChip");
   });
 
   it("active cuisine indicator visible in map view", () => {
-    const search = fs.readFileSync(path.resolve("app/(tabs)/search.tsx"), "utf-8");
-    // Map section should reference activeCuisineRow
-    const mapSection = search.slice(search.indexOf('viewMode === "map"'));
-    expect(mapSection).toContain("activeCuisineRow");
+    // Sprint 571: redirected to SearchMapSplitView
+    const mapSrc = fs.readFileSync(path.resolve("components/search/SearchMapSplitView.tsx"), "utf-8");
+    expect(mapSrc).toContain("activeCuisineRow");
   });
 });
 

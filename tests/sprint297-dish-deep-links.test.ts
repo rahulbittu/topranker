@@ -34,20 +34,24 @@ describe("Sprint 297 — BestInSection onSelectDish prop", () => {
   });
 });
 
+// Sprint 571: redirected to DiscoverSections (dish navigation extracted from search.tsx)
 describe("Sprint 297 — search.tsx dish navigation", () => {
   const src = fs.readFileSync(
-    path.resolve("app/(tabs)/search.tsx"), "utf-8",
+    path.resolve("components/search/DiscoverSections.tsx"), "utf-8",
   );
 
   it("passes onSelectDish to BestInSection", () => {
+    // Sprint 571: redirected to DiscoverSections
     expect(src).toContain("onSelectDish=");
   });
 
   it("navigates to /dish/[slug] on dish selection", () => {
+    // Sprint 571: redirected to DiscoverSections
     expect(src).toMatch(/router\.push\(\{.*pathname:.*\/dish\/\[slug\]/);
   });
 
   it("passes slug as route param", () => {
+    // Sprint 571: redirected to DiscoverSections
     expect(src).toMatch(/params:\s*\{\s*slug\s*\}/);
   });
 });

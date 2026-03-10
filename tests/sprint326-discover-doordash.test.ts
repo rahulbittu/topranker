@@ -103,14 +103,14 @@ describe("Sprint 326 — Discover DoorDash Pattern", () => {
   });
 
   it("should preserve BestInSection in ListHeaderComponent", () => {
-    const lhcStart = searchCode.indexOf("ListHeaderComponent={");
-    const afterLhc = searchCode.slice(lhcStart, lhcStart + 5000);
-    expect(afterLhc).toContain("BestInSection");
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = fs.readFileSync(path.resolve(__dirname, "../components/search/DiscoverSections.tsx"), "utf-8");
+    expect(discoverSrc).toContain("BestInSection");
   });
 
   it("should preserve DishLeaderboardSection in ListHeaderComponent", () => {
-    const lhcStart = searchCode.indexOf("ListHeaderComponent={");
-    const afterLhc = searchCode.slice(lhcStart, lhcStart + 8000);
-    expect(afterLhc).toContain("DishLeaderboardSection");
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = fs.readFileSync(path.resolve(__dirname, "../components/search/DiscoverSections.tsx"), "utf-8");
+    expect(discoverSrc).toContain("DishLeaderboardSection");
   });
 });

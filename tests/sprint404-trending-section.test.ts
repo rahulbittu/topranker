@@ -89,13 +89,16 @@ describe("Sprint 404 — Rank delta with time context", () => {
 // ── 5. search.tsx extraction ────────────────────────────────────────
 
 describe("Sprint 404 — search.tsx extraction", () => {
-  const src = readFile("app/(tabs)/search.tsx");
+  // Sprint 571: redirected to DiscoverSections
+  const src = readFile("components/search/DiscoverSections.tsx");
 
   it("imports TrendingSection", () => {
+    // Sprint 571: redirected to DiscoverSections
     expect(src).toContain("TrendingSection");
   });
 
   it("uses TrendingSection component instead of inline", () => {
+    // Sprint 571: redirected to DiscoverSections
     expect(src).toContain("<TrendingSection");
     expect(src).toContain("trending={trending}");
   });

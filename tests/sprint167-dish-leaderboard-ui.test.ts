@@ -179,20 +179,24 @@ describe("Dish suggest modal", () => {
 // ---------------------------------------------------------------------------
 // 6. Discovery screen integration
 // ---------------------------------------------------------------------------
+// Sprint 571: redirected to DiscoverSections (DishLeaderboardSection extracted from search.tsx)
 describe("Discovery screen integration", () => {
-  const searchSrc = readFile("app/(tabs)/search.tsx");
+  const discoverSrc = readFile("components/search/DiscoverSections.tsx");
 
   it("imports DishLeaderboardSection", () => {
-    expect(searchSrc).toContain("DishLeaderboardSection");
+    // Sprint 571: redirected to DiscoverSections
+    expect(discoverSrc).toContain("DishLeaderboardSection");
   });
 
   it("renders DishLeaderboardSection with city prop", () => {
-    expect(searchSrc).toContain("<DishLeaderboardSection");
-    expect(searchSrc).toContain("city={city}");
+    // Sprint 571: redirected to DiscoverSections
+    expect(discoverSrc).toContain("<DishLeaderboardSection");
+    expect(discoverSrc).toContain("city={city}");
   });
 
   it("only shows dish section when not searching", () => {
-    expect(searchSrc).toContain("!debouncedQuery");
+    // Sprint 571: redirected to DiscoverSections
+    expect(discoverSrc).toContain("!debouncedQuery");
   });
 });
 

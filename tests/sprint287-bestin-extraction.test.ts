@@ -60,16 +60,20 @@ describe("Sprint 287: BestInSection component extracted", () => {
 
 describe("Sprint 287: search.tsx cleanup", () => {
   const search = readFile("app/(tabs)/search.tsx");
+  // Sprint 571: redirected to DiscoverSections
+  const discoverSrc = readFile("components/search/DiscoverSections.tsx");
 
   it("search.tsx imports BestInSection", () => {
-    expect(search).toContain("BestInSection");
-    expect(search).toContain("components/search/BestInSection");
+    // Sprint 571: redirected to DiscoverSections
+    expect(discoverSrc).toContain("BestInSection");
+    expect(discoverSrc).toContain("components/search/BestInSection");
   });
 
   it("search.tsx uses BestInSection component", () => {
-    expect(search).toContain("<BestInSection");
-    expect(search).toContain("onSelectCategory");
-    expect(search).toContain("onSeeAll");
+    // Sprint 571: redirected to DiscoverSections
+    expect(discoverSrc).toContain("<BestInSection");
+    expect(discoverSrc).toContain("onSelectCategory");
+    expect(discoverSrc).toContain("onSeeAll");
   });
 
   it("search.tsx no longer has inline Best In styles", () => {

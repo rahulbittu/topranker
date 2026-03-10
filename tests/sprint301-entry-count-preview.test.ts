@@ -53,7 +53,11 @@ describe("Sprint 301 — search.tsx dish entry count fetch", () => {
   });
 
   it("passes entryCounts to BestInSection", () => {
-    expect(src).toContain("entryCounts={dishEntryCounts}");
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = fs.readFileSync(
+      path.resolve("components/search/DiscoverSections.tsx"), "utf-8",
+    );
+    expect(discoverSrc).toContain("entryCounts={dishEntryCounts}");
   });
 
   it("uses staleTime for caching", () => {

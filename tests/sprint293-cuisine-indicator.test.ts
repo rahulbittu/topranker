@@ -13,13 +13,15 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
+// Sprint 571: redirected to DiscoverSections
 const searchSrc = fs.readFileSync(
-  path.resolve("app/(tabs)/search.tsx"), "utf-8",
+  path.resolve("components/search/DiscoverSections.tsx"), "utf-8",
 );
 
 describe("Sprint 293 — Active cuisine indicator import", () => {
   it("imports CUISINE_DISPLAY from shared/best-in-categories", () => {
-    // Sprint 383: CUISINE_DISH_MAP moved to DiscoverEmptyState; search.tsx only imports CUISINE_DISPLAY
+    // Sprint 383: CUISINE_DISH_MAP moved to DiscoverEmptyState
+    // Sprint 571: redirected to DiscoverSections
     expect(searchSrc).toContain('import { CUISINE_DISPLAY } from "@/shared/best-in-categories"');
   });
 });
@@ -43,13 +45,15 @@ describe("Sprint 293 — Active cuisine chip rendering", () => {
   });
 
   it("shows result count from filtered array", () => {
-    expect(searchSrc).toMatch(/filtered\.length\s*}\s*result/);
+    // Sprint 571: redirected to DiscoverSections — prop renamed to filteredCount
+    expect(searchSrc).toMatch(/filteredCount.*result/);
   });
 });
 
 describe("Sprint 293 — Close button clears cuisine filter", () => {
   it("calls setSelectedCuisine(null) on close tap", () => {
-    expect(searchSrc).toMatch(/onPress=.*setSelectedCuisine\(null\)/);
+    // Sprint 571: redirected to DiscoverSections — prop renamed to onSetSelectedCuisine
+    expect(searchSrc).toMatch(/onPress=.*onSetSelectedCuisine\(null\)/);
   });
 
   it("has accessible label for clearing the filter", () => {

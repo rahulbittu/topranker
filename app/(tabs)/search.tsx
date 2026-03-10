@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Analytics } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, ScrollView, Platform, RefreshControl,
+  TextInput, Platform, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
@@ -22,21 +22,17 @@ import { usePersistedSort, usePersistedCuisine, usePersistedFilter, usePersisted
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { MappedBusiness } from "@/types/business";
-import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
-import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
+import { type FeaturedBusiness } from "@/components/FeaturedCard";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, haversineKm } from "@/components/search/SubComponents";
 import { SearchMapSplitView } from "@/components/search/SearchMapSplitView";
 import { AutocompleteDropdown, RecentSearchesPanel, PopularQueriesPanel } from "@/components/search/SearchOverlays";
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
-import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
-import { CityComparisonOverlay } from "@/components/search/CityComparisonOverlay";
-import { TrendingSection } from "@/components/search/TrendingSection";
-import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { decodeSearchParams, encodeSearchParams, type SearchFilterState } from "@/lib/search-url-params";
 import { PresetChips } from "@/components/search/PresetChips";
+import { DiscoverSections } from "@/components/search/DiscoverSections";
 import type { FilterPreset } from "@/lib/search-filter-presets";
 
 const AMBER = BRAND.colors.amber;
@@ -471,69 +467,23 @@ export default function SearchScreen() {
               {/* Sprint 447: Hours-based filters */}
               <HoursFilterChips activeFilters={hoursFilters} onFilterToggle={(f) => setHoursFilters(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f])} />
               <SortChips sortBy={sortBy} onSortChange={setSortBy} showRelevant={!!debouncedQuery} />
-              {showDiscoverTip && (
-                <View style={styles.discoverTip}>
-                  <Ionicons name="compass-outline" size={20} color={AMBER} style={{ marginTop: 2 }} />
-                  <View style={styles.discoverTipTextStack}>
-                    <Text style={styles.discoverTipTitle}>Discover top-rated places near you</Text>
-                    <Text style={styles.discoverTipSubtext}>Search by name, category, or explore the map</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.discoverTipClose}
-                    onPress={dismissDiscoverTip}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Dismiss discover tip"
-                  >
-                    <Ionicons name="close" size={14} color={Colors.textTertiary} />
-                  </TouchableOpacity>
-                </View>
-              )}
 
-              {/* Sprint 568: City comparison overlay */}
-              {!debouncedQuery && <CityComparisonOverlay currentCity={city} delay={200} />}
-
-              {/* Best In [City] — Category Browsing (extracted Sprint 287) */}
-              {!debouncedQuery && (
-                <BestInSection
-                  city={city}
-                  onSelectCategory={(name) => { setQuery(name); setActiveFilter("All"); }}
-                  onSelectDish={(slug) => { Analytics.dishDeepLinkTap(slug); router.push({ pathname: "/dish/[slug]", params: { slug } }); }}
-                  onSeeAll={() => setQuery("best in " + city.toLowerCase())}
-                  onCuisineChange={(cuisine) => { setSelectedCuisine(cuisine); cuisine ? Analytics.cuisineFilterSelect(cuisine, "discover") : Analytics.cuisineFilterClear("discover"); }}
-                  entryCounts={dishEntryCounts}
-                />
-              )}
-
-              {/* Sprint 293: Active cuisine filter indicator */}
-              {selectedCuisine && (
-                <View style={styles.activeCuisineRow}>
-                  <View style={styles.activeCuisineChip}>
-                    <Text style={styles.activeCuisineText}>
-                      {CUISINE_DISPLAY[selectedCuisine]?.emoji || ""} {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); }}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Clear ${selectedCuisine} filter`}
-                    >
-                      <Ionicons name="close-circle" size={14} color={Colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                  <Text style={styles.activeCuisineCount}>
-                    {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-                  </Text>
-                </View>
-              )}
-
-              {/* Featured / Promoted Listings */}
-              {activeFilter === "Top 10" && <FeaturedSection featured={featuredBusinesses} />}
-
-              {/* Sprint 404: Trending section — extracted component */}
-              {!debouncedQuery && <TrendingSection trending={trending} />}
-              {/* Best In [City] — Dish Leaderboards (Sprint 167) */}
-              {!debouncedQuery && <DishLeaderboardSection city={city} />}
+              {/* Sprint 571: Discover sections extracted */}
+              <DiscoverSections
+                city={city}
+                debouncedQuery={debouncedQuery}
+                selectedCuisine={selectedCuisine}
+                activeFilter={activeFilter}
+                filteredCount={filtered.length}
+                trending={trending}
+                featuredBusinesses={featuredBusinesses}
+                dishEntryCounts={dishEntryCounts}
+                showDiscoverTip={showDiscoverTip}
+                onDismissDiscoverTip={dismissDiscoverTip}
+                onSetQuery={setQuery}
+                onSetActiveFilter={setActiveFilter}
+                onSetSelectedCuisine={setSelectedCuisine}
+              />
 
               <SortResultsHeader count={filtered.length} sortBy={sortBy} activeFilter={activeFilter} />
             </>
@@ -607,39 +557,7 @@ const styles = StyleSheet.create({
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
 
-  discoverTip: {
-    flexDirection: "row", alignItems: "flex-start", gap: 10,
-    backgroundColor: "#fff", borderWidth: 1, borderColor: Colors.border,
-    borderRadius: 12, padding: 14, marginBottom: 12, marginHorizontal: 0,
-    position: "relative" as const,
-  },
-  discoverTipTextStack: { flex: 1, gap: 2, paddingRight: 20 },
-  discoverTipTitle: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  discoverTipSubtext: {
-    fontSize: 12, fontWeight: "400", color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-  },
-  discoverTipClose: {
-    position: "absolute" as const, top: 10, right: 10,
-  },
-
-
-  activeCuisineRow: {
-    flexDirection: "row" as const, alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 4, paddingVertical: 6, marginBottom: 4,
-  },
-  activeCuisineChip: {
-    flexDirection: "row" as const, alignItems: "center", gap: 6,
-    backgroundColor: "rgba(196, 154, 26, 0.12)", paddingHorizontal: 10, paddingVertical: 5,
-    borderRadius: 14, borderWidth: 1, borderColor: "rgba(196, 154, 26, 0.3)",
-  },
-  activeCuisineText: {
-    fontSize: 12, fontWeight: "600" as const, color: "#8B6914", fontFamily: "DMSans_600SemiBold",
-  },
-  activeCuisineCount: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
+  // Sprint 571: discoverTip + activeCuisine styles moved to DiscoverSections
 
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },

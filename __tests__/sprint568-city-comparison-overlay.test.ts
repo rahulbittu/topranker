@@ -101,27 +101,34 @@ describe("Sprint 568: City Comparison Search Overlay", () => {
   });
 
   describe("search.tsx integration", () => {
-    const src = readFile("app/(tabs)/search.tsx");
+    // Sprint 571: redirected to DiscoverSections
+    const src = readFile("components/search/DiscoverSections.tsx");
 
     it("imports CityComparisonOverlay", () => {
+      // Sprint 571: redirected to DiscoverSections
       expect(src).toContain('import { CityComparisonOverlay } from "@/components/search/CityComparisonOverlay"');
     });
 
     it("renders CityComparisonOverlay in discover flow", () => {
+      // Sprint 571: redirected to DiscoverSections
       expect(src).toContain("<CityComparisonOverlay");
     });
 
     it("passes currentCity prop", () => {
+      // Sprint 571: redirected to DiscoverSections
       expect(src).toContain("currentCity={city}");
     });
 
     it("only renders when no active search query", () => {
+      // Sprint 571: redirected to DiscoverSections
       expect(src).toContain("!debouncedQuery && <CityComparisonOverlay");
     });
 
-    it("search.tsx stays under 680 LOC", () => {
-      const loc = src.split("\n").length;
-      expect(loc).toBeLessThan(680);
+    it("search.tsx stays under 600 LOC", () => {
+      // Sprint 571: LOC check stays on search.tsx, threshold updated from 680 to 600
+      const searchSrc = readFile("app/(tabs)/search.tsx");
+      const loc = searchSrc.split("\n").length;
+      expect(loc).toBeLessThan(600);
     });
   });
 });

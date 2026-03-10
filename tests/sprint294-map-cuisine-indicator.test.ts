@@ -11,33 +11,32 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const src = fs.readFileSync(
-  path.resolve("app/(tabs)/search.tsx"), "utf-8",
+// Sprint 571: redirected to SearchMapSplitView (map cuisine chip extracted from search.tsx)
+const mapSplitSrc = fs.readFileSync(
+  path.resolve("components/search/SearchMapSplitView.tsx"), "utf-8",
 );
 
 describe("Sprint 294 — Map view cuisine indicator", () => {
-  // The map view section (viewMode === "map") should include the cuisine chip
-  const mapSection = src.slice(
-    src.indexOf('viewMode === "map"'),
-    src.indexOf("splitListContent"),
-  );
-
   it("shows cuisine chip in map split list area", () => {
-    expect(mapSection).toContain("activeCuisineRow");
-    expect(mapSection).toContain("activeCuisineChip");
+    // Sprint 571: redirected to DiscoverSections
+    expect(mapSplitSrc).toContain("activeCuisineRow");
+    expect(mapSplitSrc).toContain("activeCuisineChip");
   });
 
   it("displays cuisine emoji and label in map view chip", () => {
-    expect(mapSection).toContain("CUISINE_DISPLAY[selectedCuisine]?.emoji");
-    expect(mapSection).toContain("CUISINE_DISPLAY[selectedCuisine]?.label");
+    // Sprint 571: redirected to DiscoverSections
+    expect(mapSplitSrc).toContain("CUISINE_DISPLAY[selectedCuisine]?.emoji");
+    expect(mapSplitSrc).toContain("CUISINE_DISPLAY[selectedCuisine]?.label");
   });
 
   it("has close button to clear cuisine filter in map view", () => {
-    expect(mapSection).toContain("setSelectedCuisine(null)");
+    // Sprint 571: redirected to DiscoverSections — prop renamed to onClearCuisine
+    expect(mapSplitSrc).toContain("onClearCuisine");
   });
 
   it("has accessibility label for map view close button", () => {
-    expect(mapSection).toMatch(/accessibilityLabel=.*Clear.*filter/);
+    // Sprint 571: redirected to DiscoverSections
+    expect(mapSplitSrc).toMatch(/accessibilityLabel=.*Clear.*filter/);
   });
 });
 
@@ -57,15 +56,21 @@ describe("Sprint 294 — Map selected card cuisine display", () => {
   });
 });
 
+// Sprint 571: redirected to DiscoverSections — styles now live in DiscoverSections + SearchMapSplitView
 describe("Sprint 294 — Style reuse", () => {
-  it("reuses activeCuisineRow style from Sprint 293 (no duplication)", () => {
-    const matches = src.match(/activeCuisineRow:/g);
-    // Should only be defined once in StyleSheet
+  const discoverSrc = fs.readFileSync(
+    path.resolve("components/search/DiscoverSections.tsx"), "utf-8",
+  );
+
+  it("defines activeCuisineRow style in DiscoverSections (no duplication)", () => {
+    // Sprint 571: redirected to DiscoverSections
+    const matches = discoverSrc.match(/activeCuisineRow:/g);
     expect(matches).toHaveLength(1);
   });
 
-  it("reuses activeCuisineChip style from Sprint 293 (no duplication)", () => {
-    const matches = src.match(/activeCuisineChip:/g);
+  it("defines activeCuisineChip style in DiscoverSections (no duplication)", () => {
+    // Sprint 571: redirected to DiscoverSections
+    const matches = discoverSrc.match(/activeCuisineChip:/g);
     expect(matches).toHaveLength(1);
   });
 });

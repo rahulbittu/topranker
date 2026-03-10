@@ -116,22 +116,25 @@ describe("Sprint 302 — Cuisine Analytics", () => {
   // ─── Discover Page Integration ────────────────────────────
 
   it("Discover page tracks cuisine select from BestInSection", async () => {
+    // Sprint 571: redirected to DiscoverSections
     const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/search.tsx", "utf-8")
+      fs.readFileSync("components/search/DiscoverSections.tsx", "utf-8")
     );
     expect(source).toContain("cuisineFilterSelect");
   });
 
   it("Discover page tracks cuisine clear from BestInSection", async () => {
+    // Sprint 571: redirected to DiscoverSections
     const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/search.tsx", "utf-8")
+      fs.readFileSync("components/search/DiscoverSections.tsx", "utf-8")
     );
     expect(source).toContain("cuisineFilterClear");
   });
 
   it("Discover page tracks dish deep link taps", async () => {
+    // Sprint 571: redirected to DiscoverSections
     const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/search.tsx", "utf-8")
+      fs.readFileSync("components/search/DiscoverSections.tsx", "utf-8")
     );
     expect(source).toContain("dishDeepLinkTap");
   });

@@ -21,8 +21,10 @@ describe("Sprint 284: Search Page Cuisine Picker", () => {
   const bestInSrc = readFile("components/search/BestInSection.tsx");
 
   it("search.tsx uses BestInSection component", () => {
-    expect(searchSrc).toContain("BestInSection");
-    expect(searchSrc).toContain("<BestInSection");
+    // Sprint 571: redirected to DiscoverSections
+    const discoverSrc = readFile("components/search/DiscoverSections.tsx");
+    expect(discoverSrc).toContain("BestInSection");
+    expect(discoverSrc).toContain("<BestInSection");
   });
 
   it("BestInSection imports getCategoriesByCuisine", () => {
