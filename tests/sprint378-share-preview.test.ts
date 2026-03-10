@@ -7,6 +7,7 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 378: Business share preview card", () => {
   const shareSrc = readFile("components/business/SharePreviewCard.tsx");
+  const bizSrc = readFile("app/business/[id].tsx");
   const barrelSrc = readFile("components/business/SubComponents.tsx");
 
   // ── SharePreviewCard component ──────────────────────────
@@ -74,6 +75,29 @@ describe("Sprint 378: Business share preview card", () => {
     });
   });
 
+  // ── Business detail integration ─────────────────────────
+
+  describe("Business detail uses SharePreviewCard", () => {
+    it("should import SharePreviewCard", () => {
+      expect(bizSrc).toContain("SharePreviewCard");
+    });
+
+    it("should render SharePreviewCard in JSX", () => {
+      expect(bizSrc).toContain("<SharePreviewCard");
+    });
+
+    it("should pass business props", () => {
+      expect(bizSrc).toContain("businessName={business.name}");
+      expect(bizSrc).toContain("slug={business.slug}");
+      expect(bizSrc).toContain("weightedScore={business.weightedScore}");
+    });
+
+    it("should pass share callbacks", () => {
+      expect(bizSrc).toContain("onShare={handleShare}");
+      expect(bizSrc).toContain("onCopyLink={handleCopyLink}");
+    });
+  });
+
   // ── Barrel export ───────────────────────────────────────
 
   describe("Barrel export", () => {
@@ -85,6 +109,11 @@ describe("Sprint 378: Business share preview card", () => {
   // ── File size guard ─────────────────────────────────────
 
   describe("File size", () => {
+    it("business/[id].tsx should be under 650 LOC", () => {
+      const lines = bizSrc.split("\n").length;
+      expect(lines).toBeLessThan(650);
+    });
+
     it("SharePreviewCard should be under 130 LOC", () => {
       const lines = shareSrc.split("\n").length;
       expect(lines).toBeLessThan(130);

@@ -102,3 +102,27 @@ describe("RankDeltaBadge — animated rank change", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// 3. index.tsx integration
+// ---------------------------------------------------------------------------
+describe("index.tsx — TopRankHighlight integration", () => {
+  const src = readFile("app/(tabs)/index.tsx");
+
+  it("imports TopRankHighlight", () => {
+    expect(src).toContain("TopRankHighlight");
+    expect(src).toContain("components/animations/TopRankHighlight");
+  });
+
+  it("wraps cards with TopRankHighlight", () => {
+    expect(src).toContain("<TopRankHighlight active={item.rank === 1}>");
+  });
+
+  it("does not wrap cards with redundant FadeInView", () => {
+    // RankedCard has its own internal animation, so FadeInView wrapper should not wrap renderItem
+    expect(src).not.toContain("<FadeInView delay={index * 100}>");
+  });
+
+  it("is under 600 LOC threshold", () => {
+    expect(countLines(src)).toBeLessThan(600);
+  });
+});

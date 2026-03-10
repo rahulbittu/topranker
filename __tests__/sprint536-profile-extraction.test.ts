@@ -98,7 +98,7 @@ describe("profile.tsx uses ProfileCredibilitySection", () => {
     expect(src).toContain("tier={tier}");
     expect(src).toContain("credibilityScore={profile.credibilityScore}");
     expect(src).toContain("totalRatings={profile.totalRatings}");
-    expect(src).toContain("earnedBadgeCount={0}");
+    expect(src).toContain("earnedBadgeCount={earnedBadgeCount}");
   });
 
   it("no longer has inline credibility card styles", () => {

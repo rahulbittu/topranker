@@ -85,4 +85,22 @@ describe("Sprint 487: Component Integration", () => {
     });
   });
 
+  describe("business/[id].tsx DimensionScoreCard wiring", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, "../app/business/[id].tsx"),
+      "utf-8"
+    );
+
+    it("imports DimensionScoreCard from components", () => {
+      expect(src).toContain('import { DimensionScoreCard } from "@/components/business/DimensionScoreCard"');
+    });
+
+    it("renders DimensionScoreCard with business ID", () => {
+      expect(src).toContain("<DimensionScoreCard businessId={business.id}");
+    });
+
+    it("conditionally renders DimensionScoreCard when business exists", () => {
+      expect(src).toContain("business?.id && <DimensionScoreCard");
+    });
+  });
 });

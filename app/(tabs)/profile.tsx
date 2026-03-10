@@ -21,6 +21,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, deleteRatingApi, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
 import { useBookmarks } from "@/lib/bookmarks-context";
+import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
@@ -31,7 +32,18 @@ import {
 } from "@/components/profile/SubComponents";
 import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 import { SavedPlacesSection } from "@/components/profile/SavedPlacesSection";
+import { BadgeGridFull } from "@/components/profile/BadgeGrid";
+import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
+import { AchievementsSection } from "@/components/profile/AchievementsSection";
+import { TierProgressNotification } from "@/components/profile/TierProgressNotification";
+import { DishVoteStreakCard } from "@/components/profile/DishVoteStreakCard";
+import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
+import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
+import { ActivityFeed } from "@/components/profile/ActivityFeed";
+import { ActivityTimeline } from "@/components/profile/ActivityTimeline";
 import { RatingHistorySection } from "@/components/profile/RatingHistorySection";
+import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
+import { type EarnedBadge } from "@/lib/badges";
 
 const AMBER = BRAND.colors.amber;
 
@@ -41,6 +53,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { logout } = useAuth();
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
+  const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
   const handleDeleteRating = useCallback(async (ratingId: string) => {
     try {
       await deleteRatingApi(ratingId);
@@ -70,6 +83,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   });
 
   const tier = profile.credibilityTier as CredibilityTier;
+  const tierColor = TIER_COLORS[tier];
+
+  const breakdown = profile.credibilityBreakdown;
+  const totalScore = profile.credibilityScore;
+
+  const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -130,19 +149,67 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </LinearGradient>
       </FadeInView>
 
-      {/* Credibility — the one number that matters */}
+      {/* Sprint 185: Onboarding checklist for new users */}
+      <OnboardingChecklist />
+
+      {/* Sprint 536: Extracted credibility card, stats, getting started, growth prompt */}
       <ProfileCredibilitySection
         tier={tier}
         credibilityScore={profile.credibilityScore}
-        credibilityBreakdown={profile.credibilityBreakdown}
+        credibilityBreakdown={breakdown}
         totalRatings={profile.totalRatings}
         distinctBusinesses={profile.distinctBusinesses}
         totalCategories={profile.totalCategories}
         daysActive={profile.daysActive}
-        earnedBadgeCount={0}
+        earnedBadgeCount={earnedBadgeCount}
         ratingHistory={profile.ratingHistory}
         currentStreak={profile.currentStreak ?? 0}
         joinedAt={profile.joinedAt}
+      />
+
+      {/* Sprint 573: Tier progress notification */}
+      <TierProgressNotification
+        tier={tier}
+        credibilityScore={profile.credibilityScore}
+        totalRatings={profile.totalRatings}
+        delay={200}
+      />
+
+      {/* Sprint 393: Achievements & Milestones */}
+      <AchievementsSection
+        totalRatings={profile.totalRatings}
+        distinctBusinesses={profile.distinctBusinesses}
+        tier={tier}
+        currentStreak={profile.currentStreak ?? 0}
+        earnedBadgeCount={earnedBadgeCount}
+        daysActive={profile.daysActive}
+      />
+
+      {/* Sprint 574: Dish vote streak tracking */}
+      <DishVoteStreakCard
+        currentStreak={profile.dishVoteStreak ?? 0}
+        longestStreak={profile.longestDishStreak ?? 0}
+        totalDishVotes={profile.totalDishVotes ?? 0}
+        topDish={profile.topDish}
+        delay={250}
+      />
+
+      {/* Sprint 401: Profile Stats Dashboard */}
+      <ProfileStatsCard
+        ratingHistory={profile.ratingHistory}
+        totalRatings={profile.totalRatings}
+        daysActive={profile.daysActive}
+      />
+
+      {/* Sprint 437: Unified Activity Timeline (replaces Sprint 419 ActivityFeed) */}
+      <ActivityTimeline
+        ratings={profile.ratingHistory}
+        bookmarks={savedList}
+        achievements={badges.filter(b => b.progress >= 100).map(b => ({
+          id: b.badge.id,
+          label: b.badge.name,
+          earnedAt: b.earnedAt,
+        }))}
       />
 
       {/* Last Rating Consequence */}
@@ -170,7 +237,15 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <ImpactCard impact={impact} city={profile.city} />
       )}
 
-      {/* Rating History — your contribution record */}
+      {/* Sprint 406: Extracted breakdown card */}
+      <ScoreBreakdownCard
+        totalRatings={profile.totalRatings}
+        breakdown={breakdown}
+        totalScore={totalScore}
+        tierColor={tierColor}
+      />
+
+      {/* Sprint 443: Extracted rating history to standalone component */}
       <RatingHistorySection
         ratingHistory={profile.ratingHistory}
         username={profile.username}
@@ -193,6 +268,31 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </>
       )}
 
+      <CredibilityJourney currentTier={tier} credibilityScore={profile.credibilityScore} totalRatings={profile.totalRatings} />
+
+      {/* Achievement Badges */}
+      <BadgeGridFull
+        badges={badges}
+        totalPossible={totalPossible}
+        title="Achievement Badges"
+        onBadgePress={setSelectedBadge}
+      />
+
+      <TierRewardsSection tier={tier} />
+
+      {/* Invite Friends */}
+      <TouchableOpacity
+        style={styles.adminLink}
+        onPress={() => router.push("/referral")}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel="Invite friends"
+      >
+        <Ionicons name="people-outline" size={14} color={BRAND.colors.amber} />
+        <Text style={styles.adminLinkText}>Invite Friends</Text>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+      </TouchableOpacity>
+
       {/* Admin Panel */}
       {profile && isAdminEmail(profile.email) && (
         <TouchableOpacity
@@ -212,6 +312,12 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
       <LegalLinksSection />
     </ScrollView>
+
+    <BadgeDetailModal
+      badge={selectedBadge}
+      userName={profile.displayName || profile.username || "TopRanker"}
+      onClose={() => setSelectedBadge(null)}
+    />
   </>
   );
 }

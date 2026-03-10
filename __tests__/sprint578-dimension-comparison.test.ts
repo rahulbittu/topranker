@@ -174,6 +174,21 @@ describe("Sprint 578: DimensionComparisonCard Component", () => {
   });
 });
 
+describe("Sprint 578: Business Detail Integration", () => {
+  const src = readFile("app/business/[id].tsx");
+
+  it("imports DimensionComparisonCard", () => {
+    expect(src).toContain("import { DimensionComparisonCard }");
+    expect(src).toContain('from "@/components/business/DimensionComparisonCard"');
+  });
+
+  it("renders DimensionComparisonCard with businessId and city", () => {
+    expect(src).toContain("<DimensionComparisonCard");
+    expect(src).toContain("businessId={business.id}");
+    expect(src).toContain("city={business.city}");
+  });
+});
+
 describe("Sprint 578: Mock Router City Averages", () => {
   const src = readFile("lib/mock-router.ts");
 

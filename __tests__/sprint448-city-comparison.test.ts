@@ -166,7 +166,35 @@ describe("API client — fetchCityStats", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Routes.ts wiring
+// 5. Business page wiring
+// ---------------------------------------------------------------------------
+describe("Business page — city comparison", () => {
+  const src = readFile("app/business/[id].tsx");
+
+  it("imports CityComparisonCard", () => {
+    expect(src).toContain("CityComparisonCard");
+  });
+
+  it("imports fetchCityStats", () => {
+    expect(src).toContain("fetchCityStats");
+  });
+
+  it("has cityStats query", () => {
+    expect(src).toContain('"cityStats"');
+  });
+
+  it("renders CityComparisonCard", () => {
+    expect(src).toContain("<CityComparisonCard");
+  });
+
+  it("passes city stats props", () => {
+    expect(src).toContain("cityAvgScore={cityStats.avgWeightedScore}");
+    expect(src).toContain("cityTotalBusinesses={cityStats.totalBusinesses}");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Routes.ts wiring
 // ---------------------------------------------------------------------------
 describe("Routes.ts — city stats wiring", () => {
   const src = readFile("server/routes.ts");
