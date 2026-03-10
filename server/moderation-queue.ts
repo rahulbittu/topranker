@@ -53,6 +53,45 @@ export function getPendingItems(limit?: number): ModerationItem[] {
   return queue.filter(i => i.status === "pending").slice(0, limit || 50);
 }
 
+export function getFilteredItems(opts: {
+  status?: ModerationStatus;
+  contentType?: ContentType;
+  limit?: number;
+  sortByViolations?: boolean;
+}): ModerationItem[] {
+  let items = [...queue];
+  if (opts.status) items = items.filter(i => i.status === opts.status);
+  if (opts.contentType) items = items.filter(i => i.contentType === opts.contentType);
+  if (opts.sortByViolations) items.sort((a, b) => b.violations.length - a.violations.length);
+  return items.slice(0, opts.limit || 50);
+}
+
+export function bulkApprove(itemIds: string[], moderatorId: string, note?: string): { approved: number; notFound: number } {
+  let approved = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (approveItem(id, moderatorId, note)) approved++;
+    else notFound++;
+  }
+  return { approved, notFound };
+}
+
+export function bulkReject(itemIds: string[], moderatorId: string, note?: string): { rejected: number; notFound: number } {
+  let rejected = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (rejectItem(id, moderatorId, note)) rejected++;
+    else notFound++;
+  }
+  return { rejected, notFound };
+}
+
+export function getResolvedItems(limit?: number): ModerationItem[] {
+  return queue
+    .filter(i => i.status === "approved" || i.status === "rejected")
+    .slice(0, limit || 50);
+}
+
 export function approveItem(itemId: string, moderatorId: string, note?: string): boolean {
   const item = queue.find(i => i.id === itemId);
   if (!item || item.status !== "pending") return false;
