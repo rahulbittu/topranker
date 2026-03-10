@@ -23,7 +23,6 @@ import * as Haptics from "expo-haptics";
 import { useShareCard } from "@/components/ShareCard";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 import { usePressAnimation } from "@/hooks/usePressAnimation";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCity } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -35,8 +34,7 @@ import {
   WinnerReveal,
   CommunityReviews,
 } from "@/components/challenger/SubComponents";
-
-const CHALLENGER_TIP_KEY = "challenger_tip_dismissed";
+import { useChallengerTip, ChallengerTipCard } from "@/components/challenger/ChallengerTip";
 
 function ChallengeCard({ challenge }: { challenge: ApiChallenger }) {
   const { scale, onPressIn, onPressOut } = usePressAnimation();
@@ -218,18 +216,7 @@ export default function ChallengerScreen() {
 
   useEffect(() => { track("view_challenger"); }, []);
 
-  const [showChallengerTip, setShowChallengerTip] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(CHALLENGER_TIP_KEY).then((val) => {
-      if (val !== "true") setShowChallengerTip(true);
-    });
-  }, []);
-
-  const dismissChallengerTip = useCallback(() => {
-    setShowChallengerTip(false);
-    AsyncStorage.setItem(CHALLENGER_TIP_KEY, "true");
-  }, []);
+  const { showTip: showChallengerTip, dismissTip: dismissChallengerTip } = useChallengerTip();
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
@@ -272,22 +259,7 @@ export default function ChallengerScreen() {
           ]}
         >
           {showChallengerTip && (
-            <View style={styles.tipCard}>
-              <Ionicons name="trophy-outline" size={20} color={BRAND.colors.amber} style={styles.tipIcon} />
-              <View style={styles.tipTextStack}>
-                <Text style={styles.tipTitle}>Watch businesses compete head-to-head</Text>
-                <Text style={styles.tipSubtext}>Vote for your favorite and help decide the winner</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.tipDismiss}
-                onPress={dismissChallengerTip}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss tip"
-              >
-                <Ionicons name="close" size={16} color={Colors.textTertiary} />
-              </TouchableOpacity>
-            </View>
+            <ChallengerTipCard onDismiss={dismissChallengerTip} />
           )}
 
           {challenges.length === 0 ? (
@@ -504,40 +476,4 @@ const styles = StyleSheet.create({
     fontFamily: "DMSans_600SemiBold",
   },
 
-  // Onboarding tip card
-  tipCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-    marginHorizontal: 0,
-  },
-  tipIcon: {
-    marginRight: 10,
-    marginTop: 2,
-  },
-  tipTextStack: {
-    flex: 1,
-  },
-  tipTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  tipSubtext: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_400Regular",
-    marginTop: 2,
-  },
-  tipDismiss: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-  },
 });

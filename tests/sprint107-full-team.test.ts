@@ -125,9 +125,9 @@ describe("Onboarding Tips Coverage", () => {
     expect(src).toContain("discover_tip_dismissed");
   });
 
-  it('Challenger has "challenger_tip_dismissed" key', () => {
+  it('Challenger has "challenger_tip_dismissed" key (via ChallengerTip)', () => {
     const src = fs.readFileSync(
-      path.join(ROOT, "app", "(tabs)", "challenger.tsx"),
+      path.join(ROOT, "components", "challenger", "ChallengerTip.tsx"),
       "utf-8",
     );
     expect(src).toContain("challenger_tip_dismissed");
