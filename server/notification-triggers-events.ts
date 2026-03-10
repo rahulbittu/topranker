@@ -115,7 +115,8 @@ export async function onNewRatingForBusiness(
     for (const rater of otherRaters) {
       if (!rater.pushToken) continue;
       const prefs = (rater.notificationPrefs as Record<string, boolean>) || {};
-      if (prefs.savedBusinessAlerts === false) continue;
+      // Sprint 514: Use dedicated newRatings preference (fallback to savedBusinessAlerts for backward compat)
+      if (prefs.newRatings === false || (prefs.newRatings === undefined && prefs.savedBusinessAlerts === false)) continue;
 
       // Sprint 511: Check for A/B variant
       const abVariant = getNotificationVariant(String(rater.memberId), "newRating");

@@ -45,7 +45,7 @@ export async function onTierUpgrade(
       [pushToken],
       "You've been promoted!",
       `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
-      { screen: "profile" },
+      { screen: "profile", type: "tierUpgrade" },
     );
     triggerLog.info(`Tier upgrade push sent: ${memberId} → ${newTier}`);
   } catch (err) {
@@ -66,19 +66,25 @@ export async function onClaimDecision(
   if (!pushToken) return;
 
   try {
+    // Sprint 514: Check claimUpdates preference
+    const { getMemberById } = await import("./storage/members");
+    const member = await getMemberById(memberId);
+    const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
+    if (prefs.claimUpdates === false) return;
+
     if (approved) {
       await sendPushNotification(
         [pushToken],
         `Claim approved: ${businessName}`,
         "You're now the verified owner. Access your dashboard to see analytics.",
-        { screen: "business" },
+        { screen: "business", type: "claimDecision" },
       );
     } else {
       await sendPushNotification(
         [pushToken],
         `Claim update: ${businessName}`,
         "Your claim could not be verified. Contact support for next steps.",
-        { screen: "profile" },
+        { screen: "profile", type: "claimDecision" },
       );
     }
     triggerLog.info(`Claim decision push sent: ${memberId}, approved=${approved}`);

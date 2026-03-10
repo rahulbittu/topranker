@@ -26,6 +26,9 @@ const NOTIFICATION_KEYS = {
   savedBusinessAlerts: "notif_saved_biz_alerts",
   cityAlerts: "notif_city_alerts",
   marketingEmails: "notif_marketing_emails",
+  // Sprint 514: Per-category granularity
+  claimUpdates: "notif_claim_updates",
+  newRatings: "notif_new_ratings",
 };
 
 const CITY_LABELS: Record<SupportedCity, string> = {
@@ -138,6 +141,9 @@ export default function SettingsScreen() {
     savedBusinessAlerts: true,
     cityAlerts: true,
     marketingEmails: true,
+    // Sprint 514: Per-category granularity
+    claimUpdates: true,
+    newRatings: true,
   });
 
   useEffect(() => {
@@ -306,6 +312,20 @@ export default function SettingsScreen() {
             sublabel="Notable ranking shifts in your city"
             value={notifPrefs.cityAlerts}
             onToggle={toggleNotif("cityAlerts")}
+          />
+          <SettingRow
+            icon="document-outline"
+            label="Claim Updates"
+            sublabel="When your business claim is reviewed"
+            value={notifPrefs.claimUpdates}
+            onToggle={toggleNotif("claimUpdates")}
+          />
+          <SettingRow
+            icon="star-outline"
+            label="New Ratings"
+            sublabel="When someone rates a place you've rated"
+            value={notifPrefs.newRatings}
+            onToggle={toggleNotif("newRatings")}
           />
           <SettingRow
             icon="mail-outline"
