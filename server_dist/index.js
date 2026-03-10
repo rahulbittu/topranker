@@ -6135,6 +6135,96 @@ var init_push_analytics = __esm({
   }
 });
 
+// server/notification-templates.ts
+function detectVariables(title, body) {
+  const combined = `${title} ${body}`;
+  return SUPPORTED_VARIABLES.filter((v) => combined.includes(`{${v}}`));
+}
+function createTemplate2(input) {
+  if (templates2.has(input.id)) {
+    tmplLog2.info(`Template already exists: ${input.id}`);
+    return null;
+  }
+  const template = {
+    ...input,
+    variables: detectVariables(input.title, input.body),
+    active: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  templates2.set(input.id, template);
+  tmplLog2.info(`Created template: ${input.id} for ${input.category}`);
+  return template;
+}
+function updateTemplate(id, updates) {
+  const existing = templates2.get(id);
+  if (!existing) return null;
+  const updated = {
+    ...existing,
+    ...updates,
+    variables: detectVariables(
+      updates.title ?? existing.title,
+      updates.body ?? existing.body
+    ),
+    updatedAt: Date.now()
+  };
+  templates2.set(id, updated);
+  tmplLog2.info(`Updated template: ${id}`);
+  return updated;
+}
+function deleteTemplate(id) {
+  const existed = templates2.delete(id);
+  if (existed) tmplLog2.info(`Deleted template: ${id}`);
+  return existed;
+}
+function getTemplate2(id) {
+  return templates2.get(id);
+}
+function listTemplates() {
+  return Array.from(templates2.values());
+}
+function listTemplatesByCategory(category) {
+  return Array.from(templates2.values()).filter((t) => t.category === category);
+}
+function getActiveTemplateForCategory(category) {
+  return Array.from(templates2.values()).find((t) => t.category === category && t.active);
+}
+function applyTemplate(template, values) {
+  let title = template.title;
+  let body = template.body;
+  for (const [key2, val] of Object.entries(values)) {
+    const placeholder = `{${key2}}`;
+    title = title.replaceAll(placeholder, val);
+    body = body.replaceAll(placeholder, val);
+  }
+  return { title, body };
+}
+function getSupportedVariables() {
+  return [...SUPPORTED_VARIABLES];
+}
+var tmplLog2, templates2, SUPPORTED_VARIABLES;
+var init_notification_templates = __esm({
+  "server/notification-templates.ts"() {
+    "use strict";
+    init_logger();
+    tmplLog2 = log.tag("NotifTemplate");
+    templates2 = /* @__PURE__ */ new Map();
+    SUPPORTED_VARIABLES = [
+      "firstName",
+      "city",
+      "business",
+      "emoji",
+      "direction",
+      "newRank",
+      "oldRank",
+      "delta",
+      "rater",
+      "score",
+      "count"
+    ];
+  }
+});
+
 // server/notification-frequency.ts
 function enqueueNotification(notification) {
   const key2 = `${notification.memberId}:${notification.category}`;
@@ -6161,6 +6251,23 @@ var init_notification_frequency = __esm({
 });
 
 // server/notification-triggers-events.ts
+function resolveNotificationContent(category, memberId, variables, defaultTitle, defaultBody) {
+  const template = getActiveTemplateForCategory(category);
+  if (template) {
+    return applyTemplate(template, variables);
+  }
+  const abVariant = getNotificationVariant(memberId, category);
+  if (abVariant) {
+    let title = abVariant.variant.title;
+    let body = abVariant.variant.body;
+    for (const [key2, val] of Object.entries(variables)) {
+      title = title.replaceAll(`{${key2}}`, val);
+      body = body.replaceAll(`{${key2}}`, val);
+    }
+    return { title, body };
+  }
+  return { title: defaultTitle, body: defaultBody };
+}
 async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
   if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
   const direction = newRank < oldRank ? "up" : "down";
@@ -6182,9 +6289,13 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
       const prefs = rater.notificationPrefs || {};
       if (prefs.rankingChanges === false) continue;
       const emoji = direction === "up" ? "\u{1F4C8}" : "\u{1F4C9}";
-      const abVariant = getNotificationVariant(String(rater.memberId), "rankingChange");
-      const abTitle = abVariant ? abVariant.variant.title.replace("{emoji}", emoji).replace("{business}", businessName).replace("{direction}", direction) : `${emoji} ${businessName} moved ${direction}`;
-      const abBody = abVariant ? abVariant.variant.body.replace("{newRank}", String(newRank)).replace("{oldRank}", String(oldRank)).replace("{city}", city) : `Now ranked #${newRank} in ${city} (was #${oldRank})`;
+      const { title: abTitle, body: abBody } = resolveNotificationContent(
+        "rankingChange",
+        String(rater.memberId),
+        { emoji, business: businessName, direction, newRank: String(newRank), oldRank: String(oldRank), city, delta: String(delta) },
+        `${emoji} ${businessName} moved ${direction}`,
+        `Now ranked #${newRank} in ${city} (was #${oldRank})`
+      );
       const freqPrefs = rater.notificationFrequencyPrefs;
       if (shouldSendImmediately(freqPrefs, "rankingChanges")) {
         await sendPushNotification([rater.pushToken], abTitle, abBody, { screen: "business", businessId });
@@ -6221,9 +6332,13 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
       if (!rater.pushToken) continue;
       const prefs = rater.notificationPrefs || {};
       if (prefs.newRatings === false || prefs.newRatings === void 0 && prefs.savedBusinessAlerts === false) continue;
-      const abVariant = getNotificationVariant(String(rater.memberId), "newRating");
-      const nrTitle = abVariant ? abVariant.variant.title.replace("{business}", businessName) : `New rating for ${businessName}`;
-      const nrBody = abVariant ? abVariant.variant.body.replace("{rater}", raterName).replace("{score}", score.toFixed(1)) : `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`;
+      const { title: nrTitle, body: nrBody } = resolveNotificationContent(
+        "newRating",
+        String(rater.memberId),
+        { business: businessName, rater: raterName, score: score.toFixed(1) },
+        `New rating for ${businessName}`,
+        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`
+      );
       const freqPrefs = rater.notificationFrequencyPrefs;
       if (shouldSendImmediately(freqPrefs, "newRatings")) {
         await sendPushNotification([rater.pushToken], nrTitle, nrBody, { screen: "business", businessId });
@@ -6275,9 +6390,13 @@ async function sendCityHighlightsPush(city) {
       const prefs = user.notificationPrefs || {};
       if (prefs.cityAlerts === false) continue;
       const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
-      const abVariant = getNotificationVariant(String(user.id), "cityHighlights");
-      const chTitle = abVariant ? abVariant.variant.title.replace("{city}", city) : `${city} rankings update`;
-      const chBody = abVariant ? abVariant.variant.body.replace("{business}", biggestMover.businessName || "A restaurant").replace("{direction}", direction).replace("{delta}", String(biggestDelta)) : `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`;
+      const { title: chTitle, body: chBody } = resolveNotificationContent(
+        "cityHighlights",
+        String(user.id),
+        { city, business: biggestMover.businessName || "A restaurant", direction, delta: String(biggestDelta) },
+        `${city} rankings update`,
+        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`
+      );
       const freqPrefs = user.notificationFrequencyPrefs;
       if (shouldSendImmediately(freqPrefs, "cityAlerts")) {
         await sendPushNotification([user.pushToken], chTitle, chBody, { screen: "rankings" });
@@ -6333,6 +6452,7 @@ var init_notification_triggers_events = __esm({
     init_push_analytics();
     init_push_ab_testing();
     init_notification_frequency();
+    init_notification_templates();
     init_logger();
     triggerLog = log.tag("NotifyTrigger");
   }
@@ -10596,6 +10716,53 @@ function setRankingWeights(w) {
   rankLog.info("Ranking weights updated", weights);
   return { ...weights };
 }
+var SEARCH_STOP_WORDS = /* @__PURE__ */ new Set([
+  "best",
+  "top",
+  "good",
+  "great",
+  "most",
+  "popular",
+  "famous",
+  "in",
+  "the",
+  "a",
+  "of",
+  "for",
+  "near",
+  "around",
+  "at"
+]);
+function parseQueryIntent(query, city) {
+  const tokens2 = query.toLowerCase().trim().split(/\s+/).filter((t) => t.length > 0);
+  const cityLower = city?.toLowerCase();
+  const filtered = tokens2.filter((t) => {
+    if (SEARCH_STOP_WORDS.has(t)) return false;
+    if (cityLower && t === cityLower) return false;
+    return true;
+  });
+  return filtered.join(" ");
+}
+function dishRelevance(dishNames, query) {
+  if (!query || !query.trim() || !dishNames || dishNames.length === 0) return 0;
+  const q = query.toLowerCase().trim();
+  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
+  let bestScore = 0;
+  for (const dish of dishNames) {
+    const d = dish.toLowerCase();
+    if (d === q) return 1;
+    if (d.includes(q) || q.includes(d)) {
+      bestScore = Math.max(bestScore, 0.8);
+      continue;
+    }
+    for (const token of queryTokens) {
+      if (token.length < 3) continue;
+      const s = wordScore(d, token);
+      if (s > bestScore) bestScore = s;
+    }
+  }
+  return bestScore;
+}
 function levenshtein(a, b, maxDist = 3) {
   if (Math.abs(a.length - b.length) > maxDist) return Infinity;
   const m = a.length;
@@ -10715,11 +10882,14 @@ function profileCompleteness(ctx) {
   return total > 0 ? score / total : 0;
 }
 function combinedRelevance(name, ctx) {
-  const text2 = textRelevance(name, ctx.query);
-  const category = categoryRelevance(ctx);
+  const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
+  const intentCtx = { ...ctx, query: intentQuery || ctx.query };
+  const text2 = textRelevance(name, intentCtx.query);
+  const category = categoryRelevance(intentCtx);
+  const dish = dishRelevance(ctx.dishNames, intentCtx.query);
   const completeness = profileCompleteness(ctx);
   const volume = ratingVolumeSignal(ctx.ratingCount);
-  return text2 * 0.5 + category * 0.2 + completeness * 0.15 + volume * 0.15;
+  return text2 * 0.4 + category * 0.2 + dish * 0.15 + completeness * 0.1 + volume * 0.15;
 }
 
 // server/search-result-processor.ts
@@ -10742,7 +10912,10 @@ function enrichSearchResults(bizList, photoMap, opts) {
       category: b.category,
       cuisine: b.cuisine,
       neighborhood: b.neighborhood,
-      ratingCount: b.ratingCount ? Number(b.ratingCount) : 0
+      ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
+      // Sprint 534: Dish-aware and city-aware relevance scoring
+      dishNames: b.topDishes || [],
+      city: b.city || opts.city
     };
     const relevanceScore = opts.query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
     let distanceKm = null;
@@ -11170,7 +11343,13 @@ function registerBusinessAnalyticsRoutes(app2) {
     return res.json({ data });
   }));
   app2.get("/api/businesses/:id/dimension-breakdown", wrapAsync(async (req, res) => {
-    const { ratings: ratings5 } = await getBusinessRatings(req.params.id, 1, 200);
+    let businessId = req.params.id;
+    if (isNaN(Number(businessId))) {
+      const business = await getBusinessBySlug(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
+      businessId = String(business.id);
+    }
+    const { ratings: ratings5 } = await getBusinessRatings(businessId, 1, 200);
     const data = computeDimensionBreakdown(ratings5);
     return res.json({ data });
   }));
@@ -12707,78 +12886,8 @@ function registerAdminTemplateRoutes(app2) {
   });
 }
 
-// server/notification-templates.ts
-init_logger();
-var tmplLog2 = log.tag("NotifTemplate");
-var templates2 = /* @__PURE__ */ new Map();
-var SUPPORTED_VARIABLES = [
-  "firstName",
-  "city",
-  "business",
-  "emoji",
-  "direction",
-  "newRank",
-  "oldRank",
-  "delta",
-  "rater",
-  "score",
-  "count"
-];
-function detectVariables(title, body) {
-  const combined = `${title} ${body}`;
-  return SUPPORTED_VARIABLES.filter((v) => combined.includes(`{${v}}`));
-}
-function createTemplate2(input) {
-  if (templates2.has(input.id)) {
-    tmplLog2.info(`Template already exists: ${input.id}`);
-    return null;
-  }
-  const template = {
-    ...input,
-    variables: detectVariables(input.title, input.body),
-    active: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-  templates2.set(input.id, template);
-  tmplLog2.info(`Created template: ${input.id} for ${input.category}`);
-  return template;
-}
-function updateTemplate(id, updates) {
-  const existing = templates2.get(id);
-  if (!existing) return null;
-  const updated = {
-    ...existing,
-    ...updates,
-    variables: detectVariables(
-      updates.title ?? existing.title,
-      updates.body ?? existing.body
-    ),
-    updatedAt: Date.now()
-  };
-  templates2.set(id, updated);
-  tmplLog2.info(`Updated template: ${id}`);
-  return updated;
-}
-function deleteTemplate(id) {
-  const existed = templates2.delete(id);
-  if (existed) tmplLog2.info(`Deleted template: ${id}`);
-  return existed;
-}
-function getTemplate2(id) {
-  return templates2.get(id);
-}
-function listTemplates() {
-  return Array.from(templates2.values());
-}
-function listTemplatesByCategory(category) {
-  return Array.from(templates2.values()).filter((t) => t.category === category);
-}
-function getSupportedVariables() {
-  return [...SUPPORTED_VARIABLES];
-}
-
 // server/routes-admin-push-templates.ts
+init_notification_templates();
 function requireAdmin4(req, res, next) {
   if (!req.user || req.user.role !== "admin") {
     return res.status(403).json({ error: "Admin access required" });
