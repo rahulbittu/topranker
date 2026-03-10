@@ -129,6 +129,11 @@ export interface ApiMemberProfile {
   summerRatings?: number;
   fallRatings?: number;
   winterRatings?: number;
+  // Sprint 574: Dish vote streak tracking
+  dishVoteStreak?: number;
+  longestDishStreak?: number;
+  totalDishVotes?: number;
+  topDish?: string;
 }
 
 const CATEGORY_DISPLAY: Record<string, string> = {};
@@ -223,7 +228,11 @@ export function mapApiRating(rating: ApiRating) {
 /** Returns mock data for a given API path when backend is unreachable */
 function getMockData(path: string): unknown | null {
   if (path.startsWith("/api/leaderboard/categories")) return MOCK_CATEGORIES;
-  if (path.startsWith("/api/leaderboard")) return MOCK_BUSINESSES;
+  if (path.startsWith("/api/leaderboard/neighborhoods")) return [...new Set(MOCK_BUSINESSES.map(b => b.neighborhood).filter(Boolean))];
+  if (path.startsWith("/api/leaderboard/cuisines")) return [...new Set(MOCK_BUSINESSES.map(b => b.cuisine).filter(Boolean))];
+  if (path.startsWith("/api/leaderboard/dish-shortcuts")) return [];
+  if (path.startsWith("/api/leaderboard/best-in")) return [];
+  if (path.startsWith("/api/leaderboard") && !path.startsWith("/api/leaderboard/")) return MOCK_BUSINESSES;
   if (path.startsWith("/api/trending")) return MOCK_BUSINESSES.filter(b => b.rankDelta > 0).slice(0, 3);
   if (path.startsWith("/api/challengers")) return MOCK_CHALLENGERS;
   if (path.startsWith("/api/members/me/impact")) return MOCK_MEMBER_IMPACT;
@@ -245,10 +254,18 @@ function getMockData(path: string): unknown | null {
     }
     return results.slice(0, 20);
   }
-  if (path.startsWith("/api/businesses/")) {
+  // Guard: only match direct slug lookups like /api/businesses/pecan-lodge
+  // Skip sub-resource paths like /api/businesses/autocomplete, /api/businesses/:id/score-breakdown, etc.
+  if (path.startsWith("/api/businesses/autocomplete")) return [];
+  if (path.startsWith("/api/businesses/popular-categories")) return [];
+  if (path.startsWith("/api/search/")) return [];
+  if (path.startsWith("/api/city-stats")) return null;
+  if (path.startsWith("/api/businesses/") && !path.split("/api/businesses/")[1]?.includes("/")) {
     const slug = path.split("/api/businesses/")[1]?.split("?")[0];
-    const biz = MOCK_BUSINESSES.find(b => b.slug === slug) || MOCK_BUSINESSES[0];
-    return { ...biz, recentRatings: MOCK_RATINGS, dishes: MOCK_DISHES };
+    if (slug) {
+      const biz = MOCK_BUSINESSES.find(b => b.slug === slug) || MOCK_BUSINESSES[0];
+      return { ...biz, recentRatings: MOCK_RATINGS, dishes: MOCK_DISHES };
+    }
   }
   return null;
 }

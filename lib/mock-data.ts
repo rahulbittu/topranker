@@ -515,6 +515,11 @@ export const MOCK_MEMBER_PROFILE: ApiMemberProfile = {
     { ...MOCK_RATINGS[0], businessName: "Pecan Lodge" },
     { ...MOCK_RATINGS[1], businessName: "Pecan Lodge" },
   ],
+  // Sprint 574: Dish vote streak tracking
+  dishVoteStreak: 5,
+  longestDishStreak: 12,
+  totalDishVotes: 34,
+  topDish: "Brisket",
 };
 
 export const MOCK_MEMBER_IMPACT: ApiMemberImpact = {

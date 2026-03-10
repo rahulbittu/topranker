@@ -36,6 +36,7 @@ import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { TierProgressNotification } from "@/components/profile/TierProgressNotification";
+import { DishVoteStreakCard } from "@/components/profile/DishVoteStreakCard";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
@@ -182,6 +183,15 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         currentStreak={profile.currentStreak ?? 0}
         earnedBadgeCount={earnedBadgeCount}
         daysActive={profile.daysActive}
+      />
+
+      {/* Sprint 574: Dish vote streak tracking */}
+      <DishVoteStreakCard
+        currentStreak={profile.dishVoteStreak ?? 0}
+        longestStreak={profile.longestDishStreak ?? 0}
+        totalDishVotes={profile.totalDishVotes ?? 0}
+        topDish={profile.topDish}
+        delay={250}
       />
 
       {/* Sprint 401: Profile Stats Dashboard */}

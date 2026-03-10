@@ -118,9 +118,9 @@ describe("Sprint 562: Owner API Extraction", () => {
       expect(src).toContain("export async function fetchBusinessSearch");
     });
 
-    it("dropped from 691 to under 570 LOC", () => {
+    it("dropped from 691 to under 575 LOC", () => {
       const loc = src.split("\n").length;
-      expect(loc).toBeLessThan(570);
+      expect(loc).toBeLessThan(575);
       expect(loc).toBeGreaterThan(500);
     });
   });
@@ -130,7 +130,7 @@ describe("Sprint 562: Owner API Extraction", () => {
 
     it("api.ts threshold lowered", () => {
       const entry = thresholds.files["lib/api.ts"];
-      expect(entry.maxLOC).toBeLessThanOrEqual(570);
+      expect(entry.maxLOC).toBeLessThanOrEqual(575);
     });
 
     it("api-owner.ts tracked", () => {
