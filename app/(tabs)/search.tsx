@@ -289,8 +289,8 @@ export default function SearchScreen() {
         />
       )}
 
-      {/* View mode toggle + filters */}
-      <View style={styles.controlsRow}>
+      {/* Sprint 326: Only view toggle fixed; filters/price/sort scroll with content (DoorDash pattern) */}
+      <View style={styles.viewToggleRow}>
         <View style={styles.viewToggle}>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "list" && styles.viewToggleBtnActive]}
@@ -313,60 +313,6 @@ export default function SearchScreen() {
             <Text style={[styles.viewToggleText, viewMode === "map" && styles.viewToggleTextActive]}>Map</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {FILTERS.map(f => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setActiveFilter(f);
-                if (f === "Near Me") requestLocation();
-              }}
-              style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`${f} filter`}
-              accessibilityState={{ selected: activeFilter === f }}
-            >
-              {f === "Near Me" && <Ionicons name="navigate-outline" size={12} color={activeFilter === f ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />}
-              <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>
-                {f === "Near Me" && locationLoading ? "Locating..." : f}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Price Range Filter */}
-      <View style={styles.priceRow}>
-        {["$", "$$", "$$$", "$$$$"].map(p => (
-          <TouchableOpacity
-            key={p}
-            onPress={() => { Haptics.selectionAsync(); setPriceFilter(prev => prev === p ? null : p); }}
-            style={[styles.priceChip, priceFilter === p && styles.priceChipActive]}
-            accessibilityRole="button"
-            accessibilityLabel={`Price ${p}${priceFilter === p ? ", selected" : ""}`}
-            accessibilityHint="Double tap to filter by this price range"
-            accessibilityState={{ selected: priceFilter === p }}
-          >
-            <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Sort By */}
-      <View style={styles.sortRow}>
-        <Text style={styles.sortLabel}>Sort:</Text>
-        {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => { Haptics.selectionAsync(); setSortBy(key); }}
-            style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
-            accessibilityRole="button"
-            accessibilityState={{ selected: sortBy === key }}
-          >
-            <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
-          </TouchableOpacity>
-        ))}
       </View>
 
       {isLoading ? (
@@ -546,6 +492,57 @@ export default function SearchScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Sprint 326: Filter chips, price, sort in scroll (DoorDash pattern) */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.filterScrollRow}>
+                {FILTERS.map(f => (
+                  <TouchableOpacity
+                    key={f}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setActiveFilter(f);
+                      if (f === "Near Me") requestLocation();
+                    }}
+                    style={[styles.filterChip, activeFilter === f && styles.filterChipActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${f} filter`}
+                    accessibilityState={{ selected: activeFilter === f }}
+                  >
+                    {f === "Near Me" && <Ionicons name="navigate-outline" size={12} color={activeFilter === f ? "#fff" : Colors.textSecondary} style={{ marginRight: 3 }} />}
+                    <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>
+                      {f === "Near Me" && locationLoading ? "Locating..." : f}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <View style={styles.priceRow}>
+                {["$", "$$", "$$$", "$$$$"].map(p => (
+                  <TouchableOpacity
+                    key={p}
+                    onPress={() => { Haptics.selectionAsync(); setPriceFilter(prev => prev === p ? null : p); }}
+                    style={[styles.priceChip, priceFilter === p && styles.priceChipActive]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Price ${p}${priceFilter === p ? ", selected" : ""}`}
+                    accessibilityHint="Double tap to filter by this price range"
+                    accessibilityState={{ selected: priceFilter === p }}
+                  >
+                    <Text style={[styles.priceChipText, priceFilter === p && styles.priceChipTextActive]}>{p}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <View style={styles.sortRow}>
+                <Text style={styles.sortLabel}>Sort:</Text>
+                {([["ranked", "Ranked"], ["rated", "Most Rated"], ["trending", "Trending"]] as const).map(([key, label]) => (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => { Haptics.selectionAsync(); setSortBy(key); }}
+                    style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: sortBy === key }}
+                  >
+                    <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               {showDiscoverTip && (
                 <View style={styles.discoverTip}>
                   <Ionicons name="compass-outline" size={20} color={AMBER} style={{ marginTop: 2 }} />
@@ -684,6 +681,10 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, ...TYPOGRAPHY.ui.body, color: Colors.text },
 
+  viewToggleRow: {
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
+    paddingBottom: 6,
+  },
   controlsRow: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
     paddingBottom: 10, gap: 10,
@@ -701,6 +702,7 @@ const styles = StyleSheet.create({
   viewToggleTextActive: { color: "#fff" },
 
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
+  filterScrollRow: { marginBottom: 6 },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
