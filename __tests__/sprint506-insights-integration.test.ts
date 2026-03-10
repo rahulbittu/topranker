@@ -9,12 +9,13 @@ const ROOT = path.resolve(__dirname, "..");
 const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 506: Insights Integration", () => {
-  describe("admin/index.tsx integration", () => {
-    const src = readFile("app/admin/index.tsx");
+  // Sprint 526: Notification admin extracted to NotificationAdminSection
+  describe("NotificationAdminSection — insights integration", () => {
+    const src = readFile("components/admin/NotificationAdminSection.tsx");
 
     it("imports NotificationInsightsCard component", () => {
       expect(src).toContain("NotificationInsightsCard");
-      expect(src).toContain("@/components/admin/NotificationInsightsCard");
+      expect(src).toContain("./NotificationInsightsCard");
     });
 
     it("imports NotificationInsightsData type", () => {
@@ -50,15 +51,16 @@ describe("Sprint 506: Insights Integration", () => {
       expect(src).toContain("notifInsights?.data &&");
     });
 
-    it("retains existing stat cards", () => {
-      expect(src).toContain("Total Businesses");
-      expect(src).toContain("Active Challenges");
+    it("admin/index.tsx uses NotificationAdminSection", () => {
+      const adminSrc = readFile("app/admin/index.tsx");
+      expect(adminSrc).toContain("NotificationAdminSection");
     });
 
-    it("retains existing admin tabs", () => {
-      expect(src).toContain("overview");
-      expect(src).toContain("claims");
-      expect(src).toContain("flags");
+    it("admin retains existing admin tabs", () => {
+      const adminSrc = readFile("app/admin/index.tsx");
+      expect(adminSrc).toContain("overview");
+      expect(adminSrc).toContain("claims");
+      expect(adminSrc).toContain("flags");
     });
   });
 

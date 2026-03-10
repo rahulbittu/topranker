@@ -21,13 +21,8 @@ import {
   type CategorySuggestionItem,
   type AdminClaim, type AdminFlag, type AdminMember,
 } from "@/lib/api";
-import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
-import { PushExperimentsCard, type PushExperimentData } from "@/components/admin/PushExperimentsCard";
 import { ClaimsTabContent } from "@/components/admin/ClaimsTabContent";
-import { TemplateManagerCard } from "@/components/admin/TemplateManagerCard";
-import { ExperimentResultsCard } from "@/components/admin/ExperimentResultsCard";
-import { fetchNotificationTemplates, createNotificationTemplate, deleteNotificationTemplate, updateNotificationTemplate, type NotificationTemplate } from "@/lib/api";
-import { getApiUrl } from "@/lib/query-client";
+import { NotificationAdminSection } from "@/components/admin/NotificationAdminSection";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
 
@@ -152,39 +147,6 @@ export default function AdminScreen() {
     staleTime: 60000,
   });
 
-  // Sprint 512: Push experiments for admin dashboard
-  const { data: pushExperiments = [] } = useQuery<PushExperimentData[]>({
-    queryKey: ["admin-push-experiments"],
-    queryFn: async () => {
-      const res = await fetch(`${getApiUrl()}/api/admin/push-experiments`, { credentials: "include" });
-      const json = await res.json();
-      return json.data || [];
-    },
-    enabled: !!isAdmin,
-    staleTime: 60000,
-  });
-
-  // Sprint 522: Notification templates
-  const { data: notifTemplates = [] } = useQuery<NotificationTemplate[]>({
-    queryKey: ["admin-notification-templates"],
-    queryFn: () => fetchNotificationTemplates(),
-    enabled: !!isAdmin,
-    staleTime: 60000,
-  });
-
-  const handleCreateTemplate = async (input: { id: string; name: string; category: string; title: string; body: string }) => {
-    await createNotificationTemplate(input);
-    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
-  };
-  const handleDeleteTemplate = async (id: string) => {
-    await deleteNotificationTemplate(id);
-    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
-  };
-  const handleToggleTemplate = async (id: string, active: boolean) => {
-    await updateNotificationTemplate(id, { active });
-    queryClient.invalidateQueries({ queryKey: ["admin-notification-templates"] });
-  };
-
   const { data: flags = [], isLoading: flagsLoading } = useQuery({
     queryKey: ["admin-flags"],
     queryFn: fetchPendingFlags,
@@ -195,17 +157,6 @@ export default function AdminScreen() {
     queryKey: ["admin-members"],
     queryFn: () => fetchAdminMembers(50),
     enabled: !!isAdmin,
-  });
-
-  // Sprint 506: Notification insights for admin dashboard
-  const { data: notifInsights } = useQuery<{ data: NotificationInsightsData }>({
-    queryKey: ["admin-notification-insights"],
-    queryFn: async () => {
-      const res = await fetch(`${getApiUrl()}/api/notifications/insights?daysBack=7`, { credentials: "include" });
-      return res.json();
-    },
-    enabled: !!isAdmin,
-    staleTime: 60000,
   });
 
   const reviewMutation = useMutation({
@@ -327,26 +278,8 @@ export default function AdminScreen() {
               <StatCard label="Avg Rating" value="3.8" icon="analytics-outline" color="#EC4899" />
             </View>
 
-            {/* Sprint 506: Notification analytics */}
-            {notifInsights?.data && (
-              <NotificationInsightsCard data={notifInsights.data} />
-            )}
-
-            {/* Sprint 512: Push A/B experiments */}
-            <PushExperimentsCard experiments={pushExperiments} />
-
-            {/* Sprint 523: Experiment results dashboard */}
-            <ExperimentResultsCard experiments={pushExperiments} />
-
-            {/* Sprint 522: Notification template manager */}
-            {notifTemplates && (
-              <TemplateManagerCard
-                templates={notifTemplates}
-                onCreateTemplate={handleCreateTemplate}
-                onDeleteTemplate={handleDeleteTemplate}
-                onToggleActive={handleToggleTemplate}
-              />
-            )}
+            {/* Sprint 526: Notification admin section (extracted) */}
+            <NotificationAdminSection isAdmin={!!isAdmin} />
 
             <Text style={styles.sectionTitle}>Review Queue</Text>
           </>

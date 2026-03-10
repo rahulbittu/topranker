@@ -108,12 +108,13 @@ describe("Sprint 523: Experiment Results Dashboard", () => {
     });
   });
 
-  describe("app/admin/index.tsx — results card wiring", () => {
-    const src = readFile("app/admin/index.tsx");
+  // Sprint 526: Results card wiring extracted to NotificationAdminSection
+  describe("NotificationAdminSection — results card wiring", () => {
+    const src = readFile("components/admin/NotificationAdminSection.tsx");
 
     it("imports ExperimentResultsCard", () => {
       expect(src).toContain("ExperimentResultsCard");
-      expect(src).toContain("@/components/admin/ExperimentResultsCard");
+      expect(src).toContain("./ExperimentResultsCard");
     });
 
     it("renders ExperimentResultsCard with pushExperiments", () => {

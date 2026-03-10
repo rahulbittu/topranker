@@ -96,12 +96,13 @@ describe("Sprint 522: Template Manager UI", () => {
     });
   });
 
-  describe("app/admin/index.tsx — template wiring", () => {
-    const src = readFile("app/admin/index.tsx");
+  // Sprint 526: Template wiring extracted to NotificationAdminSection
+  describe("NotificationAdminSection — template wiring", () => {
+    const src = readFile("components/admin/NotificationAdminSection.tsx");
 
     it("imports TemplateManagerCard", () => {
       expect(src).toContain("TemplateManagerCard");
-      expect(src).toContain("@/components/admin/TemplateManagerCard");
+      expect(src).toContain("./TemplateManagerCard");
     });
 
     it("imports template API functions", () => {

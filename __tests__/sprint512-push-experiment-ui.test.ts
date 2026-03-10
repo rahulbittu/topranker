@@ -65,12 +65,13 @@ describe("Sprint 512: Push Experiment UI", () => {
     });
   });
 
-  describe("app/admin/index.tsx — wiring", () => {
-    const src = readFile("app/admin/index.tsx");
+  // Sprint 526: Push experiment wiring extracted to NotificationAdminSection
+  describe("NotificationAdminSection — push experiment wiring", () => {
+    const src = readFile("components/admin/NotificationAdminSection.tsx");
 
     it("imports PushExperimentsCard", () => {
       expect(src).toContain("PushExperimentsCard");
-      expect(src).toContain("@/components/admin/PushExperimentsCard");
+      expect(src).toContain("./PushExperimentsCard");
     });
 
     it("has useQuery for push experiments", () => {
@@ -89,9 +90,10 @@ describe("Sprint 512: Push Experiment UI", () => {
       expect(src).toContain("NotificationInsightsCard");
     });
 
-    it("admin dashboard stays under 650 LOC", () => {
-      const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(650);
+    it("admin dashboard stays under 600 LOC", () => {
+      const adminSrc = readFile("app/admin/index.tsx");
+      const lines = adminSrc.split("\n").length;
+      expect(lines).toBeLessThan(600);
     });
   });
 });
