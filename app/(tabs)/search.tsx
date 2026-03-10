@@ -372,6 +372,7 @@ export default function SearchScreen() {
                   </View>
                   <Text style={styles.mapSelectedCategory} numberOfLines={1}>
                     {getCategoryDisplay(selectedMapBiz.category).emoji} {getCategoryDisplay(selectedMapBiz.category).label}
+                    {selectedMapBiz.cuisine && CUISINE_DISPLAY[selectedMapBiz.cuisine] ? ` · ${CUISINE_DISPLAY[selectedMapBiz.cuisine].emoji} ${CUISINE_DISPLAY[selectedMapBiz.cuisine].label}` : ""}
                     {selectedMapBiz.neighborhood ? ` \u00B7 ${selectedMapBiz.neighborhood}` : ""}
                   </Text>
                 </View>
@@ -381,6 +382,24 @@ export default function SearchScreen() {
           </View>
           {/* List takes bottom half */}
           <View style={styles.splitListSection}>
+            {/* Sprint 294: Cuisine indicator in map view */}
+            {selectedCuisine && (
+              <View style={[styles.activeCuisineRow, { paddingHorizontal: 12 }]}>
+                <View style={styles.activeCuisineChip}>
+                  <Text style={styles.activeCuisineText}>
+                    {CUISINE_DISPLAY[selectedCuisine]?.emoji || ""} {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); }}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Clear ${selectedCuisine} filter`}
+                  >
+                    <Ionicons name="close-circle" size={14} color={Colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
             <View style={styles.splitListHeader}>
               <Ionicons name="list" size={14} color={AMBER} />
               <Text style={styles.splitListHeaderText}>{filtered.length} result{filtered.length !== 1 ? "s" : ""} nearby</Text>
