@@ -21,6 +21,7 @@ import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
 const MAX_PHOTOS = 3;
 
 // Sprint 459: Visit-type-aware photo prompts
+// Sprint 462: Visit-type-aware receipt prompts
 type VisitType = "dine_in" | "delivery" | "takeaway";
 
 interface PhotoPrompt {
@@ -50,6 +51,19 @@ function getPhotoPromptsByVisitType(visitType?: VisitType | null): PhotoPrompt[]
         { icon: "cafe-outline", label: "Vibe", hint: "Capture the restaurant atmosphere" },
         { icon: "happy-outline", label: "Experience", hint: "Share a memorable moment" },
       ];
+  }
+}
+
+// Sprint 462: Visit-type-aware receipt hints
+function getReceiptHint(visitType?: VisitType | null): string {
+  switch (visitType) {
+    case "delivery":
+      return "Upload your delivery confirmation or app screenshot for a Verified Purchase badge";
+    case "takeaway":
+      return "Upload your pickup order receipt or confirmation for a Verified Purchase badge";
+    case "dine_in":
+    default:
+      return "Upload your restaurant receipt or bill for a Verified Purchase badge";
   }
 }
 
@@ -334,7 +348,7 @@ export function RatingExtrasStep({
             </View>
           </View>
           <Text style={s.receiptHint}>
-            Upload your receipt or order confirmation for a Verified Purchase badge
+            {getReceiptHint(visitType)}
           </Text>
           {receiptUri ? (
             <View style={s.receiptPreview}>

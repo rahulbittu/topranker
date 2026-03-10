@@ -40,8 +40,10 @@ describe("Sprint 382 — receipt upload UI", () => {
     expect(extrasSrc).toContain("Verified Purchase");
   });
 
-  it("has receipt hint text about order confirmation", () => {
-    expect(extrasSrc).toContain("Upload your receipt or order confirmation");
+  it("has visit-type-aware receipt hint", () => {
+    // Sprint 462: dynamic receipt hints per visit type
+    expect(extrasSrc).toContain("getReceiptHint");
+    expect(extrasSrc).toContain("Verified Purchase badge");
   });
 
   it("has pickReceipt function", () => {
