@@ -11677,10 +11677,16 @@ function computeDimensionBreakdown(ratings6) {
 init_db();
 init_schema();
 import { eq as eq23, and as and16, sql as sql15 } from "drizzle-orm";
+var CACHE_TTL_MS2 = 5 * 60 * 1e3;
+var cache2 = /* @__PURE__ */ new Map();
 function round1(n) {
   return Math.round(n * 10) / 10;
 }
 async function computeCityDimensionAverages(city) {
+  const key2 = city.toLowerCase().trim();
+  const now = Date.now();
+  const cached = cache2.get(key2);
+  if (cached && cached.expiresAt > now) return cached.data;
   const rows = await db.select({
     foodAvg: sql15`AVG(${ratings.foodScore})`,
     serviceAvg: sql15`AVG(${ratings.serviceScore})`,
@@ -11696,7 +11702,7 @@ async function computeCityDimensionAverages(city) {
     eq23(ratings.isFlagged, false)
   ));
   const r = rows[0];
-  return {
+  const result = {
     food: round1(Number(r?.foodAvg) || 0),
     service: round1(Number(r?.serviceAvg) || 0),
     vibe: round1(Number(r?.vibeAvg) || 0),
@@ -11706,6 +11712,13 @@ async function computeCityDimensionAverages(city) {
     totalRatings: Number(r?.totalRatings) || 0,
     totalBusinesses: Number(r?.totalBusinesses) || 0
   };
+  if (cache2.size >= 50) {
+    for (const [k, v] of cache2) {
+      if (v.expiresAt <= now) cache2.delete(k);
+    }
+  }
+  cache2.set(key2, { data: result, expiresAt: now + CACHE_TTL_MS2 });
+  return result;
 }
 
 // server/routes-business-analytics.ts
