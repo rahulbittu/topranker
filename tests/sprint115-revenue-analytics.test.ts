@@ -73,7 +73,8 @@ describe("Business Detail Revenue Tracking", () => {
   });
 
   it("tracks dashboardUpgradeTap on claim button", () => {
-    const content = fs.readFileSync(businessPath, "utf-8");
+    const bottomSectionPath = path.resolve(__dirname, "..", "components/business/BusinessBottomSection.tsx");
+    const content = fs.readFileSync(bottomSectionPath, "utf-8");
     expect(content).toContain("Analytics.dashboardUpgradeTap");
   });
 });

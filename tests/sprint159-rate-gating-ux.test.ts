@@ -53,12 +53,12 @@ describe("Rate gating error messages", () => {
 
 describe("Business detail pre-checks account age", () => {
   const bizSrc = fs.readFileSync(
-    path.resolve(__dirname, "../app/business/[id].tsx"),
+    path.resolve(__dirname, "../components/business/BusinessBottomSection.tsx"),
     "utf-8"
   );
 
   it("checks memberDays >= 3 before showing rate button", () => {
-    expect(bizSrc).toContain("memberDays >= 3");
+    expect(bizSrc).toContain("memberDaysActive >= 3");
   });
 
   it("shows days remaining when gated", () => {
