@@ -54,12 +54,12 @@ describe("Sprint 306 — Cuisine-to-Dish Drill-Down", () => {
 
   const indexSrc = readFile("app/(tabs)/index.tsx");
 
-  it("Rankings imports CUISINE_DISH_MAP", () => {
-    expect(indexSrc).toContain("CUISINE_DISH_MAP");
+  it("Rankings uses useDishShortcuts hook (replaced CUISINE_DISH_MAP in Sprint 312)", () => {
+    expect(indexSrc).toContain("useDishShortcuts");
   });
 
-  it("Rankings shows dish shortcuts when cuisine is selected", () => {
-    expect(indexSrc).toContain("CUISINE_DISH_MAP[selectedCuisine]");
+  it("Rankings shows dish shortcuts when hook returns results", () => {
+    expect(indexSrc).toContain("dishShortcuts.length > 0");
   });
 
   it("dish shortcuts row has 'Dish Rankings:' label", () => {

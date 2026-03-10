@@ -12,12 +12,12 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 describe("Sprint 311 — Discover Dish Shortcuts", () => {
   const bestInSrc = readFile("components/search/BestInSection.tsx");
 
-  it("BestInSection imports CUISINE_DISH_MAP", () => {
-    expect(bestInSrc).toContain("CUISINE_DISH_MAP");
+  it("BestInSection uses useDishShortcuts hook (replaced CUISINE_DISH_MAP in Sprint 312)", () => {
+    expect(bestInSrc).toContain("useDishShortcuts");
   });
 
-  it("shows dish shortcuts when cuisine has mapped dishes", () => {
-    expect(bestInSrc).toContain("CUISINE_DISH_MAP[bestInCuisine]");
+  it("shows dish shortcuts when hook returns results", () => {
+    expect(bestInSrc).toContain("dishShortcuts.length > 0");
   });
 
   it("dish chip shows emoji and Best {name}", () => {

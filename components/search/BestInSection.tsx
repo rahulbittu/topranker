@@ -4,7 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, CUISINE_DISH_MAP, type BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, type BestInCategory } from "@/shared/best-in-categories";
+import { useDishShortcuts } from "@/lib/hooks/useDishShortcuts";
 
 const AMBER = BRAND.colors.amber;
 
@@ -20,6 +21,8 @@ interface BestInSectionProps {
 export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, onCuisineChange, entryCounts }: BestInSectionProps) {
   const [bestInCuisine, setBestInCuisine] = useState<string | null>(null);
   const bestInCuisines = useMemo(() => getAvailableCuisines(), []);
+  // Sprint 312: Dynamic dish shortcuts with entry counts
+  const dishShortcuts = useDishShortcuts(city, bestInCuisine);
   const bestInItems = useMemo(() =>
     bestInCuisine ? getCategoriesByCuisine(bestInCuisine) : getActiveCategories().slice(0, 15),
     [bestInCuisine],
@@ -66,14 +69,14 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
           );
         })}
       </ScrollView>
-      {/* Sprint 311: Dish shortcut chips when cuisine has mapped dishes */}
-      {bestInCuisine && CUISINE_DISH_MAP[bestInCuisine] && CUISINE_DISH_MAP[bestInCuisine].length > 0 && (
+      {/* Sprint 311+312: Dynamic dish shortcuts with entry counts */}
+      {dishShortcuts.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dishShortcutsScroll}
         >
-          {CUISINE_DISH_MAP[bestInCuisine].map((dish) => (
+          {dishShortcuts.map((dish) => (
             <TouchableOpacity
               key={dish.slug}
               onPress={() => { Haptics.selectionAsync(); onSelectDish?.(dish.slug); }}
@@ -81,7 +84,9 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
               accessibilityRole="link"
               accessibilityLabel={`Best ${dish.name} leaderboard`}
             >
-              <Text style={styles.dishShortcutText}>{dish.emoji} Best {dish.name}</Text>
+              <Text style={styles.dishShortcutText}>
+                {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount}` : ""}
+              </Text>
               <Ionicons name="chevron-forward" size={12} color={AMBER} />
             </TouchableOpacity>
           ))}

@@ -12,7 +12,8 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
-import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, CUISINE_DISH_MAP, BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, BestInCategory } from "@/shared/best-in-categories";
+import { useDishShortcuts } from "@/lib/hooks/useDishShortcuts";
 import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
@@ -54,6 +55,8 @@ export default function LeaderboardScreen() {
     selectedCuisine ? getCategoriesByCuisine(selectedCuisine) : getActiveCategories(),
     [selectedCuisine],
   );
+  // Sprint 312: Dynamic dish shortcuts with real entry counts
+  const dishShortcuts = useDishShortcuts(city, selectedCuisine);
 
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
@@ -293,7 +296,7 @@ export default function LeaderboardScreen() {
       </ScrollView>
 
       {/* Sprint 306: Dish leaderboard shortcuts when cuisine is selected */}
-      {selectedCuisine && CUISINE_DISH_MAP[selectedCuisine] && CUISINE_DISH_MAP[selectedCuisine].length > 0 && (
+      {dishShortcuts.length > 0 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -301,7 +304,7 @@ export default function LeaderboardScreen() {
           style={styles.dishShortcutsRow}
         >
           <Text style={styles.dishShortcutsLabel}>Dish Rankings:</Text>
-          {CUISINE_DISH_MAP[selectedCuisine].map((dish) => (
+          {dishShortcuts.map((dish) => (
             <TouchableOpacity
               key={dish.slug}
               onPress={() => {
@@ -313,7 +316,9 @@ export default function LeaderboardScreen() {
               accessibilityRole="link"
               accessibilityLabel={`Best ${dish.name} leaderboard`}
             >
-              <Text style={styles.dishShortcutText}>{dish.emoji} Best {dish.name}</Text>
+              <Text style={styles.dishShortcutText}>
+                {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount}` : ""}
+              </Text>
               <Ionicons name="chevron-forward" size={14} color={AMBER} />
             </TouchableOpacity>
           ))}
