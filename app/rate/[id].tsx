@@ -273,6 +273,12 @@ export default function RateScreen() {
           tierBarStyle={tierBarStyle}
           dishContext={dishContext}
           onDone={() => router.back()}
+          hasPhoto={!!photoUri || photoUris.length > 0}
+          hasDish={!!(selectedDish || dishInput.trim())}
+          hasReceipt={!!receiptUri}
+          timeOnPageMs={Date.now() - pageEnteredAt}
+          businessSlug={slug}
+          onRateAnother={() => router.replace("/(tabs)/search")}
         />
       </View>
     );

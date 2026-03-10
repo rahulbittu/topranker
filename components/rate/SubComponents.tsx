@@ -5,7 +5,7 @@
  */
 import React from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity, Share, Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
 import { searchCategories, getBestInTitle } from "@/shared/best-in-categories";
+import { getShareUrl, getShareText } from "@/lib/sharing";
 
 const SCORE_LABELS = ["Poor", "Fair", "Good", "Great", "Amazing"];
 
@@ -152,6 +153,12 @@ export function RatingConfirmation({
   rankStyle,
   tierBarStyle,
   onDone,
+  hasPhoto,
+  hasDish,
+  hasReceipt,
+  timeOnPageMs,
+  businessSlug,
+  onRateAnother,
 }: {
   business: { name: string; rank: number };
   rawScore: number;
@@ -169,7 +176,34 @@ export function RatingConfirmation({
   tierBarStyle: any;
   dishContext?: string;
   onDone: () => void;
+  hasPhoto?: boolean;
+  hasDish?: boolean;
+  hasReceipt?: boolean;
+  timeOnPageMs?: number;
+  businessSlug?: string;
+  onRateAnother?: () => void;
 }) {
+  // Sprint 398: Compute verification boosts earned
+  const boosts: { label: string; pct: string; icon: string }[] = [];
+  if (hasPhoto) boosts.push({ label: "Photo attached", pct: "+15%", icon: "camera" });
+  if (hasDish) boosts.push({ label: "Dish specified", pct: "+5%", icon: "restaurant" });
+  if (hasReceipt) boosts.push({ label: "Receipt uploaded", pct: "+25%", icon: "receipt" });
+  if (timeOnPageMs && timeOnPageMs >= 30000) boosts.push({ label: "Time plausibility", pct: "+5%", icon: "time" });
+  const totalBoostPct = boosts.reduce((sum, b) => sum + parseInt(b.pct), 0);
+
+  const handleShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const url = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.app";
+    const text = getShareText(business.name, rawScore);
+    try {
+      await Share.share(
+        Platform.OS === "ios" ? { url, message: text } : { message: `${text}\n${url}` },
+      );
+    } catch {
+      // User cancelled share
+    }
+  };
+
   return (
     <View style={s.confirmInner}>
       <Animated.View style={[s.confirmIconWrap, confirmIconStyle]}>
@@ -229,6 +263,27 @@ export function RatingConfirmation({
         })()}
       </Animated.View>
 
+      {/* Sprint 398: Verification boost breakdown */}
+      {boosts.length > 0 && (
+        <Animated.View entering={FadeInUp.delay(550).duration(500)} style={s.verificationBoostCard}>
+          <View style={s.boostHeader}>
+            <Ionicons name="shield-checkmark" size={16} color={Colors.green} />
+            <Text style={s.boostHeaderText}>Verification Boosts Earned</Text>
+            <Text style={s.boostTotalPct}>+{Math.min(totalBoostPct, 50)}%</Text>
+          </View>
+          {boosts.map((b) => (
+            <View key={b.label} style={s.boostRow}>
+              <Ionicons name={b.icon as any} size={14} color={Colors.textSecondary} />
+              <Text style={s.boostLabel}>{b.label}</Text>
+              <Text style={s.boostPct}>{b.pct}</Text>
+            </View>
+          ))}
+          {totalBoostPct >= 50 && (
+            <Text style={s.boostCapNote}>Capped at 50% maximum boost</Text>
+          )}
+        </Animated.View>
+      )}
+
       <Animated.View entering={FadeInUp.delay(600).duration(500)} style={s.tierProgressCard}>
         <View style={s.tierProgressHeader}>
           <View style={s.tierBadgeRow}>
@@ -267,15 +322,43 @@ export function RatingConfirmation({
         </Text>
       </Animated.View>
 
-      <TouchableOpacity
-        style={[s.doneButton]}
-        onPress={onDone}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Done, go back to business"
-      >
-        <Text style={s.primaryButtonText}>Done</Text>
-      </TouchableOpacity>
+      {/* Sprint 398: Share + Rate another CTAs */}
+      <Animated.View entering={FadeInUp.delay(800).duration(400)} style={s.confirmActions}>
+        <TouchableOpacity
+          style={s.shareButton}
+          onPress={handleShare}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Share your rating"
+        >
+          <Ionicons name="share-outline" size={18} color={Colors.text} />
+          <Text style={s.shareButtonText}>Share</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.doneButton, { flex: 1 }]}
+          onPress={onDone}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Done, go back to business"
+        >
+          <Text style={s.primaryButtonText}>Done</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {onRateAnother && (
+        <Animated.View entering={FadeInUp.delay(900).duration(400)}>
+          <TouchableOpacity
+            style={s.rateAnotherBtn}
+            onPress={onRateAnother}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Rate another place"
+          >
+            <Ionicons name="add-circle-outline" size={16} color={Colors.gold} />
+            <Text style={s.rateAnotherText}>Rate another place</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -445,6 +528,53 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(196,154,26,0.06)", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
   },
   bestInRankText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  // Sprint 398: Verification boost breakdown
+  verificationBoostCard: {
+    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
+    padding: 14, gap: 6, ...Colors.cardShadow,
+  },
+  boostHeader: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+  },
+  boostHeaderText: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+    flex: 1,
+  },
+  boostTotalPct: {
+    fontSize: 14, fontWeight: "700", color: Colors.green, fontFamily: "DMSans_700Bold",
+  },
+  boostRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, paddingLeft: 22,
+  },
+  boostLabel: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", flex: 1,
+  },
+  boostPct: {
+    fontSize: 12, fontWeight: "600", color: Colors.green, fontFamily: "DMSans_600SemiBold",
+  },
+  boostCapNote: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", marginTop: 2,
+  },
+  // Sprint 398: Share + Rate another CTAs
+  confirmActions: {
+    flexDirection: "row", width: "100%", gap: 10, marginTop: 4,
+  },
+  shareButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingHorizontal: 20, paddingVertical: 16, borderRadius: 14,
+    backgroundColor: Colors.surfaceRaised, borderWidth: 1, borderColor: Colors.border,
+  },
+  shareButtonText: {
+    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  rateAnotherBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 10,
+  },
+  rateAnotherText: {
+    fontSize: 13, color: Colors.gold, fontFamily: "DMSans_600SemiBold",
+  },
   doneButton: {
     width: "100%", marginTop: 8, backgroundColor: Colors.text, borderRadius: 14,
     paddingVertical: 16, alignItems: "center", justifyContent: "center",
