@@ -174,117 +174,6 @@ export default function LeaderboardScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Category Chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsContainer}
-        style={styles.chipsRow}
-      >
-        {categoryChips.map((chip) => {
-          const isActive = activeCategory === chip.slug;
-          return (
-            <TouchableOpacity
-              key={chip.slug}
-              onPress={() => {
-                Haptics.selectionAsync();
-                setActiveCategory(chip.slug);
-              }}
-              style={[styles.chip, isActive && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
-              accessibilityHint="Double tap to view this category"
-              accessibilityState={{ selected: isActive }}
-            >
-              <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
-                <Text style={styles.chipEmoji}>{chip.emoji}</Text>
-              </View>
-              <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>
-                {chip.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-        <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setShowSuggest(true); }}
-          style={styles.suggestChip}
-          accessibilityRole="button"
-          accessibilityLabel="Suggest a new category"
-        >
-          <Ionicons name="add-circle-outline" size={16} color={AMBER} />
-          <Text style={styles.suggestChipText}>Suggest</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Best In Dallas — Cuisine Picker */}
-      <View style={styles.bestInHeader}>
-        <Text style={styles.bestInTitle}>Best In {city}</Text>
-      </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.cuisineChipsContainer}
-        style={styles.cuisineChipsRow}
-      >
-        <TouchableOpacity
-          onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
-          style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
-          accessibilityRole="button"
-          accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
-          accessibilityState={{ selected: selectedCuisine === null }}
-        >
-          <Text style={[styles.cuisineChipText, selectedCuisine === null && styles.cuisineChipTextActive]}>All</Text>
-        </TouchableOpacity>
-        {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
-          const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
-          const isSelected = selectedCuisine === cuisine;
-          return (
-            <TouchableOpacity
-              key={cuisine}
-              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
-              style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
-              accessibilityRole="button"
-              accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}
-              accessibilityState={{ selected: isSelected }}
-            >
-              <Text style={[styles.cuisineChipText, isSelected && styles.cuisineChipTextActive]}>
-                {display.emoji} {display.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Sprint 306: Dish leaderboard shortcuts when cuisine is selected */}
-      {dishShortcuts.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.dishShortcutsContainer}
-          style={styles.dishShortcutsRow}
-        >
-          <Text style={styles.dishShortcutsLabel}>Dish Rankings:</Text>
-          {dishShortcuts.map((dish) => (
-            <TouchableOpacity
-              key={dish.slug}
-              onPress={() => {
-                Haptics.selectionAsync();
-                Analytics.dishDeepLinkTap(dish.slug);
-                router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
-              }}
-              style={styles.dishShortcutChip}
-              accessibilityRole="link"
-              accessibilityLabel={`Best ${dish.name} leaderboard`}
-            >
-              <Text style={styles.dishShortcutText}>
-                {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount}` : ""}
-              </Text>
-              <Ionicons name="chevron-forward" size={14} color={AMBER} />
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
       <Modal visible={showSuggest} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <SuggestCategory
@@ -319,7 +208,6 @@ export default function LeaderboardScreen() {
           ]}
           showsVerticalScrollIndicator={false}
           keyboardDismissMode="on-drag"
-          getItemLayout={(_, index) => ({ length: RANKED_CARD_HEIGHT, offset: RANKED_CARD_HEIGHT * index, index })}
           initialNumToRender={8}
           maxToRenderPerBatch={5}
           windowSize={5}
@@ -329,6 +217,106 @@ export default function LeaderboardScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Sprint 325: Category + Cuisine + Dish filters in scroll (DoorDash pattern) */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipsContainer}
+                style={styles.chipsRow}
+              >
+                {categoryChips.map((chip) => {
+                  const isActive = activeCategory === chip.slug;
+                  return (
+                    <TouchableOpacity
+                      key={chip.slug}
+                      onPress={() => { Haptics.selectionAsync(); setActiveCategory(chip.slug); }}
+                      style={[styles.chip, isActive && styles.chipActive]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${chip.label} category${isActive ? ", selected" : ""}`}
+                      accessibilityState={{ selected: isActive }}
+                    >
+                      <View style={[styles.chipEmojiCircle, isActive && styles.chipEmojiCircleActive]}>
+                        <Text style={styles.chipEmoji}>{chip.emoji}</Text>
+                      </View>
+                      <Text style={[styles.chipLabel, isActive && styles.chipLabelActive]}>{chip.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  onPress={() => { Haptics.selectionAsync(); setShowSuggest(true); }}
+                  style={styles.suggestChip}
+                  accessibilityRole="button"
+                  accessibilityLabel="Suggest a new category"
+                >
+                  <Ionicons name="add-circle-outline" size={16} color={AMBER} />
+                  <Text style={styles.suggestChipText}>Suggest</Text>
+                </TouchableOpacity>
+              </ScrollView>
+              <View style={styles.bestInHeader}>
+                <Text style={styles.bestInTitle}>Best In {city}</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.cuisineChipsContainer}
+                style={styles.cuisineChipsRow}
+              >
+                <TouchableOpacity
+                  onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
+                  style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
+                  accessibilityState={{ selected: selectedCuisine === null }}
+                >
+                  <Text style={[styles.cuisineChipText, selectedCuisine === null && styles.cuisineChipTextActive]}>All</Text>
+                </TouchableOpacity>
+                {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
+                  const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
+                  const isSelected = selectedCuisine === cuisine;
+                  return (
+                    <TouchableOpacity
+                      key={cuisine}
+                      onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
+                      style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}
+                      accessibilityState={{ selected: isSelected }}
+                    >
+                      <Text style={[styles.cuisineChipText, isSelected && styles.cuisineChipTextActive]}>
+                        {display.emoji} {display.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              {dishShortcuts.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.dishShortcutsContainer}
+                  style={styles.dishShortcutsRow}
+                >
+                  <Text style={styles.dishShortcutsLabel}>Dish Rankings:</Text>
+                  {dishShortcuts.map((dish) => (
+                    <TouchableOpacity
+                      key={dish.slug}
+                      onPress={() => {
+                        Haptics.selectionAsync();
+                        Analytics.dishDeepLinkTap(dish.slug);
+                        router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
+                      }}
+                      style={styles.dishShortcutChip}
+                      accessibilityRole="link"
+                      accessibilityLabel={`Best ${dish.name} leaderboard`}
+                    >
+                      <Text style={styles.dishShortcutText}>
+                        {dish.emoji} Best {dish.name}{dish.entryCount > 0 ? ` · ${dish.entryCount}` : ""}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color={AMBER} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
               {showBanner && (
                 <View style={styles.welcomeBanner}>
                   <Text style={styles.welcomeBannerText}>Trust-weighted rankings by real people.</Text>
