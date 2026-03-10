@@ -129,6 +129,30 @@ function useActiveUsers() {
   return data;
 }
 
+// Sprint 354: Dimension timing data
+interface DimensionTimingData {
+  count: number;
+  avgQ1Ms: number;
+  avgQ2Ms: number;
+  avgQ3Ms: number;
+  avgReturnMs: number;
+  avgTotalMs: number;
+  byVisitType: Record<string, { count: number; avgQ1Ms: number; avgQ2Ms: number; avgQ3Ms: number; avgReturnMs: number; avgTotalMs: number }>;
+}
+
+function useDimensionTiming() {
+  const [data, setData] = useState<DimensionTimingData | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl() + "/api/admin/analytics/dimension-timing", { credentials: "include" });
+        if (res.ok) { const json = await res.json(); setData(json.data); }
+      } catch {}
+    })();
+  }, []);
+  return data;
+}
+
 const RECENT_ACTIVITY = [
   { id: "1", text: "New user registered — member #1205", time: "2m ago" },
   { id: "2", text: "Rating submitted for Sakura Ramen", time: "5m ago" },
@@ -148,6 +172,7 @@ export default function AdminDashboard() {
   const { data, loading, refetch } = useDashboardData();
   const betaFunnel = useBetaFunnel();
   const activeUsers = useActiveUsers();
+  const dimensionTiming = useDimensionTiming();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleRefresh = () => {
@@ -306,6 +331,44 @@ export default function AdminDashboard() {
               </View>
             ))}
           </View>
+        </View>
+      )}
+
+      {/* Sprint 354: Dimension Timing Display */}
+      {dimensionTiming && dimensionTiming.count > 0 && (
+        <View style={styles.activitySection}>
+          <Text style={styles.sectionTitle}>Rating Dimension Timing</Text>
+          <Text style={styles.timingSubtitle}>{dimensionTiming.count} rating{dimensionTiming.count !== 1 ? "s" : ""} tracked</Text>
+          <View style={styles.timingGrid}>
+            {[
+              { label: "Food Quality", ms: dimensionTiming.avgQ1Ms },
+              { label: "Dimension 2", ms: dimensionTiming.avgQ2Ms },
+              { label: "Dimension 3", ms: dimensionTiming.avgQ3Ms },
+              { label: "Would Return", ms: dimensionTiming.avgReturnMs },
+            ].map(dim => (
+              <View key={dim.label} style={styles.timingCard}>
+                <Text style={styles.timingValue}>{(dim.ms / 1000).toFixed(1)}s</Text>
+                <Text style={styles.timingLabel}>{dim.label}</Text>
+                <View style={styles.timingBarBg}>
+                  <View style={[styles.timingBarFill, { width: pct(Math.min(100, (dim.ms / Math.max(dimensionTiming.avgTotalMs, 1)) * 100)) }]} />
+                </View>
+              </View>
+            ))}
+          </View>
+          <View style={styles.timingTotalRow}>
+            <Text style={styles.timingTotalLabel}>Avg total time</Text>
+            <Text style={styles.timingTotalValue}>{(dimensionTiming.avgTotalMs / 1000).toFixed(1)}s</Text>
+          </View>
+          {Object.keys(dimensionTiming.byVisitType).length > 1 && (
+            <View style={styles.timingVisitTypes}>
+              {Object.entries(dimensionTiming.byVisitType).map(([vt, stats]) => (
+                <View key={vt} style={styles.timingVtRow}>
+                  <Text style={styles.timingVtLabel}>{vt.replace(/_/g, " ")}</Text>
+                  <Text style={styles.timingVtValue}>{(stats.avgTotalMs / 1000).toFixed(1)}s avg ({stats.count})</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -469,5 +532,50 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.ui.caption.fontSize,
     fontWeight: "600",
     color: Colors.textSecondary,
+  },
+  // Sprint 354: Dimension timing styles
+  timingSubtitle: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 2,
+  },
+  timingGrid: {
+    flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10,
+  },
+  timingCard: {
+    width: pct(47), backgroundColor: Colors.surface, borderRadius: 10,
+    padding: 12, borderWidth: 1, borderColor: Colors.border,
+  },
+  timingValue: {
+    fontSize: 20, fontWeight: "700", color: BRAND.colors.amber, fontFamily: "DMSans_700Bold",
+  },
+  timingLabel: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium", marginTop: 2,
+  },
+  timingBarBg: {
+    height: 4, backgroundColor: Colors.border, borderRadius: 2, marginTop: 6, overflow: "hidden",
+  },
+  timingBarFill: {
+    height: "100%", backgroundColor: BRAND.colors.amber, borderRadius: 2,
+  },
+  timingTotalRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginTop: 12, paddingTop: 8, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  timingTotalLabel: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  timingTotalValue: {
+    fontSize: 18, fontWeight: "700", color: BRAND.colors.amber, fontFamily: "DMSans_700Bold",
+  },
+  timingVisitTypes: {
+    marginTop: 8, gap: 4,
+  },
+  timingVtRow: {
+    flexDirection: "row", justifyContent: "space-between",
+  },
+  timingVtLabel: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
+  },
+  timingVtValue: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 });

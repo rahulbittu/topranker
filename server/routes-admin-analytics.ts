@@ -15,6 +15,64 @@ function requireAdmin(req: Request, res: Response, next: Function) {
   next();
 }
 
+// ── Sprint 354: Dimension Timing Aggregation ───────────────
+interface DimensionTimingEntry {
+  q1Ms: number;
+  q2Ms: number;
+  q3Ms: number;
+  returnMs: number;
+  totalMs: number;
+  visitType: string;
+  ts: number;
+}
+const dimensionTimingLog: DimensionTimingEntry[] = [];
+const MAX_TIMING_LOG = 1000;
+
+export function recordDimensionTiming(entry: Omit<DimensionTimingEntry, "ts">) {
+  dimensionTimingLog.push({ ...entry, ts: Date.now() });
+  if (dimensionTimingLog.length > MAX_TIMING_LOG) {
+    dimensionTimingLog.splice(0, dimensionTimingLog.length - MAX_TIMING_LOG);
+  }
+}
+
+export function getDimensionTimingAggregates() {
+  if (dimensionTimingLog.length === 0) {
+    return { count: 0, avgQ1Ms: 0, avgQ2Ms: 0, avgQ3Ms: 0, avgReturnMs: 0, avgTotalMs: 0, byVisitType: {} };
+  }
+  const n = dimensionTimingLog.length;
+  const sums = dimensionTimingLog.reduce(
+    (acc, e) => ({ q1: acc.q1 + e.q1Ms, q2: acc.q2 + e.q2Ms, q3: acc.q3 + e.q3Ms, ret: acc.ret + e.returnMs, tot: acc.tot + e.totalMs }),
+    { q1: 0, q2: 0, q3: 0, ret: 0, tot: 0 }
+  );
+  // Per visit type breakdown
+  const byType: Record<string, { count: number; avgQ1Ms: number; avgQ2Ms: number; avgQ3Ms: number; avgReturnMs: number; avgTotalMs: number }> = {};
+  const groups: Record<string, DimensionTimingEntry[]> = {};
+  dimensionTimingLog.forEach(e => {
+    if (!groups[e.visitType]) groups[e.visitType] = [];
+    groups[e.visitType].push(e);
+  });
+  for (const [vt, entries] of Object.entries(groups)) {
+    const c = entries.length;
+    byType[vt] = {
+      count: c,
+      avgQ1Ms: Math.round(entries.reduce((s, e) => s + e.q1Ms, 0) / c),
+      avgQ2Ms: Math.round(entries.reduce((s, e) => s + e.q2Ms, 0) / c),
+      avgQ3Ms: Math.round(entries.reduce((s, e) => s + e.q3Ms, 0) / c),
+      avgReturnMs: Math.round(entries.reduce((s, e) => s + e.returnMs, 0) / c),
+      avgTotalMs: Math.round(entries.reduce((s, e) => s + e.totalMs, 0) / c),
+    };
+  }
+  return {
+    count: n,
+    avgQ1Ms: Math.round(sums.q1 / n),
+    avgQ2Ms: Math.round(sums.q2 / n),
+    avgQ3Ms: Math.round(sums.q3 / n),
+    avgReturnMs: Math.round(sums.ret / n),
+    avgTotalMs: Math.round(sums.tot / n),
+    byVisitType: byType,
+  };
+}
+
 export function registerAdminAnalyticsRoutes(app: Express) {
   // ── Analytics / Conversion Funnel ───────────────────────
   app.get("/api/admin/analytics", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
@@ -194,5 +252,26 @@ export function registerAdminAnalyticsRoutes(app: Express) {
           dailyTrend: daily,
         },
       });
+  }));
+
+  // ── Sprint 354: Dimension Timing ──────────────────────────
+  app.post("/api/analytics/dimension-timing", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { q1Ms, q2Ms, q3Ms, returnMs, totalMs, visitType } = req.body;
+    if (typeof q1Ms !== "number" || typeof q2Ms !== "number" || typeof q3Ms !== "number" || typeof returnMs !== "number") {
+      return res.status(400).json({ error: "Invalid timing data" });
+    }
+    recordDimensionTiming({
+      q1Ms: Math.max(0, Math.round(q1Ms)),
+      q2Ms: Math.max(0, Math.round(q2Ms)),
+      q3Ms: Math.max(0, Math.round(q3Ms)),
+      returnMs: Math.max(0, Math.round(returnMs)),
+      totalMs: Math.max(0, Math.round(totalMs || q1Ms + q2Ms + q3Ms + returnMs)),
+      visitType: String(visitType || "dine_in"),
+    });
+    return res.json({ ok: true });
+  }));
+
+  app.get("/api/admin/analytics/dimension-timing", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+    return res.json({ data: getDimensionTimingAggregates() });
   }));
 }
