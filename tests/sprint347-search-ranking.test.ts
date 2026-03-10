@@ -28,12 +28,16 @@ describe("Text relevance scoring", () => {
     expect(rankingSrc).toContain("return 0.8");
   });
 
-  it("should return 0.5 for contains match", () => {
-    expect(rankingSrc).toContain("return 0.5");
+  it("should score contains match (0.6 word-level or 0.7 full-string)", () => {
+    // Sprint 436: Enhanced — full-string contains = 0.7, word-level contains = 0.6
+    expect(rankingSrc).toContain("return 0.6");
+    expect(rankingSrc).toContain("return 0.7");
   });
 
-  it("should return 0.4 for word-starts-with match", () => {
-    expect(rankingSrc).toContain("return 0.4");
+  it("should handle word-level matching with best-match scoring", () => {
+    // Sprint 436: Per-token best-match replaced single 0.4 word-starts-with
+    expect(rankingSrc).toContain("wordScore");
+    expect(rankingSrc).toContain("bestMatch");
   });
 
   it("should return 0 for no match", () => {

@@ -119,7 +119,7 @@ const SORT_DESCRIPTIONS: Record<string, { label: string; icon: string; hint: str
   ranked: { label: "By Rank", icon: "trophy-outline", hint: "Sorted by leaderboard position" },
   rated: { label: "Most Rated", icon: "star-outline", hint: "Sorted by total rating count" },
   trending: { label: "Trending", icon: "trending-up-outline", hint: "Sorted by rank movement this week" },
-  relevant: { label: "Relevant", icon: "search-outline", hint: "Sorted by search relevance" },
+  relevant: { label: "Relevant", icon: "search-outline", hint: "Sorted by name match, category, and rating volume" },
 };
 
 interface SortResultsHeaderProps {

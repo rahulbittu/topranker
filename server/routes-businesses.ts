@@ -18,7 +18,7 @@ import {
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
-import { textRelevance, profileCompleteness } from "./search-ranking-v2";
+import { textRelevance, profileCompleteness, combinedRelevance } from "./search-ranking-v2";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
@@ -50,19 +50,22 @@ export function registerBusinessRoutes(app: Express) {
     const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
 
-    // Sprint 392: Relevance scoring — text match + profile completeness
+    // Sprint 392+436: Relevance scoring — multi-signal combined relevance
     const data = bizList.map(b => {
       const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
-      const textScore = textRelevance(b.name, query);
-      const completeness = profileCompleteness({
+      const searchCtx = {
         query,
         hasPhotos: photos.length > 0,
         hasHours: !!b.closingTime,
         hasCuisine: !!b.cuisine,
         hasDescription: !!b.description,
-      });
+        category: b.category,
+        cuisine: b.cuisine,
+        neighborhood: b.neighborhood,
+        ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
+      };
       const relevanceScore = query
-        ? Math.round((textScore * 0.6 + completeness * 0.2 + (parseFloat(b.weightedScore) / 5) * 0.2) * 100) / 100
+        ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100
         : 0;
       return {
         ...b,

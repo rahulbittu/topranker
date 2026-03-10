@@ -25,12 +25,12 @@ describe("Sprint 392 — Server relevance scoring", () => {
     expect(routesSrc).toContain("profileCompleteness");
   });
 
-  it("calculates textScore in search endpoint", () => {
-    expect(routesSrc).toContain("textRelevance(b.name, query)");
+  it("calculates relevance in search endpoint", () => {
+    // Sprint 436: Enhanced to use combinedRelevance with full search context
+    expect(routesSrc).toContain("combinedRelevance(b.name, searchCtx)");
   });
 
-  it("calculates profileCompleteness in search endpoint", () => {
-    expect(routesSrc).toContain("profileCompleteness(");
+  it("passes profile completeness fields in search context", () => {
     expect(routesSrc).toContain("hasPhotos");
     expect(routesSrc).toContain("hasCuisine");
   });
@@ -120,7 +120,8 @@ describe("Sprint 392 — search-ranking-v2 functions", () => {
     expect(src).toContain("return 0.8");
   });
 
-  it("textRelevance handles contains (0.5)", () => {
-    expect(src).toContain("return 0.5");
+  it("textRelevance handles contains (0.7 full-string, 0.6 word-level)", () => {
+    // Sprint 436: Enhanced scoring — full-string contains = 0.7
+    expect(src).toContain("return 0.7");
   });
 });

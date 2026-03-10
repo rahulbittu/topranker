@@ -90,29 +90,141 @@ export function getConfidenceLevel(ratingCount: number): "low" | "medium" | "hig
 }
 
 // Sprint 347: Search relevance signals
+// Sprint 436: Enhanced with multi-word, fuzzy, category/cuisine/neighborhood matching
 export interface SearchContext {
   query?: string;
   hasPhotos?: boolean;
   hasHours?: boolean;
   hasCuisine?: boolean;
   hasDescription?: boolean;
+  category?: string;
+  cuisine?: string;
+  neighborhood?: string;
+  ratingCount?: number;
 }
 
 /**
- * Sprint 347: Text relevance score (0-1) for search query match.
- * Exact name match = 1.0, starts-with = 0.8, contains = 0.5, no match = 0.
+ * Sprint 436: Levenshtein distance for fuzzy matching.
+ * Bounded: returns Infinity if distance would exceed maxDist (performance).
+ */
+export function levenshtein(a: string, b: string, maxDist = 3): number {
+  if (Math.abs(a.length - b.length) > maxDist) return Infinity;
+  const m = a.length;
+  const n = b.length;
+  const dp: number[] = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    let rowMin = dp[0];
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1]
+        ? prev
+        : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+      if (dp[j] < rowMin) rowMin = dp[j];
+    }
+    if (rowMin > maxDist) return Infinity;
+  }
+  return dp[n];
+}
+
+/**
+ * Sprint 436: Score a single query token against a single target word.
+ * Returns 0-1 where 1 = exact, 0.8 = starts-with, 0.6 = contains, 0.3 = fuzzy (1 edit), 0.15 = fuzzy (2 edits).
+ */
+export function wordScore(target: string, token: string): number {
+  if (target === token) return 1.0;
+  if (target.startsWith(token)) return 0.8;
+  if (target.includes(token)) return 0.6;
+  // Fuzzy: only for tokens >= 4 chars (avoid false positives on short words)
+  if (token.length >= 4) {
+    const dist = levenshtein(target, token, 2);
+    if (dist === 1) return 0.3;
+    if (dist === 2) return 0.15;
+  }
+  return 0;
+}
+
+/**
+ * Sprint 347+436: Text relevance score (0-1) for search query match.
+ * Enhanced with multi-word tokenization, per-word best-match, and fuzzy tolerance.
+ *
+ * Scoring:
+ * - Full query exact match = 1.0
+ * - Full query starts-with = 0.9
+ * - Full query contains = 0.7
+ * - Multi-word: average of best per-token scores against name words
  */
 export function textRelevance(name: string, query?: string): number {
   if (!query || !query.trim()) return 0;
   const q = query.toLowerCase().trim();
   const n = name.toLowerCase();
+
+  // Full-string checks first (highest priority)
   if (n === q) return 1.0;
-  if (n.startsWith(q)) return 0.8;
-  if (n.includes(q)) return 0.5;
-  // Check each word
-  const words = n.split(/\s+/);
-  if (words.some(w => w.startsWith(q))) return 0.4;
-  return 0;
+  if (n.startsWith(q)) return 0.9;
+  if (n.includes(q)) return 0.7;
+
+  // Tokenize both
+  const queryTokens = q.split(/\s+/).filter(t => t.length > 0);
+  const nameWords = n.split(/\s+/).filter(w => w.length > 0);
+
+  if (queryTokens.length === 0 || nameWords.length === 0) return 0;
+
+  // For each query token, find best match among name words
+  let totalScore = 0;
+  for (const token of queryTokens) {
+    let bestMatch = 0;
+    for (const word of nameWords) {
+      const score = wordScore(word, token);
+      if (score > bestMatch) bestMatch = score;
+    }
+    totalScore += bestMatch;
+  }
+  return Math.min(totalScore / queryTokens.length, 1.0);
+}
+
+/**
+ * Sprint 436: Category/cuisine relevance boost (0-1).
+ * Matches query tokens against business category and cuisine fields.
+ */
+export function categoryRelevance(ctx: SearchContext): number {
+  if (!ctx.query) return 0;
+  const tokens = ctx.query.toLowerCase().trim().split(/\s+/);
+  let best = 0;
+  for (const token of tokens) {
+    if (token.length < 3) continue;
+    // Check cuisine first (more specific)
+    if (ctx.cuisine) {
+      const c = ctx.cuisine.toLowerCase();
+      if (c === token) { best = Math.max(best, 1.0); continue; }
+      if (c.startsWith(token) || c.includes(token)) { best = Math.max(best, 0.7); continue; }
+      if (token.length >= 4 && levenshtein(c, token, 2) <= 1) { best = Math.max(best, 0.4); continue; }
+    }
+    // Check category
+    if (ctx.category) {
+      const cat = ctx.category.toLowerCase();
+      if (cat === token) { best = Math.max(best, 0.8); continue; }
+      if (cat.startsWith(token) || cat.includes(token)) { best = Math.max(best, 0.5); continue; }
+    }
+    // Check neighborhood
+    if (ctx.neighborhood) {
+      const nb = ctx.neighborhood.toLowerCase();
+      if (nb === token || nb.includes(token)) { best = Math.max(best, 0.6); continue; }
+    }
+  }
+  return best;
+}
+
+/**
+ * Sprint 436: Rating volume signal (0-1).
+ * More-rated businesses get slight boost in search (social proof).
+ * Logarithmic: 1 rating = 0, 10 ratings = 0.5, 50+ ratings = 1.0.
+ */
+export function ratingVolumeSignal(ratingCount?: number): number {
+  if (!ratingCount || ratingCount <= 0) return 0;
+  return Math.min(Math.log10(ratingCount) / Math.log10(50), 1.0);
 }
 
 /**
@@ -127,6 +239,18 @@ export function profileCompleteness(ctx: SearchContext): number {
   if (ctx.hasCuisine !== undefined) { total++; if (ctx.hasCuisine) score++; }
   if (ctx.hasDescription !== undefined) { total++; if (ctx.hasDescription) score++; }
   return total > 0 ? score / total : 0;
+}
+
+/**
+ * Sprint 436: Combined search relevance score (0-1).
+ * Weights: text match 50%, category/cuisine 20%, completeness 15%, rating volume 15%.
+ */
+export function combinedRelevance(name: string, ctx: SearchContext): number {
+  const text = textRelevance(name, ctx.query);
+  const category = categoryRelevance(ctx);
+  const completeness = profileCompleteness(ctx);
+  const volume = ratingVolumeSignal(ctx.ratingCount);
+  return text * 0.50 + category * 0.20 + completeness * 0.15 + volume * 0.15;
 }
 
 export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[]; search?: SearchContext }[]): RankedBusiness[] {
