@@ -27,7 +27,7 @@ import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
-import { FilterChips, PriceChips, SortChips } from "@/components/search/DiscoverFilters";
+import { FilterChips, PriceChips, SortChips, SortResultsHeader } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { TrendingSection } from "@/components/search/TrendingSection";
@@ -482,7 +482,7 @@ export default function SearchScreen() {
               {/* Best In [City] — Dish Leaderboards (Sprint 167) */}
               {!debouncedQuery && <DishLeaderboardSection city={city} />}
 
-              <Text style={styles.resultsCount}>{filtered.length} result{filtered.length !== 1 ? "s" : ""}</Text>
+              <SortResultsHeader count={filtered.length} sortBy={sortBy} activeFilter={activeFilter} />
             </>
           }
         />

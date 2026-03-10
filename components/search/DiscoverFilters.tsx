@@ -86,29 +86,61 @@ export const SortChips = React.memo(function SortChips({
   sortBy, onSortChange, showRelevant,
 }: SortChipsProps) {
   type SortKey = "ranked" | "rated" | "trending" | "relevant";
-  const options: [SortKey, string][] = [
-    ...(showRelevant ? [["relevant", "Relevant"] as [SortKey, string]] : []),
-    ["ranked", "Ranked"],
-    ["rated", "Most Rated"],
-    ["trending", "Trending"],
+  const options: [SortKey, string, string][] = [
+    ...(showRelevant ? [["relevant", "Relevant", "search-outline"] as [SortKey, string, string]] : []),
+    ["ranked", "Ranked", "trophy-outline"],
+    ["rated", "Most Rated", "star-outline"],
+    ["trending", "Trending", "trending-up-outline"],
   ];
   return (
     <View style={styles.sortRow}>
       <Text style={styles.sortLabel}>Sort:</Text>
-      {options.map(([key, label]) => (
+      {options.map(([key, label, icon]) => (
         <TouchableOpacity
           key={key}
           onPress={() => { Haptics.selectionAsync(); onSortChange(key); }}
           style={[styles.sortChip, sortBy === key && styles.sortChipActive]}
           accessibilityRole="button"
           accessibilityState={{ selected: sortBy === key }}
+          accessibilityLabel={`Sort by ${label}`}
         >
+          {sortBy === key && <Ionicons name={icon as any} size={10} color="#fff" style={{ marginRight: 3 }} />}
           <Text style={[styles.sortChipText, sortBy === key && styles.sortChipTextActive]}>{label}</Text>
         </TouchableOpacity>
       ))}
     </View>
   );
 });
+
+// Sprint 412: Sort-aware results header
+const SORT_DESCRIPTIONS: Record<string, { label: string; icon: string; hint: string }> = {
+  ranked: { label: "By Rank", icon: "trophy-outline", hint: "Sorted by leaderboard position" },
+  rated: { label: "Most Rated", icon: "star-outline", hint: "Sorted by total rating count" },
+  trending: { label: "Trending", icon: "trending-up-outline", hint: "Sorted by rank movement this week" },
+  relevant: { label: "Relevant", icon: "search-outline", hint: "Sorted by search relevance" },
+};
+
+interface SortResultsHeaderProps {
+  count: number;
+  sortBy: string;
+  activeFilter: string;
+}
+
+export function SortResultsHeader({ count, sortBy, activeFilter }: SortResultsHeaderProps) {
+  const sortInfo = SORT_DESCRIPTIONS[sortBy] || SORT_DESCRIPTIONS.ranked;
+  const filterLabel = activeFilter !== "All" ? ` · ${activeFilter}` : "";
+  return (
+    <View style={styles.sortResultsHeader}>
+      <View style={styles.sortResultsLeft}>
+        <Text style={styles.sortResultsCount}>{count} result{count !== 1 ? "s" : ""}</Text>
+        <View style={styles.sortIndicator}>
+          <Ionicons name={sortInfo.icon as any} size={10} color={AMBER} />
+          <Text style={styles.sortIndicatorText}>{sortInfo.label}{filterLabel}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
@@ -151,4 +183,24 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium",
   },
   sortChipTextActive: { color: "#fff", fontWeight: "600" },
+
+  // Sprint 412: Sort results header
+  sortResultsHeader: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingBottom: 4,
+  },
+  sortResultsLeft: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+  },
+  sortResultsCount: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  sortIndicator: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: `${AMBER}10`, paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 6,
+  },
+  sortIndicatorText: {
+    fontSize: 10, color: AMBER, fontFamily: "DMSans_500Medium",
+  },
 });
