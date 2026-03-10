@@ -383,10 +383,37 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             accessibilityRole="button"
             accessibilityLabel="View all saved places"
           >
-            <Text style={{ fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" }}>View All</Text>
+            <Text style={styles.viewAllLink}>View All</Text>
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Saved places summary */}
+      {savedList.length > 0 && (
+        <View style={styles.savedSummary}>
+          <View style={styles.savedSummaryItem}>
+            <Text style={styles.savedSummaryValue}>{bookmarkCount}</Text>
+            <Text style={styles.savedSummaryLabel}>Places</Text>
+          </View>
+          <View style={styles.savedSummaryDivider} />
+          <View style={styles.savedSummaryItem}>
+            <Text style={styles.savedSummaryValue}>
+              {new Set(savedList.map(e => e.category)).size}
+            </Text>
+            <Text style={styles.savedSummaryLabel}>Categories</Text>
+          </View>
+          <View style={styles.savedSummaryDivider} />
+          <View style={styles.savedSummaryItem}>
+            <Text style={styles.savedSummaryValue}>
+              {savedList.length > 0
+                ? new Date(Math.max(...savedList.map(e => e.savedAt))).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                : "—"
+              }
+            </Text>
+            <Text style={styles.savedSummaryLabel}>Last Saved</Text>
+          </View>
+        </View>
+      )}
 
       {savedList.length > 0 ? (
         savedList.slice(0, 10).map(entry => (
@@ -397,6 +424,16 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
           <Ionicons name="bookmark-outline" size={28} color={Colors.textTertiary} />
           <Text style={styles.emptyText}>No saved places yet</Text>
           <Text style={styles.emptySubtext}>Tap the bookmark icon on any business to save it</Text>
+          <TouchableOpacity
+            style={styles.savedCtaButton}
+            onPress={() => router.push("/(tabs)/search")}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Discover places to save"
+          >
+            <Ionicons name="search-outline" size={14} color={BRAND.colors.amber} />
+            <Text style={styles.savedCtaText}>Discover Places</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -670,6 +707,30 @@ const styles = StyleSheet.create({
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   emptyCtaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
   emptyCtaText: { fontSize: 13, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
+  viewAllLink: { fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold" },
+  savedSummary: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-around",
+    backgroundColor: Colors.surface, borderRadius: 12, padding: 12,
+    marginHorizontal: 16, ...Colors.cardShadow,
+  },
+  savedSummaryItem: { alignItems: "center", gap: 2 },
+  savedSummaryValue: {
+    fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
+  },
+  savedSummaryLabel: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+  },
+  savedSummaryDivider: {
+    width: 1, height: 24, backgroundColor: Colors.border,
+  },
+  savedCtaButton: {
+    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+    borderWidth: 1, borderColor: BRAND.colors.amber,
+  },
+  savedCtaText: {
+    fontSize: 12, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
+  },
 
   // Getting started / growth prompt
   gettingStartedCard: {

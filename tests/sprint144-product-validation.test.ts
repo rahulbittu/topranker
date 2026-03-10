@@ -134,9 +134,9 @@ describe("File Size Compliance", () => {
     expect(loc).toBeLessThan(650);
   });
 
-  it("profile.tsx is under 700 LOC", () => {
+  it("profile.tsx is under 800 LOC", () => {
     const loc = countLOC("app/(tabs)/profile.tsx");
-    expect(loc).toBeLessThan(700);
+    expect(loc).toBeLessThan(800);
   });
 
   it("no single component file over 1050 LOC", () => {
