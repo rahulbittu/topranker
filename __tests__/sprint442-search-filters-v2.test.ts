@@ -45,7 +45,8 @@ describe("Schema — dietaryTags field", () => {
 // 2. DiscoverFilters — new components
 // ---------------------------------------------------------------------------
 describe("DiscoverFilters — DietaryTagChips", () => {
-  const src = readFile("components/search/DiscoverFilters.tsx");
+  // Sprint 456: Extracted to FilterChipsExtended.tsx
+  const src = readFile("components/search/FilterChipsExtended.tsx");
 
   it("exports DietaryTagChips component", () => {
     expect(src).toContain("export const DietaryTagChips");
@@ -85,7 +86,8 @@ describe("DiscoverFilters — DietaryTagChips", () => {
 });
 
 describe("DiscoverFilters — DistanceChips", () => {
-  const src = readFile("components/search/DiscoverFilters.tsx");
+  // Sprint 456: Extracted to FilterChipsExtended.tsx
+  const src = readFile("components/search/FilterChipsExtended.tsx");
 
   it("exports DistanceChips component", () => {
     expect(src).toContain("export const DistanceChips");

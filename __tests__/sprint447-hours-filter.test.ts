@@ -153,7 +153,8 @@ describe("Routes businesses — hours filters", () => {
 // 4. DiscoverFilters — HoursFilterChips
 // ---------------------------------------------------------------------------
 describe("DiscoverFilters — HoursFilterChips", () => {
-  const src = readFile("components/search/DiscoverFilters.tsx");
+  // Sprint 456: Extracted to FilterChipsExtended.tsx
+  const src = readFile("components/search/FilterChipsExtended.tsx");
 
   it("exports HoursFilterChips", () => {
     expect(src).toContain("export const HoursFilterChips");
