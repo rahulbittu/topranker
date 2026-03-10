@@ -8,7 +8,7 @@
 import React, { useMemo, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Platform,
+  ActivityIndicator, Platform, Share,
 } from "react-native";
 import { Head } from "expo-router/head";
 import { router, useLocalSearchParams } from "expo-router";
@@ -183,7 +183,25 @@ export default function DishLeaderboardPage() {
           </Text>
           <Text style={styles.headerSubtitle}>in {cityTitle}</Text>
         </View>
-        <View style={{ width: 32 }} />
+        {/* Sprint 318: Share button */}
+        <TouchableOpacity
+          style={styles.headerShare}
+          onPress={async () => {
+            const shareText = `${board.dishEmoji || "🍽️"} Best ${board.dishName} in ${cityTitle} — ${board.entryCount} spots ranked on TopRanker`;
+            try {
+              await Share.share({
+                message: `${shareText}\n${canonicalUrl}`,
+                url: canonicalUrl,
+                title: `Best ${board.dishName} in ${cityTitle}`,
+              });
+              Analytics.track("dish_leaderboard_share", { dish_slug: board.dishSlug });
+            } catch (_) { /* user cancelled */ }
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Share Best ${board.dishName} leaderboard`}
+        >
+          <Ionicons name="share-outline" size={22} color={AMBER} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -296,6 +314,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "#E8E6E1",
   },
   headerBack: { width: 32 },
+  headerShare: { width: 32, alignItems: "center" as const },
   headerCenter: { flex: 1, alignItems: "center" },
   headerTitle: { fontSize: 16, fontWeight: "700", color: "#111" },
   headerSubtitle: { fontSize: 12, color: "#636366" },

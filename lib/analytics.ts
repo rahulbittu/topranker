@@ -88,6 +88,8 @@ export type AnalyticsEvent =
   // Sprint 314: Dish discovery analytics
   | "dish_search_match_tap"
   | "related_dish_tap"
+  // Sprint 318: Dish share
+  | "dish_leaderboard_share"
 
   // Sprint 202: Beta tracking
   | "beta_join_page_view"
