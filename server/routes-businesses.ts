@@ -17,8 +17,10 @@ import { log } from "./logger";
 import {
   getBusinessBySlug, getBusinessRatings, getBusinessDishes,
   searchBusinesses, countBusinessSearch, getBusinessPhotos, getBusinessPhotosMap,
+  getBusinessPhotoDetails,
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
+import { getCommunityPhotoCount } from "./photo-moderation";
 import { fetchAndStorePhotos } from "./google-places";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
@@ -111,10 +113,12 @@ export function registerBusinessRoutes(app: Express) {
       return res.status(404).json({ error: "Business not found" });
     }
 
-    let [{ ratings }, dishList, photos] = await Promise.all([
+    let [{ ratings }, dishList, photos, photoDetails, communityCount] = await Promise.all([
       getBusinessRatings(business.id, 1, 20),
       getBusinessDishes(business.id, 5),
       getBusinessPhotos(business.id),
+      getBusinessPhotoDetails(business.id),
+      getCommunityPhotoCount(business.id),
     ]);
 
     if (photos.length === 0 && business.googlePlaceId) {
@@ -122,6 +126,7 @@ export function registerBusinessRoutes(app: Express) {
         const count = await fetchAndStorePhotos(business.id, business.googlePlaceId);
         if (count > 0) {
           photos = await getBusinessPhotos(business.id);
+          photoDetails = await getBusinessPhotoDetails(business.id);
         }
       } catch {
         // Non-fatal — continue with fallback
@@ -129,6 +134,14 @@ export function registerBusinessRoutes(app: Express) {
     }
 
     const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);
+    // Sprint 541: Photo metadata for lightbox + community count for gallery
+    const photoMeta = photoDetails.length > 0 ? photoDetails : photoUrls.map(url => ({
+      url,
+      uploaderName: null,
+      uploadDate: new Date().toISOString(),
+      isHero: false,
+      source: "business" as const,
+    }));
 
     // Sprint 453: Dynamic hours computation for single business
     const bHours = (business as any).openingHours;
@@ -138,6 +151,8 @@ export function registerBusinessRoutes(app: Express) {
     return res.json({ data: {
       ...business,
       photoUrls,
+      photoMeta,
+      communityPhotoCount: communityCount,
       recentRatings: ratings,
       dishes: dishList,
       isOpenNow: dynamicIsOpenNow,

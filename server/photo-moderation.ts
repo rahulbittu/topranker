@@ -6,8 +6,8 @@
 
 import { log } from "./logger";
 import { db } from "./db";
-import { photoSubmissions } from "@shared/schema";
-import { eq, desc, sql, and } from "drizzle-orm";
+import { photoSubmissions, businessPhotos } from "@shared/schema";
+import { eq, desc, sql, and, count } from "drizzle-orm";
 import crypto from "crypto";
 
 const photoModLog = log.tag("PhotoModeration");
@@ -78,6 +78,29 @@ export async function approvePhoto(photoId: string, moderatorId: string, note?: 
     .returning({ id: photoSubmissions.id });
 
   if (result.length === 0) return false;
+
+  // Sprint 541: Insert approved photo into businessPhotos gallery
+  const [submission] = await db
+    .select({ businessId: photoSubmissions.businessId, url: photoSubmissions.url, memberId: photoSubmissions.memberId })
+    .from(photoSubmissions)
+    .where(eq(photoSubmissions.id, photoId));
+
+  if (submission) {
+    const [maxOrder] = await db
+      .select({ max: sql<number>`COALESCE(MAX(${businessPhotos.sortOrder}), 0)` })
+      .from(businessPhotos)
+      .where(eq(businessPhotos.businessId, submission.businessId));
+
+    await db.insert(businessPhotos).values({
+      businessId: submission.businessId,
+      photoUrl: submission.url,
+      isHero: false,
+      sortOrder: (maxOrder?.max ?? 0) + 1,
+      uploadedBy: submission.memberId,
+    });
+    photoModLog.info(`Photo ${photoId} added to gallery for business ${submission.businessId}`);
+  }
+
   photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
   return true;
 }
@@ -132,6 +155,17 @@ export async function getPhotoStats(): Promise<{ total: number; pending: number;
     rejected: allRows.filter(s => s.status === "rejected").length,
     byReason,
   };
+}
+
+export async function getCommunityPhotoCount(businessId: string): Promise<number> {
+  const [result] = await db
+    .select({ count: count() })
+    .from(businessPhotos)
+    .where(and(
+      eq(businessPhotos.businessId, businessId),
+      sql`${businessPhotos.uploadedBy} IS NOT NULL`,
+    ));
+  return result?.count ?? 0;
 }
 
 export function getAllowedMimeTypes(): string[] { return [...ALLOWED_MIME_TYPES]; }

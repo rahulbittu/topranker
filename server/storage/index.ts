@@ -51,6 +51,7 @@ export {
   recalculateRanks,
   getBusinessPhotos,
   getBusinessPhotosMap,
+  getBusinessPhotoDetails,
   insertBusinessPhotos,
   getBusinessesWithoutPhotos,
   deleteBusinessPhotos,

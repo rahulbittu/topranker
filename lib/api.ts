@@ -295,14 +295,24 @@ export async function fetchLeaderboard(city: string, category: string, limit: nu
   return businesses.map(mapApiBusiness);
 }
 
+export interface ApiPhotoMeta {
+  url: string;
+  uploaderName: string | null;
+  uploadDate: string;
+  isHero: boolean;
+  source: "business" | "community";
+}
+
 export async function fetchBusinessBySlug(slug: string) {
-  const data = await apiFetch<ApiBusiness & { recentRatings: ApiRating[]; dishes: ApiDish[] }>(
+  const data = await apiFetch<ApiBusiness & { recentRatings: ApiRating[]; dishes: ApiDish[]; photoMeta?: ApiPhotoMeta[]; communityPhotoCount?: number }>(
     `/api/businesses/${encodeURIComponent(slug)}`,
   );
   return {
     business: mapApiBusiness(data),
     ratings: data.recentRatings.map(mapApiRating),
     dishes: data.dishes || [],
+    photoMeta: data.photoMeta || [],
+    communityPhotoCount: data.communityPhotoCount || 0,
   };
 }
 

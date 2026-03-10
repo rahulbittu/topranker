@@ -3,7 +3,7 @@
  * Extracted from storage/businesses.ts to reduce file size.
  */
 import { eq, and, asc, sql } from "drizzle-orm";
-import { businesses, businessPhotos } from "@shared/schema";
+import { businesses, businessPhotos, members } from "@shared/schema";
 import { db } from "../db";
 
 export async function getBusinessPhotos(businessId: string): Promise<string[]> {
@@ -14,6 +14,38 @@ export async function getBusinessPhotos(businessId: string): Promise<string[]> {
     .orderBy(asc(businessPhotos.sortOrder))
     .limit(3);
   return rows.map(r => r.photoUrl);
+}
+
+export interface PhotoDetail {
+  url: string;
+  uploaderName: string | null;
+  uploadDate: string;
+  isHero: boolean;
+  source: "business" | "community";
+}
+
+export async function getBusinessPhotoDetails(businessId: string): Promise<PhotoDetail[]> {
+  const rows = await db
+    .select({
+      photoUrl: businessPhotos.photoUrl,
+      isHero: businessPhotos.isHero,
+      uploadedBy: businessPhotos.uploadedBy,
+      createdAt: businessPhotos.createdAt,
+      uploaderName: members.displayName,
+    })
+    .from(businessPhotos)
+    .leftJoin(members, eq(businessPhotos.uploadedBy, members.id))
+    .where(eq(businessPhotos.businessId, businessId))
+    .orderBy(asc(businessPhotos.sortOrder))
+    .limit(20);
+
+  return rows.map(r => ({
+    url: r.photoUrl,
+    uploaderName: r.uploaderName || null,
+    uploadDate: r.createdAt.toISOString(),
+    isHero: r.isHero,
+    source: r.uploadedBy ? "community" as const : "business" as const,
+  }));
 }
 
 export async function getBusinessPhotosMap(businessIds: string[]): Promise<Record<string, string[]>> {

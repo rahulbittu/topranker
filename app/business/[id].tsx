@@ -34,6 +34,7 @@ import { evaluateBusinessBadges, type BusinessBadgeContext } from "@/lib/badges"
 import { BadgeRowCompact } from "@/components/profile/BadgeGrid";
 import { SlideUpView } from "@/components/animations/SlideUpView";
 import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
+import { DimensionScoreCard } from "@/components/business/DimensionScoreCard";
 import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
@@ -95,6 +96,9 @@ export default function BusinessProfileScreen() {
     staleTime: 120000,
   });
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
+  // Sprint 541: Photo metadata for lightbox + community count for gallery
+  const photoMetaRaw = data?.photoMeta || [];
+  const communityPhotoCount = data?.communityPhotoCount || 0;
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
   const [lightboxVisible, setLightboxVisible] = useState(false);
   const [lightboxIdx, setLightboxIdx] = useState(0);
@@ -364,6 +368,8 @@ export default function BusinessProfileScreen() {
 
           {/* Sprint 268: Score Breakdown — visit-type separation */}
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
+          {/* Sprint 487: Dimension score breakdown with per-dimension bars */}
+          {business?.id && <DimensionScoreCard businessId={business.id} />}
           {business?.id && <ScoreTrendSparkline businessId={business.id} />}
           {business?.id && <DishRankings businessId={business.id} />}
           {business?.id && <TopDishes businessId={business.id} businessName={business.name} />}
@@ -458,7 +464,7 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Photo Gallery — extracted component (Sprint 366) */}
-          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => setUploadSheetVisible(true) : undefined} onPhotoPress={openLightbox} />
+          <PhotoGallery photoUrls={photoUrls} category={business.category} communityPhotoCount={communityPhotoCount} onAddPhoto={user ? () => setUploadSheetVisible(true) : undefined} onPhotoPress={openLightbox} />
 
         </View>
       </ScrollView>
@@ -467,6 +473,13 @@ export default function BusinessProfileScreen() {
       <PhotoLightbox
         visible={lightboxVisible}
         photoUrls={photoUrls}
+        photoMeta={photoMetaRaw.map((m: any) => ({
+          url: m.url,
+          uploaderName: m.uploaderName || undefined,
+          uploadDate: m.uploadDate || undefined,
+          isVerified: m.source === "business",
+          source: m.source || "business",
+        }))}
         initialIndex={lightboxIdx}
         category={business.category}
         onClose={() => setLightboxVisible(false)}

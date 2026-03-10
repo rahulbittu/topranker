@@ -372,7 +372,7 @@ export async function recalculateRanks(
 }
 
 // Sprint 498: Photo functions moved to storage/photos.ts
-export { getBusinessPhotos, getBusinessPhotosMap, insertBusinessPhotos, getBusinessesWithoutPhotos, deleteBusinessPhotos } from "./photos";
+export { getBusinessPhotos, getBusinessPhotosMap, getBusinessPhotoDetails, insertBusinessPhotos, getBusinessesWithoutPhotos, deleteBusinessPhotos } from "./photos";
 
 export async function getRankHistory(
   businessId: string,
