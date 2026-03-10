@@ -4,7 +4,7 @@
     "shared/schema.ts": { "maxLOC": 950, "current": 935, "notes": "Sprint 551: compressed from 996" },
     "server/routes.ts": { "maxLOC": 400, "current": 383, "notes": "Core routes" },
     "server/storage/businesses.ts": { "maxLOC": 620, "current": 599, "notes": "Sprint 554: +updateBusinessHours" },
-    "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 81, "notes": "Sprint 554: hours PUT" },
+    "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 86, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 200, "notes": "Sprint 557: conversion utils" },
     "lib/api.ts": { "maxLOC": 710, "current": 691, "notes": "Sprint 554: HoursUpdate" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
@@ -17,7 +17,7 @@
   },
   "build": {
     "maxSizeKb": 720,
-    "currentSizeKb": 708.7
+    "currentSizeKb": 711.4
   },
   "tests": {
     "minCount": 10400,

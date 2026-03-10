@@ -70,6 +70,11 @@ export function registerOwnerDashboardRoutes(app: Router): void {
     if (openingHours.periods && !Array.isArray(openingHours.periods)) {
       return res.status(400).json({ error: "periods must be an array" });
     }
+    // Sprint 559: Auto-convert weekday_text → periods for computeOpenStatus
+    if (openingHours.weekday_text && Array.isArray(openingHours.weekday_text) && !openingHours.periods) {
+      const { weekdayTextToPeriods } = await import("./hours-utils");
+      openingHours.periods = weekdayTextToPeriods(openingHours.weekday_text);
+    }
     const { updateBusinessHours } = await import("./storage/businesses");
     const updated = await updateBusinessHours(businessId, memberId, openingHours);
     if (!updated) {

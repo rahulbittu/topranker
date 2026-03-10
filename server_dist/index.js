@@ -6073,6 +6073,159 @@ var init_photo_moderation = __esm({
   }
 });
 
+// server/hours-utils.ts
+var hours_utils_exports = {};
+__export(hours_utils_exports, {
+  computeOpenStatus: () => computeOpenStatus,
+  isOpenLate: () => isOpenLate,
+  isOpenWeekends: () => isOpenWeekends,
+  periodsToWeekdayText: () => periodsToWeekdayText,
+  weekdayTextToPeriods: () => weekdayTextToPeriods
+});
+function computeOpenStatus(hours, now) {
+  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
+  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
+  const d = now || /* @__PURE__ */ new Date();
+  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const dayOfWeek = ct.getDay();
+  const currentTime = ct.getHours() * 100 + ct.getMinutes();
+  if (hours.periods.length === 1 && !hours.periods[0].close) {
+    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
+  }
+  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
+  for (const period of hours.periods) {
+    if (!period.close) continue;
+    const openDay = period.open.day;
+    const closeDay = period.close.day;
+    const openTime = parseInt(period.open.time, 10);
+    const closeTime = parseInt(period.close.time, 10);
+    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
+      if (currentTime >= openTime && currentTime < closeTime) {
+        return {
+          isOpen: true,
+          closingTime: formatTime(period.close.time),
+          nextOpenTime: null,
+          todayHours
+        };
+      }
+    }
+    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+  }
+  let nextOpen = null;
+  for (const period of hours.periods) {
+    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
+      nextOpen = formatTime(period.open.time);
+      break;
+    }
+  }
+  if (!nextOpen) {
+    for (let offset = 1; offset <= 7; offset++) {
+      const checkDay = (dayOfWeek + offset) % 7;
+      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
+      if (nextPeriod) {
+        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
+        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
+        break;
+      }
+    }
+  }
+  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
+}
+function formatTime(time) {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  return `${h.toString().padStart(2, "0")}:${m}`;
+}
+function weekdayTextToPeriods(weekdayText) {
+  const dayMap = [1, 2, 3, 4, 5, 6, 0];
+  const periods = [];
+  for (let i = 0; i < weekdayText.length && i < 7; i++) {
+    const line = weekdayText[i];
+    const dayNum = dayMap[i];
+    const cleaned = line.replace(/^[A-Za-z]+:\s*/, "").trim();
+    if (/closed/i.test(cleaned)) continue;
+    if (/24\s*hours/i.test(cleaned)) {
+      periods.push({ open: { day: dayNum, time: "0000" } });
+      continue;
+    }
+    const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–\-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) continue;
+    const openH = to24(parseInt(match[1]), match[3].toUpperCase());
+    const openM = match[2];
+    const closeH = to24(parseInt(match[4]), match[6].toUpperCase());
+    const closeM = match[5];
+    periods.push({
+      open: { day: dayNum, time: `${pad2(openH)}${openM}` },
+      close: { day: closeH < openH ? (dayNum + 1) % 7 : dayNum, time: `${pad2(closeH)}${closeM}` }
+    });
+  }
+  return periods;
+}
+function to24(h, ampm) {
+  if (ampm === "AM" && h === 12) return 0;
+  if (ampm === "PM" && h !== 12) return h + 12;
+  return h;
+}
+function pad2(n) {
+  return n.toString().padStart(2, "0");
+}
+function periodsToWeekdayText(periods) {
+  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const dayMap = [6, 0, 1, 2, 3, 4, 5];
+  const result = dayNames.map((d) => `${d}: Closed`);
+  for (const p of periods) {
+    const idx = dayMap[p.open.day];
+    if (!p.close) {
+      result[idx] = `${dayNames[idx]}: Open 24 hours`;
+      continue;
+    }
+    const openStr = formatTime12(p.open.time);
+    const closeStr = formatTime12(p.close.time);
+    result[idx] = `${dayNames[idx]}: ${openStr} \u2013 ${closeStr}`;
+  }
+  return result;
+}
+function formatTime12(time) {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m} ${ampm}`;
+}
+function isOpenLate(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => {
+    if (!p.close) return true;
+    const closeTime = parseInt(p.close.time, 10);
+    return closeTime >= 2200 || closeTime <= 200;
+  });
+}
+function isOpenWeekends(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
+}
+var init_hours_utils = __esm({
+  "server/hours-utils.ts"() {
+    "use strict";
+  }
+});
+
 // server/search-autocomplete.ts
 var search_autocomplete_exports = {};
 __export(search_autocomplete_exports, {
@@ -10856,90 +11009,7 @@ function registerMemberRoutes(app2) {
 init_logger();
 init_storage();
 init_photo_moderation();
-
-// server/hours-utils.ts
-function computeOpenStatus(hours, now) {
-  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
-  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
-  const d = now || /* @__PURE__ */ new Date();
-  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-  const dayOfWeek = ct.getDay();
-  const currentTime = ct.getHours() * 100 + ct.getMinutes();
-  if (hours.periods.length === 1 && !hours.periods[0].close) {
-    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
-  }
-  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
-  for (const period of hours.periods) {
-    if (!period.close) continue;
-    const openDay = period.open.day;
-    const closeDay = period.close.day;
-    const openTime = parseInt(period.open.time, 10);
-    const closeTime = parseInt(period.close.time, 10);
-    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
-      if (currentTime >= openTime && currentTime < closeTime) {
-        return {
-          isOpen: true,
-          closingTime: formatTime(period.close.time),
-          nextOpenTime: null,
-          todayHours
-        };
-      }
-    }
-    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-  }
-  let nextOpen = null;
-  for (const period of hours.periods) {
-    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
-      nextOpen = formatTime(period.open.time);
-      break;
-    }
-  }
-  if (!nextOpen) {
-    for (let offset = 1; offset <= 7; offset++) {
-      const checkDay = (dayOfWeek + offset) % 7;
-      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
-      if (nextPeriod) {
-        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
-        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
-        break;
-      }
-    }
-  }
-  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
-}
-function formatTime(time) {
-  const h = parseInt(time.slice(0, 2), 10);
-  const m = time.slice(2);
-  return `${h.toString().padStart(2, "0")}:${m}`;
-}
-function isOpenLate(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => {
-    if (!p.close) return true;
-    const closeTime = parseInt(p.close.time, 10);
-    return closeTime >= 2200 || closeTime <= 200;
-  });
-}
-function isOpenWeekends(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
-}
+init_hours_utils();
 
 // server/search-ranking-v2.ts
 init_logger();
@@ -11136,6 +11206,7 @@ function combinedRelevance(name, ctx) {
 }
 
 // server/search-result-processor.ts
+init_hours_utils();
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -13602,6 +13673,7 @@ function registerAdminDietaryRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
+init_hours_utils();
 import { eq as eq27 } from "drizzle-orm";
 init_admin();
 var enrichLog = log.tag("AdminEnrichment");
@@ -14239,6 +14311,10 @@ function registerOwnerDashboardRoutes(app2) {
     }
     if (openingHours.periods && !Array.isArray(openingHours.periods)) {
       return res.status(400).json({ error: "periods must be an array" });
+    }
+    if (openingHours.weekday_text && Array.isArray(openingHours.weekday_text) && !openingHours.periods) {
+      const { weekdayTextToPeriods: weekdayTextToPeriods2 } = await Promise.resolve().then(() => (init_hours_utils(), hours_utils_exports));
+      openingHours.periods = weekdayTextToPeriods2(openingHours.weekday_text);
     }
     const { updateBusinessHours: updateBusinessHours2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
     const updated = await updateBusinessHours2(businessId, memberId, openingHours);

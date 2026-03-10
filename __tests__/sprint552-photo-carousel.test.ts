@@ -67,9 +67,10 @@ describe("Sprint 552: Photo Carousel", () => {
       expect(src).toContain("No photos available");
     });
 
-    it("uses fire-and-forget error handling", () => {
-      expect(src).toContain("catch");
-      expect(src).toContain("fire-and-forget");
+    it("uses on-demand fetch with React Query caching", () => {
+      // Sprint 559: Replaced manual catch with useQuery (enabled: false)
+      expect(src).toContain("enabled: false");
+      expect(src).toContain("staleTime");
     });
 
     it("has carousel styles", () => {

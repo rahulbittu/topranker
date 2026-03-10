@@ -6,6 +6,7 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { useQuery } from "@tanstack/react-query";
 import { fetchRatingPhotos, type RatingPhotoData } from "@/lib/api";
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
@@ -92,19 +93,18 @@ function PhotoCarouselModal({ visible, photos, loading, onClose }: {
 export const RatingRow = React.memo(function RatingRow({ rating }: { rating: MappedRating }) {
   const tierColor = TIER_COLORS[rating.userTier];
   const tierName = TIER_DISPLAY_NAMES[rating.userTier];
-  // Sprint 552: Photo carousel state
+  // Sprint 559: Photo carousel with React Query caching (replaces manual fetch)
   const [carouselOpen, setCarouselOpen] = useState(false);
-  const [photos, setPhotos] = useState<RatingPhotoData[]>([]);
-  const [photosLoading, setPhotosLoading] = useState(false);
-  const openCarousel = useCallback(async () => {
+  const { data: photos = [], isLoading: photosLoading, refetch: fetchPhotos } = useQuery({
+    queryKey: ["rating-photos", rating.id],
+    queryFn: () => fetchRatingPhotos(rating.id),
+    enabled: false, // only fetch on demand
+    staleTime: 600000, // cache for 10 minutes
+  });
+  const openCarousel = useCallback(() => {
     setCarouselOpen(true);
-    setPhotosLoading(true);
-    try {
-      const data = await fetchRatingPhotos(rating.id);
-      setPhotos(data);
-    } catch { /* fire-and-forget */ }
-    setPhotosLoading(false);
-  }, [rating.id]);
+    fetchPhotos(); // fire-and-forget — uses cache if available
+  }, [fetchPhotos]);
   return (
     <View style={s.ratingRow}>
       <View style={s.ratingTop}>
