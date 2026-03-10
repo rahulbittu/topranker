@@ -22,6 +22,9 @@ export default function ClaimBusinessScreen() {
 
   const [role, setRole] = useState("");
   const [phone, setPhone] = useState("");
+  const [businessEmail, setBusinessEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [verificationMethod, setVerificationMethod] = useState<"email" | "phone" | "document">("email");
   const [submitted, setSubmitted] = useState(false);
 
   if (!user) {
@@ -67,7 +70,13 @@ export default function ClaimBusinessScreen() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ role: role.trim(), phone: phone.trim() || undefined }),
+        body: JSON.stringify({
+          role: role.trim(),
+          phone: phone.trim() || undefined,
+          businessEmail: businessEmail.trim() || undefined,
+          website: website.trim() || undefined,
+          verificationMethod,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -155,10 +164,70 @@ export default function ClaimBusinessScreen() {
             </View>
           </View>
 
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Business Email (optional)</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="mail-outline" size={16} color={Colors.textTertiary} />
+              <TextInput
+                style={styles.input}
+                placeholder="owner@restaurant.com"
+                placeholderTextColor={Colors.textTertiary}
+                value={businessEmail}
+                onChangeText={setBusinessEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                maxLength={100}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Business Website (optional)</Text>
+            <View style={styles.inputRow}>
+              <Ionicons name="globe-outline" size={16} color={Colors.textTertiary} />
+              <TextInput
+                style={styles.input}
+                placeholder="https://yourrestaurant.com"
+                placeholderTextColor={Colors.textTertiary}
+                value={website}
+                onChangeText={setWebsite}
+                keyboardType="url"
+                autoCapitalize="none"
+                maxLength={200}
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Preferred Verification Method</Text>
+            <View style={styles.methodRow}>
+              {([
+                { key: "email" as const, icon: "mail-outline", label: "Email" },
+                { key: "phone" as const, icon: "call-outline", label: "Phone" },
+                { key: "document" as const, icon: "document-outline", label: "Document" },
+              ]).map(m => (
+                <TouchableOpacity
+                  key={m.key}
+                  style={[styles.methodChip, verificationMethod === m.key && styles.methodChipActive]}
+                  onPress={() => { Haptics.selectionAsync(); setVerificationMethod(m.key); }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={m.icon as any} size={14} color={verificationMethod === m.key ? "#fff" : Colors.textSecondary} />
+                  <Text style={[styles.methodChipText, verificationMethod === m.key && styles.methodChipTextActive]}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.methodHint}>
+              {verificationMethod === "email" && "We'll send a verification code to your business email address."}
+              {verificationMethod === "phone" && "We'll call or text the business phone number to verify."}
+              {verificationMethod === "document" && "Upload a business license, utility bill, or tax document for verification."}
+            </Text>
+          </View>
+
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.infoText}>
-              Claims are reviewed by our team. You'll be notified when your claim is approved. Review may take several business days.
+              Claims are reviewed by our team. Providing a business email or website speeds up verification. You'll be notified at your registered email.
             </Text>
           </View>
         </View>
@@ -268,5 +337,27 @@ const styles = StyleSheet.create({
   disclaimer: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     textAlign: "center", lineHeight: 16,
+  },
+  methodRow: {
+    flexDirection: "row", gap: 8,
+  },
+  methodChip: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: Colors.surfaceRaised,
+  },
+  methodChipActive: {
+    backgroundColor: BRAND.colors.navy,
+  },
+  methodChipText: {
+    fontSize: 12, fontWeight: "600", color: Colors.textSecondary,
+    fontFamily: "DMSans_600SemiBold",
+  },
+  methodChipTextActive: {
+    color: "#FFFFFF",
+  },
+  methodHint: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    lineHeight: 16, marginTop: 4,
   },
 });

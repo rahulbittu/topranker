@@ -122,6 +122,9 @@ export function registerBusinessRoutes(app: Express) {
     }
     const role = sanitizeString(req.body.role, 100);
     const phone = sanitizeString(req.body.phone, 20);
+    const businessEmail = sanitizeString(req.body.businessEmail, 100);
+    const website = sanitizeString(req.body.website, 200);
+    const preferredMethod = sanitizeString(req.body.verificationMethod, 20) || "email";
     if (!role || role.length === 0) {
       return res.status(400).json({ error: "Role is required" });
     }
@@ -132,7 +135,12 @@ export function registerBusinessRoutes(app: Express) {
       return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
     }
 
-    const verificationMethod = `role:${role}${phone ? ` phone:${phone}` : ""}`;
+    // Sprint 394: Enhanced verification data
+    const parts = [`role:${role}`, `method:${preferredMethod}`];
+    if (phone) parts.push(`phone:${phone}`);
+    if (businessEmail) parts.push(`email:${businessEmail}`);
+    if (website) parts.push(`website:${website}`);
+    const verificationMethod = parts.join(" | ");
     const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
 
     const { sendClaimConfirmationEmail, sendClaimAdminNotification } = await import("./email");
