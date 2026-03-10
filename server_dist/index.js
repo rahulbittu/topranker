@@ -5324,6 +5324,218 @@ var init_payments2 = __esm({
   }
 });
 
+// server/file-storage.ts
+var file_storage_exports = {};
+__export(file_storage_exports, {
+  createFileStorage: () => createFileStorage,
+  fileStorage: () => fileStorage
+});
+import { promises as fs } from "node:fs";
+import path from "node:path";
+function createFileStorage() {
+  if (process.env.R2_BUCKET_NAME) {
+    return new R2FileStorage();
+  }
+  return new LocalFileStorage();
+}
+var UPLOADS_DIR, LocalFileStorage, R2FileStorage, fileStorage;
+var init_file_storage = __esm({
+  "server/file-storage.ts"() {
+    "use strict";
+    init_logger();
+    UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads");
+    LocalFileStorage = class {
+      ready;
+      constructor() {
+        this.ready = fs.mkdir(UPLOADS_DIR, { recursive: true }).then(() => {
+          log.info(`[FileStorage] Local storage ready at ${UPLOADS_DIR}`);
+        });
+      }
+      async upload(key2, data, _contentType) {
+        await this.ready;
+        const filePath = path.join(UPLOADS_DIR, key2);
+        await fs.mkdir(path.dirname(filePath), { recursive: true });
+        await fs.writeFile(filePath, data);
+        return this.getUrl(key2);
+      }
+      async delete(key2) {
+        await this.ready;
+        const filePath = path.join(UPLOADS_DIR, key2);
+        try {
+          await fs.unlink(filePath);
+        } catch (err) {
+          if (err.code !== "ENOENT") throw err;
+        }
+      }
+      getUrl(key2) {
+        return `/uploads/${key2}`;
+      }
+    };
+    R2FileStorage = class {
+      client;
+      // S3Client — lazily typed to avoid hard dep at import time
+      bucket;
+      publicUrl;
+      constructor() {
+        const {
+          R2_ACCOUNT_ID,
+          R2_ACCESS_KEY_ID,
+          R2_SECRET_ACCESS_KEY,
+          R2_BUCKET_NAME,
+          R2_PUBLIC_URL
+        } = process.env;
+        if (!R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ACCOUNT_ID) {
+          throw new Error(
+            "[FileStorage] R2 storage requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME env vars"
+          );
+        }
+        this.bucket = R2_BUCKET_NAME;
+        this.publicUrl = R2_PUBLIC_URL || `https://${R2_BUCKET_NAME}.r2.dev`;
+        const { S3Client } = __require("@aws-sdk/client-s3");
+        this.client = new S3Client({
+          region: "auto",
+          endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          credentials: {
+            accessKeyId: R2_ACCESS_KEY_ID,
+            secretAccessKey: R2_SECRET_ACCESS_KEY
+          }
+        });
+        log.info(`[FileStorage] R2 storage ready \u2014 bucket: ${this.bucket}`);
+      }
+      async upload(key2, data, contentType) {
+        const { PutObjectCommand } = __require("@aws-sdk/client-s3");
+        await this.client.send(
+          new PutObjectCommand({
+            Bucket: this.bucket,
+            Key: key2,
+            Body: data,
+            ContentType: contentType
+          })
+        );
+        return this.getUrl(key2);
+      }
+      async delete(key2) {
+        const { DeleteObjectCommand } = __require("@aws-sdk/client-s3");
+        await this.client.send(
+          new DeleteObjectCommand({
+            Bucket: this.bucket,
+            Key: key2
+          })
+        );
+      }
+      getUrl(key2) {
+        return `${this.publicUrl}/${key2}`;
+      }
+    };
+    fileStorage = createFileStorage();
+  }
+});
+
+// server/photo-moderation.ts
+var photo_moderation_exports = {};
+__export(photo_moderation_exports, {
+  approvePhoto: () => approvePhoto,
+  clearSubmissions: () => clearSubmissions,
+  getAllowedMimeTypes: () => getAllowedMimeTypes,
+  getMaxFileSize: () => getMaxFileSize,
+  getPendingPhotos: () => getPendingPhotos,
+  getPhotoStats: () => getPhotoStats,
+  getPhotosByBusiness: () => getPhotosByBusiness,
+  rejectPhoto: () => rejectPhoto,
+  submitPhoto: () => submitPhoto
+});
+import crypto6 from "crypto";
+function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
+  if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
+  if (fileSize > MAX_FILE_SIZE) return { error: "File too large (max 10MB)" };
+  if (caption.length > MAX_CAPTION_LENGTH) return { error: "Caption too long (max 500 chars)" };
+  const sub = {
+    id: crypto6.randomUUID(),
+    businessId,
+    memberId,
+    url,
+    caption,
+    status: "pending",
+    rejectionReason: null,
+    moderatorId: null,
+    moderatorNote: null,
+    fileSize,
+    mimeType,
+    submittedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    reviewedAt: null
+  };
+  submissions.set(sub.id, sub);
+  if (submissions.size > MAX_SUBMISSIONS) {
+    const oldest = Array.from(submissions.values()).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt))[0];
+    if (oldest) submissions.delete(oldest.id);
+  }
+  photoModLog.info(`Photo submitted: ${sub.id} for business ${businessId}`);
+  return sub;
+}
+function approvePhoto(photoId, moderatorId, note) {
+  const sub = submissions.get(photoId);
+  if (!sub || sub.status !== "pending") return false;
+  sub.status = "approved";
+  sub.moderatorId = moderatorId;
+  sub.moderatorNote = note || null;
+  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+  photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
+  return true;
+}
+function rejectPhoto(photoId, moderatorId, reason, note) {
+  const sub = submissions.get(photoId);
+  if (!sub || sub.status !== "pending") return false;
+  sub.status = "rejected";
+  sub.rejectionReason = reason;
+  sub.moderatorId = moderatorId;
+  sub.moderatorNote = note || null;
+  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+  photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
+  return true;
+}
+function getPendingPhotos(limit) {
+  return Array.from(submissions.values()).filter((s) => s.status === "pending").slice(0, limit || 50);
+}
+function getPhotosByBusiness(businessId) {
+  return Array.from(submissions.values()).filter((s) => s.businessId === businessId && s.status === "approved");
+}
+function getPhotoStats() {
+  const all = Array.from(submissions.values());
+  const byReason = {};
+  for (const s of all) {
+    if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
+  }
+  return {
+    total: all.length,
+    pending: all.filter((s) => s.status === "pending").length,
+    approved: all.filter((s) => s.status === "approved").length,
+    rejected: all.filter((s) => s.status === "rejected").length,
+    byReason
+  };
+}
+function getAllowedMimeTypes() {
+  return [...ALLOWED_MIME_TYPES];
+}
+function getMaxFileSize() {
+  return MAX_FILE_SIZE;
+}
+function clearSubmissions() {
+  submissions.clear();
+}
+var photoModLog, submissions, MAX_SUBMISSIONS, ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_CAPTION_LENGTH;
+var init_photo_moderation = __esm({
+  "server/photo-moderation.ts"() {
+    "use strict";
+    init_logger();
+    photoModLog = log.tag("PhotoModeration");
+    submissions = /* @__PURE__ */ new Map();
+    MAX_SUBMISSIONS = 3e3;
+    ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    MAX_FILE_SIZE = 10 * 1024 * 1024;
+    MAX_CAPTION_LENGTH = 500;
+  }
+});
+
 // server/seed.ts
 var seed_exports = {};
 __export(seed_exports, {
@@ -9346,104 +9558,7 @@ function registerAuthRoutes(app2) {
 init_logger();
 init_storage();
 init_tier_staleness();
-
-// server/file-storage.ts
-init_logger();
-import { promises as fs } from "node:fs";
-import path from "node:path";
-var UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads");
-var LocalFileStorage = class {
-  ready;
-  constructor() {
-    this.ready = fs.mkdir(UPLOADS_DIR, { recursive: true }).then(() => {
-      log.info(`[FileStorage] Local storage ready at ${UPLOADS_DIR}`);
-    });
-  }
-  async upload(key2, data, _contentType) {
-    await this.ready;
-    const filePath = path.join(UPLOADS_DIR, key2);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, data);
-    return this.getUrl(key2);
-  }
-  async delete(key2) {
-    await this.ready;
-    const filePath = path.join(UPLOADS_DIR, key2);
-    try {
-      await fs.unlink(filePath);
-    } catch (err) {
-      if (err.code !== "ENOENT") throw err;
-    }
-  }
-  getUrl(key2) {
-    return `/uploads/${key2}`;
-  }
-};
-var R2FileStorage = class {
-  client;
-  // S3Client — lazily typed to avoid hard dep at import time
-  bucket;
-  publicUrl;
-  constructor() {
-    const {
-      R2_ACCOUNT_ID,
-      R2_ACCESS_KEY_ID,
-      R2_SECRET_ACCESS_KEY,
-      R2_BUCKET_NAME,
-      R2_PUBLIC_URL
-    } = process.env;
-    if (!R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ACCOUNT_ID) {
-      throw new Error(
-        "[FileStorage] R2 storage requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME env vars"
-      );
-    }
-    this.bucket = R2_BUCKET_NAME;
-    this.publicUrl = R2_PUBLIC_URL || `https://${R2_BUCKET_NAME}.r2.dev`;
-    const { S3Client } = __require("@aws-sdk/client-s3");
-    this.client = new S3Client({
-      region: "auto",
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: R2_ACCESS_KEY_ID,
-        secretAccessKey: R2_SECRET_ACCESS_KEY
-      }
-    });
-    log.info(`[FileStorage] R2 storage ready \u2014 bucket: ${this.bucket}`);
-  }
-  async upload(key2, data, contentType) {
-    const { PutObjectCommand } = __require("@aws-sdk/client-s3");
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key2,
-        Body: data,
-        ContentType: contentType
-      })
-    );
-    return this.getUrl(key2);
-  }
-  async delete(key2) {
-    const { DeleteObjectCommand } = __require("@aws-sdk/client-s3");
-    await this.client.send(
-      new DeleteObjectCommand({
-        Bucket: this.bucket,
-        Key: key2
-      })
-    );
-  }
-  getUrl(key2) {
-    return `${this.publicUrl}/${key2}`;
-  }
-};
-function createFileStorage() {
-  if (process.env.R2_BUCKET_NAME) {
-    return new R2FileStorage();
-  }
-  return new LocalFileStorage();
-}
-var fileStorage = createFileStorage();
-
-// server/routes-members.ts
+init_file_storage();
 import crypto5 from "node:crypto";
 function registerMemberRoutes(app2) {
   app2.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req, res) => {
@@ -9636,6 +9751,7 @@ function registerMemberRoutes(app2) {
 }
 
 // server/routes-businesses.ts
+init_logger();
 init_storage();
 
 // server/search-ranking-v2.ts
@@ -9656,16 +9772,102 @@ function setRankingWeights(w) {
   rankLog.info("Ranking weights updated", weights);
   return { ...weights };
 }
+function levenshtein(a, b, maxDist = 3) {
+  if (Math.abs(a.length - b.length) > maxDist) return Infinity;
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    let rowMin = dp[0];
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+      if (dp[j] < rowMin) rowMin = dp[j];
+    }
+    if (rowMin > maxDist) return Infinity;
+  }
+  return dp[n];
+}
+function wordScore(target, token) {
+  if (target === token) return 1;
+  if (target.startsWith(token)) return 0.8;
+  if (target.includes(token)) return 0.6;
+  if (token.length >= 4) {
+    const dist = levenshtein(target, token, 2);
+    if (dist === 1) return 0.3;
+    if (dist === 2) return 0.15;
+  }
+  return 0;
+}
 function textRelevance(name, query) {
   if (!query || !query.trim()) return 0;
   const q = query.toLowerCase().trim();
   const n = name.toLowerCase();
   if (n === q) return 1;
-  if (n.startsWith(q)) return 0.8;
-  if (n.includes(q)) return 0.5;
-  const words = n.split(/\s+/);
-  if (words.some((w) => w.startsWith(q))) return 0.4;
-  return 0;
+  if (n.startsWith(q)) return 0.9;
+  if (n.includes(q)) return 0.7;
+  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
+  const nameWords = n.split(/\s+/).filter((w) => w.length > 0);
+  if (queryTokens.length === 0 || nameWords.length === 0) return 0;
+  let totalScore = 0;
+  for (const token of queryTokens) {
+    let bestMatch = 0;
+    for (const word of nameWords) {
+      const score = wordScore(word, token);
+      if (score > bestMatch) bestMatch = score;
+    }
+    totalScore += bestMatch;
+  }
+  return Math.min(totalScore / queryTokens.length, 1);
+}
+function categoryRelevance(ctx) {
+  if (!ctx.query) return 0;
+  const tokens2 = ctx.query.toLowerCase().trim().split(/\s+/);
+  let best = 0;
+  for (const token of tokens2) {
+    if (token.length < 3) continue;
+    if (ctx.cuisine) {
+      const c = ctx.cuisine.toLowerCase();
+      if (c === token) {
+        best = Math.max(best, 1);
+        continue;
+      }
+      if (c.startsWith(token) || c.includes(token)) {
+        best = Math.max(best, 0.7);
+        continue;
+      }
+      if (token.length >= 4 && levenshtein(c, token, 2) <= 1) {
+        best = Math.max(best, 0.4);
+        continue;
+      }
+    }
+    if (ctx.category) {
+      const cat = ctx.category.toLowerCase();
+      if (cat === token) {
+        best = Math.max(best, 0.8);
+        continue;
+      }
+      if (cat.startsWith(token) || cat.includes(token)) {
+        best = Math.max(best, 0.5);
+        continue;
+      }
+    }
+    if (ctx.neighborhood) {
+      const nb = ctx.neighborhood.toLowerCase();
+      if (nb === token || nb.includes(token)) {
+        best = Math.max(best, 0.6);
+        continue;
+      }
+    }
+  }
+  return best;
+}
+function ratingVolumeSignal(ratingCount) {
+  if (!ratingCount || ratingCount <= 0) return 0;
+  return Math.min(Math.log10(ratingCount) / Math.log10(50), 1);
 }
 function profileCompleteness(ctx) {
   let score = 0;
@@ -9687,6 +9889,13 @@ function profileCompleteness(ctx) {
     if (ctx.hasDescription) score++;
   }
   return total > 0 ? score / total : 0;
+}
+function combinedRelevance(name, ctx) {
+  const text2 = textRelevance(name, ctx.query);
+  const category = categoryRelevance(ctx);
+  const completeness = profileCompleteness(ctx);
+  const volume = ratingVolumeSignal(ctx.ratingCount);
+  return text2 * 0.5 + category * 0.2 + completeness * 0.15 + volume * 0.15;
 }
 
 // server/routes-businesses.ts
@@ -9714,15 +9923,18 @@ function registerBusinessRoutes(app2) {
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
     const data = bizList.map((b) => {
       const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
-      const textScore = textRelevance(b.name, query);
-      const completeness = profileCompleteness({
+      const searchCtx = {
         query,
         hasPhotos: photos.length > 0,
         hasHours: !!b.closingTime,
         hasCuisine: !!b.cuisine,
-        hasDescription: !!b.description
-      });
-      const relevanceScore = query ? Math.round((textScore * 0.6 + completeness * 0.2 + parseFloat(b.weightedScore) / 5 * 0.2) * 100) / 100 : 0;
+        hasDescription: !!b.description,
+        category: b.category,
+        cuisine: b.cuisine,
+        neighborhood: b.neighborhood,
+        ratingCount: b.ratingCount ? Number(b.ratingCount) : 0
+      };
+      const relevanceScore = query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
       return {
         ...b,
         photoUrls: photos,
@@ -9856,6 +10068,48 @@ function registerBusinessRoutes(app2) {
     const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
     const data = await getRankHistory2(req.params.id, days);
     return res.json({ data });
+  }));
+  app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const memberId = req.user.id;
+    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
+    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
+    const caption = sanitizeString(rawCaption, 500) || "";
+    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
+    }
+    if (!photoData || typeof photoData !== "string") {
+      return res.status(400).json({ error: "Photo data is required (base64)" });
+    }
+    const buffer2 = Buffer.from(photoData, "base64");
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const MIN_SIZE = 1024;
+    if (buffer2.length > MAX_SIZE) {
+      return res.status(400).json({ error: "Photo too large (max 10MB)" });
+    }
+    if (buffer2.length < MIN_SIZE) {
+      return res.status(400).json({ error: "Photo too small (min 1KB)" });
+    }
+    const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
+    const ext = mimeType.split("/")[1] || "jpeg";
+    const crypto12 = await import("crypto");
+    const key2 = `community-photos/${businessId}/${memberId}-${crypto12.randomUUID()}.${ext}`;
+    const url = await fileStorage2.upload(key2, buffer2, mimeType);
+    const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
+    const result = submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
+    if ("error" in result) {
+      return res.status(400).json({ error: result.error });
+    }
+    log.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
+    return res.status(201).json({
+      data: {
+        id: result.id,
+        url: result.url,
+        status: result.status,
+        message: "Photo submitted for review"
+      }
+    });
   }));
 }
 
@@ -10278,10 +10532,10 @@ init_logger();
 import { eq as eq21 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
-import crypto6 from "crypto";
+import crypto7 from "crypto";
 var SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
 function hmac(data) {
-  return crypto6.createHmac("sha256", SECRET).update(data).digest("base64url");
+  return crypto7.createHmac("sha256", SECRET).update(data).digest("base64url");
 }
 function verifyUnsubscribeToken(token) {
   const parts = token.split(".");
@@ -10290,7 +10544,7 @@ function verifyUnsubscribeToken(token) {
   const type = parts.pop();
   const memberId = parts.join(".");
   const expected = hmac(`${memberId}.${type}`);
-  if (!crypto6.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  if (!crypto7.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
   }
   return { memberId, type };
@@ -10381,7 +10635,7 @@ function registerUnsubscribeRoutes(app2) {
 
 // server/routes-webhooks.ts
 init_logger();
-import crypto7 from "node:crypto";
+import crypto8 from "node:crypto";
 init_email_tracking();
 
 // server/email-id-mapping.ts
@@ -10394,8 +10648,8 @@ function getTrackingIdFromResend(resendId) {
 
 // server/routes-webhooks.ts
 function verifySignature2(payload, signature, secret) {
-  const expected = crypto7.createHmac("sha256", secret).update(payload).digest("hex");
-  return crypto7.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const expected = crypto8.createHmac("sha256", secret).update(payload).digest("hex");
+  return crypto8.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 function registerWebhookRoutes(app2) {
   app2.post("/api/webhooks/resend", wrapAsync(async (req, res) => {
@@ -10981,7 +11235,7 @@ init_logger();
 
 // server/email-templates.ts
 init_logger();
-import crypto8 from "crypto";
+import crypto9 from "crypto";
 var tmplLog = log.tag("EmailTemplates");
 var templates = /* @__PURE__ */ new Map();
 var MAX_TEMPLATES = 200;
@@ -11031,7 +11285,7 @@ function initBuiltInTemplates() {
   for (const t of BUILT_IN_TEMPLATES) {
     const tmpl = {
       ...t,
-      id: crypto8.randomUUID(),
+      id: crypto9.randomUUID(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
@@ -11053,7 +11307,7 @@ function createTemplate(tmpl) {
   }
   const created = {
     ...tmpl,
-    id: crypto8.randomUUID(),
+    id: crypto9.randomUUID(),
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     updatedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
@@ -11317,55 +11571,7 @@ function registerAdminHealthRoutes(app2) {
 
 // server/routes-admin-photos.ts
 init_logger();
-
-// server/photo-moderation.ts
-init_logger();
-var photoModLog = log.tag("PhotoModeration");
-var submissions = /* @__PURE__ */ new Map();
-var MAX_FILE_SIZE = 10 * 1024 * 1024;
-function approvePhoto(photoId, moderatorId, note) {
-  const sub = submissions.get(photoId);
-  if (!sub || sub.status !== "pending") return false;
-  sub.status = "approved";
-  sub.moderatorId = moderatorId;
-  sub.moderatorNote = note || null;
-  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
-  photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
-  return true;
-}
-function rejectPhoto(photoId, moderatorId, reason, note) {
-  const sub = submissions.get(photoId);
-  if (!sub || sub.status !== "pending") return false;
-  sub.status = "rejected";
-  sub.rejectionReason = reason;
-  sub.moderatorId = moderatorId;
-  sub.moderatorNote = note || null;
-  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
-  photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
-  return true;
-}
-function getPendingPhotos(limit) {
-  return Array.from(submissions.values()).filter((s) => s.status === "pending").slice(0, limit || 50);
-}
-function getPhotosByBusiness(businessId) {
-  return Array.from(submissions.values()).filter((s) => s.businessId === businessId && s.status === "approved");
-}
-function getPhotoStats() {
-  const all = Array.from(submissions.values());
-  const byReason = {};
-  for (const s of all) {
-    if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
-  }
-  return {
-    total: all.length,
-    pending: all.filter((s) => s.status === "pending").length,
-    approved: all.filter((s) => s.status === "approved").length,
-    rejected: all.filter((s) => s.status === "rejected").length,
-    byReason
-  };
-}
-
-// server/routes-admin-photos.ts
+init_photo_moderation();
 var adminPhotoLog = log.tag("AdminPhotos");
 function registerAdminPhotoRoutes(app2) {
   app2.get("/api/admin/photos/pending", (req, res) => {
@@ -11414,7 +11620,7 @@ init_logger();
 
 // server/push-notifications.ts
 init_logger();
-import crypto9 from "crypto";
+import crypto10 from "crypto";
 var pushLog2 = log.tag("PushNotifications");
 var tokens = /* @__PURE__ */ new Map();
 var messageLog2 = [];
@@ -11451,7 +11657,7 @@ function getMemberTokens(memberId) {
 }
 function sendPushNotification2(memberId, title, body, data) {
   const msg = {
-    id: crypto9.randomUUID(),
+    id: crypto10.randomUUID(),
     memberId,
     title,
     body,
@@ -11873,10 +12079,11 @@ function registerBestInRoutes(app2) {
 }
 
 // server/routes-rating-photos.ts
+init_file_storage();
 init_logger();
-import crypto10 from "crypto";
+import crypto11 from "crypto";
 var photoLog = log.tag("RatingPhoto");
-var ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+var ALLOWED_MIME_TYPES2 = ["image/jpeg", "image/png", "image/webp"];
 var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
 var PHOTO_BOOST = 0.15;
 var MAX_VERIFICATION_BOOST = 0.5;
@@ -11897,8 +12104,8 @@ function registerRatingPhotoRoutes(app2) {
     if (!photoData || typeof photoData !== "string") {
       return res.status(400).json({ error: "Photo data is required (base64)" });
     }
-    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
-      return res.status(400).json({ error: `Invalid file type. Allowed: ${ALLOWED_MIME_TYPES.join(", ")}` });
+    if (!ALLOWED_MIME_TYPES2.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid file type. Allowed: ${ALLOWED_MIME_TYPES2.join(", ")}` });
     }
     const buffer2 = Buffer.from(photoData, "base64");
     if (buffer2.length > MAX_FILE_SIZE2) {
@@ -11908,7 +12115,7 @@ function registerRatingPhotoRoutes(app2) {
       return res.status(400).json({ error: "Photo too small \u2014 may be corrupted" });
     }
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
-    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto10.randomUUID().slice(0, 8)}.${ext}`;
+    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto11.randomUUID().slice(0, 8)}.${ext}`;
     try {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
