@@ -67,6 +67,8 @@ export default function RateScreen() {
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
+  // Sprint 334: Auto-advance focus between dimensions
+  const [focusedDimension, setFocusedDimension] = useState<number>(0);
 
   useEffect(() => {
     if (submitError) {
@@ -84,6 +86,25 @@ export default function RateScreen() {
       if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
     };
   }, []);
+
+  // Sprint 334: Auto-advance handlers — set score then focus next dimension
+  const handleQ1 = (val: number) => {
+    setQ1Score(val);
+    if (val > 0) setTimeout(() => setFocusedDimension(1), 300);
+  };
+  const handleQ2 = (val: number) => {
+    setQ2Score(val);
+    if (val > 0) setTimeout(() => setFocusedDimension(2), 300);
+  };
+  const handleQ3 = (val: number) => {
+    setQ3Score(val);
+    if (val > 0) setTimeout(() => setFocusedDimension(3), 300);
+  };
+  const handleReturn = (val: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setWouldReturn(val);
+    setFocusedDimension(4); // All done — Next button focus
+  };
 
   const userTier = (user?.credibilityTier as CredibilityTier) || "community";
   const tierColor = TIER_COLORS[userTier];
@@ -277,6 +298,7 @@ export default function RateScreen() {
     if (step === 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setStep(1);
+      setFocusedDimension(0); // Sprint 334: Reset focus for dimensions step
     } else if (step === 1) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setStep(2);
@@ -344,26 +366,27 @@ export default function RateScreen() {
                 </Text>
               </View>
             )}
-            <View style={styles.compactQuestion}>
+            {/* Sprint 334: Auto-advance focus highlighting */}
+            <View style={[styles.compactQuestion, focusedDimension === 0 && q1Score === 0 && styles.focusedQuestion]}>
               <Text style={styles.compactLabel}>{q1Label}</Text>
-              <CircleScorePicker value={q1Score} onChange={setQ1Score} circleSize={circleSize} />
+              <CircleScorePicker value={q1Score} onChange={handleQ1} circleSize={circleSize} />
             </View>
-            <View style={styles.compactQuestion}>
+            <View style={[styles.compactQuestion, focusedDimension === 1 && q2Score === 0 && styles.focusedQuestion]}>
               <Text style={styles.compactLabel}>{q2Label}</Text>
-              <CircleScorePicker value={q2Score} onChange={setQ2Score} circleSize={circleSize} />
+              <CircleScorePicker value={q2Score} onChange={handleQ2} circleSize={circleSize} />
             </View>
-            <View style={styles.compactQuestion}>
+            <View style={[styles.compactQuestion, focusedDimension === 2 && q3Score === 0 && styles.focusedQuestion]}>
               <Text style={styles.compactLabel}>{q3Label}</Text>
-              <CircleScorePicker value={q3Score} onChange={setQ3Score} circleSize={circleSize} />
+              <CircleScorePicker value={q3Score} onChange={handleQ3} circleSize={circleSize} />
             </View>
-            <View style={styles.compactQuestion}>
+            <View style={[styles.compactQuestion, focusedDimension === 3 && wouldReturn === null && styles.focusedQuestion]}>
               <Text style={styles.compactLabel}>{returnLabel}</Text>
               <View style={styles.yesNoRow}>
-                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWouldReturn(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
+                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => handleReturn(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
                   <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />
                   <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>YES</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setWouldReturn(false); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="No, would not return" accessibilityState={{ selected: wouldReturn === false }}>
+                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]} onPress={() => handleReturn(false)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="No, would not return" accessibilityState={{ selected: wouldReturn === false }}>
                   <Ionicons name="close-circle" size={24} color={wouldReturn === false ? "#fff" : Colors.textTertiary} />
                   <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
                 </TouchableOpacity>
@@ -477,6 +500,14 @@ const styles = StyleSheet.create({
   stepAreaContent: { paddingVertical: 8 },
   stepContent: { gap: 20 },
   compactQuestion: { gap: 8 },
+  focusedQuestion: {
+    backgroundColor: "rgba(196,154,26,0.06)",
+    borderRadius: 12,
+    padding: 8,
+    marginHorizontal: -8,
+    borderWidth: 1,
+    borderColor: "rgba(196,154,26,0.15)",
+  },
   compactLabel: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
     fontFamily: "DMSans_600SemiBold",
