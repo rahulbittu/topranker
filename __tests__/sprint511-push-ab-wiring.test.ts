@@ -22,7 +22,7 @@ describe("Sprint 511: Push A/B Trigger Wiring", () => {
     });
 
     it("uses variant title when available", () => {
-      expect(src).toContain("abVariant ? abVariant.variant.title");
+      expect(src).toContain("abVariant.variant.title");
     });
 
     it("uses variant body with template replacement", () => {

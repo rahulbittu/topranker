@@ -109,6 +109,7 @@ export async function sendWeeklyDigestPush(): Promise<number> {
         pushToken: members.pushToken,
         displayName: members.displayName,
         notificationPrefs: members.notificationPrefs,
+        selectedCity: members.selectedCity,
       })
       .from(members)
       .where(isNotNull(members.pushToken));
@@ -120,11 +121,15 @@ export async function sendWeeklyDigestPush(): Promise<number> {
       if (prefs.weeklyDigest === false) continue;
 
       const firstName = (user.displayName || "").split(" ")[0] || "there";
+      const city = (user as any).selectedCity || "your city";
       // Sprint 511: Check for A/B variant
+      // Sprint 517: Added {city} template variable support
       const abVariant = getNotificationVariant(String(user.id), "weeklyDigest");
-      const title = abVariant ? abVariant.variant.title : "Your weekly rankings update";
+      const title = abVariant
+        ? abVariant.variant.title.replace("{city}", city).replace("{firstName}", firstName)
+        : "Your weekly rankings update";
       const body = abVariant
-        ? abVariant.variant.body.replace("{firstName}", firstName)
+        ? abVariant.variant.body.replace("{firstName}", firstName).replace("{city}", city)
         : `Hey ${firstName}, check what's changed in your city's rankings this week.`;
       await sendPushNotification(
         [user.pushToken],

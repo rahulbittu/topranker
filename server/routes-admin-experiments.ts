@@ -21,6 +21,7 @@ import {
   deactivatePushExperiment,
 } from "./push-ab-testing";
 import { computeExperimentDashboard } from "./experiment-tracker";
+import { seedDigestCopyTest, stopDigestCopyTest, getDigestCopyTestStatus } from "./digest-copy-variants";
 
 function requireAdmin(req: Request, res: Response, next: Function) {
   if (!req.user || (req.user as any).role !== "admin") {
@@ -111,5 +112,26 @@ export function registerAdminExperimentRoutes(app: Express) {
     const success = deactivatePushExperiment(req.params.id);
     if (!success) return res.status(404).json({ error: "Push experiment not found" });
     return res.json({ data: { deactivated: true } });
+  }));
+
+  // ── Sprint 517: Weekly Digest Copy Test ────────────────────
+
+  // Seed the digest copy test with 4 pre-defined variants
+  app.post("/api/admin/digest-copy-test/seed", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+    const result = seedDigestCopyTest();
+    return res.json({ data: result });
+  }));
+
+  // Stop the digest copy test
+  app.post("/api/admin/digest-copy-test/stop", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+    const stopped = stopDigestCopyTest();
+    return res.json({ data: { stopped } });
+  }));
+
+  // Get digest copy test status
+  app.get("/api/admin/digest-copy-test/status", requireAuth, requireAdmin, wrapAsync(async (_req: Request, res: Response) => {
+    const status = getDigestCopyTestStatus();
+    const dashboard = status.active ? computeExperimentDashboard(status.experimentId) : null;
+    return res.json({ data: { ...status, dashboard } });
   }));
 }

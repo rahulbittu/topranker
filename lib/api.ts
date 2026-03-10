@@ -620,6 +620,30 @@ export async function fetchAllClaimEvidence() {
   return apiFetch<ClaimEvidence[]>("/api/admin/claims/evidence/all");
 }
 
+// Sprint 517: Digest copy test API
+export interface DigestCopyTestStatus {
+  active: boolean;
+  experimentId: string;
+  variantCount: number;
+  dashboard: Record<string, unknown> | null;
+}
+
+export async function fetchDigestCopyTestStatus() {
+  return apiFetch<DigestCopyTestStatus>("/api/admin/digest-copy-test/status");
+}
+
+export async function seedDigestCopyTest() {
+  return apiRequest<{ created: boolean; experimentId: string }>("/api/admin/digest-copy-test/seed", {
+    method: "POST",
+  });
+}
+
+export async function stopDigestCopyTest() {
+  return apiRequest<{ stopped: boolean }>("/api/admin/digest-copy-test/stop", {
+    method: "POST",
+  });
+}
+
 export async function fetchPendingFlags() {
   return apiFetch<AdminFlag[]>("/api/admin/flags");
 }
