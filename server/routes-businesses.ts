@@ -45,7 +45,8 @@ export function registerBusinessRoutes(app: Express) {
     const query = sanitizeString(req.query.q, 200);
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || undefined;
-    const bizList = await searchBusinesses(query, city, category);
+    const cuisine = sanitizeString(req.query.cuisine, 50) || undefined;
+    const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
     const data = bizList.map(b => ({
       ...b,

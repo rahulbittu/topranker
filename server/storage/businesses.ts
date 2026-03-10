@@ -106,6 +106,7 @@ export async function searchBusinesses(
   city: string,
   category?: string,
   limit: number = 20,
+  cuisine?: string,
 ): Promise<Business[]> {
   // Input sanitization: max 100 chars, strip LIKE wildcards from user input
   const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
@@ -118,9 +119,10 @@ export async function searchBusinesses(
         eq(businesses.city, city),
         eq(businesses.isActive, true),
         query
-          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q})`
+          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`
           : undefined,
         ...(category ? [eq(businesses.category, category)] : []),
+        ...(cuisine ? [eq(businesses.cuisine, cuisine)] : []),
       ),
     )
     .orderBy(desc(businesses.weightedScore))
@@ -188,7 +190,7 @@ export async function autocompleteBusinesses(
       and(
         eq(businesses.city, city),
         eq(businesses.isActive, true),
-        sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`,
+        sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`,
       ),
     )
     .orderBy(desc(businesses.weightedScore))

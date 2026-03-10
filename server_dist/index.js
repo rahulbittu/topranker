@@ -1459,15 +1459,16 @@ async function getBusinessesByIds(ids) {
   if (ids.length === 0) return [];
   return db.select().from(businesses).where(sql3`${businesses.id} = ANY(ARRAY[${sql3.join(ids.map((id) => sql3`${id}`), sql3`,`)}]::text[])`);
 }
-async function searchBusinesses(query, city, category, limit = 20) {
+async function searchBusinesses(query, city, category, limit = 20, cuisine) {
   const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
   const q = "%" + sanitized.toLowerCase() + "%";
   return db.select().from(businesses).where(
     and2(
       eq3(businesses.city, city),
       eq3(businesses.isActive, true),
-      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q})` : void 0,
-      ...category ? [eq3(businesses.category, category)] : []
+      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
+      ...category ? [eq3(businesses.category, category)] : [],
+      ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
     )
   ).orderBy(desc2(businesses.weightedScore)).limit(limit);
 }
@@ -1510,7 +1511,7 @@ async function autocompleteBusinesses(query, city, limit = 6) {
     and2(
       eq3(businesses.city, city),
       eq3(businesses.isActive, true),
-      sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`
+      sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`
     )
   ).orderBy(desc2(businesses.weightedScore)).limit(limit);
 }
@@ -9308,7 +9309,8 @@ function registerBusinessRoutes(app2) {
     const query = sanitizeString(req.query.q, 200);
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || void 0;
-    const bizList = await searchBusinesses(query, city, category);
+    const cuisine = sanitizeString(req.query.cuisine, 50) || void 0;
+    const bizList = await searchBusinesses(query, city, category, 20, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
     const data = bizList.map((b) => ({
       ...b,

@@ -312,9 +312,10 @@ export async function fetchMemberProfile() {
   return apiFetch<ApiMemberProfile>("/api/members/me");
 }
 
-export async function fetchBusinessSearch(query: string, city: string, category?: string) {
+export async function fetchBusinessSearch(query: string, city: string, category?: string, cuisine?: string) {
   let path = `/api/businesses/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`;
   if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
+  if (cuisine) path += `&cuisine=${encodeURIComponent(cuisine)}`;
   const businesses = await apiFetch<ApiBusiness[]>(path);
   return businesses.map(mapApiBusiness);
 }
