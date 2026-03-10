@@ -69,6 +69,9 @@ export default function RateScreen() {
   const [submitError, setSubmitError] = useState("");
   // Sprint 334: Auto-advance focus between dimensions
   const [focusedDimension, setFocusedDimension] = useState<number>(0);
+  // Sprint 339: Scroll-to-focus on small screens
+  const scrollViewRef = useRef<ScrollView>(null);
+  const dimensionYPositions = useRef<number[]>([0, 0, 0, 0]);
 
   useEffect(() => {
     if (submitError) {
@@ -86,6 +89,16 @@ export default function RateScreen() {
       if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
     };
   }, []);
+
+  // Sprint 339: Auto-scroll to focused dimension on small screens
+  useEffect(() => {
+    if (focusedDimension >= 1 && focusedDimension <= 3 && scrollViewRef.current) {
+      const targetY = dimensionYPositions.current[focusedDimension] || 0;
+      if (targetY > 0) {
+        scrollViewRef.current.scrollTo({ y: Math.max(0, targetY - 40), animated: true });
+      }
+    }
+  }, [focusedDimension]);
 
   // Sprint 334: Auto-advance handlers — set score then focus next dimension
   const handleQ1 = (val: number) => {
@@ -331,7 +344,7 @@ export default function RateScreen() {
         <Text style={styles.businessName} numberOfLines={1}>{business.name}</Text>
       </View>
 
-      <ScrollView style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
+      <ScrollView ref={scrollViewRef} style={styles.stepArea} contentContainerStyle={styles.stepAreaContent} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
         {step === 0 ? (
           <Animated.View entering={FadeIn.duration(300)} style={styles.visitTypeContainer} key="step0">
             <Text style={styles.visitTypeTitle}>How did you experience {business.name}?</Text>
@@ -367,19 +380,19 @@ export default function RateScreen() {
               </View>
             )}
             {/* Sprint 334: Auto-advance focus highlighting */}
-            <View style={[styles.compactQuestion, focusedDimension === 0 && q1Score === 0 && styles.focusedQuestion]}>
+            <View style={[styles.compactQuestion, focusedDimension === 0 && q1Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[0] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q1Label}</Text>
               <CircleScorePicker value={q1Score} onChange={handleQ1} circleSize={circleSize} />
             </View>
-            <View style={[styles.compactQuestion, focusedDimension === 1 && q2Score === 0 && styles.focusedQuestion]}>
+            <View style={[styles.compactQuestion, focusedDimension === 1 && q2Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[1] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q2Label}</Text>
               <CircleScorePicker value={q2Score} onChange={handleQ2} circleSize={circleSize} />
             </View>
-            <View style={[styles.compactQuestion, focusedDimension === 2 && q3Score === 0 && styles.focusedQuestion]}>
+            <View style={[styles.compactQuestion, focusedDimension === 2 && q3Score === 0 && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[2] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{q3Label}</Text>
               <CircleScorePicker value={q3Score} onChange={handleQ3} circleSize={circleSize} />
             </View>
-            <View style={[styles.compactQuestion, focusedDimension === 3 && wouldReturn === null && styles.focusedQuestion]}>
+            <View style={[styles.compactQuestion, focusedDimension === 3 && wouldReturn === null && styles.focusedQuestion]} onLayout={(e) => { dimensionYPositions.current[3] = e.nativeEvent.layout.y; }}>
               <Text style={styles.compactLabel}>{returnLabel}</Text>
               <View style={styles.yesNoRow}>
                 <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => handleReturn(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
