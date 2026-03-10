@@ -70,7 +70,7 @@ describe("Sprint 384 — rating history pagination", () => {
   });
 
   it("conditionally shows Show More when history exceeds page size", () => {
-    expect(historySrc).toContain("ratingHistory.length > historyPageSize");
+    expect(historySrc).toContain("filteredHistory.length > historyPageSize");
   });
 
   it("conditionally shows Show Less only when expanded beyond default", () => {

@@ -176,7 +176,7 @@ describe("RatingExport — profile integration", () => {
 
   it("renders export button with rating history", () => {
     expect(src).toContain("<RatingExportButton");
-    expect(src).toContain("ratings={ratingHistory}");
+    expect(src).toContain("ratings={filteredHistory}"); // Sprint 474: exports filtered ratings
   });
 });
 
