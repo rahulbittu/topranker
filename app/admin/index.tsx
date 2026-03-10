@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
 import { ClaimEvidenceCard, type ClaimEvidence } from "@/components/admin/ClaimEvidenceCard";
+import { PushExperimentsCard, type PushExperimentData } from "@/components/admin/PushExperimentsCard";
 import { getApiUrl } from "@/lib/query-client";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -144,6 +145,18 @@ export default function AdminScreen() {
   const { data: claimEvidence = [] } = useQuery({
     queryKey: ["admin-claim-evidence"],
     queryFn: fetchAllClaimEvidence,
+    enabled: !!isAdmin,
+    staleTime: 60000,
+  });
+
+  // Sprint 512: Push experiments for admin dashboard
+  const { data: pushExperiments = [] } = useQuery<PushExperimentData[]>({
+    queryKey: ["admin-push-experiments"],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/admin/push-experiments`, { credentials: "include" });
+      const json = await res.json();
+      return json.data || [];
+    },
     enabled: !!isAdmin,
     staleTime: 60000,
   });
@@ -294,6 +307,9 @@ export default function AdminScreen() {
             {notifInsights?.data && (
               <NotificationInsightsCard data={notifInsights.data} />
             )}
+
+            {/* Sprint 512: Push A/B experiments */}
+            <PushExperimentsCard experiments={pushExperiments} />
 
             <Text style={styles.sectionTitle}>Review Queue</Text>
           </>
