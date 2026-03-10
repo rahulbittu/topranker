@@ -86,7 +86,7 @@ The backend uses a pluggable pattern for external services:
 
 ## Database Schema
 
-### 32 Tables
+### 33 Tables
 ```sql
 members              -- User accounts, credibility scores, tiers
 businesses           -- Restaurant/business listings, scores, ranks
@@ -94,6 +94,7 @@ ratings              -- User ratings (3 scores + would-return + note)
 challengers          -- Head-to-head challenge events
 rank_history         -- Historical rank snapshots
 business_claims      -- Business owner claim requests
+claim_evidence       -- Claim verification evidence (documents, scores, matches)
 dishes               -- Top dishes per business
 dish_votes           -- User votes on dishes
 business_photos      -- Photos attached to businesses

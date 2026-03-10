@@ -34,8 +34,11 @@ export interface ClaimEvidence {
   scoredAt: string;
 }
 
-// In-memory evidence store
+// In-memory evidence store (retained as cache, DB is source of truth)
 const evidenceStore = new Map<string, ClaimEvidence>();
+
+// Sprint 513: PostgreSQL persistence (fire-and-forget writes)
+import { upsertClaimEvidence, addDocumentToClaimEvidence as dbAddDocument } from "./storage/claim-evidences";
 
 // Scoring weights
 const SCORE_WEIGHTS = {
@@ -100,6 +103,8 @@ export function addDocumentToEvidence(
 
   evidence.documents.push(document);
   claimV2Log.info(`Document added to claim ${claimId}: ${document.fileName} (${document.documentType})`);
+  // Sprint 513: Persist to PostgreSQL
+  dbAddDocument(claimId, document).catch(() => {});
   return evidence;
 }
 
@@ -165,6 +170,17 @@ export function scoreClaimEvidence(
   if (evidence.autoApproved) evidence.reviewNotes.push("Auto-approved: score >= threshold");
 
   evidenceStore.set(claimId, evidence);
+  // Sprint 513: Persist scored evidence to PostgreSQL
+  upsertClaimEvidence({
+    claimId,
+    documents: evidence.documents,
+    businessNameMatch: evidence.businessNameMatch,
+    addressMatch: evidence.addressMatch,
+    phoneMatch: evidence.phoneMatch,
+    verificationScore: evidence.verificationScore,
+    autoApproved: evidence.autoApproved,
+    reviewNotes: evidence.reviewNotes,
+  }).catch(() => {});
   claimV2Log.info(`Claim ${claimId} scored: ${evidence.verificationScore}/100, autoApproved=${evidence.autoApproved}`);
   return evidence;
 }

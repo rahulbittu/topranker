@@ -287,6 +287,31 @@ export const businessClaims = pgTable("business_claims", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
+// Sprint 513: Claim evidence persistence
+export const claimEvidence = pgTable(
+  "claim_evidence",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    claimId: varchar("claim_id")
+      .notNull()
+      .references(() => businessClaims.id),
+    documents: jsonb("documents").notNull().default(sql`'[]'::jsonb`),
+    businessNameMatch: boolean("business_name_match").notNull().default(false),
+    addressMatch: boolean("address_match").notNull().default(false),
+    phoneMatch: boolean("phone_match").notNull().default(false),
+    verificationScore: integer("verification_score").notNull().default(0),
+    autoApproved: boolean("auto_approved").notNull().default(false),
+    reviewNotes: jsonb("review_notes").notNull().default(sql`'[]'::jsonb`),
+    scoredAt: timestamp("scored_at").notNull().defaultNow(),
+  },
+  (table) => [
+    unique("unique_claim_evidence").on(table.claimId),
+    index("idx_evidence_claim").on(table.claimId),
+  ],
+);
+
 export const businessPhotos = pgTable(
   "business_photos",
   {

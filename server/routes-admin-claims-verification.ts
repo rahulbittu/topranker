@@ -24,6 +24,10 @@ import {
   getClaimEvidence,
   getAllEvidence,
 } from "./claim-verification-v2";
+import {
+  getClaimEvidenceByClaimId as dbGetEvidence,
+  getAllClaimEvidence as dbGetAllEvidence,
+} from "./storage/claim-evidences";
 
 const adminClaimLog = log.tag("AdminClaimVerify");
 
@@ -91,15 +95,24 @@ export function registerAdminClaimVerificationRoutes(app: Router): void {
     res.json({ data: evidence });
   });
 
-  // Get evidence for a specific claim
-  app.get("/api/admin/claims/:id/evidence", (req, res) => {
+  // Get evidence for a specific claim (in-memory first, DB fallback)
+  app.get("/api/admin/claims/:id/evidence", async (req, res) => {
     const evidence = getClaimEvidence(req.params.id);
-    if (!evidence) return res.status(404).json({ error: "No evidence for this claim" });
-    res.json({ data: evidence });
+    if (evidence) return res.json({ data: evidence });
+    // Sprint 513: DB fallback
+    const dbEvidence = await dbGetEvidence(req.params.id).catch(() => null);
+    if (!dbEvidence) return res.status(404).json({ error: "No evidence for this claim" });
+    res.json({ data: dbEvidence });
   });
 
-  // Get all evidence records (admin dashboard)
-  app.get("/api/admin/claims/evidence/all", (_req, res) => {
-    res.json({ data: getAllEvidence() });
+  // Get all evidence records — merge in-memory + DB
+  app.get("/api/admin/claims/evidence/all", async (_req, res) => {
+    const memEvidence = getAllEvidence();
+    const dbRows = await dbGetAllEvidence().catch(() => []);
+    // Merge: in-memory takes precedence, DB fills gaps
+    const merged = new Map<string, unknown>();
+    for (const row of dbRows) merged.set(row.claimId, row);
+    for (const ev of memEvidence) merged.set(ev.claimId, ev);
+    res.json({ data: Array.from(merged.values()) });
   });
 }

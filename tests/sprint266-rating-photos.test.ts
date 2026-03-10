@@ -43,7 +43,7 @@ describe("Sprint 266: Rating Photo Upload", () => {
 
   it("ARCHITECTURE.md lists rating_photos table", () => {
     expect(archSrc).toContain("rating_photos");
-    expect(archSrc).toContain("32 Tables"); // Sprint 441: +photo_submissions
+    expect(archSrc).toContain("33 Tables"); // Sprint 513: +claim_evidence
   });
 
   // ── Route Registration ──────────────────────────────────────────
