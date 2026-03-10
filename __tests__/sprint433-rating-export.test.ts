@@ -129,7 +129,7 @@ describe("RatingExport — button UI", () => {
 
   it("has export button with download icon", () => {
     expect(src).toContain("download-outline");
-    expect(src).toContain("Export CSV");
+    expect(src).toContain("Export"); // Sprint 454: label now shows format (CSV/JSON)
   });
 
   it("handles empty ratings gracefully", () => {
@@ -179,9 +179,10 @@ describe("RatingExport — profile integration", () => {
 // 7. File health
 // ---------------------------------------------------------------------------
 describe("file health", () => {
-  it("RatingExport is under 170 LOC", () => {
+  it("RatingExport is under 300 LOC", () => {
+    // Sprint 454: +JSON export, summary stats, format toggle, date range filter
     const src = readFile("components/profile/RatingExport.tsx");
-    expect(countLines(src)).toBeLessThan(170);
+    expect(countLines(src)).toBeLessThan(300);
   });
 
   it("profile.tsx is under 800 LOC threshold", () => {
