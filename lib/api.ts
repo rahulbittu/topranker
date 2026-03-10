@@ -315,9 +315,17 @@ export async function fetchMemberProfile() {
 }
 
 // Sprint 442: Extended with dietary, lat/lng, maxDistance
+// Sprint 473: Added limit/offset pagination params
+export interface SearchPagination {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
 export async function fetchBusinessSearch(
   query: string, city: string, category?: string, cuisine?: string,
-  opts?: { dietary?: string[]; lat?: number; lng?: number; maxDistance?: number; openNow?: boolean; openLate?: boolean; openWeekends?: boolean },
+  opts?: { dietary?: string[]; lat?: number; lng?: number; maxDistance?: number; openNow?: boolean; openLate?: boolean; openWeekends?: boolean; limit?: number; offset?: number },
 ) {
   let path = `/api/businesses/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`;
   if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
@@ -331,8 +339,40 @@ export async function fetchBusinessSearch(
   if (opts?.openNow) path += `&openNow=true`;
   if (opts?.openLate) path += `&openLate=true`;
   if (opts?.openWeekends) path += `&openWeekends=true`;
+  // Sprint 473: Pagination
+  if (opts?.limit) path += `&limit=${opts.limit}`;
+  if (opts?.offset) path += `&offset=${opts.offset}`;
   const businesses = await apiFetch<ApiBusiness[]>(path);
   return businesses.map(mapApiBusiness);
+}
+
+// Sprint 473: Fetch with pagination metadata
+export async function fetchBusinessSearchPaginated(
+  query: string, city: string, category?: string, cuisine?: string,
+  opts?: { dietary?: string[]; lat?: number; lng?: number; maxDistance?: number; openNow?: boolean; openLate?: boolean; openWeekends?: boolean; limit?: number; offset?: number },
+): Promise<{ businesses: ReturnType<typeof mapApiBusiness>[]; pagination: SearchPagination }> {
+  let path = `/api/businesses/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`;
+  if (category) path += `&category=${encodeURIComponent(categoryToApi(category))}`;
+  if (cuisine) path += `&cuisine=${encodeURIComponent(cuisine)}`;
+  if (opts?.dietary?.length) path += `&dietary=${encodeURIComponent(opts.dietary.join(","))}`;
+  if (opts?.lat != null && opts?.lng != null) {
+    path += `&lat=${opts.lat}&lng=${opts.lng}`;
+    if (opts?.maxDistance) path += `&maxDistance=${opts.maxDistance}`;
+  }
+  if (opts?.openNow) path += `&openNow=true`;
+  if (opts?.openLate) path += `&openLate=true`;
+  if (opts?.openWeekends) path += `&openWeekends=true`;
+  if (opts?.limit) path += `&limit=${opts.limit}`;
+  if (opts?.offset) path += `&offset=${opts.offset}`;
+  const baseUrl = getApiUrl();
+  const url = new URL(path, baseUrl);
+  const res = await fetch(url.toString(), { credentials: "include" });
+  if (!res.ok) throw new Error(`${res.status}: ${res.statusText}`);
+  const json = await res.json();
+  return {
+    businesses: (json.data || []).map(mapApiBusiness),
+    pagination: json.pagination || { total: 0, limit: 20, offset: 0, hasMore: false },
+  };
 }
 
 export type AutocompleteSuggestion = {

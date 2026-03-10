@@ -43,6 +43,7 @@ export {
   updateBusinessSubscription,
   getBusinessesByIds,
   searchBusinesses,
+  countBusinessSearch, // Sprint 473
   getAllCategories,
   getCuisines,
   recalculateBusinessScore,

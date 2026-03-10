@@ -14,7 +14,7 @@ import type { Express, Request, Response } from "express";
 import { log } from "./logger";
 import {
   getBusinessBySlug, getBusinessRatings, getBusinessDishes,
-  searchBusinesses, getBusinessPhotos, getBusinessPhotosMap,
+  searchBusinesses, countBusinessSearch, getBusinessPhotos, getBusinessPhotosMap,
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
@@ -70,8 +70,14 @@ export function registerBusinessRoutes(app: Express) {
     const openNow = req.query.openNow === "true";
     const openLate = req.query.openLate === "true";
     const openWeekends = req.query.openWeekends === "true";
+    // Sprint 473: Pagination params
+    const pageLimit = Math.min(Math.max(parseInt(req.query.limit as string) || 20, 1), 100);
+    const pageOffset = Math.max(parseInt(req.query.offset as string) || 0, 0);
 
-    const bizList = await searchBusinesses(query, city, category, 20, cuisine);
+    const [bizList, totalCount] = await Promise.all([
+      searchBusinesses(query, city, category, pageLimit, cuisine, pageOffset),
+      countBusinessSearch(query, city, category, cuisine),
+    ]);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
 
     // Sprint 392+436: Relevance scoring — multi-signal combined relevance
@@ -141,7 +147,16 @@ export function registerBusinessRoutes(app: Express) {
       data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
     }
 
-    return res.json({ data });
+    // Sprint 473: Include pagination metadata
+    return res.json({
+      data,
+      pagination: {
+        total: totalCount,
+        limit: pageLimit,
+        offset: pageOffset,
+        hasMore: pageOffset + pageLimit < totalCount,
+      },
+    });
   }));
 
   app.get("/api/businesses/:slug", wrapAsync(async (req: Request, res: Response) => {

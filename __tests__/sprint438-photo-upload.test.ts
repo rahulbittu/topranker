@@ -237,8 +237,8 @@ describe("file health", () => {
     expect(bizPageSrc.split("\n").length).toBeLessThan(650);
   });
 
-  it("routes-businesses.ts under 375 LOC", () => {
-    // Sprint 453: +dynamic hours on single-business endpoint
-    expect(routesSrc.split("\n").length).toBeLessThan(375);
+  it("routes-businesses.ts under 385 LOC", () => {
+    // Sprint 473: +pagination params parsing + metadata response
+    expect(routesSrc.split("\n").length).toBeLessThan(385);
   });
 });

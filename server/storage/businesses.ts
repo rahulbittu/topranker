@@ -107,6 +107,7 @@ export async function searchBusinesses(
   category?: string,
   limit: number = 20,
   cuisine?: string,
+  offset: number = 0, // Sprint 473: Pagination support
 ): Promise<Business[]> {
   // Input sanitization: max 100 chars, strip LIKE wildcards from user input
   const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
@@ -126,7 +127,34 @@ export async function searchBusinesses(
       ),
     )
     .orderBy(desc(businesses.weightedScore))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+}
+
+// Sprint 473: Count total matching businesses for pagination metadata
+export async function countBusinessSearch(
+  query: string,
+  city: string,
+  category?: string,
+  cuisine?: string,
+): Promise<number> {
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  const [result] = await db
+    .select({ total: count() })
+    .from(businesses)
+    .where(
+      and(
+        eq(businesses.city, city),
+        eq(businesses.isActive, true),
+        query
+          ? sql`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`
+          : undefined,
+        ...(category ? [eq(businesses.category, category)] : []),
+        ...(cuisine ? [eq(businesses.cuisine, cuisine)] : []),
+      ),
+    );
+  return result?.total ?? 0;
 }
 
 // Sprint 286: Get distinct cuisines for a city+category

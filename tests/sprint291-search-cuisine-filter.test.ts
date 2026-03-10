@@ -84,7 +84,7 @@ describe("Sprint 291 — /api/businesses/search route cuisine param", () => {
   });
 
   it("search route passes cuisine to searchBusinesses", () => {
-    expect(routeSrc).toMatch(/searchBusinesses\(query,\s*city,\s*category,\s*\d+,\s*cuisine\)/);
+    expect(routeSrc).toMatch(/searchBusinesses\(query,\s*city,\s*category,\s*pageLimit,\s*cuisine,\s*pageOffset\)/);
   });
 
   it("search route sanitizes cuisine to max 50 chars", () => {

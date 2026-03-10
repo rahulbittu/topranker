@@ -1400,6 +1400,7 @@ var businesses_exports = {};
 __export(businesses_exports, {
   autocompleteBusinesses: () => autocompleteBusinesses,
   bulkImportBusinesses: () => bulkImportBusinesses,
+  countBusinessSearch: () => countBusinessSearch,
   deleteBusinessPhotos: () => deleteBusinessPhotos,
   getAllCategories: () => getAllCategories,
   getBusinessById: () => getBusinessById,
@@ -1471,7 +1472,7 @@ async function getBusinessesByIds(ids) {
   if (ids.length === 0) return [];
   return db.select().from(businesses).where(sql3`${businesses.id} = ANY(ARRAY[${sql3.join(ids.map((id) => sql3`${id}`), sql3`,`)}]::text[])`);
 }
-async function searchBusinesses(query, city, category, limit = 20, cuisine) {
+async function searchBusinesses(query, city, category, limit = 20, cuisine, offset = 0) {
   const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
   const q = "%" + sanitized.toLowerCase() + "%";
   return db.select().from(businesses).where(
@@ -1482,7 +1483,21 @@ async function searchBusinesses(query, city, category, limit = 20, cuisine) {
       ...category ? [eq3(businesses.category, category)] : [],
       ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
     )
-  ).orderBy(desc2(businesses.weightedScore)).limit(limit);
+  ).orderBy(desc2(businesses.weightedScore)).limit(limit).offset(offset);
+}
+async function countBusinessSearch(query, city, category, cuisine) {
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  const [result] = await db.select({ total: count2() }).from(businesses).where(
+    and2(
+      eq3(businesses.city, city),
+      eq3(businesses.isActive, true),
+      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
+      ...category ? [eq3(businesses.category, category)] : [],
+      ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
+    )
+  );
+  return result?.total ?? 0;
 }
 async function getCuisines(city, category) {
   const key2 = `cuisines:${city}:${category || "all"}`;
@@ -3320,6 +3335,7 @@ __export(storage_exports, {
   awardBadge: () => awardBadge,
   bulkImportBusinesses: () => bulkImportBusinesses,
   closeExpiredChallenges: () => closeExpiredChallenges,
+  countBusinessSearch: () => countBusinessSearch,
   createBetaInvite: () => createBetaInvite,
   createCategorySuggestion: () => createCategorySuggestion,
   createChallenge: () => createChallenge,
@@ -10038,7 +10054,12 @@ function registerBusinessRoutes(app2) {
     const openNow = req.query.openNow === "true";
     const openLate = req.query.openLate === "true";
     const openWeekends = req.query.openWeekends === "true";
-    const bizList = await searchBusinesses(query, city, category, 20, cuisine);
+    const pageLimit = Math.min(Math.max(parseInt(req.query.limit) || 20, 1), 100);
+    const pageOffset = Math.max(parseInt(req.query.offset) || 0, 0);
+    const [bizList, totalCount] = await Promise.all([
+      searchBusinesses(query, city, category, pageLimit, cuisine, pageOffset),
+      countBusinessSearch(query, city, category, cuisine)
+    ]);
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
     let data = bizList.map((b) => {
       const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
@@ -10099,7 +10120,15 @@ function registerBusinessRoutes(app2) {
     if (query) {
       data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
     }
-    return res.json({ data });
+    return res.json({
+      data,
+      pagination: {
+        total: totalCount,
+        limit: pageLimit,
+        offset: pageOffset,
+        hasMore: pageOffset + pageLimit < totalCount
+      }
+    });
   }));
   app2.get("/api/businesses/:slug", wrapAsync(async (req, res) => {
     const business = await getBusinessBySlug(req.params.slug);
