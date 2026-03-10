@@ -12052,6 +12052,87 @@ function registerAdminEnrichmentRoutes(app2) {
       gaps
     });
   });
+  app2.post("/api/admin/enrichment/bulk-dietary", async (req, res) => {
+    const { businessIds, tags, mode = "merge" } = req.body || {};
+    if (!Array.isArray(businessIds) || businessIds.length === 0) {
+      return res.status(400).json({ error: "businessIds must be a non-empty array" });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ error: "tags must be a non-empty array" });
+    }
+    const VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
+    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
+    }
+    if (businessIds.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 businesses per batch" });
+    }
+    enrichLog.info(`Bulk dietary: ${businessIds.length} businesses, tags=[${tags}], mode=${mode}`);
+    const results = [];
+    for (const bizId of businessIds) {
+      const [biz] = await db.select({
+        id: businesses.id,
+        name: businesses.name,
+        dietaryTags: businesses.dietaryTags
+      }).from(businesses).where(eq24(businesses.id, bizId));
+      if (!biz) continue;
+      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const newTags = mode === "replace" ? [...tags] : [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
+      await db.update(businesses).set({ dietaryTags: newTags }).where(eq24(businesses.id, bizId));
+      results.push({ id: biz.id, name: biz.name, previousTags, newTags });
+    }
+    enrichLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
+    res.json({ updated: results.length, requested: businessIds.length, mode, results });
+  });
+  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", async (req, res) => {
+    const { cuisine, tags, city, dryRun = true } = req.body || {};
+    if (!cuisine || typeof cuisine !== "string") {
+      return res.status(400).json({ error: "cuisine is required" });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ error: "tags must be a non-empty array" });
+    }
+    const VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
+    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
+    }
+    enrichLog.info(`Bulk dietary by cuisine: ${cuisine}, tags=[${tags}], city=${city || "all"}, dryRun=${dryRun}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      city: businesses.city,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq24(businesses.isActive, true));
+    allBiz = allBiz.filter((b) => b.cuisine?.toLowerCase() === cuisine.toLowerCase());
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const updates = [];
+    for (const biz of allBiz) {
+      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const newTags = [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
+      if (newTags.length === previousTags.length && newTags.every((t) => previousTags.includes(t))) {
+        continue;
+      }
+      if (!dryRun) {
+        await db.update(businesses).set({ dietaryTags: newTags }).where(eq24(businesses.id, biz.id));
+      }
+      updates.push({ id: biz.id, name: biz.name, previousTags, newTags });
+    }
+    enrichLog.info(`Bulk by cuisine ${dryRun ? "(dry run)" : ""}: ${updates.length}/${allBiz.length} ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      cuisine,
+      city: city || "all",
+      matched: allBiz.length,
+      updated: updates.length,
+      updates: updates.slice(0, 50)
+      // cap for response size
+    });
+  });
 }
 
 // server/routes-city-stats.ts
