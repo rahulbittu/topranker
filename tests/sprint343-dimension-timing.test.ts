@@ -23,18 +23,19 @@ describe("Rate screen dimension timing", () => {
     expect(rateSrc).toContain("useRef<number[]>([0, 0, 0, 0])");
   });
 
-  it("should have dimensionStartRef for tracking start time", () => {
-    expect(rateSrc).toContain("dimensionStartRef");
+  it("should use extracted useDimensionTiming hook", () => {
+    expect(rateSrc).toContain("useDimensionTiming(focusedDimension)");
   });
 
-  it("should update timing when focusedDimension changes", () => {
-    // The useEffect should accumulate time to the previous dimension
-    expect(rateSrc).toContain("dimensionTimingRef.current[prevDim]");
-    expect(rateSrc).toContain("dimensionStartRef.current");
+  it("should have timing logic in hook file", () => {
+    const hookSrc = require("fs").readFileSync(require("path").resolve("lib/hooks/useRatingAnimations.ts"), "utf-8");
+    expect(hookSrc).toContain("timingRef.current[prevDim]");
+    expect(hookSrc).toContain("startRef.current");
   });
 
-  it("should calculate prevDim from focusedDimension", () => {
-    expect(rateSrc).toContain("prevDim = focusedDimension - 1");
+  it("should calculate prevDim in hook", () => {
+    const hookSrc = require("fs").readFileSync(require("path").resolve("lib/hooks/useRatingAnimations.ts"), "utf-8");
+    expect(hookSrc).toContain("prevDim = focusedDimension - 1");
   });
 
   it("should pass dimensionTimingMs to useRatingSubmit", () => {
@@ -91,9 +92,9 @@ describe("Sprint 343 backwards compatibility", () => {
     expect(rateSrc).toContain("scrollViewRef.current.scrollTo");
   });
 
-  it("should still have animated dimension highlights", () => {
-    expect(rateSrc).toContain("dim0Highlight");
-    expect(rateSrc).toContain("interpolateColor");
+  it("should still have animated dimension highlights (via hook)", () => {
+    expect(rateSrc).toContain("useDimensionHighlight");
+    expect(rateSrc).toContain("dim0Style");
   });
 
   it("dimensionTimingMs should be optional", () => {

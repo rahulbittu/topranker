@@ -7,17 +7,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming, withSpring,
-  withDelay, Easing, FadeIn, interpolateColor,
-} from "react-native-reanimated";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import { pct } from "@/lib/style-helpers";
 import {
-  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS, TIER_SCORE_RANGES,
-  TIER_INFLUENCE_LABELS,
+  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
   type CredibilityTier, getQ1Label, getQ3Label, getWouldReturnLabel,
   getCredibilityTier,
 } from "@/lib/data";
@@ -32,6 +27,9 @@ import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
+import {
+  useDimensionHighlight, useDimensionTiming, useConfirmationAnimations,
+} from "@/lib/hooks/useRatingAnimations";
 
 type RatingStep = 0 | 1 | 2;
 type VisitType = "dine_in" | "delivery" | "takeaway";
@@ -72,9 +70,8 @@ export default function RateScreen() {
   // Sprint 339: Scroll-to-focus on small screens
   const scrollViewRef = useRef<ScrollView>(null);
   const dimensionYPositions = useRef<number[]>([0, 0, 0, 0]);
-  // Sprint 343: Per-dimension timing — tracks ms spent on each scoring dimension
-  const dimensionTimingRef = useRef<number[]>([0, 0, 0, 0]);
-  const dimensionStartRef = useRef<number>(0);
+  // Sprint 346: Extracted timing hook
+  const dimensionTimingRef = useDimensionTiming(focusedDimension);
 
   useEffect(() => {
     if (submitError) {
@@ -92,18 +89,6 @@ export default function RateScreen() {
       if (dishSearchTimeout.current) clearTimeout(dishSearchTimeout.current);
     };
   }, []);
-
-  // Sprint 343: Record dimension timing when focus changes
-  useEffect(() => {
-    const now = Date.now();
-    if (dimensionStartRef.current > 0 && focusedDimension > 0) {
-      const prevDim = focusedDimension - 1;
-      if (prevDim >= 0 && prevDim < 4) {
-        dimensionTimingRef.current[prevDim] += now - dimensionStartRef.current;
-      }
-    }
-    dimensionStartRef.current = now;
-  }, [focusedDimension]);
 
   // Sprint 339: Auto-scroll to focused dimension on small screens
   useEffect(() => {
@@ -152,67 +137,13 @@ export default function RateScreen() {
     : 0;
   const weightedScore = rawScore * voteWeight;
 
-  // Sprint 342: Animated highlight for focused dimensions
-  const dim0Highlight = useSharedValue(0);
-  const dim1Highlight = useSharedValue(0);
-  const dim2Highlight = useSharedValue(0);
-  const dim3Highlight = useSharedValue(0);
-  const dimHighlights = [dim0Highlight, dim1Highlight, dim2Highlight, dim3Highlight];
-
-  useEffect(() => {
-    const timing = { duration: 300, easing: Easing.out(Easing.cubic) };
-    dimHighlights.forEach((h, i) => {
-      const shouldHighlight = focusedDimension === i && [q1Score, q2Score, q3Score, wouldReturn === null ? 0 : 1][i] === 0;
-      h.value = withTiming(shouldHighlight ? 1 : 0, timing);
-    });
-  }, [focusedDimension, q1Score, q2Score, q3Score, wouldReturn]);
-
-  const makeDimStyle = (highlight: typeof dim0Highlight) =>
-    useAnimatedStyle(() => ({
-      backgroundColor: interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.06)"]),
-      borderColor: interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.15)"]),
-      borderWidth: 1,
-      borderRadius: 12,
-      padding: highlight.value > 0 ? 8 : 0,
-      marginHorizontal: highlight.value > 0 ? -8 : 0,
-    }));
-
-  const dim0Style = makeDimStyle(dim0Highlight);
-  const dim1Style = makeDimStyle(dim1Highlight);
-  const dim2Style = makeDimStyle(dim2Highlight);
-  const dim3Style = makeDimStyle(dim3Highlight);
-
-  const confirmScale = useSharedValue(0);
-  const rankSlide = useSharedValue(0);
-  const tierProgress = useSharedValue(0);
-
-  const confirmIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: confirmScale.value }],
-    opacity: confirmScale.value,
-  }));
-  const rankStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: rankSlide.value }],
-    opacity: rankSlide.value === 30 ? 0 : 1,
-  }));
-  const tierBarStyle = useAnimatedStyle(() => ({
-    width: pct(tierProgress.value),
-  }));
-
-  useEffect(() => {
-    if (showConfirm) {
-      confirmScale.value = withSpring(1, { damping: 12, stiffness: 120 });
-      rankSlide.value = withDelay(300, withSpring(0, { damping: 14 }));
-      const userScore = user?.credibilityScore || 10;
-      const currentTier = getCredibilityTier(userScore);
-      const range = TIER_SCORE_RANGES[currentTier];
-      const progress = Math.min(100, ((userScore - range.min) / (range.max - range.min)) * 100);
-      tierProgress.value = withDelay(500, withTiming(progress, { duration: 800, easing: Easing.out(Easing.cubic) }));
-    } else {
-      confirmScale.value = 0;
-      rankSlide.value = 30;
-      tierProgress.value = 0;
-    }
-  }, [showConfirm]);
+  // Sprint 346: Extracted animation hooks
+  const [dim0Style, dim1Style, dim2Style, dim3Style] = useDimensionHighlight({
+    focusedDimension, q1Score, q2Score, q3Score, wouldReturn,
+  });
+  const { confirmIconStyle, rankStyle, tierBarStyle } = useConfirmationAnimations(
+    showConfirm, user?.credibilityScore,
+  );
 
   const handleDishSearch = (text: string) => {
     setDishInput(text);

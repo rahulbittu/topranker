@@ -9,45 +9,47 @@ import * as fs from "fs";
 import * as path from "path";
 
 let rateSrc = "";
+let hookSrc = "";
 
 beforeAll(() => {
   rateSrc = fs.readFileSync(path.resolve("app/rate/[id].tsx"), "utf-8");
+  hookSrc = fs.readFileSync(path.resolve("lib/hooks/useRatingAnimations.ts"), "utf-8");
 });
 
-describe("Animated dimension highlight", () => {
-  it("should import interpolateColor from reanimated", () => {
-    expect(rateSrc).toContain("interpolateColor");
+describe("Animated dimension highlight (Sprint 346: extracted to hook)", () => {
+  it("should use interpolateColor in hook", () => {
+    expect(hookSrc).toContain("interpolateColor");
   });
 
-  it("should create 4 dimension highlight shared values", () => {
-    expect(rateSrc).toContain("dim0Highlight");
-    expect(rateSrc).toContain("dim1Highlight");
-    expect(rateSrc).toContain("dim2Highlight");
-    expect(rateSrc).toContain("dim3Highlight");
+  it("should create 4 dimension highlight shared values in hook", () => {
+    expect(hookSrc).toContain("dim0");
+    expect(hookSrc).toContain("dim1");
+    expect(hookSrc).toContain("dim2");
+    expect(hookSrc).toContain("dim3");
   });
 
-  it("should use useSharedValue for highlights", () => {
-    expect(rateSrc).toMatch(/dim0Highlight\s*=\s*useSharedValue/);
+  it("should use useSharedValue for highlights in hook", () => {
+    expect(hookSrc).toMatch(/dim0\s*=\s*useSharedValue/);
   });
 
-  it("should animate highlight with withTiming", () => {
-    expect(rateSrc).toContain("withTiming(shouldHighlight ? 1 : 0");
+  it("should animate highlight with withTiming in hook", () => {
+    expect(hookSrc).toContain("withTiming(shouldHighlight ? 1 : 0");
   });
 
   it("should use Easing.out(Easing.cubic) for smooth deceleration", () => {
-    expect(rateSrc).toContain("Easing.out(Easing.cubic)");
+    expect(hookSrc).toContain("Easing.out(Easing.cubic)");
   });
 
   it("should use interpolateColor for background transition", () => {
-    expect(rateSrc).toContain('interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.06)"])');
+    expect(hookSrc).toContain('interpolateColor(h.value, [0, 1], ["transparent", "rgba(196,154,26,0.06)"])');
   });
 
   it("should use interpolateColor for border transition", () => {
-    expect(rateSrc).toContain('interpolateColor(highlight.value, [0, 1], ["transparent", "rgba(196,154,26,0.15)"])');
+    expect(hookSrc).toContain('interpolateColor(h.value, [0, 1], ["transparent", "rgba(196,154,26,0.15)"])');
   });
 
   it("should animate with 300ms duration", () => {
-    expect(rateSrc).toContain("duration: 300");
+    expect(hookSrc).toContain("duration: 300");
   });
 });
 
@@ -96,9 +98,9 @@ describe("Sprint 342 backwards compatibility", () => {
     expect(rateSrc).toContain("FadeIn.duration(300)");
   });
 
-  it("should still have confirmation animations", () => {
-    expect(rateSrc).toContain("confirmScale");
-    expect(rateSrc).toContain("rankSlide");
-    expect(rateSrc).toContain("tierProgress");
+  it("should still have confirmation animations (via hook)", () => {
+    expect(rateSrc).toContain("confirmIconStyle");
+    expect(rateSrc).toContain("rankStyle");
+    expect(rateSrc).toContain("tierBarStyle");
   });
 });

@@ -52,16 +52,14 @@ describe("Sprint 334 — Auto-Advance Dimensions", () => {
     expect(rateCode).toContain("dim3Style");
   });
 
-  it("should have animated highlight with interpolateColor", () => {
-    expect(rateCode).toContain("interpolateColor");
-    expect(rateCode).toContain("borderColor");
-    expect(rateCode).toContain("backgroundColor");
+  it("should use extracted animation hook", () => {
+    expect(rateCode).toContain("useDimensionHighlight");
+    expect(rateCode).toContain("useConfirmationAnimations");
   });
 
-  // Only show focus on unanswered questions (Sprint 342: now computed in useEffect)
-  it("should only highlight when dimension score is 0 or null", () => {
-    expect(rateCode).toContain("focusedDimension === i");
-    expect(rateCode).toContain("shouldHighlight ? 1 : 0");
+  // Sprint 346: Animation internals now in hook
+  it("should pass score state to highlight hook", () => {
+    expect(rateCode).toContain("focusedDimension, q1Score, q2Score, q3Score, wouldReturn");
   });
 
   // Reset on step change
