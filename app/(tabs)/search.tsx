@@ -18,6 +18,7 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import * as Location from "expo-location";
 import { SafeImage } from "@/components/SafeImage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { usePersistedSort, usePersistedCuisine, useRecentSearches, useDiscoverTip } from "@/lib/hooks/useSearchPersistence";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { MappedBusiness } from "@/types/business";
@@ -47,62 +48,16 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
-  const [sortBy, setSortByRaw] = useState<"ranked" | "rated" | "trending">("ranked");
-  const setSortBy = useCallback((sort: "ranked" | "rated" | "trending") => {
-    setSortByRaw(sort);
-    AsyncStorage.setItem("discover_sort", sort);
-  }, []);
+  // Sprint 361: Extracted persistence hooks
+  const { sortBy, setSortBy } = usePersistedSort();
+  const { selectedCuisine, setSelectedCuisine } = usePersistedCuisine();
+  const { recentSearches, saveRecentSearch, clearRecentSearches } = useRecentSearches();
+  const { showDiscoverTip, dismissDiscoverTip } = useDiscoverTip();
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [showDiscoverTip, setShowDiscoverTip] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteSuggestion[]>([]);
-  const [selectedCuisine, setSelectedCuisineRaw] = useState<string | null>(null);
-  const setSelectedCuisine = useCallback((cuisine: string | null) => {
-    setSelectedCuisineRaw(cuisine);
-    if (cuisine) {
-      AsyncStorage.setItem("discover_cuisine", cuisine);
-    } else {
-      AsyncStorage.removeItem("discover_cuisine");
-    }
-  }, []);
-
-  // Load recent searches and persisted cuisine from storage
-  useEffect(() => {
-    AsyncStorage.getItem("recent_searches").then((val) => {
-      if (val) try { setRecentSearches(JSON.parse(val)); } catch {}
-    });
-    // Sprint 308: Restore persisted cuisine filter
-    AsyncStorage.getItem("discover_cuisine").then((val) => {
-      if (val) setSelectedCuisineRaw(val);
-    });
-    // Sprint 357: Restore persisted sort preference
-    AsyncStorage.getItem("discover_sort").then((val) => {
-      if (val === "ranked" || val === "rated" || val === "trending") setSortByRaw(val);
-    });
-  }, []);
-
-  const saveRecentSearch = useCallback((term: string) => {
-    if (!term || term.trim().length < 2) return;
-    setRecentSearches(prev => {
-      const updated = [term, ...prev.filter(s => s.toLowerCase() !== term.toLowerCase())].slice(0, 8);
-      AsyncStorage.setItem("recent_searches", JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
-
-  const clearRecentSearches = useCallback(() => {
-    setRecentSearches([]);
-    AsyncStorage.removeItem("recent_searches");
-  }, []);
-
-  useEffect(() => {
-    AsyncStorage.getItem("discover_tip_dismissed").then((val) => {
-      if (val !== "true") setShowDiscoverTip(true);
-    });
-  }, []);
 
   // Autocomplete: fast 150ms debounce for typeahead
   useEffect(() => {
@@ -524,7 +479,7 @@ export default function SearchScreen() {
                   </View>
                   <TouchableOpacity
                     style={styles.discoverTipClose}
-                    onPress={() => { AsyncStorage.setItem("discover_tip_dismissed", "true"); setShowDiscoverTip(false); }}
+                    onPress={dismissDiscoverTip}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel="Dismiss discover tip"

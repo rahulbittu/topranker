@@ -117,9 +117,9 @@ describe("Onboarding Tips Coverage", () => {
     expect(src).toContain("banner_dismissed");
   });
 
-  it('Discover has "discover_tip_dismissed" key', () => {
+  it('Discover has "discover_tip_dismissed" key (in persistence hook)', () => {
     const src = fs.readFileSync(
-      path.join(ROOT, "app", "(tabs)", "search.tsx"),
+      path.join(ROOT, "lib", "hooks", "useSearchPersistence.ts"),
       "utf-8",
     );
     expect(src).toContain("discover_tip_dismissed");

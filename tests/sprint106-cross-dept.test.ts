@@ -201,7 +201,7 @@ describe("Cookie Consent", () => {
 describe("Discover Tip Card", () => {
   it("AsyncStorage key is 'discover_tip_dismissed'", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '../app/(tabs)/search.tsx'),
+      path.resolve(__dirname, '../lib/hooks/useSearchPersistence.ts'),
       "utf-8",
     );
     expect(src).toContain('"discover_tip_dismissed"');
@@ -209,13 +209,21 @@ describe("Discover Tip Card", () => {
 
   it("initial state is false (tip visible until dismissed)", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, '../app/(tabs)/search.tsx'),
+      path.resolve(__dirname, '../lib/hooks/useSearchPersistence.ts'),
       "utf-8",
     );
     // showDiscoverTip starts as false, then set to true if not dismissed
     expect(src).toContain("useState(false)");
-    // Tip shows when val !== "true"
-    expect(src).toContain('val !== "true"');
+    // Tip shows when val is falsy (not dismissed)
+    expect(src).toContain("if (!val) setShowDiscoverTip(true)");
+  });
+
+  it("search.tsx uses the useDiscoverTip hook", () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '../app/(tabs)/search.tsx'),
+      "utf-8",
+    );
+    expect(src).toContain("useDiscoverTip");
   });
 });
 

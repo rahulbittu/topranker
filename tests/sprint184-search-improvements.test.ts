@@ -197,18 +197,19 @@ describe("Client — autocomplete dropdown", () => {
 // ---------------------------------------------------------------------------
 describe("Client — recent searches", () => {
   const src = readFile("app/(tabs)/search.tsx");
+  const hookSrc = readFile("lib/hooks/useSearchPersistence.ts");
 
   it("persists recent searches to AsyncStorage", () => {
-    expect(src).toContain("recent_searches");
-    expect(src).toContain("AsyncStorage.setItem");
+    expect(hookSrc).toContain("recent_searches");
+    expect(hookSrc).toContain("AsyncStorage.setItem");
   });
 
   it("loads recent searches on mount", () => {
-    expect(src).toContain('AsyncStorage.getItem("recent_searches")');
+    expect(hookSrc).toContain('AsyncStorage.getItem("recent_searches")');
   });
 
   it("limits recent searches to 8", () => {
-    expect(src).toContain(".slice(0, 8)");
+    expect(hookSrc).toContain(".slice(0, 8)");
   });
 
   it("uses RecentSearchesPanel component (Sprint 193 extraction)", () => {
@@ -222,7 +223,7 @@ describe("Client — recent searches", () => {
   });
 
   it("deduplicates recent searches (case-insensitive)", () => {
-    expect(src).toContain("s.toLowerCase() !== term.toLowerCase()");
+    expect(hookSrc).toContain("s.toLowerCase() !== term.toLowerCase()");
   });
 
   it("saves search terms after debounce settles", () => {

@@ -15,6 +15,7 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 describe("Sprint 308 — Cuisine Filter Persistence", () => {
   const indexSrc = readFile("app/(tabs)/index.tsx");
   const searchSrc = readFile("app/(tabs)/search.tsx");
+  const hookSrc = readFile("lib/hooks/useSearchPersistence.ts");
 
   // ─── Rankings page persistence ─────────────────────────────
 
@@ -41,29 +42,29 @@ describe("Sprint 308 — Cuisine Filter Persistence", () => {
   // ─── Discover page persistence ─────────────────────────────
 
   it("Discover wraps setSelectedCuisine with AsyncStorage save", () => {
-    expect(searchSrc).toContain('AsyncStorage.setItem("discover_cuisine"');
+    expect(hookSrc).toContain('AsyncStorage.setItem("discover_cuisine"');
   });
 
   it("Discover removes AsyncStorage on cuisine clear", () => {
-    expect(searchSrc).toContain('AsyncStorage.removeItem("discover_cuisine"');
+    expect(hookSrc).toContain('AsyncStorage.removeItem("discover_cuisine"');
   });
 
   it("Discover restores cuisine from AsyncStorage on mount", () => {
-    expect(searchSrc).toContain('AsyncStorage.getItem("discover_cuisine")');
+    expect(hookSrc).toContain('AsyncStorage.getItem("discover_cuisine")');
   });
 
   it("Discover uses setSelectedCuisineRaw for initial restore", () => {
-    expect(searchSrc).toContain("setSelectedCuisineRaw(val)");
+    expect(hookSrc).toContain("setSelectedCuisineRaw(val)");
   });
 
   // ─── Separate storage keys ─────────────────────────────────
 
   it("Rankings and Discover use different AsyncStorage keys", () => {
     expect(indexSrc).toContain("rankings_cuisine");
-    expect(searchSrc).toContain("discover_cuisine");
+    expect(hookSrc).toContain("discover_cuisine");
     // They should NOT use each other's keys
     expect(indexSrc).not.toContain("discover_cuisine");
-    expect(searchSrc).not.toContain("rankings_cuisine");
+    expect(hookSrc).not.toContain("rankings_cuisine");
   });
 
   // ─── Sprint docs ──────────────────────────────────────────

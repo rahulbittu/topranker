@@ -6,37 +6,40 @@ describe("Sprint 357: Search results sorting persistence", () => {
   const searchSrc = fs.readFileSync(
     path.resolve("app/(tabs)/search.tsx"), "utf-8"
   );
+  const hookSrc = fs.readFileSync(
+    path.resolve("lib/hooks/useSearchPersistence.ts"), "utf-8"
+  );
 
   // ── Sort persistence ──────────────────────────────────────────
 
   describe("Sort preference persistence", () => {
     it("should use wrapper setSortBy that persists to AsyncStorage", () => {
-      expect(searchSrc).toContain("const setSortBy = useCallback");
+      expect(hookSrc).toContain("const setSortBy = useCallback");
     });
 
     it("should save sort to discover_sort key", () => {
-      expect(searchSrc).toContain('AsyncStorage.setItem("discover_sort", sort)');
+      expect(hookSrc).toContain('AsyncStorage.setItem("discover_sort", sort)');
     });
 
     it("should restore sort from AsyncStorage on mount", () => {
-      expect(searchSrc).toContain('AsyncStorage.getItem("discover_sort")');
+      expect(hookSrc).toContain('AsyncStorage.getItem("discover_sort")');
     });
 
     it("should validate restored sort value", () => {
       // Only accept valid sort values
-      expect(searchSrc).toContain('"ranked" || val === "rated" || val === "trending"');
+      expect(hookSrc).toContain('"ranked" || val === "rated" || val === "trending"');
     });
 
     it("should call setSortByRaw on restore", () => {
-      expect(searchSrc).toContain("setSortByRaw(val)");
+      expect(hookSrc).toContain("setSortByRaw(val)");
     });
 
     it("should have raw state setter", () => {
-      expect(searchSrc).toContain("setSortByRaw");
+      expect(hookSrc).toContain("setSortByRaw");
     });
 
     it("should default sort to ranked", () => {
-      expect(searchSrc).toContain('"ranked"');
+      expect(hookSrc).toContain('"ranked"');
     });
   });
 
@@ -67,16 +70,16 @@ describe("Sprint 357: Search results sorting persistence", () => {
   // ── Other persisted preferences preserved ─────────────────────
 
   describe("Other persistence unchanged", () => {
-    it("should still persist cuisine", () => {
-      expect(searchSrc).toContain('discover_cuisine');
+    it("should still persist cuisine (via hook)", () => {
+      expect(hookSrc).toContain('discover_cuisine');
     });
 
-    it("should still persist recent searches", () => {
-      expect(searchSrc).toContain('recent_searches');
+    it("should still persist recent searches (via hook)", () => {
+      expect(hookSrc).toContain('recent_searches');
     });
 
-    it("should still persist discover tip", () => {
-      expect(searchSrc).toContain('discover_tip_dismissed');
+    it("should still persist discover tip (via hook)", () => {
+      expect(hookSrc).toContain('discover_tip_dismissed');
     });
   });
 });
