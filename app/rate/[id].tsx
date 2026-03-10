@@ -404,6 +404,7 @@ export default function RateScreen() {
             userTier={userTier}
             tierColor={tierColor}
             weightedScore={weightedScore}
+            visitType={visitType}
           />
         )}
       </ScrollView>

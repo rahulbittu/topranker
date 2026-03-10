@@ -109,8 +109,10 @@ describe("RatingExtrasStep — photo improvements", () => {
     expect(src).toContain("<PhotoBoostMeter photoCount={photos.length} hasReceipt={!!receiptUri} />");
   });
 
-  it("shows PhotoTips when no photos exist", () => {
-    expect(src).toContain("photos.length === 0 && <PhotoTips />");
+  it("shows visit-type photo prompts when no photos exist", () => {
+    // Sprint 459: replaced generic PhotoTips with visit-type-aware prompts
+    expect(src).toContain("photos.length === 0");
+    expect(src).toContain("getPhotoPromptsByVisitType");
   });
 
   it("has photo index badges", () => {

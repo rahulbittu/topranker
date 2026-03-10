@@ -20,6 +20,39 @@ import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
 
 const MAX_PHOTOS = 3;
 
+// Sprint 459: Visit-type-aware photo prompts
+type VisitType = "dine_in" | "delivery" | "takeaway";
+
+interface PhotoPrompt {
+  icon: string;
+  label: string;
+  hint: string;
+}
+
+function getPhotoPromptsByVisitType(visitType?: VisitType | null): PhotoPrompt[] {
+  switch (visitType) {
+    case "delivery":
+      return [
+        { icon: "cube-outline", label: "Packaging", hint: "Photo the packaging & presentation" },
+        { icon: "fast-food-outline", label: "Food", hint: "Show what you received" },
+        { icon: "receipt-outline", label: "Order", hint: "Screenshot of your delivery order" },
+      ];
+    case "takeaway":
+      return [
+        { icon: "bag-handle-outline", label: "Takeaway bag", hint: "Photo the pickup container" },
+        { icon: "restaurant-outline", label: "Food", hint: "Show the dish at home" },
+        { icon: "time-outline", label: "Wait", hint: "Screenshot pickup time estimate" },
+      ];
+    case "dine_in":
+    default:
+      return [
+        { icon: "restaurant-outline", label: "Dish", hint: "Photo your main dish" },
+        { icon: "cafe-outline", label: "Vibe", hint: "Capture the restaurant atmosphere" },
+        { icon: "happy-outline", label: "Experience", hint: "Share a memorable moment" },
+      ];
+  }
+}
+
 interface RatingExtrasStepProps {
   existingDishes: ApiDish[];
   selectedDish: string;
@@ -44,6 +77,7 @@ interface RatingExtrasStepProps {
   userTier: CredibilityTier;
   tierColor: string;
   weightedScore: number;
+  visitType?: VisitType | null; // Sprint 459
 }
 
 export function RatingExtrasStep({
@@ -54,6 +88,7 @@ export function RatingExtrasStep({
   receiptUri = null, setReceiptUri,
   q1Score, q2Score, q3Score, wouldReturn,
   userTier, tierColor, weightedScore,
+  visitType,
 }: RatingExtrasStepProps) {
   // Multi-photo support: use photoUris array if available, fall back to single photoUri
   const photos = setPhotoUris ? photoUris : (photoUri ? [photoUri] : []);
@@ -273,7 +308,19 @@ export function RatingExtrasStep({
             </TouchableOpacity>
           </View>
         )}
-        {photos.length === 0 && <PhotoTips />}
+        {photos.length === 0 && (
+          <View style={s.photoPromptSection}>
+            {getPhotoPromptsByVisitType(visitType).map((prompt, idx) => (
+              <View key={idx} style={s.photoPromptRow}>
+                <Ionicons name={prompt.icon as any} size={16} color={Colors.gold} />
+                <View style={s.photoPromptTextWrap}>
+                  <Text style={s.photoPromptLabel}>{prompt.label}</Text>
+                  <Text style={s.photoPromptHint}>{prompt.hint}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Receipt Upload — Sprint 382: +25% verification boost */}
@@ -444,6 +491,11 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
   },
   photoAddText: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  photoPromptSection: { gap: 8, paddingVertical: 4 },
+  photoPromptRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  photoPromptTextWrap: { flex: 1, gap: 1 },
+  photoPromptLabel: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  photoPromptHint: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
   photoBoostHint: { fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium", textAlign: "center" as const },
   photoVerifiedBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,
