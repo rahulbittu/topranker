@@ -19,8 +19,9 @@ describe("Sprint 304 — Dish Leaderboard API Response Flattening", () => {
 
   // ─── Route flattens leaderboard fields ─────────────────────
 
-  it("route destructures result into leaderboard, entries, isProvisional, minRatingsNeeded", () => {
-    expect(routeSrc).toContain("const { leaderboard, entries, isProvisional, minRatingsNeeded } = result");
+  it("route destructures result into leaderboard, entries, isProvisional, minRatingsNeeded, visitTypeBreakdown", () => {
+    // Sprint 538: added visitTypeBreakdown to destructure
+    expect(routeSrc).toContain("const { leaderboard, entries, isProvisional, minRatingsNeeded, visitTypeBreakdown } = result");
   });
 
   it("route returns flat id from leaderboard", () => {

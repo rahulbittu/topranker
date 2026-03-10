@@ -50,8 +50,17 @@ interface DishSuggestion {
   voteCount: number;
 }
 
+type VisitTypeFilter = "all" | "dine_in" | "delivery" | "takeaway";
+const VISIT_TYPE_FILTERS: { key: VisitTypeFilter; label: string; color: string }[] = [
+  { key: "all", label: "All", color: AMBER },
+  { key: "dine_in", label: "Dine-in", color: AMBER },
+  { key: "delivery", label: "Delivery", color: "#60A5FA" },
+  { key: "takeaway", label: "Takeaway", color: "#34D399" },
+];
+
 export function DishLeaderboardSection({ city }: { city: string }) {
   const [activeDish, setActiveDish] = useState<string | null>(null);
+  const [visitTypeFilter, setVisitTypeFilter] = useState<VisitTypeFilter>("all");
   const [suggestOpen, setSuggestOpen] = useState(false);
   const queryClient = useQueryClient();
 
@@ -68,10 +77,11 @@ export function DishLeaderboardSection({ city }: { city: string }) {
 
   const activeBoard = useMemo(() => boards.find((b) => b.dishSlug === activeDish), [boards, activeDish]);
 
+  const vtParam = visitTypeFilter !== "all" ? `&visitType=${visitTypeFilter}` : "";
   const { data: boardDetail, isLoading: detailLoading } = useQuery({
-    queryKey: ["dish-leaderboard", activeDish, city],
+    queryKey: ["dish-leaderboard", activeDish, city, visitTypeFilter],
     queryFn: async () => {
-      const res = await fetch(`${getApiUrl()}/api/dish-leaderboards/${activeDish}?city=${encodeURIComponent(city)}`);
+      const res = await fetch(`${getApiUrl()}/api/dish-leaderboards/${activeDish}?city=${encodeURIComponent(city)}${vtParam}`);
       if (!res.ok) return null;
       const json = await res.json();
       return json.data;
@@ -82,6 +92,7 @@ export function DishLeaderboardSection({ city }: { city: string }) {
 
   const handleChipPress = useCallback((slug: string) => {
     setActiveDish((prev) => (prev === slug ? null : slug));
+    setVisitTypeFilter("all"); // Reset filter when switching dishes
   }, []);
 
   if (boards.length === 0) return null;
@@ -89,6 +100,8 @@ export function DishLeaderboardSection({ city }: { city: string }) {
   const entries: DishEntry[] = boardDetail?.entries || [];
   const isProvisional = boardDetail?.isProvisional || false;
   const minRatingsNeeded = boardDetail?.minRatingsNeeded || 0;
+  const visitTypeBreakdown: Record<string, number> = boardDetail?.visitTypeBreakdown || {};
+  const hasMultipleVisitTypes = Object.keys(visitTypeBreakdown).length > 1;
 
   return (
     <View style={styles.container}>
@@ -158,6 +171,40 @@ export function DishLeaderboardSection({ city }: { city: string }) {
               >
                 <Text style={styles.seeAllText}>Full ranking →</Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Sprint 538: Visit type filter chips */}
+          {hasMultipleVisitTypes && (
+            <View style={styles.visitTypeRow}>
+              {VISIT_TYPE_FILTERS.map((vt) => {
+                const isActive = visitTypeFilter === vt.key;
+                const vtCount = vt.key === "all"
+                  ? Object.values(visitTypeBreakdown).reduce((a, b) => a + b, 0)
+                  : (visitTypeBreakdown[vt.key] || 0);
+                if (vt.key !== "all" && vtCount === 0) return null;
+                return (
+                  <TouchableOpacity
+                    key={vt.key}
+                    onPress={() => setVisitTypeFilter(vt.key)}
+                    style={[
+                      styles.visitTypeChip,
+                      isActive && { backgroundColor: vt.color, borderColor: vt.color },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Filter by ${vt.label}`}
+                  >
+                    <Text style={[styles.visitTypeChipText, isActive && styles.visitTypeChipTextActive]}>
+                      {vt.label}
+                    </Text>
+                    {vtCount > 0 && (
+                      <Text style={[styles.visitTypeChipCount, isActive && styles.visitTypeChipCountActive]}>
+                        {vtCount}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
 
@@ -406,6 +453,19 @@ const styles = StyleSheet.create({
   suggestChipText: { fontSize: 14, color: "#636366", fontWeight: "600" },
 
   boardContent: { marginTop: 12 },
+  // Sprint 538: Visit type filter
+  visitTypeRow: {
+    flexDirection: "row", gap: 8, paddingHorizontal: 16, marginBottom: 10,
+  },
+  visitTypeChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E5EA",
+  },
+  visitTypeChipText: { fontSize: 12, fontWeight: "600", color: "#636366" },
+  visitTypeChipTextActive: { color: "#fff" },
+  visitTypeChipCount: { fontSize: 10, fontWeight: "700", color: "#999" },
+  visitTypeChipCountActive: { color: "rgba(255,255,255,0.8)" },
   heroBanner: {
     marginHorizontal: 16, padding: 14, borderRadius: 14,
     backgroundColor: "rgba(196,154,26,0.08)", flexDirection: "row",
@@ -447,7 +507,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  entryPhoto: { height: 130, width: pct(100) },
+  entryPhoto: { height: 160, width: pct(100) },
   entryPhotoImg: { width: pct(100), height: pct(100) },
   rankBadge: {
     position: "absolute", bottom: 8, left: 8, width: 32, height: 32,

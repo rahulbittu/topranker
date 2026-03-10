@@ -2614,7 +2614,7 @@ async function getDishLeaderboards(city) {
   }
   return result;
 }
-async function getDishLeaderboardWithEntries(slug, city) {
+async function getDishLeaderboardWithEntries(slug, city, visitType) {
   const [board] = await db.select().from(dishLeaderboards).where(and8(eq9(dishLeaderboards.dishSlug, slug), eq9(dishLeaderboards.city, city.toLowerCase())));
   if (!board) return null;
   const entries = await db.select({
@@ -2631,13 +2631,64 @@ async function getDishLeaderboardWithEntries(slug, city) {
     businessSlug: businesses.slug,
     neighborhood: businesses.neighborhood
   }).from(dishLeaderboardEntries).innerJoin(businesses, eq9(dishLeaderboardEntries.businessId, businesses.id)).where(eq9(dishLeaderboardEntries.leaderboardId, board.id)).orderBy(asc3(dishLeaderboardEntries.rankPosition));
-  const eligibleCount = entries.filter((e) => e.dishRatingCount >= 3).length;
+  const visitTypeCounts = await db.select({
+    visitType: ratings.visitType,
+    count: count6()
+  }).from(dishVotes).innerJoin(ratings, eq9(dishVotes.ratingId, ratings.id)).innerJoin(dishes, eq9(dishVotes.dishId, dishes.id)).innerJoin(businesses, eq9(dishes.businessId, businesses.id)).where(
+    and8(
+      eq9(businesses.city, board.city),
+      sql8`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`
+    )
+  ).groupBy(ratings.visitType);
+  const visitTypeBreakdown = {};
+  for (const row of visitTypeCounts) {
+    if (row.visitType) visitTypeBreakdown[row.visitType] = Number(row.count);
+  }
+  let filteredEntries = entries;
+  if (visitType && ["dine_in", "delivery", "takeaway"].includes(visitType)) {
+    const bizScores = /* @__PURE__ */ new Map();
+    for (const entry of entries) {
+      const vtRatings = await db.select({
+        q1Score: ratings.q1Score,
+        q2Score: ratings.q2Score,
+        q3Score: ratings.q3Score,
+        weight: ratings.weight
+      }).from(dishVotes).innerJoin(ratings, eq9(dishVotes.ratingId, ratings.id)).where(
+        and8(
+          eq9(dishVotes.businessId, entry.businessId),
+          eq9(ratings.visitType, visitType),
+          eq9(ratings.isFlagged, false)
+        )
+      );
+      if (vtRatings.length === 0) continue;
+      let totalWeight = 0;
+      let weightedSum = 0;
+      for (const r of vtRatings) {
+        const rawScore = (r.q1Score + r.q2Score + r.q3Score) / 3;
+        const w = parseFloat(r.weight);
+        weightedSum += rawScore * w;
+        totalWeight += w;
+      }
+      if (totalWeight > 0) {
+        bizScores.set(entry.businessId, {
+          score: Math.round(weightedSum / totalWeight * 100) / 100,
+          count: vtRatings.length
+        });
+      }
+    }
+    filteredEntries = entries.filter((e) => bizScores.has(e.businessId)).map((e) => {
+      const vtData = bizScores.get(e.businessId);
+      return { ...e, dishScore: vtData.score.toFixed(2), dishRatingCount: vtData.count };
+    }).sort((a, b) => parseFloat(b.dishScore) - parseFloat(a.dishScore)).map((e, i) => ({ ...e, rankPosition: i + 1 }));
+  }
+  const eligibleCount = filteredEntries.filter((e) => e.dishRatingCount >= 3).length;
   const isProvisional = board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1e3;
   return {
     leaderboard: board,
-    entries,
+    entries: filteredEntries,
     isProvisional,
-    minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount)
+    minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount),
+    visitTypeBreakdown
   };
 }
 async function recalculateDishLeaderboard(leaderboardId) {
@@ -11367,9 +11418,10 @@ function registerDishRoutes(app2) {
   app2.get("/api/dish-leaderboards/:slug", wrapAsync(async (req, res) => {
     const slug = req.params.slug;
     const city = sanitizeString(req.query.city, 100) || "dallas";
-    const result = await getDishLeaderboardWithEntries(slug, city);
+    const visitType = sanitizeString(req.query.visitType, 20) || void 0;
+    const result = await getDishLeaderboardWithEntries(slug, city, visitType);
     if (!result) return res.status(404).json({ error: "Dish leaderboard not found" });
-    const { leaderboard, entries, isProvisional, minRatingsNeeded } = result;
+    const { leaderboard, entries, isProvisional, minRatingsNeeded, visitTypeBreakdown } = result;
     return res.json({ data: {
       id: leaderboard.id,
       city: leaderboard.city,
@@ -11380,7 +11432,8 @@ function registerDishRoutes(app2) {
       entryCount: entries.length,
       entries,
       isProvisional,
-      minRatingsNeeded
+      minRatingsNeeded,
+      visitTypeBreakdown
     } });
   }));
   app2.get("/api/dish-suggestions", wrapAsync(async (req, res) => {

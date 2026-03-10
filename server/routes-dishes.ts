@@ -25,10 +25,12 @@ export function registerDishRoutes(app: Express) {
   app.get("/api/dish-leaderboards/:slug", wrapAsync(async (req: Request, res: Response) => {
     const slug = req.params.slug as string;
     const city = sanitizeString(req.query.city, 100) || "dallas";
-    const result = await getDishLeaderboardWithEntries(slug, city);
+    // Sprint 538: Optional visit type filter
+    const visitType = sanitizeString(req.query.visitType, 20) || undefined;
+    const result = await getDishLeaderboardWithEntries(slug, city, visitType);
     if (!result) return res.status(404).json({ error: "Dish leaderboard not found" });
     // Flatten leaderboard fields for client — page expects flat DishBoardDetail
-    const { leaderboard, entries, isProvisional, minRatingsNeeded } = result;
+    const { leaderboard, entries, isProvisional, minRatingsNeeded, visitTypeBreakdown } = result;
     return res.json({ data: {
       id: leaderboard.id,
       city: leaderboard.city,
@@ -40,6 +42,7 @@ export function registerDishRoutes(app: Express) {
       entries,
       isProvisional,
       minRatingsNeeded,
+      visitTypeBreakdown,
     } });
   }));
 

@@ -98,11 +98,12 @@ export async function getDishLeaderboards(city: string): Promise<(DishLeaderboar
   return result;
 }
 
-export async function getDishLeaderboardWithEntries(slug: string, city: string): Promise<{
+export async function getDishLeaderboardWithEntries(slug: string, city: string, visitType?: string): Promise<{
   leaderboard: DishLeaderboard;
   entries: (DishLeaderboardEntry & { businessName: string; businessSlug: string; neighborhood: string | null })[];
   isProvisional: boolean;
   minRatingsNeeded: number;
+  visitTypeBreakdown: Record<string, number>;
 } | null> {
   const [board] = await db
     .select()
@@ -131,15 +132,92 @@ export async function getDishLeaderboardWithEntries(slug: string, city: string):
     .where(eq(dishLeaderboardEntries.leaderboardId, board.id))
     .orderBy(asc(dishLeaderboardEntries.rankPosition));
 
-  const eligibleCount = entries.filter((e) => e.dishRatingCount >= 3).length;
+  // Sprint 538: Visit type breakdown — count ratings per visit type for this leaderboard
+  const visitTypeCounts = await db
+    .select({
+      visitType: ratings.visitType,
+      count: count(),
+    })
+    .from(dishVotes)
+    .innerJoin(ratings, eq(dishVotes.ratingId, ratings.id))
+    .innerJoin(dishes, eq(dishVotes.dishId, dishes.id))
+    .innerJoin(businesses, eq(dishes.businessId, businesses.id))
+    .where(
+      and(
+        eq(businesses.city, board.city),
+        sql`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`,
+      ),
+    )
+    .groupBy(ratings.visitType);
+
+  const visitTypeBreakdown: Record<string, number> = {};
+  for (const row of visitTypeCounts) {
+    if (row.visitType) visitTypeBreakdown[row.visitType] = Number(row.count);
+  }
+
+  // Sprint 538: If visitType filter requested, re-rank entries by visit-type-specific scores
+  let filteredEntries = entries;
+  if (visitType && ["dine_in", "delivery", "takeaway"].includes(visitType)) {
+    // Compute visit-type-specific scores per business
+    const bizScores = new Map<string, { score: number; count: number }>();
+    for (const entry of entries) {
+      const vtRatings = await db
+        .select({
+          q1Score: ratings.q1Score,
+          q2Score: ratings.q2Score,
+          q3Score: ratings.q3Score,
+          weight: ratings.weight,
+        })
+        .from(dishVotes)
+        .innerJoin(ratings, eq(dishVotes.ratingId, ratings.id))
+        .where(
+          and(
+            eq(dishVotes.businessId, entry.businessId),
+            eq(ratings.visitType, visitType),
+            eq(ratings.isFlagged, false),
+          ),
+        );
+
+      if (vtRatings.length === 0) continue;
+
+      let totalWeight = 0;
+      let weightedSum = 0;
+      for (const r of vtRatings) {
+        const rawScore = (r.q1Score + r.q2Score + r.q3Score) / 3;
+        const w = parseFloat(r.weight);
+        weightedSum += rawScore * w;
+        totalWeight += w;
+      }
+
+      if (totalWeight > 0) {
+        bizScores.set(entry.businessId, {
+          score: Math.round((weightedSum / totalWeight) * 100) / 100,
+          count: vtRatings.length,
+        });
+      }
+    }
+
+    // Filter to businesses with visit-type data, override scores, re-rank
+    filteredEntries = entries
+      .filter((e) => bizScores.has(e.businessId))
+      .map((e) => {
+        const vtData = bizScores.get(e.businessId)!;
+        return { ...e, dishScore: vtData.score.toFixed(2), dishRatingCount: vtData.count };
+      })
+      .sort((a, b) => parseFloat(b.dishScore) - parseFloat(a.dishScore))
+      .map((e, i) => ({ ...e, rankPosition: i + 1 }));
+  }
+
+  const eligibleCount = filteredEntries.filter((e) => e.dishRatingCount >= 3).length;
   const isProvisional =
     board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000;
 
   return {
     leaderboard: board,
-    entries,
+    entries: filteredEntries,
     isProvisional,
     minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount),
+    visitTypeBreakdown,
   };
 }
 
