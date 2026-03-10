@@ -234,28 +234,31 @@ describe("SearchContext interface", () => {
 // 8. Route integration
 // ---------------------------------------------------------------------------
 describe("routes-businesses integration", () => {
+  // Sprint 476: Search result processing extracted to search-result-processor.ts
+  const processorSrc = readFile("server/search-result-processor.ts");
+
   it("imports combinedRelevance", () => {
-    expect(routesSrc).toContain("combinedRelevance");
+    expect(processorSrc).toContain("combinedRelevance");
   });
 
   it("passes category to search context", () => {
-    expect(routesSrc).toContain("category: b.category");
+    expect(processorSrc).toContain("category: b.category");
   });
 
   it("passes cuisine to search context", () => {
-    expect(routesSrc).toContain("cuisine: b.cuisine");
+    expect(processorSrc).toContain("cuisine: b.cuisine");
   });
 
   it("passes neighborhood to search context", () => {
-    expect(routesSrc).toContain("neighborhood: b.neighborhood");
+    expect(processorSrc).toContain("neighborhood: b.neighborhood");
   });
 
   it("passes ratingCount to search context", () => {
-    expect(routesSrc).toContain("ratingCount:");
+    expect(processorSrc).toContain("ratingCount:");
   });
 
   it("uses combinedRelevance for scoring", () => {
-    expect(routesSrc).toContain("combinedRelevance(b.name, searchCtx)");
+    expect(processorSrc).toContain("combinedRelevance(b.name, searchCtx)");
   });
 });
 

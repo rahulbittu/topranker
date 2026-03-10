@@ -18,22 +18,12 @@ import {
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { fetchAndStorePhotos } from "./google-places";
-import { textRelevance, profileCompleteness, combinedRelevance } from "./search-ranking-v2";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
-import { computeOpenStatus, isOpenLate, isOpenWeekends } from "./hours-utils";
-
-// Sprint 442: Haversine distance calculation (km)
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLng = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+import { computeOpenStatus } from "./hours-utils";
+// Sprint 476: Extracted search processing to dedicated module
+import { enrichSearchResults, applySearchFilters, sortByRelevance, haversineKm } from "./search-result-processor";
 
 export function registerBusinessRoutes(app: Express) {
   // Sprint 184: Autocomplete — lightweight typeahead for search-as-you-type
@@ -80,72 +70,11 @@ export function registerBusinessRoutes(app: Express) {
     ]);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
 
-    // Sprint 392+436: Relevance scoring — multi-signal combined relevance
-    let data = bizList.map(b => {
-      const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
-      const searchCtx = {
-        query,
-        hasPhotos: photos.length > 0,
-        hasHours: !!b.closingTime,
-        hasCuisine: !!b.cuisine,
-        hasDescription: !!b.description,
-        category: b.category,
-        cuisine: b.cuisine,
-        neighborhood: b.neighborhood,
-        ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
-      };
-      const relevanceScore = query
-        ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100
-        : 0;
-      // Sprint 442: Compute distance if user location provided
-      let distanceKm: number | null = null;
-      if (userLat != null && userLng != null && b.lat && b.lng) {
-        distanceKm = haversineKm(userLat, userLng, parseFloat(b.lat), parseFloat(b.lng));
-      }
-      // Sprint 447: Compute real-time open status from openingHours
-      const bHours = (b as any).openingHours;
-      const openStatus = computeOpenStatus(bHours);
-      const dynamicIsOpenNow = bHours ? openStatus.isOpen : (b.isOpenNow ?? false);
-      return {
-        ...b,
-        photoUrls: photos,
-        relevanceScore,
-        distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null,
-        isOpenNow: dynamicIsOpenNow,
-        closingTime: openStatus.closingTime,
-        nextOpenTime: openStatus.nextOpenTime,
-        todayHours: openStatus.todayHours,
-      };
-    });
-
-    // Sprint 442: Filter by dietary tags (business must have ALL requested tags)
-    if (dietaryTags.length > 0) {
-      data = data.filter(b => {
-        const bizTags: string[] = Array.isArray((b as any).dietaryTags) ? (b as any).dietaryTags : [];
-        return dietaryTags.every(tag => bizTags.includes(tag));
-      });
-    }
-
-    // Sprint 442: Filter by distance
-    if (maxDistanceKm != null && userLat != null && userLng != null) {
-      data = data.filter(b => b.distanceKm != null && b.distanceKm <= maxDistanceKm);
-    }
-
-    // Sprint 447: Hours-based filters
-    if (openNow) {
-      data = data.filter(b => b.isOpenNow === true);
-    }
-    if (openLate) {
-      data = data.filter(b => { const h = (b as any).openingHours; return isOpenLate(h); });
-    }
-    if (openWeekends) {
-      data = data.filter(b => { const h = (b as any).openingHours; return isOpenWeekends(h); });
-    }
-
-    // Re-sort by relevance when a search query is present
-    if (query) {
-      data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
-    }
+    // Sprint 476: Extracted to search-result-processor.ts
+    const processingOpts = { query, userLat, userLng, maxDistanceKm, dietaryTags, openNow, openLate, openWeekends };
+    const enriched = enrichSearchResults(bizList, photoMap, processingOpts);
+    const filtered = applySearchFilters(enriched, processingOpts);
+    const data = sortByRelevance(filtered, query);
 
     // Sprint 473: Include pagination metadata
     return res.json({

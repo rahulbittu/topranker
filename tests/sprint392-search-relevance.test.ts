@@ -14,34 +14,38 @@ const readFile = (relPath: string) =>
 // ── 1. Server-side relevance scoring ────────────────────────────────
 
 describe("Sprint 392 — Server relevance scoring", () => {
-  const routesSrc = readFile("server/routes-businesses.ts");
+  const processorSrc = readFile("server/search-result-processor.ts");
 
-  it("imports textRelevance from search-ranking-v2", () => {
-    expect(routesSrc).toContain("textRelevance");
-    expect(routesSrc).toContain("search-ranking-v2");
+  it("imports combinedRelevance from search-ranking-v2", () => {
+    // Sprint 476: processor imports combinedRelevance (which uses textRelevance internally)
+    expect(processorSrc).toContain("combinedRelevance");
+    expect(processorSrc).toContain("search-ranking-v2");
   });
 
-  it("imports profileCompleteness from search-ranking-v2", () => {
-    expect(routesSrc).toContain("profileCompleteness");
+  it("search-ranking-v2 exports profileCompleteness", () => {
+    // Sprint 476: profileCompleteness used internally by combinedRelevance
+    const rankingSrc = readFile("server/search-ranking-v2.ts");
+    expect(rankingSrc).toContain("export function profileCompleteness");
   });
 
   it("calculates relevance in search endpoint", () => {
     // Sprint 436: Enhanced to use combinedRelevance with full search context
-    expect(routesSrc).toContain("combinedRelevance(b.name, searchCtx)");
+    expect(processorSrc).toContain("combinedRelevance(b.name, searchCtx)");
   });
 
   it("passes profile completeness fields in search context", () => {
-    expect(routesSrc).toContain("hasPhotos");
-    expect(routesSrc).toContain("hasCuisine");
+    expect(processorSrc).toContain("hasPhotos");
+    expect(processorSrc).toContain("hasCuisine");
   });
 
   it("computes relevanceScore field", () => {
-    expect(routesSrc).toContain("relevanceScore");
+    expect(processorSrc).toContain("relevanceScore");
   });
 
   it("re-sorts by relevance when query present", () => {
-    expect(routesSrc).toContain("data.sort");
-    expect(routesSrc).toContain("b.relevanceScore - a.relevanceScore");
+    // Sprint 476: sort logic moved to search-result-processor.ts
+    expect(processorSrc).toContain(".sort");
+    expect(processorSrc).toContain("b.relevanceScore - a.relevanceScore");
   });
 });
 

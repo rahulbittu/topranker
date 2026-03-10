@@ -98,6 +98,8 @@ describe("Hours utils — logic", () => {
 // ---------------------------------------------------------------------------
 describe("Routes businesses — hours filters", () => {
   const src = readFile("server/routes-businesses.ts");
+  // Sprint 476: Filter logic extracted to search-result-processor.ts
+  const processorSrc = readFile("server/search-result-processor.ts");
 
   it("imports hours-utils", () => {
     expect(src).toContain("./hours-utils");
@@ -108,11 +110,11 @@ describe("Routes businesses — hours filters", () => {
   });
 
   it("imports isOpenLate", () => {
-    expect(src).toContain("isOpenLate");
+    expect(processorSrc).toContain("isOpenLate");
   });
 
   it("imports isOpenWeekends", () => {
-    expect(src).toContain("isOpenWeekends");
+    expect(processorSrc).toContain("isOpenWeekends");
   });
 
   it("parses openNow query param", () => {
@@ -137,15 +139,15 @@ describe("Routes businesses — hours filters", () => {
   });
 
   it("filters by openNow", () => {
-    expect(src).toContain("if (openNow)");
+    expect(processorSrc).toContain("if (opts.openNow)");
   });
 
   it("filters by openLate", () => {
-    expect(src).toContain("if (openLate)");
+    expect(processorSrc).toContain("if (opts.openLate)");
   });
 
   it("filters by openWeekends", () => {
-    expect(src).toContain("if (openWeekends)");
+    expect(processorSrc).toContain("if (opts.openWeekends)");
   });
 });
 

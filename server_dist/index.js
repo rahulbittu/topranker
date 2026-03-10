@@ -9790,6 +9790,90 @@ function registerMemberRoutes(app2) {
 init_logger();
 init_storage();
 
+// server/hours-utils.ts
+function computeOpenStatus(hours, now) {
+  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
+  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
+  const d = now || /* @__PURE__ */ new Date();
+  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const dayOfWeek = ct.getDay();
+  const currentTime = ct.getHours() * 100 + ct.getMinutes();
+  if (hours.periods.length === 1 && !hours.periods[0].close) {
+    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
+  }
+  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
+  for (const period of hours.periods) {
+    if (!period.close) continue;
+    const openDay = period.open.day;
+    const closeDay = period.close.day;
+    const openTime = parseInt(period.open.time, 10);
+    const closeTime = parseInt(period.close.time, 10);
+    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
+      if (currentTime >= openTime && currentTime < closeTime) {
+        return {
+          isOpen: true,
+          closingTime: formatTime(period.close.time),
+          nextOpenTime: null,
+          todayHours
+        };
+      }
+    }
+    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+  }
+  let nextOpen = null;
+  for (const period of hours.periods) {
+    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
+      nextOpen = formatTime(period.open.time);
+      break;
+    }
+  }
+  if (!nextOpen) {
+    for (let offset = 1; offset <= 7; offset++) {
+      const checkDay = (dayOfWeek + offset) % 7;
+      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
+      if (nextPeriod) {
+        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
+        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
+        break;
+      }
+    }
+  }
+  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
+}
+function formatTime(time) {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  return `${h.toString().padStart(2, "0")}:${m}`;
+}
+function isOpenLate(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => {
+    if (!p.close) return true;
+    const closeTime = parseInt(p.close.time, 10);
+    return closeTime >= 2200 || closeTime <= 200;
+  });
+}
+function isOpenWeekends(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
+}
+
 // server/search-ranking-v2.ts
 init_logger();
 var rankLog = log.tag("SearchRankingV2");
@@ -9934,91 +10018,7 @@ function combinedRelevance(name, ctx) {
   return text2 * 0.5 + category * 0.2 + completeness * 0.15 + volume * 0.15;
 }
 
-// server/hours-utils.ts
-function computeOpenStatus(hours, now) {
-  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
-  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
-  const d = now || /* @__PURE__ */ new Date();
-  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-  const dayOfWeek = ct.getDay();
-  const currentTime = ct.getHours() * 100 + ct.getMinutes();
-  if (hours.periods.length === 1 && !hours.periods[0].close) {
-    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
-  }
-  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
-  for (const period of hours.periods) {
-    if (!period.close) continue;
-    const openDay = period.open.day;
-    const closeDay = period.close.day;
-    const openTime = parseInt(period.open.time, 10);
-    const closeTime = parseInt(period.close.time, 10);
-    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
-      if (currentTime >= openTime && currentTime < closeTime) {
-        return {
-          isOpen: true,
-          closingTime: formatTime(period.close.time),
-          nextOpenTime: null,
-          todayHours
-        };
-      }
-    }
-    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-  }
-  let nextOpen = null;
-  for (const period of hours.periods) {
-    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
-      nextOpen = formatTime(period.open.time);
-      break;
-    }
-  }
-  if (!nextOpen) {
-    for (let offset = 1; offset <= 7; offset++) {
-      const checkDay = (dayOfWeek + offset) % 7;
-      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
-      if (nextPeriod) {
-        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
-        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
-        break;
-      }
-    }
-  }
-  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
-}
-function formatTime(time) {
-  const h = parseInt(time.slice(0, 2), 10);
-  const m = time.slice(2);
-  return `${h.toString().padStart(2, "0")}:${m}`;
-}
-function isOpenLate(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => {
-    if (!p.close) return true;
-    const closeTime = parseInt(p.close.time, 10);
-    return closeTime >= 2200 || closeTime <= 200;
-  });
-}
-function isOpenWeekends(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
-}
-
-// server/routes-businesses.ts
+// server/search-result-processor.ts
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -10026,6 +10026,76 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+function enrichSearchResults(bizList, photoMap, opts) {
+  return bizList.map((b) => {
+    const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
+    const searchCtx = {
+      query: opts.query,
+      hasPhotos: photos.length > 0,
+      hasHours: !!b.closingTime,
+      hasCuisine: !!b.cuisine,
+      hasDescription: !!b.description,
+      category: b.category,
+      cuisine: b.cuisine,
+      neighborhood: b.neighborhood,
+      ratingCount: b.ratingCount ? Number(b.ratingCount) : 0
+    };
+    const relevanceScore = opts.query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
+    let distanceKm = null;
+    if (opts.userLat != null && opts.userLng != null && b.lat && b.lng) {
+      distanceKm = haversineKm(opts.userLat, opts.userLng, parseFloat(b.lat), parseFloat(b.lng));
+    }
+    const bHours = b.openingHours;
+    const openStatus = computeOpenStatus(bHours);
+    const dynamicIsOpenNow = bHours ? openStatus.isOpen : b.isOpenNow ?? false;
+    return {
+      ...b,
+      photoUrls: photos,
+      relevanceScore,
+      distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null,
+      isOpenNow: dynamicIsOpenNow,
+      closingTime: openStatus.closingTime,
+      nextOpenTime: openStatus.nextOpenTime,
+      todayHours: openStatus.todayHours
+    };
+  });
+}
+function applySearchFilters(data, opts) {
+  let filtered = data;
+  if (opts.dietaryTags.length > 0) {
+    filtered = filtered.filter((b) => {
+      const bizTags = Array.isArray(b.dietaryTags) ? b.dietaryTags : [];
+      return opts.dietaryTags.every((tag) => bizTags.includes(tag));
+    });
+  }
+  if (opts.maxDistanceKm != null && opts.userLat != null && opts.userLng != null) {
+    filtered = filtered.filter((b) => b.distanceKm != null && b.distanceKm <= opts.maxDistanceKm);
+  }
+  if (opts.openNow) {
+    filtered = filtered.filter((b) => b.isOpenNow === true);
+  }
+  if (opts.openLate) {
+    filtered = filtered.filter((b) => {
+      const h = b.openingHours;
+      return isOpenLate(h);
+    });
+  }
+  if (opts.openWeekends) {
+    filtered = filtered.filter((b) => {
+      const h = b.openingHours;
+      return isOpenWeekends(h);
+    });
+  }
+  return filtered;
+}
+function sortByRelevance(data, query) {
+  if (!query) return data;
+  return [...data].sort(
+    (a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore)
+  );
+}
+
+// server/routes-businesses.ts
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
     const query = sanitizeString(req.query.q, 50);
@@ -10061,65 +10131,10 @@ function registerBusinessRoutes(app2) {
       countBusinessSearch(query, city, category, cuisine)
     ]);
     const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-    let data = bizList.map((b) => {
-      const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
-      const searchCtx = {
-        query,
-        hasPhotos: photos.length > 0,
-        hasHours: !!b.closingTime,
-        hasCuisine: !!b.cuisine,
-        hasDescription: !!b.description,
-        category: b.category,
-        cuisine: b.cuisine,
-        neighborhood: b.neighborhood,
-        ratingCount: b.ratingCount ? Number(b.ratingCount) : 0
-      };
-      const relevanceScore = query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
-      let distanceKm = null;
-      if (userLat != null && userLng != null && b.lat && b.lng) {
-        distanceKm = haversineKm(userLat, userLng, parseFloat(b.lat), parseFloat(b.lng));
-      }
-      const bHours = b.openingHours;
-      const openStatus = computeOpenStatus(bHours);
-      const dynamicIsOpenNow = bHours ? openStatus.isOpen : b.isOpenNow ?? false;
-      return {
-        ...b,
-        photoUrls: photos,
-        relevanceScore,
-        distanceKm: distanceKm != null ? Math.round(distanceKm * 10) / 10 : null,
-        isOpenNow: dynamicIsOpenNow,
-        closingTime: openStatus.closingTime,
-        nextOpenTime: openStatus.nextOpenTime,
-        todayHours: openStatus.todayHours
-      };
-    });
-    if (dietaryTags.length > 0) {
-      data = data.filter((b) => {
-        const bizTags = Array.isArray(b.dietaryTags) ? b.dietaryTags : [];
-        return dietaryTags.every((tag) => bizTags.includes(tag));
-      });
-    }
-    if (maxDistanceKm != null && userLat != null && userLng != null) {
-      data = data.filter((b) => b.distanceKm != null && b.distanceKm <= maxDistanceKm);
-    }
-    if (openNow) {
-      data = data.filter((b) => b.isOpenNow === true);
-    }
-    if (openLate) {
-      data = data.filter((b) => {
-        const h = b.openingHours;
-        return isOpenLate(h);
-      });
-    }
-    if (openWeekends) {
-      data = data.filter((b) => {
-        const h = b.openingHours;
-        return isOpenWeekends(h);
-      });
-    }
-    if (query) {
-      data.sort((a, b) => b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore));
-    }
+    const processingOpts = { query, userLat, userLng, maxDistanceKm, dietaryTags, openNow, openLate, openWeekends };
+    const enriched = enrichSearchResults(bizList, photoMap, processingOpts);
+    const filtered = applySearchFilters(enriched, processingOpts);
+    const data = sortByRelevance(filtered, query);
     return res.json({
       data,
       pagination: {

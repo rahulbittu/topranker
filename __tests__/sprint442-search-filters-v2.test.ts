@@ -122,6 +122,8 @@ describe("DiscoverFilters — DistanceChips", () => {
 // ---------------------------------------------------------------------------
 describe("Server search endpoint — dietary + distance", () => {
   const src = readFile("server/routes-businesses.ts");
+  // Sprint 476: Processing logic extracted to search-result-processor.ts
+  const processorSrc = readFile("server/search-result-processor.ts");
 
   it("parses dietary query param", () => {
     expect(src).toContain("req.query.dietary");
@@ -144,21 +146,21 @@ describe("Server search endpoint — dietary + distance", () => {
   });
 
   it("has haversineKm function", () => {
-    expect(src).toContain("function haversineKm");
-    expect(src).toContain("6371"); // Earth radius
+    expect(processorSrc).toContain("function haversineKm");
+    expect(processorSrc).toContain("6371"); // Earth radius
   });
 
   it("computes distanceKm in response", () => {
-    expect(src).toContain("distanceKm");
-    expect(src).toContain("haversineKm(userLat");
+    expect(processorSrc).toContain("distanceKm");
+    expect(processorSrc).toContain("haversineKm(opts.userLat");
   });
 
   it("filters by dietary tags (ALL must match)", () => {
-    expect(src).toContain("dietaryTags.every(tag => bizTags.includes(tag))");
+    expect(processorSrc).toContain("dietaryTags.every(tag => bizTags.includes(tag))");
   });
 
   it("filters by max distance", () => {
-    expect(src).toContain("b.distanceKm != null && b.distanceKm <= maxDistanceKm");
+    expect(processorSrc).toContain("b.distanceKm != null && b.distanceKm <= opts.maxDistanceKm!");
   });
 
   it("comments reference Sprint 442", () => {
