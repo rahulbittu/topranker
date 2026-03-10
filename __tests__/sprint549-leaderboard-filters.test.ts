@@ -135,8 +135,9 @@ describe("Sprint 549: Leaderboard Filters", () => {
       expect(src).toContain("priceFilter");
     });
 
-    it("defines PRICE_OPTIONS", () => {
-      expect(src).toContain("PRICE_OPTIONS");
+    it("imports LeaderboardFilterChips", () => {
+      // Sprint 553: PRICE_OPTIONS + chip JSX + styles extracted to LeaderboardFilterChips
+      expect(src).toContain("LeaderboardFilterChips");
     });
 
     it("fetches neighborhoods with useQuery", () => {
@@ -148,23 +149,24 @@ describe("Sprint 549: Leaderboard Filters", () => {
       expect(src).toContain("neighborhoodFilter, priceFilter");
     });
 
-    it("renders neighborhood chips", () => {
-      expect(src).toContain("location-outline");
+    it("renders LeaderboardFilterChips with props", () => {
+      // Sprint 553: Extracted component receives state via props
+      const chipSrc = readFile("components/leaderboard/LeaderboardFilterChips.tsx");
+      expect(chipSrc).toContain("location-outline");
+      expect(chipSrc).toContain("PRICE_OPTIONS");
     });
 
-    it("renders price chips", () => {
-      expect(src).toContain("PRICE_OPTIONS.map");
+    it("extracted component has chip styles", () => {
+      const chipSrc = readFile("components/leaderboard/LeaderboardFilterChips.tsx");
+      expect(chipSrc).toContain("chip:");
+      expect(chipSrc).toContain("chipActive:");
+      expect(chipSrc).toContain("chipText:");
     });
 
-    it("has clear filter button", () => {
-      expect(src).toContain("Clear");
-      expect(src).toContain("close-circle");
-    });
-
-    it("has filterChip styles", () => {
-      expect(src).toContain("filterChip:");
-      expect(src).toContain("filterChipActive:");
-      expect(src).toContain("filterChipText:");
+    it("extracted component has clear button", () => {
+      const chipSrc = readFile("components/leaderboard/LeaderboardFilterChips.tsx");
+      expect(chipSrc).toContain("Clear");
+      expect(chipSrc).toContain("close-circle");
     });
   });
 

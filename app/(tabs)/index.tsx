@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Platform, Modal, ScrollView,
+  Platform, Modal,
   TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -25,6 +25,7 @@ import { MappedBusiness } from "@/types/business";
 import { RankedCard } from "@/components/leaderboard/SubComponents";
 import { RankingsListHeader } from "@/components/leaderboard/RankingsListHeader";
 import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
+import { LeaderboardFilterChips } from "@/components/leaderboard/LeaderboardFilterChips";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { TopRankHighlight } from "@/components/animations/TopRankHighlight";
@@ -90,7 +91,6 @@ export default function LeaderboardScreen() {
   // Sprint 549: Neighborhood + price range filters
   const [neighborhoodFilter, setNeighborhoodFilter] = useState<string | null>(null);
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
-  const PRICE_OPTIONS = ["$", "$$", "$$$", "$$$$"] as const;
 
   const { data: neighborhoods = [] } = useQuery({
     queryKey: ["neighborhoods", city],
@@ -213,48 +213,14 @@ export default function LeaderboardScreen() {
         </View>
       )}
 
-      {/* Sprint 549: Neighborhood + Price filter chips */}
-      {(neighborhoods.length > 0 || true) && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipRow} contentContainerStyle={styles.filterChipContent}>
-          {/* Neighborhood filter */}
-          {neighborhoods.length > 0 && neighborhoods.slice(0, 8).map((n) => (
-            <TouchableOpacity
-              key={n}
-              style={[styles.filterChip, neighborhoodFilter === n && styles.filterChipActive]}
-              onPress={() => { Haptics.selectionAsync(); setNeighborhoodFilter(neighborhoodFilter === n ? null : n); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter by ${n}`}
-            >
-              <Ionicons name="location-outline" size={11} color={neighborhoodFilter === n ? "#fff" : Colors.textSecondary} />
-              <Text style={[styles.filterChipText, neighborhoodFilter === n && styles.filterChipTextActive]}>{n}</Text>
-            </TouchableOpacity>
-          ))}
-          {/* Price filter */}
-          {PRICE_OPTIONS.map((p) => (
-            <TouchableOpacity
-              key={p}
-              style={[styles.filterChip, priceFilter === p && styles.filterChipActive]}
-              onPress={() => { Haptics.selectionAsync(); setPriceFilter(priceFilter === p ? null : p); }}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter by price ${p}`}
-            >
-              <Text style={[styles.filterChipText, priceFilter === p && styles.filterChipTextActive]}>{p}</Text>
-            </TouchableOpacity>
-          ))}
-          {/* Clear filters */}
-          {(neighborhoodFilter || priceFilter) && (
-            <TouchableOpacity
-              style={styles.clearFilterChip}
-              onPress={() => { setNeighborhoodFilter(null); setPriceFilter(null); }}
-              accessibilityRole="button"
-              accessibilityLabel="Clear all filters"
-            >
-              <Ionicons name="close-circle" size={12} color={Colors.textTertiary} />
-              <Text style={styles.clearFilterChipText}>Clear</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      )}
+      {/* Sprint 553: Extracted to LeaderboardFilterChips */}
+      <LeaderboardFilterChips
+        neighborhoods={neighborhoods}
+        neighborhoodFilter={neighborhoodFilter}
+        setNeighborhoodFilter={setNeighborhoodFilter}
+        priceFilter={priceFilter}
+        setPriceFilter={setPriceFilter}
+      />
 
       {isLoading ? (
         <LeaderboardSkeleton />
@@ -473,33 +439,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     zIndex: 10,
-  },
-  // Sprint 549: Neighborhood + Price filter chips
-  filterChipRow: {
-    maxHeight: 36, marginBottom: 4,
-  },
-  filterChipContent: {
-    paddingHorizontal: 16, gap: 6, alignItems: "center" as const,
-  },
-  filterChip: {
-    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: AMBER, borderColor: AMBER,
-  },
-  filterChipText: {
-    fontSize: 11, fontWeight: "600" as const, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
-  },
-  filterChipTextActive: {
-    color: "#fff",
-  },
-  clearFilterChip: {
-    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
-    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 16,
-  },
-  clearFilterChipText: {
-    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium",
   },
 });
