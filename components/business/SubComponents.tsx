@@ -41,3 +41,6 @@ export type { TrustExplainerCardProps } from "./TrustExplainerCard";
 
 export { YourRatingCard } from "./YourRatingCard";
 export type { YourRatingCardProps } from "./YourRatingCard";
+
+export { PhotoGallery } from "./PhotoGallery";
+export type { PhotoGalleryProps } from "./PhotoGallery";

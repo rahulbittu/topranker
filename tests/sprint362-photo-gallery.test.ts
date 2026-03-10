@@ -8,6 +8,7 @@ const readFile = (relPath: string) =>
 describe("Sprint 362: Business photo gallery improvements", () => {
   const heroSrc = readFile("components/business/HeroCarousel.tsx");
   const detailSrc = readFile("app/business/[id].tsx");
+  const gallerySrc = readFile("components/business/PhotoGallery.tsx");
 
   // ── Hero carousel photo counter ──────────────────────────────
 
@@ -47,70 +48,69 @@ describe("Sprint 362: Business photo gallery improvements", () => {
 
   // ── Masonry photo grid ──────────────────────────────────────
 
-  describe("Photo gallery layout", () => {
+  describe("Photo gallery layout (extracted to PhotoGallery component)", () => {
     it("should show gallery when more than 1 photo (not 3)", () => {
-      expect(detailSrc).toContain("photoUrls.length > 1");
+      expect(gallerySrc).toContain("photoUrls.length <= 1");
     });
 
-    it("should have gallery header with title and count", () => {
-      expect(detailSrc).toContain("galleryHeader");
-      expect(detailSrc).toContain("galleryCount");
+    it("should have header with title and count", () => {
+      expect(gallerySrc).toContain("header");
+      expect(gallerySrc).toContain("count");
     });
 
     it("should display photo count text", () => {
-      expect(detailSrc).toContain("{photoUrls.length} photos");
+      expect(gallerySrc).toContain("{photoUrls.length} photos");
     });
 
     it("should have featured first photo (full width)", () => {
-      expect(detailSrc).toContain("photoGridFeatured");
-      expect(detailSrc).toContain("photoUrls[0]");
+      expect(gallerySrc).toContain("featured");
+      expect(gallerySrc).toContain("photoUrls[0]");
     });
 
     it("should use 16:9 aspect ratio for featured photo", () => {
-      expect(detailSrc).toContain("aspectRatio: 16 / 9");
+      expect(gallerySrc).toContain("aspectRatio: 16 / 9");
     });
 
     it("should show remaining photos in 2-column grid", () => {
-      expect(detailSrc).toContain("photoGridRow");
-      expect(detailSrc).toContain("photoUrls.slice(1, 5)");
+      expect(gallerySrc).toContain("row");
+      expect(gallerySrc).toContain("photoUrls.slice(1, 5)");
     });
 
     it("should show overflow message for 6+ photos", () => {
-      expect(detailSrc).toContain("photoUrls.length > 5");
-      expect(detailSrc).toContain("photoGridMore");
-      expect(detailSrc).toContain("more in carousel above");
+      expect(gallerySrc).toContain("photoUrls.length > 5");
+      expect(gallerySrc).toContain("more in carousel above");
     });
 
     it("should use rounded corners on grid container", () => {
-      expect(detailSrc).toContain("borderRadius: 12");
+      expect(gallerySrc).toContain("borderRadius: 12");
     });
   });
 
-  // ── Style definitions ───────────────────────────────────────
+  // ── Style definitions (now in PhotoGallery) ─────────────────
 
   describe("Gallery styles", () => {
-    it("should define galleryHeader style", () => {
-      expect(detailSrc).toContain("galleryHeader:");
+    it("should define header style", () => {
+      expect(gallerySrc).toContain("header:");
     });
 
-    it("should define galleryCount style", () => {
-      expect(detailSrc).toContain("galleryCount:");
+    it("should define count style", () => {
+      expect(gallerySrc).toContain("count:");
     });
 
-    it("should define photoGridFeatured style", () => {
-      expect(detailSrc).toContain("photoGridFeatured:");
+    it("should define featured style", () => {
+      expect(gallerySrc).toContain("featured:");
     });
 
-    it("should define photoGridRow style", () => {
-      expect(detailSrc).toContain("photoGridRow:");
+    it("should define row style", () => {
+      expect(gallerySrc).toContain("row:");
     });
 
-    it("should define photoGridMore style", () => {
-      expect(detailSrc).toContain("photoGridMore:");
+    it("should define more style", () => {
+      expect(gallerySrc).toContain("more:");
     });
 
     it("should use 48.5% width for grid images (2-column)", () => {
-      expect(detailSrc).toContain('"48.5%"');
+      expect(gallerySrc).toContain('"48.5%"');
     });
   });
 

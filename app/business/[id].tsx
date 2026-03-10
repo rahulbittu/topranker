@@ -37,6 +37,7 @@ import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
 import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
+import { PhotoGallery } from "@/components/business/PhotoGallery";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -408,39 +409,8 @@ export default function BusinessProfileScreen() {
             </SlideUpView>
           )}
 
-          {/* Photo Gallery — masonry layout with featured first */}
-          {photoUrls.length > 1 && (
-            <View style={styles.sectionContainer}>
-              <View style={styles.galleryHeader}>
-                <Text style={styles.sectionTitle}>Photos</Text>
-                <Text style={styles.galleryCount}>{photoUrls.length} photos</Text>
-              </View>
-              <View style={styles.photoGrid}>
-                {/* Featured first photo — full width */}
-                <SafeImage
-                  uri={photoUrls[0]}
-                  style={styles.photoGridFeatured}
-                  contentFit="cover"
-                  category={business.category}
-                />
-                {/* Remaining photos — 2-column grid */}
-                <View style={styles.photoGridRow}>
-                  {photoUrls.slice(1, 5).map((url, i) => (
-                    <SafeImage
-                      key={i}
-                      uri={url}
-                      style={styles.photoGridImage}
-                      contentFit="cover"
-                      category={business.category}
-                    />
-                  ))}
-                </View>
-                {photoUrls.length > 5 && (
-                  <Text style={styles.photoGridMore}>+{photoUrls.length - 5} more in carousel above</Text>
-                )}
-              </View>
-            </View>
-          )}
+          {/* Photo Gallery — extracted component (Sprint 366) */}
+          <PhotoGallery photoUrls={photoUrls} category={business.category} />
 
           {/* Claim Listing */}
           {!business.isClaimed && (
@@ -569,30 +539,6 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
   },
 
-  galleryHeader: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-  },
-  galleryCount: {
-    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_500Medium",
-  },
-  photoGrid: {
-    borderRadius: 12, overflow: "hidden", gap: 3,
-  },
-  photoGridFeatured: {
-    width: "100%" as any, aspectRatio: 16 / 9,
-    backgroundColor: Colors.surfaceRaised,
-  },
-  photoGridRow: {
-    flexDirection: "row", flexWrap: "wrap", gap: 3,
-  },
-  photoGridImage: {
-    width: "48.5%" as any, aspectRatio: 1,
-    backgroundColor: Colors.surfaceRaised,
-  },
-  photoGridMore: {
-    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_500Medium",
-    textAlign: "center", paddingVertical: 6,
-  },
 
   claimCard: {
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 8,
