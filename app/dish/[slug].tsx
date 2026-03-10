@@ -21,6 +21,8 @@ import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
 import Colors from "@/constants/colors";
 import { getApiUrl } from "@/lib/query-client";
+import { CUISINE_DISH_MAP, CUISINE_DISPLAY } from "@/shared/best-in-categories";
+import { Analytics } from "@/lib/analytics";
 
 const AMBER = BRAND.colors.amber;
 const SITE_URL = "https://topranker.com";
@@ -130,6 +132,19 @@ export default function DishLeaderboardPage() {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const entries = allEntries.slice(0, visibleCount);
   const hasMore = allEntries.length > visibleCount;
+
+  // Sprint 314: Related dishes from the same cuisine
+  const relatedDishes = useMemo(() => {
+    if (!board?.dishSlug) return { cuisine: null, dishes: [] };
+    for (const [cuisine, dishes] of Object.entries(CUISINE_DISH_MAP)) {
+      const match = dishes.find((d) => d.slug === board.dishSlug);
+      if (match) {
+        const siblings = dishes.filter((d) => d.slug !== board.dishSlug);
+        return { cuisine, dishes: siblings };
+      }
+    }
+    return { cuisine: null, dishes: [] };
+  }, [board?.dishSlug]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -274,6 +289,33 @@ export default function DishLeaderboardPage() {
           </TouchableOpacity>
         )}
 
+        {/* Sprint 314: Related dish rankings from same cuisine */}
+        {relatedDishes.dishes.length > 0 && relatedDishes.cuisine && (
+          <View style={styles.relatedSection}>
+            <Text style={styles.relatedTitle}>
+              More {CUISINE_DISPLAY[relatedDishes.cuisine]?.label || relatedDishes.cuisine} Rankings
+            </Text>
+            <View style={styles.relatedChips}>
+              {relatedDishes.dishes.map((d) => (
+                <TouchableOpacity
+                  key={d.slug}
+                  style={styles.relatedChip}
+                  onPress={() => {
+                    Analytics.relatedDishTap(d.slug, board.dishSlug);
+                    router.push({ pathname: "/dish/[slug]", params: { slug: d.slug } });
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Best ${d.name} leaderboard`}
+                >
+                  <Text style={styles.relatedChipEmoji}>{d.emoji}</Text>
+                  <Text style={styles.relatedChipText}>Best {d.name}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={AMBER} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* CTA */}
         <View style={styles.ctaSection}>
           <Text style={styles.ctaText}>
@@ -402,4 +444,22 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
   },
   showMoreText: { fontSize: 14, fontWeight: "600", color: AMBER },
+  relatedSection: {
+    marginHorizontal: 16, marginBottom: 12, padding: 14,
+    backgroundColor: "#fff", borderRadius: 14,
+    borderWidth: 1, borderColor: "#E8E6E1",
+  },
+  relatedTitle: {
+    fontSize: 14, fontWeight: "700", color: "#111",
+    fontFamily: "DMSans_700Bold", marginBottom: 10,
+  },
+  relatedChips: { gap: 8 },
+  relatedChip: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingVertical: 10, paddingHorizontal: 12,
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.15)",
+  },
+  relatedChipEmoji: { fontSize: 20 },
+  relatedChipText: { flex: 1, fontSize: 14, fontWeight: "600", color: AMBER },
 });

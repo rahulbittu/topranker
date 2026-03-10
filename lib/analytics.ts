@@ -85,6 +85,9 @@ export type AnalyticsEvent =
   | "cuisine_filter_select"
   | "cuisine_filter_clear"
   | "dish_deep_link_tap"
+  // Sprint 314: Dish discovery analytics
+  | "dish_search_match_tap"
+  | "related_dish_tap"
 
   // Sprint 202: Beta tracking
   | "beta_join_page_view"
@@ -257,4 +260,10 @@ export const Analytics = {
 
   dishDeepLinkTap: (dishSlug: string) =>
     track("dish_deep_link_tap", { dish_slug: dishSlug }),
+
+  // Sprint 314: Dish discovery analytics
+  dishSearchMatchTap: (dishSlug: string) =>
+    track("dish_search_match_tap", { dish_slug: dishSlug }),
+  relatedDishTap: (dishSlug: string, fromDish: string) =>
+    track("related_dish_tap", { dish_slug: dishSlug, from_dish: fromDish }),
 };

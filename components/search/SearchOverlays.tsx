@@ -13,6 +13,7 @@ import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
 import type { AutocompleteSuggestion } from "@/lib/api";
+import { Analytics } from "@/lib/analytics";
 
 const AMBER = BRAND.colors.amber;
 
@@ -39,6 +40,7 @@ export function AutocompleteDropdown({ results, dishMatches = [], onDismiss }: A
           key={`dish-${dish.slug}`}
           style={styles.autocompleteRow}
           onPress={() => {
+            Analytics.dishSearchMatchTap(dish.slug);
             router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
             onDismiss();
           }}
