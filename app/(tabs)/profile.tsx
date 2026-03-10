@@ -50,6 +50,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
+  const [historyPageSize, setHistoryPageSize] = useState(10);
 
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
@@ -350,9 +351,35 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <Text style={styles.sectionCount}>{profile.ratingHistory.length}</Text>
       </View>
 
-      {profile.ratingHistory.map((r: any) => (
+      {profile.ratingHistory.slice(0, historyPageSize).map((r: any) => (
         <HistoryRow key={r.id} r={r} />
       ))}
+
+      {profile.ratingHistory.length > historyPageSize && (
+        <TouchableOpacity
+          style={styles.showMoreBtn}
+          onPress={() => setHistoryPageSize(prev => prev + 10)}
+          accessibilityRole="button"
+          accessibilityLabel={`Show more ratings (${profile.ratingHistory.length - historyPageSize} remaining)`}
+        >
+          <Text style={styles.showMoreText}>
+            Show More ({profile.ratingHistory.length - historyPageSize} remaining)
+          </Text>
+          <Ionicons name="chevron-down" size={14} color={AMBER} />
+        </TouchableOpacity>
+      )}
+
+      {historyPageSize > 10 && profile.ratingHistory.length > 10 && (
+        <TouchableOpacity
+          style={styles.showLessBtn}
+          onPress={() => setHistoryPageSize(10)}
+          accessibilityRole="button"
+          accessibilityLabel="Show fewer ratings"
+        >
+          <Text style={styles.showLessText}>Show Less</Text>
+          <Ionicons name="chevron-up" size={14} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      )}
 
       {profile.ratingHistory.length === 0 && (
         <TouchableOpacity
@@ -642,6 +669,17 @@ const styles = StyleSheet.create({
 
   // Empty states
   emptyHistory: { alignItems: "center", paddingVertical: 40, gap: 8 },
+  showMoreBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 12, marginTop: 4,
+    backgroundColor: `${AMBER}08`, borderRadius: 10,
+  },
+  showMoreText: { fontSize: 13, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold" },
+  showLessBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4,
+    paddingVertical: 8,
+  },
+  showLessText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   emptyCtaRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8 },
