@@ -107,7 +107,7 @@ describe("Sprint 296 — runtime correctness", () => {
       totalRatings: 10, distinctBusinesses: 8, totalCategories: 3,
       daysActive: 15, currentStreak: 3, credibilityTier: "city" as const,
       credibilityScore: 120, isFoundingMember: true, referralCount: 0,
-      helpfulVotes: 0, citiesRated: 1, hasRatedAfterMidnight: false,
+      citiesRated: 1, hasRatedAfterMidnight: false,
       hasRatedBefore7AM: false, hasGivenPerfect5: true, hasGivenScore1: false,
       businessesMovedUp: 1, businessesMovedToFirst: 0,
       springRatings: 3, summerRatings: 0, fallRatings: 0, winterRatings: 0,

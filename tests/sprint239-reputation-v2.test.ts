@@ -62,8 +62,8 @@ describe("Reputation v2 — static checks", () => {
     expect(src).toContain("export function clearReputationCache");
   });
 
-  it("has exactly 7 reputation signals", () => {
-    expect(REPUTATION_SIGNALS).toHaveLength(7);
+  it("has exactly 6 reputation signals", () => {
+    expect(REPUTATION_SIGNALS).toHaveLength(6);
   });
 
   it("signal weights sum to 1.0", () => {

@@ -14,7 +14,6 @@ Notifications.setNotificationHandler({
 });
 
 export type NotificationType =
-  | "rating_response"      // Business owner replied to your rating
   | "tier_upgrade"         // You reached a new credibility tier
   | "challenger_result"    // A challenge you followed ended
   | "challenger_started"   // New challenge in your city
@@ -118,13 +117,6 @@ export async function setBadgeCount(count: number): Promise<void> {
 
 // Notification templates
 export const NOTIFICATION_TEMPLATES = {
-  ratingResponse: (businessName: string, ownerReply: string): PushNotification => ({
-    type: "rating_response",
-    title: `${businessName} replied to your rating`,
-    body: ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply,
-    data: { screen: "business" },
-  }),
-
   tierUpgrade: (newTier: string): PushNotification => ({
     type: "tier_upgrade",
     title: "You've been promoted!",

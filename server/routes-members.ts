@@ -216,7 +216,6 @@ export function registerMemberRoutes(app: Express) {
     const member = await getMemberById(req.user!.id);
     const stored = (member?.notificationPrefs as Record<string, boolean>) || {};
     const prefs = {
-      ratingResponses: true,
       tierUpgrades: true,
       challengerResults: true,
       newChallengers: true,
@@ -229,11 +228,10 @@ export function registerMemberRoutes(app: Express) {
 
   app.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const {
-      ratingResponses, tierUpgrades, challengerResults,
+      tierUpgrades, challengerResults,
       newChallengers, weeklyDigest, marketingEmails,
     } = req.body;
     const prefs: Record<string, boolean> = {
-      ratingResponses: ratingResponses !== false,
       tierUpgrades: tierUpgrades !== false,
       challengerResults: challengerResults !== false,
       newChallengers: newChallengers !== false,

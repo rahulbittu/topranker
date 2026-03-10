@@ -92,27 +92,6 @@ async function persistNotification(
 }
 
 /**
- * Send a rating response notification to a user.
- */
-export async function notifyRatingResponse(
-  userId: string,
-  userToken: string,
-  businessName: string,
-  ownerReply: string,
-): Promise<void> {
-  // Before sending, check user's notification preferences
-  const { getMemberById } = await import("./storage/members");
-  const member = await getMemberById(userId);
-  const prefs = (member?.notificationPrefs as Record<string, boolean>) || {};
-  if (prefs.ratingResponses === false) return; // user opted out
-
-  const truncated = ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply;
-  const title = `${businessName} replied to your rating`;
-  await sendPushNotification([userToken], title, truncated, { screen: "business" });
-  persistNotification(userId, "rating_response", title, truncated, { screen: "business" });
-}
-
-/**
  * Send a tier upgrade notification.
  */
 export async function notifyTierUpgrade(

@@ -259,29 +259,6 @@ export const USER_BADGES: Badge[] = [
     color: "#C49A1A",
     gradient: ["#FFD700", "#9A7510"],
   },
-  {
-    id: "helpful-voice",
-    name: "Helpful Voice",
-    description: "5 of your ratings marked as helpful",
-    icon: "thumbs-up",
-    category: "social",
-    rarity: "rare",
-    target: "user",
-    color: "#66BB6A",
-    gradient: ["#81C784", "#2E7D32"],
-  },
-  {
-    id: "influencer",
-    name: "Influencer",
-    description: "25 of your ratings marked as helpful",
-    icon: "hand-left",
-    category: "social",
-    rarity: "epic",
-    target: "user",
-    color: "#43A047",
-    gradient: ["#66BB6A", "#1B5E20"],
-  },
-
   // ── Tier Badges (credibility tier achievements) ──
   {
     id: "tier-city",

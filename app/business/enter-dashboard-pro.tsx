@@ -121,7 +121,6 @@ export default function EnterDashboardProScreen() {
             { feature: "Customer demographics", free: false, pro: true },
             { feature: "Export reports (CSV)", free: false, pro: true },
             { feature: "Priority support", free: false, pro: true },
-            { feature: "Review response tools", free: false, pro: true },
           ].map((row, i) => (
             <View key={i} style={styles.comparisonRow}>
               <Text style={styles.comparisonFeatureText}>{row.feature}</Text>
@@ -148,7 +147,6 @@ export default function EnterDashboardProScreen() {
             { icon: "people-outline", text: "Customer demographics — who's rating your business" },
             { icon: "git-compare-outline", text: "Competitor benchmarking against top 5 in your category" },
             { icon: "download-outline", text: "Export detailed reports to CSV for your records" },
-            { icon: "chatbubble-ellipses-outline", text: "Review response tools to engage with raters" },
             { icon: "headset-outline", text: "Priority email support with 24-hour response time" },
           ].map((item, i) => (
             <View key={i} style={styles.benefitRow}>

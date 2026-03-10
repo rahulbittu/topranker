@@ -37,8 +37,6 @@ const BADGE_META: Record<string, { name: string; description: string; rarity: st
   "first-referral":    { name: "Connector", description: "Invite a friend who creates an account", rarity: "rare", color: "#29B6F6", icon: "people" },
   "squad-builder":     { name: "Squad Builder", description: "Invite 5 friends who join TopRanker", rarity: "epic", color: "#0288D1", icon: "people-circle" },
   "community-leader":  { name: "Community Leader", description: "Invite 25 friends who join TopRanker", rarity: "legendary", color: "#C49A1A", icon: "megaphone" },
-  "helpful-voice":     { name: "Helpful Voice", description: "5 of your ratings marked as helpful", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
-  "influencer":        { name: "Influencer", description: "25 of your ratings marked as helpful", rarity: "epic", color: "#43A047", icon: "hand-left" },
   // User Tier Badges
   "tier-city":         { name: "City Regular", description: "Reach the Regular tier (100+ credibility)", rarity: "rare", color: "#6B6B6B", icon: "star" },
   "tier-trusted":      { name: "Trusted Judge", description: "Reach the Trusted tier (300+ credibility)", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },

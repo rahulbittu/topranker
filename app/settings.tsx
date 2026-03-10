@@ -17,7 +17,6 @@ import { hapticPress } from "@/lib/audio";
 import packageJson from "../package.json";
 
 const NOTIFICATION_KEYS = {
-  ratingResponses: "notif_rating_responses",
   tierUpgrades: "notif_tier_upgrades",
   challengerResults: "notif_challenger_results",
   newChallengers: "notif_new_challengers",
@@ -126,7 +125,6 @@ export default function SettingsScreen() {
 
   // Notification preferences
   const [notifPrefs, setNotifPrefs] = useState({
-    ratingResponses: true,
     tierUpgrades: true,
     challengerResults: true,
     newChallengers: true,
@@ -252,13 +250,6 @@ export default function SettingsScreen() {
         {/* Notifications */}
         <SectionHeader title="NOTIFICATIONS" />
         <View style={styles.card}>
-          <SettingRow
-            icon="chatbubble-outline"
-            label="Rating Responses"
-            sublabel="When a business replies to your rating"
-            value={notifPrefs.ratingResponses}
-            onToggle={toggleNotif("ratingResponses")}
-          />
           <SettingRow
             icon="arrow-up-circle-outline"
             label="Tier Upgrades"

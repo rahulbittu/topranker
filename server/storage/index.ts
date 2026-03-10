@@ -144,15 +144,6 @@ export {
   getFlagCount,
 } from "./claims";
 
-// Rating Responses (Sprint 177)
-export {
-  submitRatingResponse,
-  getRatingResponse,
-  getBusinessResponses,
-  getResponsesForRatings,
-  deleteRatingResponse,
-} from "./responses";
-
 // QR Scans (Sprint 178)
 export {
   recordQrScan,

@@ -290,7 +290,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
                 <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
                 <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
                 <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
-                <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
                 {(breakdown.penalties || 0) > 0 && (
                   <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
                 )}
@@ -309,7 +308,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
             <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
             <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
             <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
-            <BreakdownRow label="Helpfulness" value={`+${breakdown.helpfulness || 0}`} icon="hand-left-outline" />
             {(breakdown.penalties || 0) > 0 && (
               <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
             )}

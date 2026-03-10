@@ -20,7 +20,6 @@ const EXPECTED_TABLES = [
   "members",
   "businesses",
   "ratings",
-  "rating_responses",
   "dishes",
   "dish_votes",
   "challengers",

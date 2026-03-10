@@ -15,11 +15,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc17) => {
+var __copyProps = (to, from, except, desc16) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key2 of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key2) && key2 !== except)
-        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc17 = __getOwnPropDesc(from, key2)) || desc17.enumerable });
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc16 = __getOwnPropDesc(from, key2)) || desc16.enumerable });
   }
   return to;
 };
@@ -58,7 +58,6 @@ __export(schema_exports, {
   rankHistory: () => rankHistory,
   ratingFlags: () => ratingFlags,
   ratingPhotos: () => ratingPhotos,
-  ratingResponses: () => ratingResponses,
   ratings: () => ratings,
   referrals: () => referrals,
   userActivity: () => userActivity,
@@ -80,7 +79,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, ratingResponses, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, deletionRequests, dishLeaderboards, dishLeaderboardEntries, dishSuggestions, dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema, notifications, referrals, betaInvites, userActivity, betaFeedback, ratingPhotos;
+var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, deletionRequests, dishLeaderboards, dishLeaderboardEntries, dishSuggestions, dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema, notifications, referrals, betaInvites, userActivity, betaFeedback, ratingPhotos;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -217,22 +216,6 @@ var init_schema = __esm({
       (table) => [
         index("idx_rat_business").on(table.businessId, table.createdAt),
         index("idx_rat_member").on(table.memberId, table.createdAt)
-      ]
-    );
-    ratingResponses = pgTable(
-      "rating_responses",
-      {
-        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-        ratingId: varchar("rating_id").notNull().references(() => ratings.id),
-        businessId: varchar("business_id").notNull().references(() => businesses.id),
-        ownerId: varchar("owner_id").notNull().references(() => members.id),
-        responseText: text("response_text").notNull(),
-        createdAt: timestamp("created_at").notNull().defaultNow(),
-        updatedAt: timestamp("updated_at").notNull().defaultNow()
-      },
-      (table) => [
-        index("idx_resp_rating").on(table.ratingId),
-        index("idx_resp_business").on(table.businessId)
       ]
     );
     dishes = pgTable(
@@ -624,7 +607,7 @@ var init_schema = __esm({
         id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
         memberId: varchar("member_id").notNull().references(() => members.id),
         type: text("type").notNull(),
-        // tier_upgrade, claim_decision, challenger_result, new_challenger, rating_response, weekly_digest
+        // tier_upgrade, claim_decision, challenger_result, new_challenger, weekly_digest
         title: text("title").notNull(),
         body: text("body").notNull(),
         data: jsonb("data"),
@@ -1841,7 +1824,6 @@ var push_exports = {};
 __export(push_exports, {
   notifyChallengerResult: () => notifyChallengerResult,
   notifyNewChallenger: () => notifyNewChallenger,
-  notifyRatingResponse: () => notifyRatingResponse,
   notifyTierUpgrade: () => notifyTierUpgrade,
   sendPushNotification: () => sendPushNotification
 });
@@ -1882,16 +1864,6 @@ async function persistNotification(memberId, type, title, body, data) {
   } catch (err) {
     pushLog.error(`Failed to persist notification for ${memberId}: ${err}`);
   }
-}
-async function notifyRatingResponse(userId, userToken, businessName, ownerReply) {
-  const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
-  const member = await getMemberById2(userId);
-  const prefs = member?.notificationPrefs || {};
-  if (prefs.ratingResponses === false) return;
-  const truncated = ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply;
-  const title = `${businessName} replied to your rating`;
-  await sendPushNotification([userToken], title, truncated, { screen: "business" });
-  persistNotification(userId, "rating_response", title, truncated, { screen: "business" });
 }
 async function notifyTierUpgrade(userId, userToken, newTier) {
   const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
@@ -2605,7 +2577,7 @@ async function recalculateDishLeaderboard(leaderboardId) {
   }
   const entries = [];
   for (const [businessId, dishIds] of bizDishMap) {
-    const votes2 = await db.select({
+    const votes = await db.select({
       ratingId: dishVotes.ratingId,
       memberId: dishVotes.memberId
     }).from(dishVotes).where(
@@ -2614,8 +2586,8 @@ async function recalculateDishLeaderboard(leaderboardId) {
         sql7`${dishVotes.dishId} = ANY(ARRAY[${sql7.join(dishIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`
       )
     );
-    if (votes2.length === 0) continue;
-    const ratingIds = votes2.map((v) => v.ratingId);
+    if (votes.length === 0) continue;
+    const ratingIds = votes.map((v) => v.ratingId);
     const ratingRows = await db.select({
       id: ratings.id,
       q1Score: ratings.q1Score,
@@ -3083,52 +3055,8 @@ var init_claims = __esm({
   }
 });
 
-// server/storage/responses.ts
-import { eq as eq15, and as and12, desc as desc13, inArray } from "drizzle-orm";
-async function submitRatingResponse(ratingId, businessId, ownerId, responseText) {
-  const [existing] = await db.select().from(ratingResponses).where(eq15(ratingResponses.ratingId, ratingId));
-  if (existing) {
-    const [updated] = await db.update(ratingResponses).set({ responseText, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(ratingResponses.id, existing.id)).returning();
-    return updated;
-  }
-  const [response] = await db.insert(ratingResponses).values({ ratingId, businessId, ownerId, responseText }).returning();
-  return response;
-}
-async function getRatingResponse(ratingId) {
-  const [response] = await db.select().from(ratingResponses).where(eq15(ratingResponses.ratingId, ratingId));
-  return response;
-}
-async function getBusinessResponses(businessId, limit = 20) {
-  return db.select().from(ratingResponses).where(eq15(ratingResponses.businessId, businessId)).orderBy(desc13(ratingResponses.createdAt)).limit(limit);
-}
-async function getResponsesForRatings(ratingIds) {
-  if (ratingIds.length === 0) return {};
-  const responses2 = await db.select().from(ratingResponses).where(inArray(ratingResponses.ratingId, ratingIds));
-  const map = {};
-  for (const r of responses2) {
-    map[r.ratingId] = r;
-  }
-  return map;
-}
-async function deleteRatingResponse(ratingId, ownerId) {
-  const [deleted] = await db.delete(ratingResponses).where(
-    and12(
-      eq15(ratingResponses.ratingId, ratingId),
-      eq15(ratingResponses.ownerId, ownerId)
-    )
-  ).returning();
-  return !!deleted;
-}
-var init_responses = __esm({
-  "server/storage/responses.ts"() {
-    "use strict";
-    init_schema();
-    init_db();
-  }
-});
-
 // server/storage/qr.ts
-import { eq as eq16, count as count10, and as and13, gte as gte4, sql as sql9 } from "drizzle-orm";
+import { eq as eq15, count as count10, and as and12, gte as gte4, sql as sql9 } from "drizzle-orm";
 async function recordQrScan(businessId, memberId) {
   const [scan] = await db.insert(qrScans).values({
     businessId,
@@ -3140,21 +3068,21 @@ async function getQrScanStats(businessId) {
   const now = /* @__PURE__ */ new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
-  const [totalResult] = await db.select({ cnt: count10() }).from(qrScans).where(eq16(qrScans.businessId, businessId));
+  const [totalResult] = await db.select({ cnt: count10() }).from(qrScans).where(eq15(qrScans.businessId, businessId));
   const totalScans = Number(totalResult?.cnt ?? 0);
-  const [uniqueResult] = await db.select({ cnt: sql9`count(distinct ${qrScans.memberId})` }).from(qrScans).where(eq16(qrScans.businessId, businessId));
+  const [uniqueResult] = await db.select({ cnt: sql9`count(distinct ${qrScans.memberId})` }).from(qrScans).where(eq15(qrScans.businessId, businessId));
   const uniqueMembers = Number(uniqueResult?.cnt ?? 0);
-  const [conversionResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), eq16(qrScans.converted, true)));
+  const [conversionResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), eq15(qrScans.converted, true)));
   const conversions = Number(conversionResult?.cnt ?? 0);
-  const [weekResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, sevenDaysAgo)));
+  const [weekResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), gte4(qrScans.scannedAt, sevenDaysAgo)));
   const last7Days = Number(weekResult?.cnt ?? 0);
-  const [monthResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, thirtyDaysAgo)));
+  const [monthResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), gte4(qrScans.scannedAt, thirtyDaysAgo)));
   const last30Days = Number(monthResult?.cnt ?? 0);
   const conversionRate = totalScans > 0 ? Math.round(conversions / totalScans * 100) : 0;
   return { totalScans, uniqueMembers, conversions, conversionRate, last7Days, last30Days };
 }
 async function markQrScanConverted(scanId) {
-  await db.update(qrScans).set({ converted: true }).where(eq16(qrScans.id, scanId));
+  await db.update(qrScans).set({ converted: true }).where(eq15(qrScans.id, scanId));
 }
 var init_qr = __esm({
   "server/storage/qr.ts"() {
@@ -3165,7 +3093,7 @@ var init_qr = __esm({
 });
 
 // server/storage/beta-invites.ts
-import { eq as eq17 } from "drizzle-orm";
+import { eq as eq16 } from "drizzle-orm";
 async function createBetaInvite(params) {
   const [invite] = await db.insert(betaInvites).values({
     email: params.email,
@@ -3176,11 +3104,11 @@ async function createBetaInvite(params) {
   return invite;
 }
 async function getBetaInviteByEmail(email) {
-  const [invite] = await db.select().from(betaInvites).where(eq17(betaInvites.email, email));
+  const [invite] = await db.select().from(betaInvites).where(eq16(betaInvites.email, email));
   return invite;
 }
 async function markBetaInviteJoined(email, memberId) {
-  await db.update(betaInvites).set({ status: "joined", joinedAt: /* @__PURE__ */ new Date(), memberId }).where(eq17(betaInvites.email, email));
+  await db.update(betaInvites).set({ status: "joined", joinedAt: /* @__PURE__ */ new Date(), memberId }).where(eq16(betaInvites.email, email));
 }
 async function getBetaInviteStats() {
   const invites = await db.select().from(betaInvites);
@@ -3325,13 +3253,13 @@ __export(feedback_exports, {
   getFeedbackStats: () => getFeedbackStats,
   getRecentFeedback: () => getRecentFeedback
 });
-import { desc as desc16, count as count13 } from "drizzle-orm";
+import { desc as desc15, count as count13 } from "drizzle-orm";
 async function createFeedback(params) {
   const [result] = await db.insert(betaFeedback).values(params).returning();
   return result;
 }
 async function getRecentFeedback(limit = 50) {
-  return db.select().from(betaFeedback).orderBy(desc16(betaFeedback.createdAt)).limit(limit);
+  return db.select().from(betaFeedback).orderBy(desc15(betaFeedback.createdAt)).limit(limit);
 }
 async function getFeedbackStats() {
   const rows = await db.select({
@@ -3372,7 +3300,6 @@ __export(storage_exports, {
   createReferral: () => createReferral,
   deleteBusinessPhotos: () => deleteBusinessPhotos,
   deleteRating: () => deleteRating,
-  deleteRatingResponse: () => deleteRatingResponse,
   editRating: () => editRating,
   expireFeaturedByPayment: () => expireFeaturedByPayment,
   expireOldPlacements: () => expireOldPlacements,
@@ -3396,7 +3323,6 @@ __export(storage_exports, {
   getBusinessPhotos: () => getBusinessPhotos,
   getBusinessPhotosMap: () => getBusinessPhotosMap,
   getBusinessRatings: () => getBusinessRatings,
-  getBusinessResponses: () => getBusinessResponses,
   getBusinessesByIds: () => getBusinessesByIds,
   getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
   getClaimByMemberAndBusiness: () => getClaimByMemberAndBusiness,
@@ -3436,12 +3362,10 @@ __export(storage_exports, {
   getQrScanStats: () => getQrScanStats,
   getRankHistory: () => getRankHistory,
   getRatingById: () => getRatingById,
-  getRatingResponse: () => getRatingResponse,
   getRecentFeedback: () => getRecentFeedback,
   getRecentWebhookEvents: () => getRecentWebhookEvents,
   getReferralStats: () => getReferralStats,
   getReferrerForMember: () => getReferrerForMember,
-  getResponsesForRatings: () => getResponsesForRatings,
   getRevenueByMonth: () => getRevenueByMonth,
   getRevenueMetrics: () => getRevenueMetrics,
   getSeasonalRatingCounts: () => getSeasonalRatingCounts,
@@ -3479,7 +3403,6 @@ __export(storage_exports, {
   submitDishSuggestion: () => submitDishSuggestion,
   submitRating: () => submitRating,
   submitRatingFlag: () => submitRatingFlag,
-  submitRatingResponse: () => submitRatingResponse,
   updateBusinessSubscription: () => updateBusinessSubscription,
   updateChallengerVotes: () => updateChallengerVotes,
   updateMemberAvatar: () => updateMemberAvatar,
@@ -3509,7 +3432,6 @@ var init_storage = __esm({
     init_webhook_events();
     init_featured_placements();
     init_claims();
-    init_responses();
     init_qr();
     init_referrals();
     init_notifications();
@@ -5233,7 +5155,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql13, eq as eq23, and as and15 } from "drizzle-orm";
+import { sql as sql13, eq as eq22, and as and14 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 async function seedDatabase() {
   console.log("Seeding database...");
@@ -5345,8 +5267,8 @@ async function seedDatabase() {
     }).returning();
     const slugPattern = "%" + board.dishSlug + "%";
     const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq23(dishes.businessId, businesses.id)).where(and15(
-      eq23(businesses.city, "Dallas"),
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq22(dishes.businessId, businesses.id)).where(and14(
+      eq22(businesses.city, "Dallas"),
       sql13`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
@@ -6299,7 +6221,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq24, isNotNull as isNotNull2, and as and16 } from "drizzle-orm";
+import { eq as eq23, isNotNull as isNotNull2, and as and15 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -6312,8 +6234,8 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
-      and16(
-        eq24(businesses.isClaimed, false),
+      and15(
+        eq23(businesses.isClaimed, false),
         isNotNull2(businesses.rankPosition)
       )
     );
@@ -6331,10 +6253,10 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
-      and16(
-        eq24(businesses.isClaimed, true),
+      and15(
+        eq23(businesses.isClaimed, true),
         isNotNull2(businesses.ownerId),
-        eq24(businesses.subscriptionStatus, "none")
+        eq23(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -6344,7 +6266,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq24(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq23(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -6598,8 +6520,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq25(members4.id, member.id));
+    const { eq: eq24 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq24(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -6831,8 +6753,6 @@ var BADGE_META = {
   "first-referral": { name: "Connector", description: "Invite a friend who creates an account", rarity: "rare", color: "#29B6F6", icon: "people" },
   "squad-builder": { name: "Squad Builder", description: "Invite 5 friends who join TopRanker", rarity: "epic", color: "#0288D1", icon: "people-circle" },
   "community-leader": { name: "Community Leader", description: "Invite 25 friends who join TopRanker", rarity: "legendary", color: "#C49A1A", icon: "megaphone" },
-  "helpful-voice": { name: "Helpful Voice", description: "5 of your ratings marked as helpful", rarity: "rare", color: "#66BB6A", icon: "thumbs-up" },
-  "influencer": { name: "Influencer", description: "25 of your ratings marked as helpful", rarity: "epic", color: "#43A047", icon: "hand-left" },
   // User Tier Badges
   "tier-city": { name: "City Regular", description: "Reach the Regular tier (100+ credibility)", rarity: "rare", color: "#6B6B6B", icon: "star" },
   "tier-trusted": { name: "Trusted Judge", description: "Reach the Trusted tier (300+ credibility)", rarity: "epic", color: "#C49A1A", icon: "shield-checkmark" },
@@ -7644,7 +7564,7 @@ init_tier_staleness();
 init_logger();
 init_db();
 init_schema();
-import { sql as sql12, eq as eq20, count as count14 } from "drizzle-orm";
+import { sql as sql12, eq as eq19, count as count14 } from "drizzle-orm";
 
 // shared/city-config.ts
 var CITY_REGISTRY = {
@@ -7787,9 +7707,9 @@ function getBetaCities() {
 var engLog = log.tag("CityEngagement");
 async function getCityEngagement(city) {
   engLog.debug(`Fetching engagement for city: ${city}`);
-  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
+  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq19(members.city, city));
   const totalMembers = memberResult?.total ?? 0;
-  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq20(businesses.city, city));
+  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq19(businesses.city, city));
   const totalBusinesses = bizResult?.total ?? 0;
   const ratingsResult = await db.execute(sql12`
     SELECT COUNT(r.id)::int AS total
@@ -7799,7 +7719,7 @@ async function getCityEngagement(city) {
   `);
   const totalRatings = ratingsResult.rows[0]?.total ?? 0;
   const avgRatingsPerMember = totalMembers > 0 ? Math.round(totalRatings / totalMembers * 100) / 100 : 0;
-  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq20(businesses.city, city)).groupBy(businesses.category).orderBy(sql12`count(*) DESC`).limit(1);
+  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq19(businesses.city, city)).groupBy(businesses.category).orderBy(sql12`count(*) DESC`).limit(1);
   const topCategory = categoryResult[0]?.category ?? "N/A";
   engLog.info(`City engagement for ${city}: ${totalMembers} members, ${totalBusinesses} businesses, ${totalRatings} ratings`);
   return {
@@ -8248,7 +8168,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq24, asc: asc3 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -8259,7 +8179,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq25(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq24(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -8986,11 +8906,11 @@ init_tier_staleness();
 // server/gdpr.ts
 init_db();
 init_schema();
-import { eq as eq21, and as and14, lte as lte3 } from "drizzle-orm";
+import { eq as eq20, and as and13, lte as lte3 } from "drizzle-orm";
 async function scheduleDeletion(userId, gracePeriodDays) {
   const now = /* @__PURE__ */ new Date();
   const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1e3);
-  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending")));
+  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and13(eq20(deletionRequests.memberId, userId), eq20(deletionRequests.status, "pending")));
   const [row] = await db.insert(deletionRequests).values({
     memberId: userId,
     requestedAt: now,
@@ -9006,11 +8926,11 @@ async function scheduleDeletion(userId, gracePeriodDays) {
 }
 async function cancelDeletion(userId) {
   const now = /* @__PURE__ */ new Date();
-  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending"))).returning();
+  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and13(eq20(deletionRequests.memberId, userId), eq20(deletionRequests.status, "pending"))).returning();
   return result.length > 0;
 }
 async function getDeletionStatus(userId) {
-  const rows = await db.select().from(deletionRequests).where(eq21(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
+  const rows = await db.select().from(deletionRequests).where(eq20(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
   if (rows.length === 0) return null;
   const row = rows[0];
   return {
@@ -9551,7 +9471,6 @@ function registerMemberRoutes(app2) {
     const member = await getMemberById2(req.user.id);
     const stored = member?.notificationPrefs || {};
     const prefs = {
-      ratingResponses: true,
       tierUpgrades: true,
       challengerResults: true,
       newChallengers: true,
@@ -9563,7 +9482,6 @@ function registerMemberRoutes(app2) {
   }));
   app2.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
     const {
-      ratingResponses: ratingResponses2,
       tierUpgrades,
       challengerResults,
       newChallengers,
@@ -9571,7 +9489,6 @@ function registerMemberRoutes(app2) {
       marketingEmails
     } = req.body;
     const prefs = {
-      ratingResponses: ratingResponses2 !== false,
       tierUpgrades: tierUpgrades !== false,
       challengerResults: challengerResults !== false,
       newChallengers: newChallengers !== false,
@@ -9735,65 +9652,6 @@ function registerBusinessRoutes(app2) {
     const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
     const data = await getRankHistory2(req.params.id, days);
     return res.json({ data });
-  }));
-  app2.post("/api/ratings/:id/response", requireAuth, wrapAsync(async (req, res) => {
-    const ratingId = req.params.id;
-    const responseText = sanitizeString(req.body.responseText, 500);
-    if (!responseText || responseText.length < 2) {
-      return res.status(400).json({ error: "Response text is required (2-500 characters)" });
-    }
-    const { getRatingById: getRatingById2, submitRatingResponse: submitRatingResponse2, getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const rating = await getRatingById2(ratingId);
-    if (!rating) {
-      return res.status(404).json({ error: "Rating not found" });
-    }
-    const business = await getBusinessBySlug(rating.businessId);
-    const businessById = business || await (await Promise.resolve().then(() => (init_storage(), storage_exports))).getBusinessById(rating.businessId);
-    if (!businessById) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-    if (businessById.ownerId !== req.user.id) {
-      return res.status(403).json({ error: "Only the business owner can respond to ratings" });
-    }
-    const { isAdminEmail: isAdminEmail2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
-    const isAdmin = isAdminEmail2(req.user?.email);
-    const isPro = businessById.subscriptionStatus === "active" || businessById.subscriptionStatus === "trialing";
-    if (!isPro && !isAdmin) {
-      return res.status(403).json({ error: "Dashboard Pro subscription required to respond to ratings" });
-    }
-    const response = await submitRatingResponse2(ratingId, businessById.id, req.user.id, responseText);
-    const rater = await getMemberById2(rating.memberId);
-    if (rater?.pushToken) {
-      const { notifyRatingResponse: notifyRatingResponse2 } = await Promise.resolve().then(() => (init_push(), push_exports));
-      notifyRatingResponse2(rater.id, rater.pushToken, businessById.name, responseText).catch(() => {
-      });
-    }
-    return res.status(201).json({ data: response });
-  }));
-  app2.get("/api/ratings/:id/response", wrapAsync(async (req, res) => {
-    const { getRatingResponse: getRatingResponse2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const response = await getRatingResponse2(req.params.id);
-    if (!response) {
-      return res.status(404).json({ error: "No response found" });
-    }
-    return res.json({ data: response });
-  }));
-  app2.delete("/api/ratings/:id/response", requireAuth, wrapAsync(async (req, res) => {
-    const ratingId = req.params.id;
-    const { getRatingById: getRatingById2, deleteRatingResponse: deleteRatingResponse2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const rating = await getRatingById2(ratingId);
-    if (!rating) {
-      return res.status(404).json({ error: "Rating not found" });
-    }
-    const businessById = await (await Promise.resolve().then(() => (init_storage(), storage_exports))).getBusinessById(rating.businessId);
-    if (!businessById || businessById.ownerId !== req.user.id) {
-      return res.status(403).json({ error: "Only the business owner can delete responses" });
-    }
-    const deleted = await deleteRatingResponse2(ratingId, req.user.id);
-    if (!deleted) {
-      return res.status(404).json({ error: "Response not found" });
-    }
-    return res.json({ data: { deleted: true } });
   }));
 }
 
@@ -9971,15 +9829,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
+    const { eq: eq24 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq25(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq24(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq24(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq24(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -10213,7 +10071,7 @@ function registerReferralRoutes(app2) {
 init_db();
 init_schema();
 init_logger();
-import { eq as eq22 } from "drizzle-orm";
+import { eq as eq21 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
 import crypto6 from "crypto";
@@ -10274,13 +10132,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq21(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, false) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq21(members.id, memberId));
     log.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
@@ -10304,13 +10162,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq21(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, true) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq21(members.id, memberId));
     log.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
@@ -11408,152 +11266,6 @@ function registerPushRoutes(app2) {
   });
 }
 
-// server/routes-owner-responses.ts
-init_logger();
-
-// server/business-responses.ts
-init_logger();
-import crypto10 from "crypto";
-var respLog = log.tag("BusinessResponses");
-var responses = /* @__PURE__ */ new Map();
-var reviewResponses = /* @__PURE__ */ new Map();
-var MAX_RESPONSES = 5e3;
-function createResponse(reviewId, businessId, ownerId, content) {
-  if (reviewResponses.has(reviewId)) {
-    respLog.warn(`Response already exists for review ${reviewId}`);
-    return null;
-  }
-  if (content.length < 10 || content.length > 2e3) {
-    respLog.warn(`Response content length invalid: ${content.length}`);
-    return null;
-  }
-  const resp = {
-    id: crypto10.randomUUID(),
-    reviewId,
-    businessId,
-    ownerId,
-    content,
-    status: "visible",
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  responses.set(resp.id, resp);
-  reviewResponses.set(reviewId, resp.id);
-  if (responses.size > MAX_RESPONSES) {
-    const oldest = Array.from(responses.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
-    if (oldest) {
-      responses.delete(oldest.id);
-      reviewResponses.delete(oldest.reviewId);
-    }
-  }
-  respLog.info(`Response created for review ${reviewId} by owner ${ownerId}`);
-  return resp;
-}
-function getResponseForReview(reviewId) {
-  const respId = reviewResponses.get(reviewId);
-  if (!respId) return null;
-  return responses.get(respId) || null;
-}
-function getResponsesByBusiness(businessId) {
-  return Array.from(responses.values()).filter((r) => r.businessId === businessId);
-}
-function updateResponse(responseId, content) {
-  const resp = responses.get(responseId);
-  if (!resp) return false;
-  if (content.length < 10 || content.length > 2e3) return false;
-  resp.content = content;
-  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  return true;
-}
-function flagResponse(responseId) {
-  const resp = responses.get(responseId);
-  if (!resp) return false;
-  resp.status = "flagged";
-  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  return true;
-}
-function hideResponse(responseId) {
-  const resp = responses.get(responseId);
-  if (!resp) return false;
-  resp.status = "hidden";
-  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  return true;
-}
-function getResponseStats() {
-  const all = Array.from(responses.values());
-  return {
-    total: all.length,
-    visible: all.filter((r) => r.status === "visible").length,
-    hidden: all.filter((r) => r.status === "hidden").length,
-    flagged: all.filter((r) => r.status === "flagged").length
-  };
-}
-
-// server/routes-owner-responses.ts
-var respRouteLog = log.tag("OwnerResponseRoutes");
-function registerOwnerResponseRoutes(app2) {
-  app2.post("/api/owner/responses", requireAuth, (req, res) => {
-    const { reviewId, businessId, ownerId, content } = req.body;
-    if (!reviewId || !businessId || !ownerId || !content) {
-      return res.status(400).json({ error: "Missing required fields: reviewId, businessId, ownerId, content" });
-    }
-    const resp = createResponse(reviewId, businessId, ownerId, content);
-    if (!resp) {
-      return res.status(409).json({ error: "Response already exists for this review or content invalid" });
-    }
-    respRouteLog.info(`Owner ${ownerId} responded to review ${reviewId}`);
-    return res.status(201).json(resp);
-  });
-  app2.get("/api/owner/responses/:businessId", requireAuth, (req, res) => {
-    const { businessId } = req.params;
-    respRouteLog.info(`Fetching responses for business ${businessId}`);
-    return res.json(getResponsesByBusiness(businessId));
-  });
-  app2.put("/api/owner/responses/:id", requireAuth, (req, res) => {
-    const { id } = req.params;
-    const { content } = req.body;
-    if (!content) {
-      return res.status(400).json({ error: "Missing required field: content" });
-    }
-    const ok = updateResponse(id, content);
-    if (!ok) {
-      return res.status(404).json({ error: "Response not found or content invalid" });
-    }
-    respRouteLog.info(`Response ${id} updated`);
-    return res.json({ success: true });
-  });
-  app2.get("/api/reviews/:reviewId/response", (req, res) => {
-    const { reviewId } = req.params;
-    const resp = getResponseForReview(reviewId);
-    if (!resp) {
-      return res.status(404).json({ error: "No response found for this review" });
-    }
-    return res.json(resp);
-  });
-  app2.post("/api/admin/responses/:id/flag", requireAuth, (req, res) => {
-    const { id } = req.params;
-    const ok = flagResponse(id);
-    if (!ok) {
-      return res.status(404).json({ error: "Response not found" });
-    }
-    respRouteLog.info(`Response ${id} flagged by admin`);
-    return res.json({ success: true });
-  });
-  app2.post("/api/admin/responses/:id/hide", requireAuth, (req, res) => {
-    const { id } = req.params;
-    const ok = hideResponse(id);
-    if (!ok) {
-      return res.status(404).json({ error: "Response not found" });
-    }
-    respRouteLog.info(`Response ${id} hidden by admin`);
-    return res.json({ success: true });
-  });
-  app2.get("/api/admin/responses/stats", requireAuth, (_req, res) => {
-    respRouteLog.info("Fetching response stats");
-    return res.json(getResponseStats());
-  });
-}
-
 // server/routes-owner-dashboard.ts
 init_logger();
 
@@ -11702,182 +11414,6 @@ function registerSearchRoutes(app2) {
     }));
     return res.json({ data: { cities: stats2, totalCities: cities.length } });
   });
-}
-
-// server/review-helpfulness.ts
-init_logger();
-var helpLog = log.tag("ReviewHelpfulness");
-var votes = [];
-var MAX_VOTES = 5e4;
-var voteIdCounter = 0;
-function generateVoteId() {
-  voteIdCounter += 1;
-  return `hv_${Date.now()}_${voteIdCounter}`;
-}
-function wilsonScoreLowerBound(helpful, total, z2 = 1.96) {
-  if (total === 0) return 0;
-  const p = helpful / total;
-  const denominator = 1 + z2 * z2 / total;
-  const center = (p + z2 * z2 / (2 * total)) / denominator;
-  const margin = z2 * Math.sqrt(p * (1 - p) / total + z2 * z2 / (4 * total * total)) / denominator;
-  return Math.max(0, center - margin);
-}
-function castHelpfulnessVote(reviewId, voterId, reviewerId, helpful) {
-  if (voterId === reviewerId) {
-    helpLog.info(`Self-vote rejected: voter=${voterId} review=${reviewId}`);
-    return null;
-  }
-  const existing = votes.find(
-    (v) => v.reviewId === reviewId && v.voterId === voterId
-  );
-  if (existing) {
-    helpLog.info(`Duplicate vote rejected: voter=${voterId} review=${reviewId}`);
-    return null;
-  }
-  if (votes.length >= MAX_VOTES) {
-    votes.shift();
-    helpLog.warn(`FIFO eviction: store at capacity (${MAX_VOTES})`);
-  }
-  const vote = {
-    id: generateVoteId(),
-    reviewId,
-    voterId,
-    reviewerId,
-    helpful,
-    createdAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  votes.push(vote);
-  helpLog.info(
-    `Vote cast: voter=${voterId} review=${reviewId} helpful=${helpful}`
-  );
-  return vote;
-}
-function getReviewHelpfulness(reviewId) {
-  const reviewVotes = votes.filter((v) => v.reviewId === reviewId);
-  const helpfulCount = reviewVotes.filter((v) => v.helpful).length;
-  const notHelpfulCount = reviewVotes.filter((v) => !v.helpful).length;
-  const totalVotes = reviewVotes.length;
-  return {
-    reviewId,
-    helpfulCount,
-    notHelpfulCount,
-    helpfulnessScore: wilsonScoreLowerBound(helpfulCount, totalVotes),
-    totalVotes
-  };
-}
-function getMemberHelpfulnessReceived(memberId) {
-  const memberVotes = votes.filter((v) => v.reviewerId === memberId);
-  const totalHelpful = memberVotes.filter((v) => v.helpful).length;
-  const totalNotHelpful = memberVotes.filter((v) => !v.helpful).length;
-  const reviewIds = new Set(memberVotes.map((v) => v.reviewId));
-  return {
-    totalHelpful,
-    totalNotHelpful,
-    totalVotes: memberVotes.length,
-    reviewsWithVotes: reviewIds.size
-  };
-}
-function getTopHelpfulReviews(limit = 10) {
-  const reviewIds = new Set(votes.map((v) => v.reviewId));
-  const stats2 = [];
-  for (const reviewId of reviewIds) {
-    stats2.push(getReviewHelpfulness(reviewId));
-  }
-  return stats2.filter((s) => s.totalVotes > 0).sort((a, b) => b.helpfulnessScore - a.helpfulnessScore).slice(0, limit);
-}
-function updateVote(reviewId, voterId, helpful) {
-  const existing = votes.find(
-    (v) => v.reviewId === reviewId && v.voterId === voterId
-  );
-  if (!existing) {
-    helpLog.info(`Vote update failed \u2014 not found: voter=${voterId} review=${reviewId}`);
-    return false;
-  }
-  existing.helpful = helpful;
-  helpLog.info(
-    `Vote updated: voter=${voterId} review=${reviewId} helpful=${helpful}`
-  );
-  return true;
-}
-function getHelpfulnessStats() {
-  const helpfulVotes = votes.filter((v) => v.helpful).length;
-  const notHelpfulVotes = votes.filter((v) => !v.helpful).length;
-  const uniqueVoters = new Set(votes.map((v) => v.voterId)).size;
-  const uniqueReviews = new Set(votes.map((v) => v.reviewId)).size;
-  return {
-    totalVotes: votes.length,
-    helpfulVotes,
-    notHelpfulVotes,
-    uniqueVoters,
-    uniqueReviews
-  };
-}
-
-// server/routes-review-helpfulness.ts
-init_logger();
-var routeLog = log.tag("ReviewHelpfulnessRoutes");
-function registerReviewHelpfulnessRoutes(app2) {
-  app2.post("/api/reviews/:reviewId/helpful", requireAuth, wrapAsync(async (req, res) => {
-    const { reviewId } = req.params;
-    const voterId = String(req.user.id);
-    const reviewerId = req.body.reviewerId;
-    if (!reviewerId) {
-      return res.status(400).json({ error: "reviewerId is required" });
-    }
-    const vote = castHelpfulnessVote(reviewId, voterId, reviewerId, true);
-    if (!vote) {
-      return res.status(409).json({ error: "Cannot vote: duplicate or self-vote" });
-    }
-    routeLog.info(`Helpful vote cast on review ${reviewId} by ${voterId}`);
-    return res.status(201).json({ data: vote });
-  }));
-  app2.post("/api/reviews/:reviewId/not-helpful", requireAuth, wrapAsync(async (req, res) => {
-    const { reviewId } = req.params;
-    const voterId = String(req.user.id);
-    const reviewerId = req.body.reviewerId;
-    if (!reviewerId) {
-      return res.status(400).json({ error: "reviewerId is required" });
-    }
-    const vote = castHelpfulnessVote(reviewId, voterId, reviewerId, false);
-    if (!vote) {
-      return res.status(409).json({ error: "Cannot vote: duplicate or self-vote" });
-    }
-    routeLog.info(`Not-helpful vote cast on review ${reviewId} by ${voterId}`);
-    return res.status(201).json({ data: vote });
-  }));
-  app2.get("/api/reviews/:reviewId/helpfulness", wrapAsync(async (req, res) => {
-    const { reviewId } = req.params;
-    const stats2 = getReviewHelpfulness(reviewId);
-    return res.json({ data: stats2 });
-  }));
-  app2.put("/api/reviews/:reviewId/helpfulness-vote", requireAuth, wrapAsync(async (req, res) => {
-    const { reviewId } = req.params;
-    const voterId = String(req.user.id);
-    const { helpful } = req.body;
-    if (typeof helpful !== "boolean") {
-      return res.status(400).json({ error: "helpful (boolean) is required" });
-    }
-    const updated = updateVote(reviewId, voterId, helpful);
-    if (!updated) {
-      return res.status(404).json({ error: "No existing vote found to update" });
-    }
-    routeLog.info(`Vote updated on review ${reviewId} by ${voterId} to helpful=${helpful}`);
-    return res.json({ data: { updated: true } });
-  }));
-  app2.get("/api/members/:memberId/helpfulness", wrapAsync(async (req, res) => {
-    const { memberId } = req.params;
-    const stats2 = getMemberHelpfulnessReceived(memberId);
-    return res.json({ data: stats2 });
-  }));
-  app2.get("/api/admin/helpfulness/stats", requireAuth, wrapAsync(async (req, res) => {
-    const stats2 = getHelpfulnessStats();
-    return res.json({ data: stats2 });
-  }));
-  app2.get("/api/admin/helpfulness/top-reviews", requireAuth, wrapAsync(async (req, res) => {
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
-    const topReviews = getTopHelpfulReviews(limit);
-    return res.json({ data: topReviews });
-  }));
 }
 
 // shared/best-in-categories.ts
@@ -12039,7 +11575,7 @@ function registerBestInRoutes(app2) {
 
 // server/routes-rating-photos.ts
 init_logger();
-import crypto11 from "crypto";
+import crypto10 from "crypto";
 var photoLog = log.tag("RatingPhoto");
 var ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
@@ -12073,12 +11609,12 @@ function registerRatingPhotoRoutes(app2) {
       return res.status(400).json({ error: "Photo too small \u2014 may be corrupted" });
     }
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
-    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto11.randomUUID().slice(0, 8)}.${ext}`;
+    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto10.randomUUID().slice(0, 8)}.${ext}`;
     try {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq25 } = await import("drizzle-orm");
+      const { eq: eq24 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -12094,7 +11630,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq25(ratings5.id, ratingId));
+      }).where(eq24(ratings5.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -12124,8 +11660,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq25(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq24 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq24(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -12139,7 +11675,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, and: and17, sql: sql15, count: count15 } = await import("drizzle-orm");
+    const { eq: eq24, and: and16, sql: sql15, count: count15 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings5.visitType,
       foodScore: ratings5.foodScore,
@@ -12158,9 +11694,9 @@ function registerScoreBreakdownRoutes(app2) {
       hasReceipt: ratings5.hasReceipt,
       wouldReturn: ratings5.wouldReturn,
       createdAt: ratings5.createdAt
-    }).from(ratings5).where(and17(
-      eq25(ratings5.businessId, businessId),
-      eq25(ratings5.isFlagged, false)
+    }).from(ratings5).where(and16(
+      eq24(ratings5.businessId, businessId),
+      eq24(ratings5.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -12235,11 +11771,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq24, asc: asc3 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq25(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq24(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)
@@ -12723,9 +12259,7 @@ async function registerRoutes(app2) {
   registerAdminHealthRoutes(app2);
   registerAdminPhotoRoutes(app2);
   registerPushRoutes(app2);
-  registerOwnerResponseRoutes(app2);
   registerSearchRoutes(app2);
-  registerReviewHelpfulnessRoutes(app2);
   registerBestInRoutes(app2);
   registerRatingPhotoRoutes(app2);
   registerScoreBreakdownRoutes(app2);

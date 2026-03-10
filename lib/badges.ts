@@ -67,7 +67,6 @@ export interface UserBadgeContext {
   credibilityScore: number;
   isFoundingMember: boolean;
   referralCount: number;
-  helpfulVotes: number;
   citiesRated: number;
   hasRatedAfterMidnight: boolean;
   hasRatedBefore7AM: boolean;
@@ -122,9 +121,6 @@ export function evaluateUserBadges(ctx: UserBadgeContext): EarnedBadge[] {
   check("first-referral",   ctx.referralCount >= 1,  Math.min(ctx.referralCount / 1 * 100, 100));
   check("squad-builder",    ctx.referralCount >= 5,  Math.min(ctx.referralCount / 5 * 100, 100));
   check("community-leader", ctx.referralCount >= 25, Math.min(ctx.referralCount / 25 * 100, 100));
-  check("helpful-voice",    ctx.helpfulVotes >= 5,   Math.min(ctx.helpfulVotes / 5 * 100, 100));
-  check("influencer",       ctx.helpfulVotes >= 25,  Math.min(ctx.helpfulVotes / 25 * 100, 100));
-
   // Tier badges
   check("tier-city",    ctx.credibilityScore >= 100, Math.min(ctx.credibilityScore / 100 * 100, 100));
   check("tier-trusted", ctx.credibilityScore >= 300, Math.min(ctx.credibilityScore / 300 * 100, 100));

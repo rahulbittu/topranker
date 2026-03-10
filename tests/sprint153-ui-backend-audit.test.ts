@@ -26,10 +26,6 @@ describe("Push notifications respect user preferences", () => {
     pushSource = fs.readFileSync(pushPath, "utf-8");
   });
 
-  it("should check preferences before sending rating notification", () => {
-    expect(pushSource).toMatch(/ratingResponses|notificationPrefs/);
-  });
-
   it("should check preferences before sending tier upgrade notification", () => {
     expect(pushSource).toMatch(/tierUpgrades|notificationPrefs/);
   });

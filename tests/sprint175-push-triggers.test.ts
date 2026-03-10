@@ -160,10 +160,6 @@ describe("push.ts — notification infrastructure", () => {
     expect(pushSrc).toContain("export async function sendPushNotification");
   });
 
-  it("exports notifyRatingResponse", () => {
-    expect(pushSrc).toContain("export async function notifyRatingResponse");
-  });
-
   it("exports notifyTierUpgrade", () => {
     expect(pushSrc).toContain("export async function notifyTierUpgrade");
   });
@@ -185,7 +181,6 @@ describe("push.ts — notification infrastructure", () => {
   });
 
   it("includes navigation data in messages", () => {
-    expect(pushSrc).toContain('screen: "business"');
     expect(pushSrc).toContain('screen: "profile"');
     expect(pushSrc).toContain('screen: "challenger"');
   });
@@ -198,9 +193,6 @@ describe("notification preference checks", () => {
   const pushSrc = readFile("server/push.ts");
   const triggerSrc = readFile("server/notification-triggers.ts");
 
-  it("notifyRatingResponse checks ratingResponses pref", () => {
-    expect(pushSrc).toContain("prefs.ratingResponses === false");
-  });
 
   it("notifyTierUpgrade checks tierUpgrades pref", () => {
     expect(pushSrc).toContain("prefs.tierUpgrades === false");

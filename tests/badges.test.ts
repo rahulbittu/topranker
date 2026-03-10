@@ -23,7 +23,6 @@ const baseUserCtx: UserBadgeContext = {
   credibilityScore: 10,
   isFoundingMember: false,
   referralCount: 0,
-  helpfulVotes: 0,
   citiesRated: 1,
   hasRatedAfterMidnight: false,
   hasRatedBefore7AM: false,

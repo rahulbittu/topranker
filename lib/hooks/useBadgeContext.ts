@@ -41,7 +41,6 @@ export function useBadgeContext(
       credibilityScore: profile.credibilityScore,
       isFoundingMember: profile.isFoundingMember,
       referralCount: profile.referralCount ?? 0,
-      helpfulVotes: profile.helpfulVotes ?? 0,
       citiesRated: profile.citiesRated ?? 1,
       hasRatedAfterMidnight: profile.hasRatedAfterMidnight ?? false,
       hasRatedBefore7AM: profile.hasRatedBefore7AM ?? false,
@@ -61,7 +60,7 @@ export function useBadgeContext(
   }, [
     profile.totalRatings, profile.distinctBusinesses, profile.totalCategories,
     profile.daysActive, profile.currentStreak, tier, profile.credibilityScore,
-    profile.isFoundingMember, profile.referralCount, profile.helpfulVotes,
+    profile.isFoundingMember, profile.referralCount,
     profile.citiesRated, profile.springRatings, profile.summerRatings,
     profile.fallRatings, profile.winterRatings,
     impact?.businessesMovedUp, impact?.businessesMovedToFirst,

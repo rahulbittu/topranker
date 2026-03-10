@@ -11,7 +11,7 @@ const baseCtx: UserBadgeContext = {
   totalRatings: 0, distinctBusinesses: 0, totalCategories: 0,
   daysActive: 0, currentStreak: 0, credibilityTier: "community",
   credibilityScore: 10, isFoundingMember: false, referralCount: 0,
-  helpfulVotes: 0, citiesRated: 1, hasRatedAfterMidnight: false,
+  citiesRated: 1, hasRatedAfterMidnight: false,
   hasRatedBefore7AM: false, hasGivenPerfect5: false, hasGivenScore1: false,
   businessesMovedUp: 0, businessesMovedToFirst: 0,
   springRatings: 0, summerRatings: 0, fallRatings: 0, winterRatings: 0,

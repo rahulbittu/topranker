@@ -112,14 +112,12 @@ export interface ApiMemberProfile {
     diversity: number;
     age: number;
     variance: number;
-    helpfulness: number;
     penalties: number;
   };
   ratingHistory: (ApiRating & { businessName: string })[];
   // Badge context fields (optional — populated when available)
   currentStreak?: number;
   referralCount?: number;
-  helpfulVotes?: number;
   citiesRated?: number;
   hasRatedAfterMidnight?: boolean;
   hasRatedBefore7AM?: boolean;

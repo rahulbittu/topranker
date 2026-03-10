@@ -28,12 +28,11 @@ interface ReputationSignal {
 }
 
 export const REPUTATION_SIGNALS: ReputationSignal[] = [
-  { name: "rating_count", weight: 0.25, description: "Number of ratings submitted" },
-  { name: "rating_consistency", weight: 0.20, description: "How consistent ratings are with consensus" },
+  { name: "rating_count", weight: 0.30, description: "Number of ratings submitted" },
+  { name: "rating_consistency", weight: 0.25, description: "How consistent ratings are with consensus" },
   { name: "account_age_days", weight: 0.15, description: "Days since account creation" },
   { name: "email_verified", weight: 0.15, description: "Email verification status" },
   { name: "profile_complete", weight: 0.10, description: "Profile completeness score" },
-  { name: "helpful_votes", weight: 0.10, description: "Votes received on reviews" },
   { name: "report_penalty", weight: 0.05, description: "Penalty for reported/flagged content" },
 ];
 
@@ -63,8 +62,6 @@ function normalizeSignal(name: string, value: number): number {
       return value ? 1 : 0;
     case "profile_complete":
       return Math.min(1, Math.max(0, value));
-    case "helpful_votes":
-      return Math.min(1, Math.max(0, value / 100));
     case "report_penalty":
       // Negative signal: 0 at 0 reports, -1.0 at 5+ reports
       return -Math.min(1, Math.max(0, value / 5));

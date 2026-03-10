@@ -171,11 +171,6 @@ describe("Push Notification Preference Sync", () => {
     expect(content).toContain("JSON.stringify(saved)");
   });
 
-  it("default prefs include ratingResponses true", () => {
-    const content = fs.readFileSync(routesPath, "utf-8");
-    expect(content).toContain("ratingResponses: true");
-  });
-
   it("default prefs include challengerResults true", () => {
     const content = fs.readFileSync(routesPath, "utf-8");
     expect(content).toContain("challengerResults: true");

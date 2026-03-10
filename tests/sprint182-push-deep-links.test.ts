@@ -139,10 +139,6 @@ describe("Push module — notification persistence", () => {
     expect(pushSrc).toContain("async function persistNotification");
   });
 
-  it("persists rating response notifications", () => {
-    expect(pushSrc).toContain('persistNotification(userId, "rating_response"');
-  });
-
   it("persists tier upgrade notifications", () => {
     expect(pushSrc).toContain('persistNotification(userId, "tier_upgrade"');
   });

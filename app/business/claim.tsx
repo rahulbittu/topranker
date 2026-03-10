@@ -101,7 +101,7 @@ export default function ClaimBusinessScreen() {
           </View>
           <Text style={styles.title}>Claim {name || "This Business"}</Text>
           <Text style={styles.subtitle}>
-            Verified owners get a dashboard with analytics, response tools, and a verified badge on their listing.
+            Verified owners get a dashboard with analytics and a verified badge on their listing.
           </Text>
         </View>
 

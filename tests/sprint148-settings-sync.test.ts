@@ -36,9 +36,8 @@ describe("Server notification preferences endpoint", () => {
     expect(routesSource).toMatch(/app\.put\(["']\/api\/members\/me\/notification-preferences/);
   });
 
-  it("should handle all 6 notification keys on server", () => {
-    // The server should reference all 6 keys the client uses
-    expect(routesSource).toContain("ratingResponses");
+  it("should handle all 5 notification keys on server", () => {
+    // The server should reference all 5 keys the client uses
     expect(routesSource).toContain("tierUpgrades");
     expect(routesSource).toContain("challengerResults");
     expect(routesSource).toContain("newChallengers");
@@ -84,8 +83,7 @@ describe("Settings screen notification sync", () => {
     settingsSource = fs.readFileSync(settingsPath, "utf-8");
   });
 
-  it("should define all 6 notification keys", () => {
-    expect(settingsSource).toContain("ratingResponses");
+  it("should define all 5 notification keys", () => {
     expect(settingsSource).toContain("tierUpgrades");
     expect(settingsSource).toContain("challengerResults");
     expect(settingsSource).toContain("newChallengers");
@@ -105,7 +103,7 @@ describe("Settings screen notification sync", () => {
 
   it("should still use AsyncStorage as local cache", () => {
     expect(settingsSource).toContain("AsyncStorage");
-    expect(settingsSource).toContain("notif_rating_responses");
+    expect(settingsSource).toContain("notif_tier_upgrades");
   });
 
   it("should have fire-and-forget server sync on toggle", () => {
@@ -186,7 +184,6 @@ describe("Client-server notification key parity", () => {
     );
 
     const CLIENT_KEYS = [
-      "ratingResponses",
       "tierUpgrades",
       "challengerResults",
       "newChallengers",
