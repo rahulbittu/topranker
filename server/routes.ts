@@ -30,6 +30,7 @@ import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits";
 import { registerAdminWebSocketRoutes } from "./routes-admin-websocket";
 import { registerAdminHealthRoutes } from "./routes-admin-health";
 import { registerAdminPhotoRoutes } from "./routes-admin-photos";
+import { registerAdminDietaryRoutes } from "./routes-admin-dietary";
 import { registerPushRoutes } from "./routes-push";
 import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
 import { registerSearchRoutes } from "./routes-search";
@@ -507,6 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerAdminWebSocketRoutes(app);
   registerAdminHealthRoutes(app);
   registerAdminPhotoRoutes(app);
+  registerAdminDietaryRoutes(app);
   registerPushRoutes(app);
   registerSearchRoutes(app);
   registerBestInRoutes(app);

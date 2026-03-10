@@ -918,8 +918,8 @@ async function getMemberById(id) {
   return member;
 }
 async function getMembersWithPushTokenByCity(city, limit = 500) {
-  const { isNotNull: isNotNull3 } = await import("drizzle-orm");
-  const results = await db.select({ id: members.id, pushToken: members.pushToken }).from(members).where(and(eq2(members.city, city), isNotNull3(members.pushToken))).limit(limit);
+  const { isNotNull: isNotNull4 } = await import("drizzle-orm");
+  const results = await db.select({ id: members.id, pushToken: members.pushToken }).from(members).where(and(eq2(members.city, city), isNotNull4(members.pushToken))).limit(limit);
   return results.filter((m) => !!m.pushToken);
 }
 async function getMemberByUsername(username) {
@@ -5561,7 +5561,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql14, eq as eq23, and as and15 } from "drizzle-orm";
+import { sql as sql15, eq as eq24, and as and16 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 function getHoursForCategory(category) {
   switch (category) {
@@ -5697,9 +5697,9 @@ async function seedDatabase() {
     }).returning();
     const slugPattern = "%" + board.dishSlug + "%";
     const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq23(dishes.businessId, businesses.id)).where(and15(
-      eq23(businesses.city, "Dallas"),
-      sql14`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq24(dishes.businessId, businesses.id)).where(and16(
+      eq24(businesses.city, "Dallas"),
+      sql15`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
     for (let i = 0; i < uniqueBizIds.length; i++) {
@@ -5755,7 +5755,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql14`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql15`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -6257,13 +6257,13 @@ async function sendWeeklyDigestPush() {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull3 } = await import("drizzle-orm");
+    const { isNotNull: isNotNull4 } = await import("drizzle-orm");
     const usersWithTokens = await db2.select({
       id: members4.id,
       pushToken: members4.pushToken,
       displayName: members4.displayName,
       notificationPrefs: members4.notificationPrefs
-    }).from(members4).where(isNotNull3(members4.pushToken));
+    }).from(members4).where(isNotNull4(members4.pushToken));
     let sent = 0;
     for (const user of usersWithTokens) {
       if (!user.pushToken) continue;
@@ -6470,7 +6470,7 @@ __export(drip_scheduler_exports, {
   processDripEmails: () => processDripEmails,
   startDripScheduler: () => startDripScheduler
 });
-import { isNotNull } from "drizzle-orm";
+import { isNotNull as isNotNull2 } from "drizzle-orm";
 async function processDripEmails() {
   try {
     const allMembers = await db.select({
@@ -6481,7 +6481,7 @@ async function processDripEmails() {
       username: members.username,
       joinedAt: members.joinedAt,
       notificationPrefs: members.notificationPrefs
-    }).from(members).where(isNotNull(members.email));
+    }).from(members).where(isNotNull2(members.email));
     const now = Date.now();
     let sent = 0;
     for (const member of allMembers) {
@@ -6657,7 +6657,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq24, isNotNull as isNotNull2, and as and16 } from "drizzle-orm";
+import { eq as eq25, isNotNull as isNotNull3, and as and17 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -6670,9 +6670,9 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
-      and16(
-        eq24(businesses.isClaimed, false),
-        isNotNull2(businesses.rankPosition)
+      and17(
+        eq25(businesses.isClaimed, false),
+        isNotNull3(businesses.rankPosition)
       )
     );
     for (const biz of claimCandidates) {
@@ -6689,10 +6689,10 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
-      and16(
-        eq24(businesses.isClaimed, true),
-        isNotNull2(businesses.ownerId),
-        eq24(businesses.subscriptionStatus, "none")
+      and17(
+        eq25(businesses.isClaimed, true),
+        isNotNull3(businesses.ownerId),
+        eq25(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -6702,7 +6702,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq24(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq25(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -6956,8 +6956,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq25(members4.id, member.id));
+    const { eq: eq26 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq26(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -8528,7 +8528,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq26, asc: asc3 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -8539,7 +8539,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq25(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq26(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -10333,15 +10333,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
+    const { eq: eq26 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq25(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq26(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq26(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq26(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -11661,6 +11661,126 @@ function registerAdminPhotoRoutes(app2) {
   });
 }
 
+// server/routes-admin-dietary.ts
+init_logger();
+init_db();
+init_schema();
+import { eq as eq23, and as and15, isNotNull } from "drizzle-orm";
+var dietaryLog = log.tag("AdminDietary");
+var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
+var CUISINE_TAG_SUGGESTIONS = {
+  indian: ["vegetarian"],
+  thai: ["gluten_free"],
+  middle_eastern: ["halal"],
+  mediterranean: ["vegetarian"],
+  japanese: ["gluten_free"],
+  mexican: ["gluten_free"],
+  vegan: ["vegan", "vegetarian"],
+  vegetarian: ["vegetarian"]
+};
+function registerAdminDietaryRoutes(app2) {
+  app2.get("/api/admin/dietary/stats", async (_req, res) => {
+    dietaryLog.info("Fetching dietary tag stats");
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq23(businesses.isActive, true));
+    const tagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    const untagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    const tagCounts = {};
+    for (const b of tagged) {
+      for (const tag of b.dietaryTags) {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+    res.json({
+      total: allBiz.length,
+      tagged: tagged.length,
+      untagged: untagged.length,
+      coveragePct: allBiz.length > 0 ? Math.round(tagged.length / allBiz.length * 100) : 0,
+      tagCounts,
+      validTags: [...VALID_TAGS]
+    });
+  });
+  app2.put("/api/admin/dietary/:businessId", async (req, res) => {
+    const { businessId } = req.params;
+    const { tags } = req.body || {};
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: "tags must be an array" });
+    }
+    const invalidTags = tags.filter((t) => !VALID_TAGS.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}. Valid: ${VALID_TAGS.join(", ")}` });
+    }
+    const result = await db.update(businesses).set({ dietaryTags: tags }).where(eq23(businesses.id, businessId)).returning({ id: businesses.id, name: businesses.name });
+    if (result.length === 0) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    dietaryLog.info(`Updated dietary tags for ${result[0].name}: [${tags.join(", ")}]`);
+    res.json({ success: true, business: result[0].name, tags });
+  });
+  app2.post("/api/admin/dietary/auto-enrich", async (req, res) => {
+    const { dryRun = true } = req.body || {};
+    dietaryLog.info(`Auto-enrichment ${dryRun ? "(dry run)" : "(applying)"}`);
+    const untagged = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(
+      and15(
+        eq23(businesses.isActive, true),
+        isNotNull(businesses.cuisine)
+      )
+    );
+    const suggestions = [];
+    for (const biz of untagged) {
+      const currentTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const cuisineLower = (biz.cuisine || "").toLowerCase().replace(/[^a-z_]/g, "_");
+      const suggested = CUISINE_TAG_SUGGESTIONS[cuisineLower] || [];
+      const newTags = suggested.filter((t) => !currentTags.includes(t));
+      if (newTags.length > 0) {
+        const merged = [.../* @__PURE__ */ new Set([...currentTags, ...newTags])];
+        suggestions.push({
+          id: biz.id,
+          name: biz.name,
+          cuisine: biz.cuisine || "",
+          suggestedTags: newTags
+        });
+        if (!dryRun) {
+          await db.update(businesses).set({ dietaryTags: merged }).where(eq23(businesses.id, biz.id));
+        }
+      }
+    }
+    dietaryLog.info(`Auto-enrichment: ${suggestions.length} businesses ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      updated: suggestions.length,
+      suggestions
+    });
+  });
+  app2.get("/api/admin/dietary/businesses", async (req, res) => {
+    const filter = req.query.filter;
+    dietaryLog.info(`Listing businesses (filter: ${filter || "all"})`);
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      city: businesses.city,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq23(businesses.isActive, true));
+    let filtered = allBiz;
+    if (filter === "tagged") {
+      filtered = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    } else if (filter === "untagged") {
+      filtered = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    }
+    res.json({ data: filtered, total: filtered.length });
+  });
+}
+
 // server/routes-push.ts
 init_logger();
 
@@ -12166,7 +12286,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq25 } = await import("drizzle-orm");
+      const { eq: eq26 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -12182,7 +12302,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq25(ratings5.id, ratingId));
+      }).where(eq26(ratings5.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -12212,8 +12332,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq25(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq26 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq26(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -12227,7 +12347,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, and: and17, sql: sql16, count: count15 } = await import("drizzle-orm");
+    const { eq: eq26, and: and18, sql: sql17, count: count15 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings5.visitType,
       foodScore: ratings5.foodScore,
@@ -12246,9 +12366,9 @@ function registerScoreBreakdownRoutes(app2) {
       hasReceipt: ratings5.hasReceipt,
       wouldReturn: ratings5.wouldReturn,
       createdAt: ratings5.createdAt
-    }).from(ratings5).where(and17(
-      eq25(ratings5.businessId, businessId),
-      eq25(ratings5.isFlagged, false)
+    }).from(ratings5).where(and18(
+      eq26(ratings5.businessId, businessId),
+      eq26(ratings5.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -12323,11 +12443,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq26, asc: asc3 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq25(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq26(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)
@@ -12810,6 +12930,7 @@ async function registerRoutes(app2) {
   registerAdminWebSocketRoutes(app2);
   registerAdminHealthRoutes(app2);
   registerAdminPhotoRoutes(app2);
+  registerAdminDietaryRoutes(app2);
   registerPushRoutes(app2);
   registerSearchRoutes(app2);
   registerBestInRoutes(app2);
