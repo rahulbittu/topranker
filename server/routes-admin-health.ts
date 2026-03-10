@@ -12,6 +12,7 @@ import {
   getCityHealth,
   getHealthySummary,
 } from "./city-health-monitor";
+import { computePushAnalytics, getPushRecordCount } from "./push-analytics";
 
 export function registerAdminHealthRoutes(app: Express): void {
   // NOTE: /summary registered BEFORE /:city to avoid route conflict
@@ -43,6 +44,23 @@ export function registerAdminHealthRoutes(app: Express): void {
         return res.status(404).json({ error: `No health data for city: ${city}` });
       }
       return res.json({ data: health });
+    }),
+  );
+
+  // Sprint 492: Push notification analytics endpoint
+  app.get(
+    "/api/admin/push-analytics",
+    requireAuth,
+    wrapAsync(async (req: Request, res: Response) => {
+      const days = Math.min(30, Math.max(1, parseInt(req.query.days as string) || 7));
+      const summary = computePushAnalytics(days);
+      return res.json({
+        data: {
+          ...summary,
+          recordCount: getPushRecordCount(),
+          daysBack: days,
+        },
+      });
     }),
   );
 }

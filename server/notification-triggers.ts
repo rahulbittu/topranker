@@ -18,6 +18,7 @@
  */
 
 import { sendPushNotification } from "./push";
+import { recordPushDelivery } from "./push-analytics";
 import { log } from "./logger";
 
 const triggerLog = log.tag("NotifyTrigger");
@@ -122,6 +123,7 @@ export async function sendWeeklyDigestPush(): Promise<number> {
     }
 
     triggerLog.info(`Weekly digest push sent to ${sent} users`);
+    recordPushDelivery("weeklyDigest", "all", usersWithTokens.length, sent, usersWithTokens.length - sent);
     return sent;
   } catch (err) {
     triggerLog.error("Weekly digest push failed:", err);
@@ -257,6 +259,7 @@ export async function onRankingChange(
     }
 
     triggerLog.info(`Ranking change push: ${businessName} #${oldRank}→#${newRank}, sent to ${sent} raters`);
+    recordPushDelivery("rankingChange", city, raters.length, sent, raters.length - sent);
     return sent;
   } catch (err) {
     triggerLog.error(`Ranking change push failed: ${businessId}`, err);
@@ -312,6 +315,7 @@ export async function onNewRatingForBusiness(
     }
 
     triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
+    recordPushDelivery("newRating", "all", otherRaters.length, sent, otherRaters.length - sent);
     return sent;
   } catch (err) {
     triggerLog.error(`New rating push failed: ${businessId}`, err);
@@ -389,6 +393,7 @@ export async function sendCityHighlightsPush(city: string): Promise<number> {
     }
 
     triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
+    recordPushDelivery("cityHighlights", city, cityUsers.length, sent, cityUsers.length - sent);
     return sent;
   } catch (err) {
     triggerLog.error(`City highlights push failed: ${city}`, err);
