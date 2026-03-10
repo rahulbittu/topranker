@@ -256,7 +256,7 @@ describe("Component Extraction Integrity", () => {
 
     const businessSrc = readFile("app/business/[id].tsx");
     const businessSubExports = [
-      "ActionButton", "CollapsibleReviews", "HeroCarousel",
+      "BusinessActionBar", "CollapsibleReviews", "HeroCarousel",
       "BusinessNameCard", "QuickStatsBar", "ScoreCard",
       "TrustExplainerCard", "SubScoresCard",
     ];

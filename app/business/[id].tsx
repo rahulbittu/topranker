@@ -22,7 +22,7 @@ import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { BusinessDetailSkeleton } from "@/components/Skeleton";
 import {
-  ActionButton, CollapsibleReviews, DishPill,
+  CollapsibleReviews, DishPill,
   RatingDistribution, RankHistoryChart,
   OpeningHoursCard, LocationCard,
   HeroCarousel, BusinessNameCard, QuickStatsBar,
@@ -39,6 +39,7 @@ import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
 import { PhotoGallery } from "@/components/business/PhotoGallery";
 import { SharePreviewCard } from "@/components/business/SharePreviewCard";
+import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -149,24 +150,17 @@ export default function BusinessProfileScreen() {
   const avgQ2 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q2, 0) / ratings.length : 0;
   const avgQ3 = ratings.length > 0 ? ratings.reduce((a, r) => a + r.q3, 0) / ratings.length : 0;
 
-  const handleCall = () => {
-    if (business.phone) { Haptics.selectionAsync(); Linking.openURL(`tel:${business.phone}`); }
-  };
-  const handleWebsite = () => {
-    if (business.website) { Haptics.selectionAsync(); Linking.openURL(business.website); }
-  };
   const handleMaps = () => {
     if (business.googleMapsUrl) {
       Linking.openURL(business.googleMapsUrl);
     } else if (business.address) {
       const q = encodeURIComponent(business.address);
-      if (Platform.OS === "web") {
-        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
-      } else {
-        Linking.openURL(Platform.OS === "ios" ? `maps:?q=${q}` : `geo:0,0?q=${q}`);
-      }
+      Linking.openURL(Platform.OS === "web"
+        ? `https://www.google.com/maps/search/?api=1&query=${q}`
+        : Platform.OS === "ios" ? `maps:?q=${q}` : `geo:0,0?q=${q}`);
     }
   };
+  // Share handlers for SharePreviewCard (action bar is self-contained)
   const handleShare = async () => {
     Haptics.selectionAsync();
     try {
@@ -339,14 +333,16 @@ export default function BusinessProfileScreen() {
 
           <View style={styles.sectionDivider} />
 
-          {/* Action Bar */}
-          <View style={styles.actionBar}>
-            <ActionButton icon="call-outline" label="Call" onPress={handleCall} disabled={!business.phone} />
-            <ActionButton icon="globe-outline" label="Website" onPress={handleWebsite} disabled={!business.website} />
-            <ActionButton icon="navigate-outline" label="Maps" onPress={handleMaps} disabled={!business.address} />
-            <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
-            <ActionButton icon="copy-outline" label="Copy Link" onPress={handleCopyLink} />
-          </View>
+          {/* Action Bar — extracted component (Sprint 381) */}
+          <BusinessActionBar
+            name={business.name}
+            slug={business.slug}
+            weightedScore={business.weightedScore}
+            phone={business.phone}
+            website={business.website}
+            address={business.address}
+            googleMapsUrl={business.googleMapsUrl}
+          />
 
           {/* Share Preview Card — Sprint 378 */}
           <SharePreviewCard
@@ -546,10 +542,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  actionBar: {
-    flexDirection: "row", justifyContent: "space-around",
-    paddingVertical: 12,
-  },
 
   sectionContainer: { gap: 10 },
   sectionDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },

@@ -46,6 +46,7 @@ describe("Sprint 337 — sharing utility", () => {
 
 describe("Sprint 337 — business detail copy link", () => {
   const bizSrc = readFile("app/business/[id].tsx");
+  const actionBarSrc = readFile("components/business/BusinessActionBar.tsx");
 
   it("imports copyShareLink", () => {
     expect(bizSrc).toContain("copyShareLink");
@@ -55,12 +56,12 @@ describe("Sprint 337 — business detail copy link", () => {
     expect(bizSrc).toContain("handleCopyLink");
   });
 
-  it("has Copy Link action button", () => {
-    expect(bizSrc).toContain('label="Copy Link"');
+  it("has Copy Link action button (in extracted action bar)", () => {
+    expect(actionBarSrc).toContain('label="Copy Link"');
   });
 
-  it("uses copy-outline icon", () => {
-    expect(bizSrc).toContain('icon="copy-outline"');
+  it("uses copy-outline icon (in extracted action bar)", () => {
+    expect(actionBarSrc).toContain('icon="copy-outline"');
   });
 
   it("tracks copy_link analytics", () => {

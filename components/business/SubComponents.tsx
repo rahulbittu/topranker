@@ -47,3 +47,6 @@ export type { PhotoGalleryProps } from "./PhotoGallery";
 
 export { SharePreviewCard } from "./SharePreviewCard";
 export type { SharePreviewCardProps } from "./SharePreviewCard";
+
+export { BusinessActionBar } from "./BusinessActionBar";
+export type { BusinessActionBarProps } from "./BusinessActionBar";
