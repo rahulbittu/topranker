@@ -38,6 +38,7 @@ import { SavedPlacesSection } from "@/components/profile/SavedPlacesSection";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
+import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -287,6 +288,13 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         tier={tier}
         currentStreak={profile.currentStreak ?? 0}
         earnedBadgeCount={earnedBadgeCount}
+        daysActive={profile.daysActive}
+      />
+
+      {/* Sprint 401: Profile Stats Dashboard */}
+      <ProfileStatsCard
+        ratingHistory={profile.ratingHistory}
+        totalRatings={profile.totalRatings}
         daysActive={profile.daysActive}
       />
 
