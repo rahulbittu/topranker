@@ -42,12 +42,14 @@ describe("Sprint 301 — search.tsx dish entry count fetch", () => {
 
   it("fetches dish-leaderboards API for entry counts", () => {
     expect(src).toContain("/api/dish-leaderboards");
-    expect(src).toContain("dish-entry-counts");
+    // Sprint 313: query key changed to dish-boards-search (stores full DishBoardInfo[])
+    expect(src).toContain("dish-boards-search");
   });
 
   it("builds entryCounts record from API response", () => {
-    expect(src).toContain("board.dishSlug");
-    expect(src).toContain("board.entryCount");
+    // Sprint 313: dishEntryCounts derived from dishBoards via useMemo
+    expect(src).toContain("b.slug");
+    expect(src).toContain("b.entryCount");
   });
 
   it("passes entryCounts to BestInSection", () => {
@@ -55,7 +57,7 @@ describe("Sprint 301 — search.tsx dish entry count fetch", () => {
   });
 
   it("uses staleTime for caching", () => {
-    // Should have staleTime on the dish-entry-counts query
-    expect(src).toMatch(/dish-entry-counts.*staleTime/s);
+    // Sprint 313: staleTime on the dish-boards-search query
+    expect(src).toMatch(/dish-boards-search.*staleTime/s);
   });
 });

@@ -147,21 +147,34 @@ export default function SearchScreen() {
     staleTime: 120000,
   });
 
-  // Sprint 301: Dish leaderboard entry counts for Best In cards
-  const { data: dishEntryCounts = {} } = useQuery<Record<string, number>>({
-    queryKey: ["dish-entry-counts", city],
+  // Sprint 301+313: Dish leaderboard data for entry counts and search matching
+  interface DishBoardInfo { slug: string; name: string; emoji: string; entryCount: number; }
+  const { data: dishBoards = [] } = useQuery<DishBoardInfo[]>({
+    queryKey: ["dish-boards-search", city],
     queryFn: async () => {
       const res = await fetch(`${getApiUrl()}/api/dish-leaderboards?city=${encodeURIComponent(city)}`);
-      if (!res.ok) return {};
+      if (!res.ok) return [];
       const json = await res.json();
-      const counts: Record<string, number> = {};
-      for (const board of json.data || []) {
-        counts[board.dishSlug] = board.entryCount || 0;
-      }
-      return counts;
+      return (json.data || []).map((b: any) => ({
+        slug: b.dishSlug,
+        name: b.dishName,
+        emoji: b.dishEmoji || "🍽️",
+        entryCount: b.entryCount || 0,
+      }));
     },
     staleTime: 120000,
   });
+  const dishEntryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const b of dishBoards) counts[b.slug] = b.entryCount;
+    return counts;
+  }, [dishBoards]);
+  // Sprint 313: Match dish leaderboards against search query
+  const dishSearchMatches = useMemo(() => {
+    if (!query || query.trim().length < 2) return [];
+    const q = query.toLowerCase().trim();
+    return dishBoards.filter((b) => b.name.toLowerCase().includes(q) || b.slug.includes(q));
+  }, [query, dishBoards]);
 
   const { data: featuredBusinesses = [] } = useQuery<FeaturedBusiness[]>({
     queryKey: ["featured", city],
@@ -265,7 +278,7 @@ export default function SearchScreen() {
 
       {/* Sprint 193: Extracted to SearchOverlays component */}
       {searchFocused && query.length >= 2 && (
-        <AutocompleteDropdown results={autocompleteResults} onDismiss={() => setSearchFocused(false)} />
+        <AutocompleteDropdown results={autocompleteResults} dishMatches={dishSearchMatches} onDismiss={() => setSearchFocused(false)} />
       )}
 
       {searchFocused && query.length === 0 && (

@@ -147,7 +147,8 @@ describe("SearchOverlays — file structure", () => {
   });
 
   it("returns null for empty results", () => {
-    expect(src).toContain("if (results.length === 0) return null");
+    // Sprint 313: now also checks dishMatches.length === 0
+    expect(src).toContain("results.length === 0 && dishMatches.length === 0");
   });
 
   it("returns null for empty searches", () => {

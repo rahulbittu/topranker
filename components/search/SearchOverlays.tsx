@@ -16,15 +16,47 @@ import type { AutocompleteSuggestion } from "@/lib/api";
 
 const AMBER = BRAND.colors.amber;
 
+export interface DishMatch {
+  slug: string;
+  name: string;
+  emoji: string;
+  entryCount: number;
+}
+
 interface AutocompleteDropdownProps {
   results: AutocompleteSuggestion[];
+  dishMatches?: DishMatch[];
   onDismiss: () => void;
 }
 
-export function AutocompleteDropdown({ results, onDismiss }: AutocompleteDropdownProps) {
-  if (results.length === 0) return null;
+export function AutocompleteDropdown({ results, dishMatches = [], onDismiss }: AutocompleteDropdownProps) {
+  if (results.length === 0 && dishMatches.length === 0) return null;
   return (
     <View style={styles.autocompleteDropdown}>
+      {/* Sprint 313: Dish leaderboard matches */}
+      {dishMatches.map((dish) => (
+        <TouchableOpacity
+          key={`dish-${dish.slug}`}
+          style={styles.autocompleteRow}
+          onPress={() => {
+            router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } });
+            onDismiss();
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={`Best ${dish.name} leaderboard`}
+        >
+          <Text style={{ fontSize: 16 }}>{dish.emoji}</Text>
+          <View style={styles.autocompleteInfo}>
+            <Text style={styles.autocompleteName} numberOfLines={1}>Best {dish.name}</Text>
+            <Text style={styles.autocompleteMeta} numberOfLines={1}>
+              {dish.entryCount > 0 ? `${dish.entryCount} spots ranked` : "Dish leaderboard"}
+            </Text>
+          </View>
+          <View style={styles.dishBadge}>
+            <Text style={styles.dishBadgeText}>Ranking</Text>
+          </View>
+        </TouchableOpacity>
+      ))}
       {results.map((item) => (
         <TouchableOpacity
           key={item.id}
@@ -114,6 +146,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.ui.caption,
     color: Colors.textSecondary,
   },
+  dishBadge: {
+    backgroundColor: "rgba(196,154,26,0.12)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 2,
+  },
+  dishBadgeText: { fontSize: 10, fontWeight: "700", color: AMBER },
   recentSearchesContainer: {
     marginHorizontal: 16,
     backgroundColor: Colors.surface,
