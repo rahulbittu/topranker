@@ -277,6 +277,13 @@ export function registerMemberRoutes(app: Express) {
     return res.json({ data: saved });
   }));
 
+  // Sprint 579: Claim status tracking
+  app.get("/api/members/me/claims", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { getClaimsByMember } = await import("./storage");
+    const claims = await getClaimsByMember(req.user!.id);
+    return res.json({ data: claims });
+  }));
+
   // Sprint 185: Onboarding progress checklist
   app.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const { getOnboardingProgress } = await import("./storage");

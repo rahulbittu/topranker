@@ -3298,6 +3298,18 @@ async function reviewClaim(id, status, reviewedBy) {
   }
   return updated;
 }
+async function getClaimsByMember(memberId) {
+  return db.select({
+    id: businessClaims.id,
+    businessId: businessClaims.businessId,
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    verificationMethod: businessClaims.verificationMethod,
+    status: businessClaims.status,
+    submittedAt: businessClaims.submittedAt,
+    reviewedAt: businessClaims.reviewedAt
+  }).from(businessClaims).leftJoin(businesses, eq15(businessClaims.businessId, businesses.id)).where(eq15(businessClaims.memberId, memberId)).orderBy(desc12(businessClaims.submittedAt));
+}
 async function getClaimCount() {
   const [result] = await db.select({ cnt: count9() }).from(businessClaims).where(eq15(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
@@ -3603,6 +3615,7 @@ __export(storage_exports, {
   getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
   getClaimByMemberAndBusiness: () => getClaimByMemberAndBusiness,
   getClaimCount: () => getClaimCount,
+  getClaimsByMember: () => getClaimsByMember,
   getCredibilityTier: () => getCredibilityTier,
   getCuisines: () => getCuisines,
   getDbCategories: () => getDbCategories,
@@ -11050,6 +11063,11 @@ function registerMemberRoutes(app2) {
     const saved = await updateNotificationFrequencyPrefs2(req.user.id, prefs);
     log.tag("Notifications").info(`Frequency prefs updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
     return res.json({ data: saved });
+  }));
+  app2.get("/api/members/me/claims", requireAuth, wrapAsync(async (req, res) => {
+    const { getClaimsByMember: getClaimsByMember2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const claims2 = await getClaimsByMember2(req.user.id);
+    return res.json({ data: claims2 });
   }));
   app2.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req, res) => {
     const { getOnboardingProgress: getOnboardingProgress2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));

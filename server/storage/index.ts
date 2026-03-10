@@ -142,6 +142,7 @@ export {
 export {
   submitClaim,
   getClaimByMemberAndBusiness,
+  getClaimsByMember,
   getPendingClaims,
   reviewClaim,
   getClaimCount,

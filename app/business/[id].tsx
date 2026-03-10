@@ -37,6 +37,7 @@ import { SlideUpView } from "@/components/animations/SlideUpView";
 import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
 import { DimensionScoreCard } from "@/components/business/DimensionScoreCard";
 import { DimensionComparisonCard } from "@/components/business/DimensionComparisonCard";
+import { ClaimStatusCard } from "@/components/business/ClaimStatusCard";
 import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
@@ -380,6 +381,9 @@ export default function BusinessProfileScreen() {
               }))}
             />
           )}
+
+          {/* Sprint 579: Claim status card */}
+          {business?.id && business?.slug && <ClaimStatusCard businessId={business.id} businessSlug={business.slug} businessName={business.name} />}
 
           {/* Sprint 268: Score Breakdown — visit-type separation */}
           {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}

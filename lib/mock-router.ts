@@ -27,6 +27,7 @@ const EXACT_ROUTES: MockRoute[] = [
   { prefix: "/api/leaderboard/dish-shortcuts", handler: () => [] },
   { prefix: "/api/leaderboard/best-in", handler: () => [] },
   // Member sub-paths (MUST come before /api/members/me catch-all)
+  { prefix: "/api/members/me/claims", handler: () => [] },
   { prefix: "/api/members/me/impact", handler: () => MOCK_MEMBER_IMPACT },
   { prefix: "/api/members/me", handler: () => MOCK_MEMBER_PROFILE },
   // Business sub-paths (MUST come before slug catch-all)

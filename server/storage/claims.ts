@@ -86,6 +86,21 @@ export async function reviewClaim(
   return updated;
 }
 
+/**
+ * Sprint 579: Get all claims by a member with business names.
+ * Used for claim status tracking on profile and business pages.
+ */
+export async function getClaimsByMember(memberId: string) {
+  return db.select({
+    id: businessClaims.id, businessId: businessClaims.businessId, businessName: businesses.name,
+    businessSlug: businesses.slug, verificationMethod: businessClaims.verificationMethod,
+    status: businessClaims.status, submittedAt: businessClaims.submittedAt, reviewedAt: businessClaims.reviewedAt,
+  }).from(businessClaims)
+    .leftJoin(businesses, eq(businessClaims.businessId, businesses.id))
+    .where(eq(businessClaims.memberId, memberId))
+    .orderBy(desc(businessClaims.submittedAt));
+}
+
 export async function getClaimCount() {
   const [result] = await db
     .select({ cnt: count() })
