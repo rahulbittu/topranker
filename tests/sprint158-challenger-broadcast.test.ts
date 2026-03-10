@@ -28,7 +28,7 @@ describe("Challenger real-time broadcast", () => {
     // Find the POST /api/ratings handler
     const ratingBlock = routesSrc.slice(
       routesSrc.indexOf('app.post("/api/ratings"'),
-      routesSrc.indexOf('app.post("/api/ratings"') + 2000
+      routesSrc.indexOf('app.post("/api/ratings"') + 3000
     );
     expect(ratingBlock).toContain('broadcast("challenger_updated"');
   });
@@ -36,7 +36,7 @@ describe("Challenger real-time broadcast", () => {
   it("broadcasts all three events: rating_submitted, ranking_updated, challenger_updated", () => {
     const ratingBlock = routesSrc.slice(
       routesSrc.indexOf('app.post("/api/ratings"'),
-      routesSrc.indexOf('app.post("/api/ratings"') + 2000
+      routesSrc.indexOf('app.post("/api/ratings"') + 3000
     );
     expect(ratingBlock).toContain('broadcast("rating_submitted"');
     expect(ratingBlock).toContain('broadcast("ranking_updated"');

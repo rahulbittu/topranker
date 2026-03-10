@@ -86,7 +86,7 @@ The backend uses a pluggable pattern for external services:
 
 ## Database Schema
 
-### 31 Tables
+### 32 Tables
 ```sql
 members              -- User accounts, credibility scores, tiers
 businesses           -- Restaurant/business listings, scores, ranks
@@ -118,6 +118,7 @@ referrals            -- Referral tracking between members (Sprint 188)
 beta_invites         -- Beta invite tracking (Sprint 197)
 user_activity        -- Persisted active user tracking (Sprint 204)
 beta_feedback        -- Beta feedback collection (Sprint 211)
+rating_photos        -- Photos attached to ratings for verification boost (Sprint 266)
 sessions             -- Express session store (connect-pg-simple)
 ```
 

@@ -146,7 +146,7 @@ describe("Structural audit — checkAndRefreshTier integration points", () => {
   it("POST /api/ratings calls checkAndRefreshTier on response", () => {
     const src = readFile("server/routes.ts");
     const ratingsMatch = src.match(
-      /api\/ratings[\s\S]{0,1000}checkAndRefreshTier/
+      /api\/ratings[\s\S]{0,2000}checkAndRefreshTier/
     );
     expect(ratingsMatch).not.toBeNull();
   });

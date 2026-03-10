@@ -9,6 +9,14 @@ import { getMemberById } from "./members";
 import { getBusinessById, recalculateBusinessScore, recalculateRanks } from "./businesses";
 import { updateMemberStats, recalculateCredibilityScore } from "./members";
 import { updateChallengerVotes } from "./challengers";
+import { computeComposite, type VisitType, type DimensionScores } from "@shared/score-engine";
+
+// Sprint 265: Integrity context passed from route layer
+export interface IntegrityContext {
+  velocityFlagged?: boolean;
+  velocityRule?: string;
+  velocityWeight?: number;
+}
 
 // Sprint 177: Fetch a single rating by ID
 export async function getRatingById(id: string): Promise<Rating | undefined> {
@@ -90,6 +98,7 @@ async function detectAnomalies(
 export async function submitRating(
   memberId: string,
   data: InsertRating,
+  integrity?: IntegrityContext,
 ): Promise<{
   rating: Rating;
   newRank: number | null;
@@ -127,13 +136,55 @@ export async function submitRating(
     );
   if (existingToday.count > 0) throw new Error("Already rated today. Come back tomorrow.");
 
-  const rawScore = (data.q1Score + data.q2Score + data.q3Score) / 3;
+  // Sprint 265: Use score engine for visit-type weighted composite
+  // Sprint 278: visitType is now required in schema (no fallback needed)
+  const visitType: VisitType = data.visitType as VisitType;
+  const dimensions: DimensionScores = { foodScore: data.q1Score * 2 }; // Scale 1-5 → 2-10
+  switch (visitType) {
+    case "dine_in":
+      dimensions.serviceScore = data.q2Score * 2;
+      dimensions.vibeScore = data.q3Score * 2;
+      break;
+    case "delivery":
+      dimensions.packagingScore = data.q2Score * 2;
+      dimensions.valueScore = data.q3Score * 2;
+      break;
+    case "takeaway":
+      dimensions.waitTimeScore = data.q2Score * 2;
+      dimensions.valueScore = data.q3Score * 2;
+      break;
+  }
+  const compositeScore = computeComposite(visitType, dimensions);
+  // Normalize composite (0-10) back to (0-5) for storage compatibility
+  const rawScore = compositeScore / 2;
 
   const anomalyFlags = await detectAnomalies(member, business, rawScore);
+  // Sprint 265: Merge velocity flags from integrity layer
+  if (integrity?.velocityFlagged && integrity.velocityRule) {
+    anomalyFlags.push(`velocity_${integrity.velocityRule}`);
+  }
   const autoFlagged = anomalyFlags.length > 0;
 
-  const weight = getVoteWeight(member.credibilityScore);
+  // Sprint 265: Apply velocity weight reduction if flagged
+  const baseWeight = getVoteWeight(member.credibilityScore);
+  const gamingMult = integrity?.velocityFlagged ? (integrity.velocityWeight ?? 0.05) : 1.0;
+  const weight = integrity?.velocityFlagged
+    ? Math.min(baseWeight, gamingMult)
+    : baseWeight;
   const weighted = rawScore * weight;
+
+  // Sprint 267: Compute verification boost from signals (Part 4)
+  const dishCompleted = !!(data.dishId || data.newDishName);
+  const timeOnPage = (data as any).timeOnPageMs || 0;
+  const timePlausible = timeOnPage >= 10000; // 10+ seconds = plausible visit
+  let vBoost = 0;
+  if (dishCompleted) vBoost += 0.05; // +5% dish detail
+  if (timePlausible) vBoost += 0.05; // +5% time plausibility
+  // Photo (+15%) and receipt (+25%) boosts added async via POST /api/ratings/:id/photo
+  const cappedBoost = Math.min(vBoost, 0.50);
+
+  // Sprint 267: Compute effective weight (credibility x verification x gaming)
+  const effWeight = baseWeight * (1 + cappedBoost) * gamingMult;
 
   const source = data.qrScanId ? "qr_scan" : "app";
 
@@ -147,6 +198,22 @@ export async function submitRating(
       q3Score: data.q3Score,
       wouldReturn: data.wouldReturn,
       note: data.note || null,
+      // Sprint 267: Persist visit type + dimensional scores
+      visitType,
+      foodScore: dimensions.foodScore.toFixed(1),
+      serviceScore: dimensions.serviceScore?.toFixed(1) ?? null,
+      vibeScore: dimensions.vibeScore?.toFixed(1) ?? null,
+      packagingScore: dimensions.packagingScore?.toFixed(1) ?? null,
+      waitTimeScore: dimensions.waitTimeScore?.toFixed(1) ?? null,
+      valueScore: dimensions.valueScore?.toFixed(1) ?? null,
+      compositeScore: compositeScore.toFixed(2),
+      // Sprint 267: Verification signals
+      dishFieldCompleted: dishCompleted,
+      verificationBoost: cappedBoost.toFixed(3),
+      effectiveWeight: effWeight.toFixed(4),
+      gamingMultiplier: gamingMult.toFixed(2),
+      gamingReason: integrity?.velocityFlagged ? `velocity_${integrity.velocityRule}` : null,
+      timeOnPageMs: timeOnPage > 0 ? timeOnPage : null,
       rawScore: rawScore.toFixed(2),
       weight: weight.toFixed(4),
       weightedScore: weighted.toFixed(4),

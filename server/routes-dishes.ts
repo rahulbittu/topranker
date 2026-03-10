@@ -59,4 +59,24 @@ export function registerDishRoutes(app: Express) {
       return res.status(400).json({ error: err.message });
     }
   }));
+
+  /**
+   * Sprint 277: GET /api/businesses/:id/top-dishes
+   * Returns top dishes for a specific business with vote counts and rating mentions.
+   */
+  app.get("/api/businesses/:id/top-dishes", wrapAsync(async (req: Request, res: Response) => {
+    const businessId = req.params.id;
+    const { getBusinessDishes } = await import("./storage/dishes");
+    const topDishes = await getBusinessDishes(businessId, 10);
+
+    const enriched = topDishes.map(d => ({
+      id: d.id,
+      name: d.name,
+      slug: d.slug,
+      voteCount: d.voteCount,
+      photoUrl: d.photoUrl,
+    }));
+
+    return res.json({ data: enriched });
+  }));
 }

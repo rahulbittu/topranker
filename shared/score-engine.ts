@@ -190,6 +190,39 @@ export function computeRestaurantScore(ratings: RatingInput[]): RestaurantScoreR
 }
 
 // ---------------------------------------------------------------------------
+// Step 6b: Bayesian prior (shrinkage toward category mean)
+// ---------------------------------------------------------------------------
+
+/**
+ * Sprint 272: Bayesian prior for low-data restaurants.
+ *
+ * Formula (IMDB-style weighted rating):
+ *   bayesian_score = (W × R + m × C) / (W + m)
+ *
+ * Where:
+ *   R = restaurant's weighted average score
+ *   W = sum of decayed effective weights (data strength)
+ *   C = category/city prior mean (e.g., 6.5)
+ *   m = prior strength (number of "phantom" ratings at the mean)
+ *
+ * Effect: With few ratings (low W), score shrinks toward C.
+ * With many ratings (high W >> m), score approaches R.
+ */
+export const BAYESIAN_PRIOR_STRENGTH = 3; // equivalent to 3 average-weight ratings
+export const DEFAULT_PRIOR_MEAN = 6.5;    // neutral prior (middle of 1-10 scale)
+
+export function applyBayesianPrior(
+  weightedScore: number,
+  totalDecayedWeight: number,
+  priorMean: number = DEFAULT_PRIOR_MEAN,
+  priorStrength: number = BAYESIAN_PRIOR_STRENGTH,
+): number {
+  if (totalDecayedWeight <= 0) return priorMean;
+  return (totalDecayedWeight * weightedScore + priorStrength * priorMean)
+    / (totalDecayedWeight + priorStrength);
+}
+
+// ---------------------------------------------------------------------------
 // Step 7: Minimum rating threshold check
 // ---------------------------------------------------------------------------
 

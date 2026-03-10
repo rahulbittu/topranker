@@ -36,6 +36,8 @@ import { registerOwnerDashboardRoutes } from "./routes-owner-dashboard";
 import { registerSearchRoutes } from "./routes-search";
 import { registerReviewHelpfulnessRoutes } from "./routes-review-helpfulness";
 import { registerBestInRoutes } from "./routes-best-in";
+import { registerRatingPhotoRoutes } from "./routes-rating-photos";
+import { registerScoreBreakdownRoutes } from "./routes-score-breakdown";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
@@ -57,6 +59,11 @@ import { getUserExperiments, trackOutcome } from "./experiment-tracker";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
 import { requireAuth } from "./middleware";
+import {
+  checkOwnerSelfRating,
+  checkVelocity,
+  logRatingSubmission,
+} from "./rating-integrity";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -244,7 +251,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       parsed.data.q3Score = sanitizeNumber(parsed.data.q3Score, 1, 5, 3);
 
       const memberId = req.user!.id;
-      const result = await submitRating(memberId, parsed.data);
+      const raterIp = req.ip || req.socket.remoteAddress || "unknown";
+
+      // Sprint 265: Owner self-rating block (Rating Integrity Layer 5)
+      const ownerCheck = checkOwnerSelfRating(parsed.data.businessId, memberId, raterIp);
+      if (!ownerCheck.allowed) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId: parsed.data.businessId });
+        return res.status(403).json({ error: ownerCheck.reason });
+      }
+
+      // Sprint 265: Velocity detection (Rating Integrity Layer 2)
+      const velocityCheck = checkVelocity(parsed.data.businessId, memberId, raterIp);
+      if (velocityCheck.flagged) {
+        // Don't reject — flag for reduced weight (integrity principle: weight, never delete)
+        log.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
+      }
+
+      // Log submission for velocity tracking
+      logRatingSubmission(parsed.data.businessId, memberId, raterIp);
+
+      const result = await submitRating(memberId, parsed.data, {
+        velocityFlagged: velocityCheck.flagged,
+        velocityRule: velocityCheck.rule,
+        velocityWeight: velocityCheck.reducedWeight,
+      });
 
       const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
       if (verifiedTier !== result.newTier) {
@@ -291,6 +321,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (err.message.includes("suspended")) {
         trackEvent("rating_rejected_suspended", memberId, { businessId });
+        return res.status(403).json({ error: err.message });
+      }
+      if (err.message.includes("business owner")) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId });
         return res.status(403).json({ error: err.message });
       }
       trackEvent("rating_rejected_unknown", memberId, { businessId, error: err.message });
@@ -464,6 +498,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerSearchRoutes(app);
   registerReviewHelpfulnessRoutes(app);
   registerBestInRoutes(app);
+  registerRatingPhotoRoutes(app);
+  registerScoreBreakdownRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

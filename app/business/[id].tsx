@@ -33,6 +33,9 @@ import {
 import { evaluateBusinessBadges, type BusinessBadgeContext } from "@/lib/badges";
 import { BadgeRowCompact } from "@/components/profile/BadgeGrid";
 import { SlideUpView } from "@/components/animations/SlideUpView";
+import { ScoreBreakdown } from "@/components/business/ScoreBreakdown";
+import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
+import { TopDishes } from "@/components/business/TopDishes";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -295,6 +298,11 @@ export default function BusinessProfileScreen() {
           {ratings.length > 0 && (
             <SubScoresCard avgQ1={avgQ1} avgQ2={avgQ2} avgQ3={avgQ3} ratings={ratings} />
           )}
+
+          {/* Sprint 268: Score Breakdown — visit-type separation */}
+          {business?.id && <ScoreBreakdown businessId={business.id} category={business.category} />}
+          {business?.id && <ScoreTrendSparkline businessId={business.id} />}
+          {business?.id && <TopDishes businessId={business.id} businessName={business.name} />}
 
           {/* Rating Distribution — Anti-fraud transparency */}
           {ratings.length >= 3 && <RatingDistribution ratings={ratings} />}

@@ -142,6 +142,10 @@ export function RatingExtrasStep({
         {photoUri ? (
           <View style={s.photoPreview}>
             <Image source={{ uri: photoUri }} style={s.photoImage} contentFit="cover" />
+            <View style={s.photoVerifiedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
+              <Text style={s.photoVerifiedText}>+15% boost</Text>
+            </View>
             <TouchableOpacity
               style={s.photoRemove}
               onPress={() => setPhotoUri(null)}
@@ -169,6 +173,7 @@ export function RatingExtrasStep({
           >
             <Ionicons name="camera-outline" size={20} color={Colors.textTertiary} />
             <Text style={s.photoAddText}>Add photo</Text>
+            <Text style={s.photoBoostHint}>+15% verification boost</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -270,8 +275,19 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
   },
   photoAddText: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  photoBoostHint: { fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium" },
   photoPreview: { borderRadius: 12, overflow: "hidden", position: "relative" },
   photoImage: { width: "100%", height: 160, borderRadius: 12 },
+  photoVerifiedBadge: {
+    position: "absolute", bottom: 8, left: 8,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(34, 139, 34, 0.85)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  photoVerifiedText: {
+    fontSize: 11, color: "#FFFFFF", fontWeight: "600",
+    fontFamily: "DMSans_600SemiBold",
+  },
   photoRemove: {
     position: "absolute", top: 8, right: 8,
     shadowColor: "#000", shadowOffset: { width: 0, height: 1 },

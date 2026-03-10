@@ -21,6 +21,7 @@ import {
   type CredibilityTier, getQ1Label, getQ3Label, getWouldReturnLabel,
   getCredibilityTier,
 } from "@/lib/data";
+import { computeComposite, type VisitType as ScoreVisitType } from "@/shared/score-engine";
 import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { Confetti } from "@/components/Confetti";
@@ -53,6 +54,8 @@ export default function RateScreen() {
 
   const [step, setStep] = useState<RatingStep>(0);
   const [visitType, setVisitType] = useState<VisitType | null>(null);
+  // Sprint 267: Track time-on-page for verification boost (+5% if plausible)
+  const [pageEnteredAt] = useState(() => Date.now());
   const [showConfirm, setShowConfirm] = useState(false);
   const [toastBadge, setToastBadge] = useState<Badge | null>(null);
   const [q1Score, setQ1Score] = useState(0);
@@ -87,8 +90,16 @@ export default function RateScreen() {
   const tierDisplayName = TIER_DISPLAY_NAMES[userTier];
   const voteWeight = TIER_WEIGHTS[userTier];
 
+  // Sprint 274: Live composite score using score engine (visit-type weighted)
   const rawScore = q1Score > 0 && q2Score > 0 && q3Score > 0
-    ? (q1Score + q2Score + q3Score) / 3
+    ? computeComposite((visitType || "dine_in") as ScoreVisitType, {
+        foodScore: q1Score,
+        serviceScore: visitType === "dine_in" ? q2Score : undefined,
+        vibeScore: visitType === "dine_in" ? q3Score : undefined,
+        packagingScore: visitType === "delivery" ? q2Score : undefined,
+        waitTimeScore: visitType === "takeaway" ? q2Score : undefined,
+        valueScore: (visitType === "delivery" || visitType === "takeaway") ? q3Score : undefined,
+      })
     : 0;
   const weightedScore = rawScore * voteWeight;
 
@@ -154,7 +165,12 @@ export default function RateScreen() {
     selectedDish,
     dishInput,
     note,
-    onSuccess: () => setShowConfirm(true),
+    photoUri,
+    timeOnPageMs: Date.now() - pageEnteredAt,
+    onSuccess: () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowConfirm(true);
+    },
     onBadgeEarned: (badge) => setToastBadge(badge),
     setSubmitError,
   });
@@ -353,6 +369,14 @@ export default function RateScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+            {/* Sprint 274: Live composite score preview */}
+            {rawScore > 0 && (
+              <Animated.View entering={FadeIn.duration(200)} style={styles.liveScorePreview}>
+                <Text style={styles.liveScoreLabel}>YOUR SCORE</Text>
+                <Text style={styles.liveScoreValue}>{rawScore.toFixed(1)}</Text>
+                <Text style={styles.liveScoreWeight}>×{voteWeight} weight = {weightedScore.toFixed(1)}</Text>
+              </Animated.View>
+            )}
           </Animated.View>
         ) : (
           <RatingExtrasStep
@@ -380,11 +404,19 @@ export default function RateScreen() {
       </ScrollView>
 
       {!!submitError && (
-        <TouchableOpacity style={styles.errorBanner} onPress={() => setSubmitError("")} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Dismiss error">
+        <View style={styles.errorBanner}>
           <Ionicons name="alert-circle" size={16} color={Colors.red} />
           <Text style={styles.errorBannerText}>{submitError}</Text>
-          <Ionicons name="close" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { setSubmitError(""); submitMutation.mutate(); }}
+            hitSlop={8} accessibilityRole="button" accessibilityLabel="Retry submission"
+          >
+            <Text style={styles.errorRetryText}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setSubmitError("")} hitSlop={8} accessibilityRole="button" accessibilityLabel="Dismiss error">
+            <Ionicons name="close" size={14} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
       )}
 
       <View style={[styles.bottomBar, { paddingBottom: bottomPad + 12 }]}>
@@ -493,6 +525,10 @@ const styles = StyleSheet.create({
   errorBannerText: {
     fontSize: 13, color: Colors.red, fontFamily: "DMSans_500Medium", flex: 1,
   },
+  errorRetryText: {
+    fontSize: 13, fontWeight: "600", color: BRAND.colors.amber,
+    fontFamily: "DMSans_600SemiBold",
+  },
   visitTypeContainer: {
     flex: 1,
     paddingHorizontal: 24,
@@ -534,6 +570,35 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textSecondary,
     marginTop: 2,
+    fontFamily: "DMSans_400Regular",
+  },
+  // Sprint 274: Live score preview
+  liveScorePreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: Colors.surfaceRaised,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 8,
+  },
+  liveScoreLabel: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_600SemiBold",
+    letterSpacing: 1,
+  },
+  liveScoreValue: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: Colors.gold,
+    fontFamily: "PlayfairDisplay_700Bold",
+  },
+  liveScoreWeight: {
+    fontSize: 11,
+    color: Colors.textSecondary,
     fontFamily: "DMSans_400Regular",
   },
 });

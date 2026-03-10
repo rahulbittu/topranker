@@ -5,6 +5,7 @@ import {
 } from "@shared/schema";
 import { db } from "../db";
 import { getTemporalMultiplier } from "./helpers";
+import { computeDecayFactor, applyBayesianPrior } from "@shared/score-engine";
 import { cacheAside, cacheDelPattern, trackCacheHit, trackCacheMiss, cacheGet, cacheSet } from "../redis";
 
 export async function getLeaderboard(
@@ -15,6 +16,7 @@ export async function getLeaderboard(
   const key = `leaderboard:${city}:${category}:${limit}`;
   return cacheAside(key, 300, async () => {
     trackCacheMiss();
+    // Sprint 273: Filter by leaderboard eligibility (3+ raters, 1+ dine-in, credibility >= 0.5)
     return db
       .select()
       .from(businesses)
@@ -23,6 +25,7 @@ export async function getLeaderboard(
           eq(businesses.city, city),
           eq(businesses.category, category),
           eq(businesses.isActive, true),
+          eq(businesses.leaderboardEligible, true),
         ),
       )
       .orderBy(asc(businesses.rankPosition))
@@ -194,10 +197,16 @@ export async function getPopularCategories(
 }
 
 export async function recalculateBusinessScore(businessId: string): Promise<number> {
+  // Sprint 271: Use compositeScore + effectiveWeight when available (Sprint 267+),
+  // fall back to rawScore + weight for older ratings.
+  // Temporal decay uses exponential formula from Rating Integrity Part 6 Step 5.
   const allRatings = await db
     .select({
       rawScore: ratings.rawScore,
       weight: ratings.weight,
+      compositeScore: ratings.compositeScore,
+      effectiveWeight: ratings.effectiveWeight,
+      visitType: ratings.visitType,
       createdAt: ratings.createdAt,
       isFlagged: ratings.isFlagged,
       autoFlagged: ratings.autoFlagged,
@@ -214,7 +223,11 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
   if (allRatings.length === 0) {
     await db
       .update(businesses)
-      .set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: new Date() })
+      .set({
+        weightedScore: "0", rawAvgScore: "0", totalRatings: 0,
+        dineInCount: 0, credibilityWeightedSum: "0", leaderboardEligible: false,
+        updatedAt: new Date(),
+      })
       .where(eq(businesses.id, businessId));
     return 0;
   }
@@ -222,22 +235,42 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
   let totalWeightedScore = 0;
   let totalEffectiveWeight = 0;
   let rawSum = 0;
+  // Sprint 273: Track leaderboard eligibility fields
+  let dineInCount = 0;
+  let credibilityWeightedSum = 0;
 
   for (const r of allRatings) {
     const ageDays = Math.floor(
       (Date.now() - new Date(r.createdAt).getTime()) / (1000 * 60 * 60 * 24),
     );
-    const temporal = getTemporalMultiplier(ageDays);
-    const effectiveWeight = parseFloat(r.weight) * temporal;
-    totalWeightedScore += parseFloat(r.rawScore) * effectiveWeight;
-    totalEffectiveWeight += effectiveWeight;
+    // Sprint 271: Exponential decay from score engine (lambda=0.003)
+    const decay = computeDecayFactor(ageDays);
+
+    // Use integrity columns when available (Sprint 267+ ratings), fall back to legacy
+    const score = r.compositeScore ? parseFloat(r.compositeScore) : parseFloat(r.rawScore);
+    const weight = r.effectiveWeight ? parseFloat(r.effectiveWeight) : parseFloat(r.weight);
+
+    const decayedWeight = weight * decay;
+    totalWeightedScore += score * decayedWeight;
+    totalEffectiveWeight += decayedWeight;
     rawSum += parseFloat(r.rawScore);
+
+    // Sprint 273: Track dine-in count and credibility sum
+    if (r.visitType === "dine_in") dineInCount++;
+    credibilityWeightedSum += weight;
   }
 
-  const score = totalEffectiveWeight > 0
-    ? Math.round((totalWeightedScore / totalEffectiveWeight) * 1000) / 1000
+  // Sprint 272: Apply Bayesian prior — shrink toward 6.5 for low-data restaurants
+  const rawWeightedAvg = totalEffectiveWeight > 0
+    ? totalWeightedScore / totalEffectiveWeight
     : 0;
+  const score = Math.round(
+    applyBayesianPrior(rawWeightedAvg, totalEffectiveWeight) * 1000,
+  ) / 1000;
   const rawAvg = rawSum / allRatings.length;
+
+  // Sprint 273: Leaderboard eligibility — Rating Integrity Part 6 Step 7
+  const eligible = allRatings.length >= 3 && dineInCount >= 1 && credibilityWeightedSum >= 0.5;
 
   await db
     .update(businesses)
@@ -245,6 +278,9 @@ export async function recalculateBusinessScore(businessId: string): Promise<numb
       weightedScore: score.toFixed(3),
       rawAvgScore: rawAvg.toFixed(2),
       totalRatings: allRatings.length,
+      dineInCount,
+      credibilityWeightedSum: credibilityWeightedSum.toFixed(4),
+      leaderboardEligible: eligible,
       updatedAt: new Date(),
     })
     .where(eq(businesses.id, businessId));
@@ -270,6 +306,7 @@ export async function recalculateRanks(
       WHERE city = ${city}
         AND category = ${category}
         AND is_active = true
+        AND leaderboard_eligible = true
     ) sub
     WHERE b.id = sub.id
   `);

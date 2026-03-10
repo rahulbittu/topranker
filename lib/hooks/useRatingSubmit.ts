@@ -12,6 +12,31 @@ import { awardBadgeApi } from "@/lib/api";
 
 type VisitType = "dine_in" | "delivery" | "takeaway";
 
+// Sprint 266: Async photo upload after rating submission
+async function uploadRatingPhoto(ratingId: string, uri: string): Promise<void> {
+  // Read the photo file as base64
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const reader = new FileReader();
+  const base64 = await new Promise<string>((resolve, reject) => {
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      // Strip data URL prefix (e.g. "data:image/jpeg;base64,")
+      const base64Data = result.includes(",") ? result.split(",")[1] : result;
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  const mimeType = blob.type || "image/jpeg";
+  await apiRequest("POST", `/api/ratings/${ratingId}/photo`, {
+    data: base64,
+    mimeType,
+    isReceipt: false,
+  });
+}
+
 interface UseRatingSubmitOptions {
   slug: string;
   businessId?: string;
@@ -23,6 +48,8 @@ interface UseRatingSubmitOptions {
   selectedDish: string;
   dishInput: string;
   note: string;
+  photoUri: string | null;
+  timeOnPageMs: number;
   onSuccess: () => void;
   onBadgeEarned: (badge: Badge) => void;
   setSubmitError: (msg: string) => void;
@@ -37,6 +64,8 @@ export function useRatingSubmit({
   selectedDish,
   dishInput,
   note,
+  photoUri,
+  timeOnPageMs,
   onSuccess,
   onBadgeEarned,
   setSubmitError,
@@ -56,6 +85,7 @@ export function useRatingSubmit({
         visitType: visitType || undefined,
         dishName: dishName || undefined,
         note: note.trim() || undefined,
+        timeOnPageMs: timeOnPageMs > 0 ? timeOnPageMs : undefined,
       });
       return res.json();
     },
@@ -85,6 +115,8 @@ export function useRatingSubmit({
         setSubmitError("Your account needs a few more days before you can rate. This helps us prevent fake reviews.");
       } else if (msg.includes("suspended") || msg.includes("banned")) {
         setSubmitError("Your account has been suspended. Please contact support for more information.");
+      } else if (msg.includes("business owner") || msg.includes("cannot rate your own")) {
+        setSubmitError("As the business owner, you cannot rate your own restaurant. This ensures trust and fairness.");
       } else {
         setSubmitError(msg || "Failed to submit rating. Please try again.");
       }
@@ -101,6 +133,16 @@ export function useRatingSubmit({
       onSuccess();
       hapticRatingSuccess();
       setTimeout(() => hapticConfetti(), 300);
+
+      // Sprint 266: Async photo upload — doesn't block confirmation
+      const ratingId = responseData?.data?.rating?.id;
+      if (photoUri && ratingId) {
+        uploadRatingPhoto(ratingId, photoUri).then(() => {
+          qc.invalidateQueries({ queryKey: ["business", slug] });
+        }).catch(() => {
+          // Photo upload failure is non-critical — rating already submitted
+        });
+      }
 
       const milestoneBadgeMap: Record<number, string> = {
         1: "first-taste", 5: "getting-started", 10: "ten-strong",

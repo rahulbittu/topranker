@@ -48,7 +48,7 @@ describe("FRESH path enforcement — checkAndRefreshTier is called on every user
     it("POST /api/ratings calls checkAndRefreshTier after submitRating", () => {
       // The ratings route must call checkAndRefreshTier on the result
       const match = routesSrc.match(
-        /app\.post\(["']\/api\/ratings["'][\s\S]{0,1200}checkAndRefreshTier\(/
+        /app\.post\(["']\/api\/ratings["'][\s\S]{0,2000}checkAndRefreshTier\(/
       );
       expect(match).not.toBeNull();
     });

@@ -406,7 +406,7 @@ export default function SearchScreen() {
           renderItem={({ item, index }: { item: MappedBusiness; index: number }) => (
             <BusinessCard
               item={item}
-              displayRank={index + 1}
+              displayRank={item.rank > 0 ? item.rank : 0}
               distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
             />
           )}

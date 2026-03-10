@@ -93,6 +93,7 @@ export const BusinessCard = React.memo(function BusinessCard({
   const catDisplay = getCategoryDisplay(item.category);
   const isOpen = item.isOpenNow;
   const rankLabel = getRankDisplay(displayRank);
+  const isUnranked = !displayRank || displayRank <= 0;
   const photos = item.photoUrls && item.photoUrls.length > 0 ? item.photoUrls : (item.photoUrl ? [item.photoUrl] : []);
   const { isBookmarked, toggleBookmark } = useBookmarks();
   const saved = isBookmarked(item.id);
@@ -110,12 +111,12 @@ export const BusinessCard = React.memo(function BusinessCard({
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
+      accessibilityLabel={`${item.name}, ${isUnranked ? "unranked" : `ranked ${rankLabel}`}, score ${item.weightedScore.toFixed(1)}`}
     >
       <View style={s.cardPhotoStripWrap}>
         <DiscoverPhotoStrip photos={photos} height={120} category={item.category} containerWidth={cardWidth} name={item.name} />
-        <View style={s.discoverRankBadge}>
-          <Text style={s.discoverRankBadgeText}>{rankLabel}</Text>
+        <View style={[s.discoverRankBadge, isUnranked && s.unrankedBadge]}>
+          <Text style={[s.discoverRankBadgeText, isUnranked && s.unrankedBadgeText]}>{rankLabel}</Text>
         </View>
         <TouchableOpacity
           style={s.cardBookmarkBtn}
@@ -218,6 +219,7 @@ export const BusinessCard = React.memo(function BusinessCard({
 export function MapBusinessCard({ item }: { item: MappedBusiness }) {
   const catDisplay = getCategoryDisplay(item.category);
   const rankLabel = getRankDisplay(item.rank);
+  const isUnranked = !item.rank || item.rank <= 0;
 
   const openInMaps = () => {
     if (item.lat && item.lng) {
@@ -236,10 +238,10 @@ export function MapBusinessCard({ item }: { item: MappedBusiness }) {
       onPress={() => router.push({ pathname: "/business/[id]", params: { id: item.slug } })}
       activeOpacity={0.75}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}, ranked ${rankLabel}, score ${item.weightedScore.toFixed(1)}`}
+      accessibilityLabel={`${item.name}, ${isUnranked ? "unranked" : `ranked ${rankLabel}`}, score ${item.weightedScore.toFixed(1)}`}
     >
-      <View style={s.mapCardRank}>
-        <Text style={s.mapCardRankText}>{rankLabel}</Text>
+      <View style={[s.mapCardRank, isUnranked && s.unrankedMapRank]}>
+        <Text style={[s.mapCardRankText, isUnranked && s.unrankedBadgeText]}>{rankLabel}</Text>
       </View>
       <View style={s.mapCardInfo}>
         <Text style={s.mapCardName} numberOfLines={1}>{item.name}</Text>
@@ -468,6 +470,9 @@ const s = StyleSheet.create({
     backgroundColor: AMBER, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10,
   },
   discoverRankBadgeText: { fontSize: 12, fontWeight: "800", color: "#fff", fontFamily: "PlayfairDisplay_900Black" },
+  unrankedBadge: { backgroundColor: "#6B7280" },
+  unrankedBadgeText: { fontSize: 10, fontWeight: "600", color: "#D1D5DB" },
+  unrankedMapRank: { backgroundColor: "#6B7280" },
   cardBookmarkBtn: {
     position: "absolute", top: 6, right: 6,
     width: 26, height: 26, borderRadius: 13,

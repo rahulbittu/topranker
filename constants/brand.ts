@@ -79,6 +79,7 @@ export function getCategoryDisplay(slug: string): { emoji: string; label: string
 }
 
 export function getRankDisplay(rank: number): string {
+  if (!rank || rank <= 0) return "Unranked";
   if (rank === 1) return "\u{1F947}";
   if (rank === 2) return "\u{1F948}";
   if (rank === 3) return "\u{1F949}";

@@ -86,6 +86,10 @@ export const businesses = pgTable(
     rankDelta: integer("rank_delta").notNull().default(0),
     prevRankPosition: integer("prev_rank_position"),
     totalRatings: integer("total_ratings").notNull().default(0),
+    // Sprint 273: Leaderboard eligibility tracking
+    dineInCount: integer("dine_in_count").notNull().default(0),
+    credibilityWeightedSum: numeric("credibility_weighted_sum", { precision: 8, scale: 4 }).notNull().default("0"),
+    leaderboardEligible: boolean("leaderboard_eligible").notNull().default(false),
     ownerId: varchar("owner_id").references(() => members.id),
     isClaimed: boolean("is_claimed").notNull().default(false),
     claimedAt: timestamp("claimed_at"),
@@ -125,6 +129,25 @@ export const ratings = pgTable(
     q3Score: integer("q3_score").notNull(),
     wouldReturn: boolean("would_return").notNull(),
     note: text("note"),
+    // Sprint 267: Visit type + dimensional scores (Rating Integrity Part 7)
+    visitType: text("visit_type").default("dine_in"), // dine_in, delivery, takeaway
+    foodScore: numeric("food_score", { precision: 3, scale: 1 }),
+    serviceScore: numeric("service_score", { precision: 3, scale: 1 }),
+    vibeScore: numeric("vibe_score", { precision: 3, scale: 1 }),
+    packagingScore: numeric("packaging_score", { precision: 3, scale: 1 }),
+    waitTimeScore: numeric("wait_time_score", { precision: 3, scale: 1 }),
+    valueScore: numeric("value_score", { precision: 3, scale: 1 }),
+    compositeScore: numeric("composite_score", { precision: 4, scale: 2 }),
+    // Sprint 267: Verification signals (Rating Integrity Part 4)
+    hasPhoto: boolean("has_photo").notNull().default(false),
+    hasReceipt: boolean("has_receipt").notNull().default(false),
+    dishFieldCompleted: boolean("dish_field_completed").notNull().default(false),
+    verificationBoost: numeric("verification_boost", { precision: 4, scale: 3 }).notNull().default("0"),
+    // Sprint 267: Effective weight (credibility x verification x gaming)
+    effectiveWeight: numeric("effective_weight", { precision: 6, scale: 4 }),
+    gamingMultiplier: numeric("gaming_multiplier", { precision: 3, scale: 2 }).notNull().default("1.00"),
+    gamingReason: text("gaming_reason"),
+    timeOnPageMs: integer("time_on_page_ms"),
     rawScore: numeric("raw_score", { precision: 4, scale: 2 }).notNull(),
     weight: numeric("weight", { precision: 5, scale: 4 }).notNull(),
     weightedScore: numeric("weighted_score", { precision: 6, scale: 4 }).notNull(),
@@ -550,11 +573,15 @@ export const insertRatingSchema = createInsertSchema(ratings)
     note: true,
   })
   .extend({
-    q1Score: z.number().min(1).max(5),
-    q2Score: z.number().min(1).max(5),
-    q3Score: z.number().min(1).max(5),
+    q1Score: z.number().int().min(1).max(5),
+    q2Score: z.number().int().min(1).max(5),
+    q3Score: z.number().int().min(1).max(5),
     wouldReturn: z.boolean(),
-    note: z.string().max(160).optional(),
+    // Sprint 278: visitType required (was optional, required since Sprint 261 UI)
+    visitType: z.enum(["dine_in", "delivery", "takeaway"]),
+    timeOnPageMs: z.number().int().min(0).max(3600000).optional(), // max 1 hour
+    // Sprint 278: Note length capped at 2000 chars, stripped of HTML
+    note: z.string().max(2000).optional().transform(val => val ? val.replace(/<[^>]*>/g, "").trim() : val),
     dishId: z.string().optional(),
     newDishName: z.string().max(50).optional(),
     noNotableDish: z.boolean().optional(),
@@ -816,3 +843,25 @@ export const betaFeedback = pgTable(
 );
 
 export type BetaFeedback = typeof betaFeedback.$inferSelect;
+
+// Sprint 266: Rating photos for verification boost
+export const ratingPhotos = pgTable(
+  "rating_photos",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    ratingId: varchar("rating_id")
+      .notNull()
+      .references(() => ratings.id),
+    photoUrl: text("photo_url").notNull(),
+    cdnKey: text("cdn_key").notNull(),
+    isVerifiedReceipt: boolean("is_verified_receipt").notNull().default(false),
+    uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_rating_photos_rating").on(table.ratingId),
+  ],
+);
+
+export type RatingPhoto = typeof ratingPhotos.$inferSelect;

@@ -26,6 +26,7 @@ export type FunnelEvent =
   | "rating_rejected_suspended"
   | "rating_rejected_validation"
   | "rating_rejected_unknown"
+  | "rating_rejected_owner_self"
   // Sprint 199: Beta conversion events
   | "beta_invite_sent"
   | "beta_join_page_view"

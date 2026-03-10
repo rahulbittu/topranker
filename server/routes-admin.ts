@@ -545,4 +545,60 @@ export function registerAdminRoutes(app: Express) {
       const sent = results.filter(r => r.status === "sent").length;
       return res.json({ data: { total: invites.length, sent, skipped: invites.length - sent, results } });
   }));
+
+  /**
+   * Sprint 279: GET /api/admin/eligibility
+   * Returns businesses near eligibility threshold for admin monitoring.
+   */
+  app.get("/api/admin/eligibility", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
+
+    const { db } = await import("./db");
+    const { businesses } = await import("@shared/schema");
+    const { eq, asc } = await import("drizzle-orm");
+
+    const allBusinesses = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      category: businesses.category,
+      totalRatings: businesses.totalRatings,
+      dineInCount: businesses.dineInCount,
+      credibilityWeightedSum: businesses.credibilityWeightedSum,
+      leaderboardEligible: businesses.leaderboardEligible,
+      weightedScore: businesses.weightedScore,
+    })
+      .from(businesses)
+      .where(eq(businesses.isActive, true))
+      .orderBy(asc(businesses.leaderboardEligible));
+
+    const eligible = allBusinesses.filter(b => b.leaderboardEligible);
+    const ineligible = allBusinesses.filter(b => !b.leaderboardEligible);
+    const nearEligible = ineligible.filter(b =>
+      b.totalRatings >= 2 || parseFloat(b.credibilityWeightedSum) >= 0.3,
+    );
+
+    return res.json({
+      data: {
+        totalActive: allBusinesses.length,
+        eligible: eligible.length,
+        ineligible: ineligible.length,
+        nearEligible: nearEligible.length,
+        nearEligibleBusinesses: nearEligible.map(b => ({
+          id: b.id,
+          name: b.name,
+          city: b.city,
+          category: b.category,
+          totalRatings: b.totalRatings,
+          dineInCount: b.dineInCount,
+          credibilityWeightedSum: parseFloat(b.credibilityWeightedSum),
+          missingRequirements: [
+            b.totalRatings < 3 ? `Need ${3 - b.totalRatings} more raters` : null,
+            b.dineInCount < 1 ? "Need 1+ dine-in rating" : null,
+            parseFloat(b.credibilityWeightedSum) < 0.5 ? `Credibility sum ${parseFloat(b.credibilityWeightedSum).toFixed(2)} < 0.50` : null,
+          ].filter(Boolean),
+        })),
+      },
+    });
+  }));
 }

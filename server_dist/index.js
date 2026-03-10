@@ -1,5 +1,7 @@
 var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
   get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
@@ -13,11 +15,22 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
+var __copyProps = (to, from, except, desc17) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key2 of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key2) && key2 !== except)
+        __defProp(to, key2, { get: () => from[key2], enumerable: !(desc17 = __getOwnPropDesc(from, key2)) || desc17.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // shared/schema.ts
 var schema_exports = {};
 __export(schema_exports, {
   analyticsEvents: () => analyticsEvents,
+  betaFeedback: () => betaFeedback,
+  betaInvites: () => betaInvites,
   businessClaims: () => businessClaims,
   businessPhotos: () => businessPhotos,
   businesses: () => businesses,
@@ -25,19 +38,30 @@ __export(schema_exports, {
   categorySuggestions: () => categorySuggestions,
   challengers: () => challengers,
   credibilityPenalties: () => credibilityPenalties,
+  deletionRequests: () => deletionRequests,
+  dishLeaderboardEntries: () => dishLeaderboardEntries,
+  dishLeaderboards: () => dishLeaderboards,
+  dishSuggestionVotes: () => dishSuggestionVotes,
+  dishSuggestions: () => dishSuggestions,
   dishVotes: () => dishVotes,
   dishes: () => dishes,
   featuredPlacements: () => featuredPlacements,
   insertCategorySuggestionSchema: () => insertCategorySuggestionSchema,
+  insertDishSuggestionSchema: () => insertDishSuggestionSchema,
   insertMemberSchema: () => insertMemberSchema,
   insertRatingSchema: () => insertRatingSchema,
   memberBadges: () => memberBadges,
   members: () => members,
+  notifications: () => notifications,
   payments: () => payments,
   qrScans: () => qrScans,
   rankHistory: () => rankHistory,
   ratingFlags: () => ratingFlags,
+  ratingPhotos: () => ratingPhotos,
+  ratingResponses: () => ratingResponses,
   ratings: () => ratings,
+  referrals: () => referrals,
+  userActivity: () => userActivity,
   webhookEvents: () => webhookEvents
 });
 import { sql } from "drizzle-orm";
@@ -56,7 +80,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var members, businesses, ratings, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, insertCategorySuggestionSchema;
+var members, businesses, ratings, ratingResponses, dishes, dishVotes, challengers, rankHistory, businessClaims, businessPhotos, qrScans, ratingFlags, memberBadges, credibilityPenalties, categories, categorySuggestions, payments, webhookEvents, featuredPlacements, analyticsEvents, insertMemberSchema, insertRatingSchema, deletionRequests, dishLeaderboards, dishLeaderboardEntries, dishSuggestions, dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema, notifications, referrals, betaInvites, userActivity, betaFeedback, ratingPhotos;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -81,8 +105,13 @@ var init_schema = __esm({
       isFoundingMember: boolean("is_founding_member").notNull().default(false),
       isBanned: boolean("is_banned").notNull().default(false),
       banReason: text("ban_reason"),
+      emailVerified: boolean("email_verified").notNull().default(false),
+      emailVerificationToken: text("email_verification_token"),
+      passwordResetToken: text("password_reset_token"),
+      passwordResetExpires: timestamp("password_reset_expires"),
       joinedAt: timestamp("joined_at").notNull().defaultNow(),
-      lastActive: timestamp("last_active")
+      lastActive: timestamp("last_active"),
+      notificationPrefs: jsonb("notification_prefs")
     });
     businesses = pgTable(
       "businesses",
@@ -115,9 +144,19 @@ var init_schema = __esm({
         rankDelta: integer("rank_delta").notNull().default(0),
         prevRankPosition: integer("prev_rank_position"),
         totalRatings: integer("total_ratings").notNull().default(0),
+        // Sprint 273: Leaderboard eligibility tracking
+        dineInCount: integer("dine_in_count").notNull().default(0),
+        credibilityWeightedSum: numeric("credibility_weighted_sum", { precision: 8, scale: 4 }).notNull().default("0"),
+        leaderboardEligible: boolean("leaderboard_eligible").notNull().default(false),
         ownerId: varchar("owner_id").references(() => members.id),
         isClaimed: boolean("is_claimed").notNull().default(false),
         claimedAt: timestamp("claimed_at"),
+        // Sprint 176: Business Pro subscription
+        stripeCustomerId: text("stripe_customer_id"),
+        stripeSubscriptionId: text("stripe_subscription_id"),
+        subscriptionStatus: text("subscription_status").default("none"),
+        // none, active, past_due, cancelled, trialing
+        subscriptionPeriodEnd: timestamp("subscription_period_end"),
         isActive: boolean("is_active").notNull().default(true),
         inChallenger: boolean("in_challenger").notNull().default(false),
         createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -142,6 +181,26 @@ var init_schema = __esm({
         q3Score: integer("q3_score").notNull(),
         wouldReturn: boolean("would_return").notNull(),
         note: text("note"),
+        // Sprint 267: Visit type + dimensional scores (Rating Integrity Part 7)
+        visitType: text("visit_type").default("dine_in"),
+        // dine_in, delivery, takeaway
+        foodScore: numeric("food_score", { precision: 3, scale: 1 }),
+        serviceScore: numeric("service_score", { precision: 3, scale: 1 }),
+        vibeScore: numeric("vibe_score", { precision: 3, scale: 1 }),
+        packagingScore: numeric("packaging_score", { precision: 3, scale: 1 }),
+        waitTimeScore: numeric("wait_time_score", { precision: 3, scale: 1 }),
+        valueScore: numeric("value_score", { precision: 3, scale: 1 }),
+        compositeScore: numeric("composite_score", { precision: 4, scale: 2 }),
+        // Sprint 267: Verification signals (Rating Integrity Part 4)
+        hasPhoto: boolean("has_photo").notNull().default(false),
+        hasReceipt: boolean("has_receipt").notNull().default(false),
+        dishFieldCompleted: boolean("dish_field_completed").notNull().default(false),
+        verificationBoost: numeric("verification_boost", { precision: 4, scale: 3 }).notNull().default("0"),
+        // Sprint 267: Effective weight (credibility x verification x gaming)
+        effectiveWeight: numeric("effective_weight", { precision: 6, scale: 4 }),
+        gamingMultiplier: numeric("gaming_multiplier", { precision: 3, scale: 2 }).notNull().default("1.00"),
+        gamingReason: text("gaming_reason"),
+        timeOnPageMs: integer("time_on_page_ms"),
         rawScore: numeric("raw_score", { precision: 4, scale: 2 }).notNull(),
         weight: numeric("weight", { precision: 5, scale: 4 }).notNull(),
         weightedScore: numeric("weighted_score", { precision: 6, scale: 4 }).notNull(),
@@ -155,6 +214,22 @@ var init_schema = __esm({
       (table) => [
         index("idx_rat_business").on(table.businessId, table.createdAt),
         index("idx_rat_member").on(table.memberId, table.createdAt)
+      ]
+    );
+    ratingResponses = pgTable(
+      "rating_responses",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        ratingId: varchar("rating_id").notNull().references(() => ratings.id),
+        businessId: varchar("business_id").notNull().references(() => businesses.id),
+        ownerId: varchar("owner_id").notNull().references(() => members.id),
+        responseText: text("response_text").notNull(),
+        createdAt: timestamp("created_at").notNull().defaultNow(),
+        updatedAt: timestamp("updated_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_resp_rating").on(table.ratingId),
+        index("idx_resp_business").on(table.businessId)
       ]
     );
     dishes = pgTable(
@@ -238,15 +313,21 @@ var init_schema = __esm({
       submittedAt: timestamp("submitted_at").notNull().defaultNow(),
       reviewedAt: timestamp("reviewed_at")
     });
-    businessPhotos = pgTable("business_photos", {
-      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-      businessId: varchar("business_id").notNull().references(() => businesses.id),
-      photoUrl: text("photo_url").notNull(),
-      isHero: boolean("is_hero").notNull().default(false),
-      sortOrder: integer("sort_order").notNull().default(0),
-      uploadedBy: varchar("uploaded_by").references(() => members.id),
-      createdAt: timestamp("created_at").notNull().defaultNow()
-    });
+    businessPhotos = pgTable(
+      "business_photos",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        businessId: varchar("business_id").notNull().references(() => businesses.id),
+        photoUrl: text("photo_url").notNull(),
+        isHero: boolean("is_hero").notNull().default(false),
+        sortOrder: integer("sort_order").notNull().default(0),
+        uploadedBy: varchar("uploaded_by").references(() => members.id),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_biz_photos_business").on(table.businessId, table.sortOrder)
+      ]
+    );
     qrScans = pgTable(
       "qr_scans",
       {
@@ -299,17 +380,23 @@ var init_schema = __esm({
         index("idx_badges_member").on(table.memberId)
       ]
     );
-    credibilityPenalties = pgTable("credibility_penalties", {
-      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-      memberId: varchar("member_id").notNull().references(() => members.id),
-      ratingFlagId: varchar("rating_flag_id").references(() => ratingFlags.id),
-      basePenalty: integer("base_penalty").notNull(),
-      historyMult: numeric("history_mult", { precision: 3, scale: 1 }).notNull(),
-      patternMult: numeric("pattern_mult", { precision: 3, scale: 1 }).notNull(),
-      finalPenalty: integer("final_penalty").notNull(),
-      severity: text("severity").notNull(),
-      appliedAt: timestamp("applied_at").notNull().defaultNow()
-    });
+    credibilityPenalties = pgTable(
+      "credibility_penalties",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        memberId: varchar("member_id").notNull().references(() => members.id),
+        ratingFlagId: varchar("rating_flag_id").references(() => ratingFlags.id),
+        basePenalty: integer("base_penalty").notNull(),
+        historyMult: numeric("history_mult", { precision: 3, scale: 1 }).notNull(),
+        patternMult: numeric("pattern_mult", { precision: 3, scale: 1 }).notNull(),
+        finalPenalty: integer("final_penalty").notNull(),
+        severity: text("severity").notNull(),
+        appliedAt: timestamp("applied_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_penalties_member").on(table.memberId)
+      ]
+    );
     categories = pgTable("categories", {
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       slug: text("slug").unique().notNull(),
@@ -428,21 +515,210 @@ var init_schema = __esm({
       wouldReturn: true,
       note: true
     }).extend({
-      q1Score: z.number().min(1).max(5),
-      q2Score: z.number().min(1).max(5),
-      q3Score: z.number().min(1).max(5),
+      q1Score: z.number().int().min(1).max(5),
+      q2Score: z.number().int().min(1).max(5),
+      q3Score: z.number().int().min(1).max(5),
       wouldReturn: z.boolean(),
-      note: z.string().max(160).optional(),
+      // Sprint 278: visitType required (was optional, required since Sprint 261 UI)
+      visitType: z.enum(["dine_in", "delivery", "takeaway"]),
+      timeOnPageMs: z.number().int().min(0).max(36e5).optional(),
+      // max 1 hour
+      // Sprint 278: Note length capped at 2000 chars, stripped of HTML
+      note: z.string().max(2e3).optional().transform((val) => val ? val.replace(/<[^>]*>/g, "").trim() : val),
       dishId: z.string().optional(),
       newDishName: z.string().max(50).optional(),
       noNotableDish: z.boolean().optional(),
       qrScanId: z.string().optional()
+    });
+    deletionRequests = pgTable(
+      "deletion_requests",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        memberId: varchar("member_id").notNull().references(() => members.id),
+        requestedAt: timestamp("requested_at").notNull().defaultNow(),
+        scheduledDeletionAt: timestamp("scheduled_deletion_at").notNull(),
+        cancelledAt: timestamp("cancelled_at"),
+        completedAt: timestamp("completed_at"),
+        status: text("status").notNull().default("pending")
+        // pending, cancelled, completed
+      },
+      (table) => [
+        index("idx_deletion_member").on(table.memberId),
+        index("idx_deletion_status").on(table.status)
+      ]
+    );
+    dishLeaderboards = pgTable(
+      "dish_leaderboards",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        city: text("city").notNull(),
+        dishName: text("dish_name").notNull(),
+        dishSlug: text("dish_slug").notNull(),
+        dishEmoji: text("dish_emoji"),
+        status: text("status").notNull().default("active"),
+        minRatingCount: integer("min_rating_count").notNull().default(5),
+        displayOrder: integer("display_order").notNull().default(0),
+        source: text("source").notNull().default("system"),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        unique("unique_dish_city").on(table.city, table.dishSlug),
+        index("idx_dish_lb_city").on(table.city, table.status)
+      ]
+    );
+    dishLeaderboardEntries = pgTable(
+      "dish_leaderboard_entries",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        leaderboardId: varchar("leaderboard_id").notNull().references(() => dishLeaderboards.id),
+        businessId: varchar("business_id").notNull().references(() => businesses.id),
+        dishScore: numeric("dish_score", { precision: 5, scale: 2 }).notNull().default("0"),
+        dishRatingCount: integer("dish_rating_count").notNull().default(0),
+        rankPosition: integer("rank_position").notNull().default(0),
+        previousRank: integer("previous_rank"),
+        photoUrl: text("photo_url"),
+        updatedAt: timestamp("updated_at").notNull().defaultNow()
+      },
+      (table) => [
+        unique("unique_entry_lb_biz").on(table.leaderboardId, table.businessId),
+        index("idx_dish_entry_lb_rank").on(table.leaderboardId, table.rankPosition)
+      ]
+    );
+    dishSuggestions = pgTable(
+      "dish_suggestions",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        city: text("city").notNull(),
+        dishName: text("dish_name").notNull(),
+        suggestedBy: varchar("suggested_by").notNull().references(() => members.id),
+        voteCount: integer("vote_count").notNull().default(1),
+        status: text("status").notNull().default("proposed"),
+        activationThreshold: integer("activation_threshold").notNull().default(10),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_dish_sugg_city").on(table.city, table.voteCount)
+      ]
+    );
+    dishSuggestionVotes = pgTable("dish_suggestion_votes", {
+      id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+      suggestionId: varchar("suggestion_id").notNull().references(() => dishSuggestions.id),
+      memberId: varchar("member_id").notNull().references(() => members.id),
+      createdAt: timestamp("created_at").notNull().defaultNow()
+    });
+    insertDishSuggestionSchema = z.object({
+      city: z.string().min(2).max(50),
+      dishName: z.string().min(2).max(40)
     });
     insertCategorySuggestionSchema = z.object({
       name: z.string().min(2).max(50),
       description: z.string().min(10).max(200),
       vertical: z.enum(["food", "services", "wellness", "entertainment", "retail"])
     });
+    notifications = pgTable(
+      "notifications",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        memberId: varchar("member_id").notNull().references(() => members.id),
+        type: text("type").notNull(),
+        // tier_upgrade, claim_decision, challenger_result, new_challenger, rating_response, weekly_digest
+        title: text("title").notNull(),
+        body: text("body").notNull(),
+        data: jsonb("data"),
+        // { screen, slug, id } for deep linking
+        read: boolean("read").notNull().default(false),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_notif_member").on(table.memberId),
+        index("idx_notif_member_read").on(table.memberId, table.read)
+      ]
+    );
+    referrals = pgTable(
+      "referrals",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        referrerId: varchar("referrer_id").notNull().references(() => members.id),
+        referredId: varchar("referred_id").notNull().references(() => members.id),
+        referralCode: text("referral_code").notNull(),
+        status: text("status").notNull().default("signed_up"),
+        // signed_up, activated (rated), churned
+        createdAt: timestamp("created_at").notNull().defaultNow(),
+        activatedAt: timestamp("activated_at")
+        // when referred user submits first rating
+      },
+      (table) => [
+        index("idx_referral_referrer").on(table.referrerId),
+        index("idx_referral_referred").on(table.referredId),
+        unique("uq_referral_referred").on(table.referredId)
+        // one referrer per user
+      ]
+    );
+    betaInvites = pgTable(
+      "beta_invites",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        email: text("email").notNull(),
+        displayName: text("display_name").notNull(),
+        referralCode: text("referral_code").notNull().default("BETA25"),
+        invitedBy: text("invited_by"),
+        // admin who sent the invite
+        status: text("status").notNull().default("sent"),
+        // sent, joined, expired
+        sentAt: timestamp("sent_at").notNull().defaultNow(),
+        joinedAt: timestamp("joined_at"),
+        memberId: varchar("member_id").references(() => members.id)
+        // linked after signup
+      },
+      (table) => [
+        index("idx_beta_invite_email").on(table.email),
+        unique("uq_beta_invite_email").on(table.email)
+      ]
+    );
+    userActivity = pgTable(
+      "user_activity",
+      {
+        userId: varchar("user_id").primaryKey().references(() => members.id),
+        lastSeenAt: timestamp("last_seen_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_user_activity_last_seen").on(table.lastSeenAt)
+      ]
+    );
+    betaFeedback = pgTable(
+      "beta_feedback",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        memberId: varchar("member_id").references(() => members.id),
+        rating: integer("rating").notNull(),
+        // 1-5 star rating
+        category: text("category").notNull(),
+        // bug, feature, praise, other
+        message: text("message").notNull(),
+        screenContext: text("screen_context"),
+        // which screen they were on
+        appVersion: text("app_version"),
+        createdAt: timestamp("created_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_beta_feedback_member").on(table.memberId),
+        index("idx_beta_feedback_created").on(table.createdAt)
+      ]
+    );
+    ratingPhotos = pgTable(
+      "rating_photos",
+      {
+        id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+        ratingId: varchar("rating_id").notNull().references(() => ratings.id),
+        photoUrl: text("photo_url").notNull(),
+        cdnKey: text("cdn_key").notNull(),
+        isVerifiedReceipt: boolean("is_verified_receipt").notNull().default(false),
+        uploadedAt: timestamp("uploaded_at").notNull().defaultNow()
+      },
+      (table) => [
+        index("idx_rating_photos_rating").on(table.ratingId)
+      ]
+    );
   }
 });
 
@@ -593,10 +869,43 @@ var init_tier_staleness = __esm({
 });
 
 // server/storage/members.ts
-import { eq as eq2, and, sql as sql2, count, desc } from "drizzle-orm";
+var members_exports = {};
+__export(members_exports, {
+  createMember: () => createMember,
+  generateEmailVerificationToken: () => generateEmailVerificationToken,
+  generatePasswordResetToken: () => generatePasswordResetToken,
+  getAdminMemberList: () => getAdminMemberList,
+  getMemberByAuthId: () => getMemberByAuthId,
+  getMemberByEmail: () => getMemberByEmail,
+  getMemberById: () => getMemberById,
+  getMemberByUsername: () => getMemberByUsername,
+  getMemberCount: () => getMemberCount,
+  getMemberImpact: () => getMemberImpact,
+  getMemberRatings: () => getMemberRatings,
+  getMembersWithPushTokenByCity: () => getMembersWithPushTokenByCity,
+  getOnboardingProgress: () => getOnboardingProgress,
+  getSeasonalRatingCounts: () => getSeasonalRatingCounts,
+  isEmailVerified: () => isEmailVerified,
+  recalculateCredibilityScore: () => recalculateCredibilityScore,
+  resetPasswordWithToken: () => resetPasswordWithToken,
+  updateMemberAvatar: () => updateMemberAvatar,
+  updateMemberEmail: () => updateMemberEmail,
+  updateMemberProfile: () => updateMemberProfile,
+  updateMemberStats: () => updateMemberStats,
+  updateNotificationPrefs: () => updateNotificationPrefs,
+  updatePushToken: () => updatePushToken,
+  verifyEmailToken: () => verifyEmailToken
+});
+import { eq as eq2, and, sql as sql2, count, countDistinct, desc } from "drizzle-orm";
+import crypto from "node:crypto";
 async function getMemberById(id) {
   const [member] = await db.select().from(members).where(eq2(members.id, id));
   return member;
+}
+async function getMembersWithPushTokenByCity(city, limit = 500) {
+  const { isNotNull: isNotNull3 } = await import("drizzle-orm");
+  const results = await db.select({ id: members.id, pushToken: members.pushToken }).from(members).where(and(eq2(members.city, city), isNotNull3(members.pushToken))).limit(limit);
+  return results.filter((m) => !!m.pushToken);
 }
 async function getMemberByUsername(username) {
   const [member] = await db.select().from(members).where(eq2(members.username, username));
@@ -634,10 +943,19 @@ async function createMember(data) {
   return member;
 }
 async function updateMemberStats(memberId) {
-  const [ratingCount] = await db.select({ count: count() }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false)));
-  const categoryResult = await db.select({ category: businesses.category }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false))).groupBy(businesses.category);
-  const distinctBizResult = await db.select({ bizId: ratings.businessId }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false))).groupBy(ratings.businessId);
-  const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false)));
+  const whereClause = and(eq2(ratings.memberId, memberId), eq2(ratings.isFlagged, false));
+  const [statsResult, categoryResult, memberRatings] = await Promise.all([
+    // Aggregate count + distinct businesses in one query
+    db.select({
+      totalRatings: count(),
+      distinctBusinesses: countDistinct(ratings.businessId)
+    }).from(ratings).where(whereClause),
+    // Category count requires business join
+    db.select({ category: businesses.category }).from(ratings).innerJoin(businesses, eq2(ratings.businessId, businesses.id)).where(whereClause).groupBy(businesses.category),
+    // Raw scores for variance calculation
+    db.select({ rawScore: ratings.rawScore }).from(ratings).where(whereClause)
+  ]);
+  const stats2 = statsResult[0];
   let variance = 0;
   if (memberRatings.length > 1) {
     const scores = memberRatings.map((r) => parseFloat(r.rawScore));
@@ -646,9 +964,9 @@ async function updateMemberStats(memberId) {
     variance = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
   }
   await db.update(members).set({
-    totalRatings: ratingCount.count,
+    totalRatings: stats2.totalRatings,
     totalCategories: categoryResult.length,
-    distinctBusinesses: distinctBizResult.length,
+    distinctBusinesses: stats2.distinctBusinesses,
     ratingVariance: variance.toFixed(3),
     lastActive: /* @__PURE__ */ new Date()
   }).where(eq2(members.id, memberId));
@@ -672,7 +990,7 @@ async function recalculateCredibilityScore(memberId) {
     const stddev = Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / scores.length);
     varianceBonus = Math.min(stddev * 60, 150);
   }
-  const [pioneerResult] = await db.execute(sql2`
+  const pioneerQueryResult = await db.execute(sql2`
     SELECT
       COUNT(*) AS total_ratings,
       COUNT(*) FILTER (WHERE prior_count < 10) AS early_ratings
@@ -688,6 +1006,7 @@ async function recalculateCredibilityScore(memberId) {
         AND r1.is_flagged = false
     ) sub
   `);
+  const pioneerResult = pioneerQueryResult.rows?.[0] ?? pioneerQueryResult[0] ?? {};
   const totalMemberRatings = Number(pioneerResult?.total_ratings ?? 0);
   const earlyReviewCount = Number(pioneerResult?.early_ratings ?? 0);
   const pioneerRate = totalMemberRatings > 0 ? earlyReviewCount / totalMemberRatings : 0;
@@ -774,8 +1093,30 @@ async function getSeasonalRatingCounts(memberId) {
   }
   return { springRatings: spring, summerRatings: summer, fallRatings: fall, winterRatings: winter };
 }
+async function updateMemberProfile(memberId, updates) {
+  const updateData = {};
+  if (updates.displayName !== void 0) updateData.displayName = updates.displayName;
+  if (updates.username !== void 0) updateData.username = updates.username;
+  if (Object.keys(updateData).length === 0) return null;
+  const [updated] = await db.update(members).set(updateData).where(eq2(members.id, memberId)).returning();
+  return updated;
+}
 async function updatePushToken(memberId, pushToken) {
   await db.update(members).set({ pushToken }).where(eq2(members.id, memberId));
+}
+async function updateMemberAvatar(memberId, avatarUrl) {
+  const [updated] = await db.update(members).set({ avatarUrl }).where(eq2(members.id, memberId)).returning();
+  return updated;
+}
+async function updateMemberEmail(memberId, email) {
+  const [existing] = await db.select().from(members).where(eq2(members.email, email));
+  if (existing && existing.id !== memberId) throw new Error("Email already in use");
+  const [updated] = await db.update(members).set({ email }).where(eq2(members.id, memberId)).returning();
+  return updated;
+}
+async function updateNotificationPrefs(memberId, prefs) {
+  const [updated] = await db.update(members).set({ notificationPrefs: prefs }).where(eq2(members.id, memberId)).returning({ notificationPrefs: members.notificationPrefs });
+  return updated?.notificationPrefs ?? prefs;
 }
 async function getMemberImpact(memberId) {
   const memberRatings = await db.select({
@@ -810,6 +1151,70 @@ async function getMemberImpact(memberId) {
     lastRating
   };
 }
+async function getOnboardingProgress(memberId) {
+  const member = await getMemberById(memberId);
+  if (!member) throw new Error("Member not found");
+  const daysActive = Math.floor(
+    (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
+  );
+  const hasAvatar = !!member.avatarUrl;
+  const hasCity = !!member.city && member.city !== "Dallas";
+  const hasRated = (member.totalRatings || 0) > 0;
+  const hasMultipleRatings = (member.totalRatings || 0) >= 3;
+  const earnedTier = member.credibilityTier !== "community";
+  const canRate = daysActive >= 3;
+  const steps = [
+    { key: "create_account", label: "Create your account", completed: true, detail: `Joined ${daysActive} day${daysActive !== 1 ? "s" : ""} ago` },
+    { key: "set_city", label: "Choose your city", completed: hasCity || true, detail: member.city || "Dallas" },
+    { key: "add_avatar", label: "Add a profile photo", completed: hasAvatar },
+    { key: "wait_period", label: "Complete 3-day waiting period", completed: canRate, detail: canRate ? "Unlocked" : `${3 - daysActive} day${3 - daysActive !== 1 ? "s" : ""} remaining` },
+    { key: "first_rating", label: "Submit your first rating", completed: hasRated, detail: hasRated ? `${member.totalRatings} rating${(member.totalRatings || 0) !== 1 ? "s" : ""} submitted` : void 0 },
+    { key: "three_ratings", label: "Rate 3 different restaurants", completed: hasMultipleRatings, detail: hasMultipleRatings ? "Credibility building!" : `${member.totalRatings || 0}/3 ratings` },
+    { key: "earn_tier", label: "Earn your first tier upgrade", completed: earnedTier, detail: earnedTier ? `Current: ${member.credibilityTier}` : "Keep rating to level up" }
+  ];
+  const completedCount = steps.filter((s) => s.completed).length;
+  return { steps, completedCount, totalSteps: steps.length };
+}
+async function generateEmailVerificationToken(memberId) {
+  const token = crypto.randomBytes(32).toString("hex");
+  await db.update(members).set({ emailVerificationToken: token }).where(eq2(members.id, memberId));
+  return token;
+}
+async function verifyEmailToken(token) {
+  if (!token || token.length < 32) return { success: false };
+  const [member] = await db.select({ id: members.id }).from(members).where(eq2(members.emailVerificationToken, token));
+  if (!member) return { success: false };
+  await db.update(members).set({ emailVerified: true, emailVerificationToken: null }).where(eq2(members.id, member.id));
+  return { success: true, memberId: member.id };
+}
+async function isEmailVerified(memberId) {
+  const [member] = await db.select({ emailVerified: members.emailVerified }).from(members).where(eq2(members.id, memberId));
+  return member?.emailVerified ?? false;
+}
+async function generatePasswordResetToken(email) {
+  const member = await getMemberByEmail(email);
+  if (!member) return null;
+  if (!member.password) return null;
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 60 * 60 * 1e3);
+  await db.update(members).set({ passwordResetToken: token, passwordResetExpires: expires }).where(eq2(members.id, member.id));
+  return { token, memberId: member.id, displayName: member.displayName };
+}
+async function resetPasswordWithToken(token, newPasswordHash) {
+  if (!token || token.length < 32) return { success: false, error: "Invalid token" };
+  const [member] = await db.select({ id: members.id, passwordResetExpires: members.passwordResetExpires }).from(members).where(eq2(members.passwordResetToken, token));
+  if (!member) return { success: false, error: "Invalid or expired token" };
+  if (member.passwordResetExpires && new Date(member.passwordResetExpires) < /* @__PURE__ */ new Date()) {
+    await db.update(members).set({ passwordResetToken: null, passwordResetExpires: null }).where(eq2(members.id, member.id));
+    return { success: false, error: "Reset token has expired" };
+  }
+  await db.update(members).set({
+    password: newPasswordHash,
+    passwordResetToken: null,
+    passwordResetExpires: null
+  }).where(eq2(members.id, member.id));
+  return { success: true };
+}
 var init_members = __esm({
   "server/storage/members.ts"() {
     "use strict";
@@ -820,25 +1225,213 @@ var init_members = __esm({
   }
 });
 
+// shared/score-engine.ts
+function computeComposite(visitType, dimensions) {
+  const food = dimensions.foodScore ?? 0;
+  switch (visitType) {
+    case "dine_in": {
+      const service = dimensions.serviceScore ?? 0;
+      const vibe = dimensions.vibeScore ?? 0;
+      return food * DINE_IN_WEIGHTS.food + service * DINE_IN_WEIGHTS.service + vibe * DINE_IN_WEIGHTS.vibe;
+    }
+    case "delivery": {
+      const packaging = dimensions.packagingScore ?? 0;
+      const value = dimensions.valueScore ?? 0;
+      return food * DELIVERY_WEIGHTS.food + packaging * DELIVERY_WEIGHTS.packaging + value * DELIVERY_WEIGHTS.value;
+    }
+    case "takeaway": {
+      const waitTime = dimensions.waitTimeScore ?? 0;
+      const value = dimensions.valueScore ?? 0;
+      return food * TAKEAWAY_WEIGHTS.food + waitTime * TAKEAWAY_WEIGHTS.waitTime + value * TAKEAWAY_WEIGHTS.value;
+    }
+    default:
+      return food;
+  }
+}
+function computeDecayFactor(daysSinceRating) {
+  return Math.exp(-DECAY_LAMBDA * daysSinceRating);
+}
+function applyBayesianPrior(weightedScore, totalDecayedWeight, priorMean = DEFAULT_PRIOR_MEAN, priorStrength = BAYESIAN_PRIOR_STRENGTH) {
+  if (totalDecayedWeight <= 0) return priorMean;
+  return (totalDecayedWeight * weightedScore + priorStrength * priorMean) / (totalDecayedWeight + priorStrength);
+}
+var DINE_IN_WEIGHTS, DELIVERY_WEIGHTS, TAKEAWAY_WEIGHTS, DECAY_LAMBDA, BAYESIAN_PRIOR_STRENGTH, DEFAULT_PRIOR_MEAN;
+var init_score_engine = __esm({
+  "shared/score-engine.ts"() {
+    "use strict";
+    DINE_IN_WEIGHTS = { food: 0.5, service: 0.25, vibe: 0.25 };
+    DELIVERY_WEIGHTS = { food: 0.6, packaging: 0.25, value: 0.15 };
+    TAKEAWAY_WEIGHTS = { food: 0.65, waitTime: 0.2, value: 0.15 };
+    DECAY_LAMBDA = 3e-3;
+    BAYESIAN_PRIOR_STRENGTH = 3;
+    DEFAULT_PRIOR_MEAN = 6.5;
+  }
+});
+
+// server/redis.ts
+var redis_exports = {};
+__export(redis_exports, {
+  cacheAside: () => cacheAside,
+  cacheDel: () => cacheDel,
+  cacheDelPattern: () => cacheDelPattern,
+  cacheGet: () => cacheGet,
+  cacheSet: () => cacheSet,
+  getCacheStats: () => getCacheStats,
+  getRedisClient: () => getRedisClient,
+  trackCacheHit: () => trackCacheHit,
+  trackCacheMiss: () => trackCacheMiss
+});
+import Redis from "ioredis";
+function getRedisClient() {
+  if (redis) return redis;
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    redisLog.info("REDIS_URL not set \u2014 caching disabled, using DB-only mode");
+    return null;
+  }
+  try {
+    redis = new Redis(url, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 3e3,
+      lazyConnect: true,
+      retryStrategy(times) {
+        if (times > 3) return null;
+        return Math.min(times * 200, 1e3);
+      }
+    });
+    redis.on("error", (err) => redisLog.warn(`Redis error: ${err.message}`));
+    redis.on("connect", () => redisLog.info("Redis connected"));
+    redis.connect().catch(() => {
+      redisLog.warn("Redis connect failed \u2014 running in DB-only mode");
+      redis = null;
+    });
+    return redis;
+  } catch {
+    redisLog.warn("Redis init failed \u2014 running in DB-only mode");
+    return null;
+  }
+}
+async function cacheGet(key2) {
+  const client = getRedisClient();
+  if (!client) return null;
+  try {
+    const raw = await client.get(key2);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+async function cacheSet(key2, value, ttlSeconds) {
+  const client = getRedisClient();
+  if (!client) return;
+  try {
+    await client.set(key2, JSON.stringify(value), "EX", ttlSeconds);
+  } catch {
+  }
+}
+async function cacheDel(...keys) {
+  const client = getRedisClient();
+  if (!client || keys.length === 0) return;
+  try {
+    await client.del(...keys);
+  } catch {
+  }
+}
+async function cacheDelPattern(pattern) {
+  const client = getRedisClient();
+  if (!client) return;
+  try {
+    const keys = await client.keys(pattern);
+    if (keys.length > 0) await client.del(...keys);
+  } catch {
+  }
+}
+async function cacheAside(key2, ttlSeconds, compute) {
+  const cached = await cacheGet(key2);
+  if (cached !== null) return cached;
+  const result = await compute();
+  await cacheSet(key2, result, ttlSeconds);
+  return result;
+}
+function trackCacheHit() {
+  hits++;
+}
+function trackCacheMiss() {
+  misses++;
+}
+function getCacheStats() {
+  const total = hits + misses;
+  return {
+    connected: redis !== null,
+    hits,
+    misses,
+    hitRate: total > 0 ? (hits / total * 100).toFixed(1) + "%" : "N/A"
+  };
+}
+var redisLog, redis, hits, misses;
+var init_redis = __esm({
+  "server/redis.ts"() {
+    "use strict";
+    init_logger();
+    redisLog = log.tag("Redis");
+    redis = null;
+    hits = 0;
+    misses = 0;
+  }
+});
+
 // server/storage/businesses.ts
+var businesses_exports = {};
+__export(businesses_exports, {
+  autocompleteBusinesses: () => autocompleteBusinesses,
+  bulkImportBusinesses: () => bulkImportBusinesses,
+  deleteBusinessPhotos: () => deleteBusinessPhotos,
+  getAllCategories: () => getAllCategories,
+  getBusinessById: () => getBusinessById,
+  getBusinessBySlug: () => getBusinessBySlug,
+  getBusinessPhotos: () => getBusinessPhotos,
+  getBusinessPhotosMap: () => getBusinessPhotosMap,
+  getBusinessRatings: () => getBusinessRatings,
+  getBusinessesByIds: () => getBusinessesByIds,
+  getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
+  getImportStats: () => getImportStats,
+  getLeaderboard: () => getLeaderboard,
+  getPopularCategories: () => getPopularCategories,
+  getRankHistory: () => getRankHistory,
+  getTrendingBusinesses: () => getTrendingBusinesses,
+  insertBusinessPhotos: () => insertBusinessPhotos,
+  recalculateBusinessScore: () => recalculateBusinessScore,
+  recalculateRanks: () => recalculateRanks,
+  searchBusinesses: () => searchBusinesses,
+  updateBusinessSubscription: () => updateBusinessSubscription
+});
 import { eq as eq3, and as and2, desc as desc2, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
 async function getLeaderboard(city, category, limit = 50) {
-  return db.select().from(businesses).where(
-    and2(
-      eq3(businesses.city, city),
-      eq3(businesses.category, category),
-      eq3(businesses.isActive, true)
-    )
-  ).orderBy(asc(businesses.rankPosition)).limit(limit);
+  const key2 = `leaderboard:${city}:${category}:${limit}`;
+  return cacheAside(key2, 300, async () => {
+    trackCacheMiss();
+    return db.select().from(businesses).where(
+      and2(
+        eq3(businesses.city, city),
+        eq3(businesses.category, category),
+        eq3(businesses.isActive, true),
+        eq3(businesses.leaderboardEligible, true)
+      )
+    ).orderBy(asc(businesses.rankPosition)).limit(limit);
+  });
 }
 async function getTrendingBusinesses(city, limit = 3) {
-  return db.select().from(businesses).where(
-    and2(
-      eq3(businesses.city, city),
-      eq3(businesses.isActive, true),
-      sql3`${businesses.rankDelta} > 0`
-    )
-  ).orderBy(desc2(businesses.rankDelta)).limit(limit);
+  const key2 = `trending:${city}:${limit}`;
+  return cacheAside(key2, 600, async () => {
+    trackCacheMiss();
+    return db.select().from(businesses).where(
+      and2(
+        eq3(businesses.city, city),
+        eq3(businesses.isActive, true),
+        sql3`${businesses.rankDelta} > 0`
+      )
+    ).orderBy(desc2(businesses.rankDelta)).limit(limit);
+  });
 }
 async function getBusinessBySlug(slug) {
   const [business] = await db.select().from(businesses).where(eq3(businesses.slug, slug));
@@ -848,6 +1441,19 @@ async function getBusinessById(id) {
   const [business] = await db.select().from(businesses).where(eq3(businesses.id, id));
   return business;
 }
+async function updateBusinessSubscription(businessId, updates) {
+  const setData = {};
+  if (updates.stripeCustomerId !== void 0) setData.stripeCustomerId = updates.stripeCustomerId;
+  if (updates.stripeSubscriptionId !== void 0) setData.stripeSubscriptionId = updates.stripeSubscriptionId;
+  if (updates.subscriptionStatus !== void 0) setData.subscriptionStatus = updates.subscriptionStatus;
+  if (updates.subscriptionPeriodEnd !== void 0) setData.subscriptionPeriodEnd = updates.subscriptionPeriodEnd;
+  if (Object.keys(setData).length === 0) return;
+  await db.update(businesses).set(setData).where(eq3(businesses.id, businessId));
+}
+async function getBusinessesByIds(ids) {
+  if (ids.length === 0) return [];
+  return db.select().from(businesses).where(sql3`${businesses.id} = ANY(ARRAY[${sql3.join(ids.map((id) => sql3`${id}`), sql3`,`)}]::text[])`);
+}
 async function searchBusinesses(query, city, category, limit = 20) {
   const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
   const q = "%" + sanitized.toLowerCase() + "%";
@@ -855,21 +1461,57 @@ async function searchBusinesses(query, city, category, limit = 20) {
     and2(
       eq3(businesses.city, city),
       eq3(businesses.isActive, true),
-      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q})` : void 0,
+      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q})` : void 0,
       ...category ? [eq3(businesses.category, category)] : []
     )
   ).orderBy(desc2(businesses.weightedScore)).limit(limit);
 }
 async function getAllCategories(city) {
-  const rows = await db.select({
-    category: businesses.category
-  }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category);
-  return rows.map((r) => r.category);
+  const key2 = `categories:${city}`;
+  return cacheAside(key2, 7200, async () => {
+    trackCacheMiss();
+    const rows = await db.select({
+      category: businesses.category
+    }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category);
+    return rows.map((r) => r.category);
+  });
+}
+async function autocompleteBusinesses(query, city, limit = 6) {
+  if (!query || query.trim().length === 0) return [];
+  const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  return db.select({
+    id: businesses.id,
+    name: businesses.name,
+    slug: businesses.slug,
+    category: businesses.category,
+    neighborhood: businesses.neighborhood
+  }).from(businesses).where(
+    and2(
+      eq3(businesses.city, city),
+      eq3(businesses.isActive, true),
+      sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q})`
+    )
+  ).orderBy(desc2(businesses.weightedScore)).limit(limit);
+}
+async function getPopularCategories(city, limit = 8) {
+  const key2 = `popular_categories:${city}:${limit}`;
+  return cacheAside(key2, 3600, async () => {
+    trackCacheMiss();
+    const rows = await db.select({
+      category: businesses.category,
+      count: count2(businesses.id)
+    }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category).orderBy(desc2(count2(businesses.id))).limit(limit);
+    return rows.map((r) => ({ category: r.category, count: Number(r.count) }));
+  });
 }
 async function recalculateBusinessScore(businessId) {
   const allRatings = await db.select({
     rawScore: ratings.rawScore,
     weight: ratings.weight,
+    compositeScore: ratings.compositeScore,
+    effectiveWeight: ratings.effectiveWeight,
+    visitType: ratings.visitType,
     createdAt: ratings.createdAt,
     isFlagged: ratings.isFlagged,
     autoFlagged: ratings.autoFlagged
@@ -881,28 +1523,49 @@ async function recalculateBusinessScore(businessId) {
     )
   );
   if (allRatings.length === 0) {
-    await db.update(businesses).set({ weightedScore: "0", rawAvgScore: "0", totalRatings: 0, updatedAt: /* @__PURE__ */ new Date() }).where(eq3(businesses.id, businessId));
+    await db.update(businesses).set({
+      weightedScore: "0",
+      rawAvgScore: "0",
+      totalRatings: 0,
+      dineInCount: 0,
+      credibilityWeightedSum: "0",
+      leaderboardEligible: false,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq3(businesses.id, businessId));
     return 0;
   }
   let totalWeightedScore = 0;
   let totalEffectiveWeight = 0;
   let rawSum = 0;
+  let dineInCount = 0;
+  let credibilityWeightedSum = 0;
   for (const r of allRatings) {
     const ageDays = Math.floor(
       (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
     );
-    const temporal = getTemporalMultiplier(ageDays);
-    const effectiveWeight = parseFloat(r.weight) * temporal;
-    totalWeightedScore += parseFloat(r.rawScore) * effectiveWeight;
-    totalEffectiveWeight += effectiveWeight;
+    const decay = computeDecayFactor(ageDays);
+    const score2 = r.compositeScore ? parseFloat(r.compositeScore) : parseFloat(r.rawScore);
+    const weight = r.effectiveWeight ? parseFloat(r.effectiveWeight) : parseFloat(r.weight);
+    const decayedWeight = weight * decay;
+    totalWeightedScore += score2 * decayedWeight;
+    totalEffectiveWeight += decayedWeight;
     rawSum += parseFloat(r.rawScore);
+    if (r.visitType === "dine_in") dineInCount++;
+    credibilityWeightedSum += weight;
   }
-  const score = totalEffectiveWeight > 0 ? Math.round(totalWeightedScore / totalEffectiveWeight * 1e3) / 1e3 : 0;
+  const rawWeightedAvg = totalEffectiveWeight > 0 ? totalWeightedScore / totalEffectiveWeight : 0;
+  const score = Math.round(
+    applyBayesianPrior(rawWeightedAvg, totalEffectiveWeight) * 1e3
+  ) / 1e3;
   const rawAvg = rawSum / allRatings.length;
+  const eligible = allRatings.length >= 3 && dineInCount >= 1 && credibilityWeightedSum >= 0.5;
   await db.update(businesses).set({
     weightedScore: score.toFixed(3),
     rawAvgScore: rawAvg.toFixed(2),
     totalRatings: allRatings.length,
+    dineInCount,
+    credibilityWeightedSum: credibilityWeightedSum.toFixed(4),
+    leaderboardEligible: eligible,
     updatedAt: /* @__PURE__ */ new Date()
   }).where(eq3(businesses.id, businessId));
   return score;
@@ -921,9 +1584,12 @@ async function recalculateRanks(city, category) {
       WHERE city = ${city}
         AND category = ${category}
         AND is_active = true
+        AND leaderboard_eligible = true
     ) sub
     WHERE b.id = sub.id
   `);
+  await cacheDelPattern(`leaderboard:${city}:*`);
+  await cacheDelPattern(`trending:${city}:*`);
 }
 async function getBusinessPhotos(businessId) {
   const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq3(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
@@ -1001,7 +1667,7 @@ async function getRankHistory(businessId, days = 30) {
 }
 async function getBusinessRatings(businessId, page = 1, perPage = 20) {
   const offset = (page - 1) * perPage;
-  const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
   const ratingsResult = await db.select({
     id: ratings.id,
     memberId: ratings.memberId,
@@ -1020,30 +1686,304 @@ async function getBusinessRatings(businessId, page = 1, perPage = 20) {
     flagProbability: ratings.flagProbability,
     source: ratings.source,
     createdAt: ratings.createdAt,
-    memberName: members2.displayName,
-    memberTier: members2.credibilityTier,
-    memberAvatarUrl: members2.avatarUrl
-  }).from(ratings).innerJoin(members2, eq3(ratings.memberId, members2.id)).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+    memberName: members4.displayName,
+    memberTier: members4.credibilityTier,
+    memberAvatarUrl: members4.avatarUrl
+  }).from(ratings).innerJoin(members4, eq3(ratings.memberId, members4.id)).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
   const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false)));
   return { ratings: ratingsResult, total: totalResult.count };
+}
+function generateSlug(name, city) {
+  const base = `${name}-${city}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+  return base;
+}
+async function bulkImportBusinesses(places) {
+  let imported = 0;
+  let skipped = 0;
+  const results = [];
+  for (const place of places) {
+    const [existing] = await db.select({ id: businesses.id }).from(businesses).where(eq3(businesses.googlePlaceId, place.placeId));
+    if (existing) {
+      skipped++;
+      results.push({ name: place.name, status: "skipped_duplicate" });
+      continue;
+    }
+    let slug = generateSlug(place.name, place.city);
+    const [slugExists] = await db.select({ id: businesses.id }).from(businesses).where(eq3(businesses.slug, slug));
+    if (slugExists) {
+      slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
+    }
+    const addressParts = place.address.split(",").map((p) => p.trim());
+    const neighborhood = addressParts.length > 1 ? addressParts[1] : null;
+    try {
+      await db.insert(businesses).values({
+        name: place.name,
+        slug,
+        category: place.category,
+        city: place.city,
+        neighborhood,
+        address: place.address,
+        lat: place.lat.toString(),
+        lng: place.lng.toString(),
+        googlePlaceId: place.placeId,
+        googleRating: place.googleRating?.toString() || null,
+        priceRange: place.priceRange,
+        weightedScore: "0",
+        rawAvgScore: "0",
+        rankPosition: 0,
+        totalRatings: 0,
+        isActive: true,
+        dataSource: "google_bulk_import"
+      });
+      imported++;
+      results.push({ name: place.name, status: "imported" });
+    } catch (err) {
+      skipped++;
+      results.push({ name: place.name, status: `error: ${err.message?.slice(0, 50)}` });
+    }
+  }
+  return { imported, skipped, results };
+}
+async function getImportStats() {
+  const rows = await db.select({
+    city: businesses.city,
+    dataSource: businesses.dataSource,
+    count: count2(businesses.id)
+  }).from(businesses).where(eq3(businesses.isActive, true)).groupBy(businesses.city, businesses.dataSource).orderBy(businesses.city);
+  return rows.map((r) => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
 }
 var init_businesses = __esm({
   "server/storage/businesses.ts"() {
     "use strict";
     init_schema();
     init_db();
-    init_helpers();
+    init_score_engine();
+    init_redis();
+  }
+});
+
+// server/storage/notifications.ts
+var notifications_exports = {};
+__export(notifications_exports, {
+  createNotification: () => createNotification,
+  getMemberNotifications: () => getMemberNotifications,
+  getUnreadNotificationCount: () => getUnreadNotificationCount,
+  markAllNotificationsRead: () => markAllNotificationsRead,
+  markNotificationRead: () => markNotificationRead
+});
+import { eq as eq4, and as and3, desc as desc3, count as count3 } from "drizzle-orm";
+async function createNotification(data) {
+  const [notif] = await db.insert(notifications).values({
+    memberId: data.memberId,
+    type: data.type,
+    title: data.title,
+    body: data.body,
+    data: data.data || null
+  }).returning();
+  return notif;
+}
+async function getMemberNotifications(memberId, page = 1, perPage = 20) {
+  const offset = (page - 1) * perPage;
+  const [results, totalResult, unreadResult] = await Promise.all([
+    db.select().from(notifications).where(eq4(notifications.memberId, memberId)).orderBy(desc3(notifications.createdAt)).limit(perPage).offset(offset),
+    db.select({ count: count3() }).from(notifications).where(eq4(notifications.memberId, memberId)),
+    db.select({ count: count3() }).from(notifications).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)))
+  ]);
+  return {
+    notifications: results,
+    total: totalResult[0]?.count ?? 0,
+    unreadCount: unreadResult[0]?.count ?? 0
+  };
+}
+async function markNotificationRead(notificationId, memberId) {
+  const result = await db.update(notifications).set({ read: true }).where(and3(eq4(notifications.id, notificationId), eq4(notifications.memberId, memberId)));
+  return result.rowCount > 0;
+}
+async function markAllNotificationsRead(memberId) {
+  const result = await db.update(notifications).set({ read: true }).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)));
+  return result.rowCount ?? 0;
+}
+async function getUnreadNotificationCount(memberId) {
+  const [result] = await db.select({ count: count3() }).from(notifications).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)));
+  return result?.count ?? 0;
+}
+var init_notifications = __esm({
+  "server/storage/notifications.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/push.ts
+var push_exports = {};
+__export(push_exports, {
+  notifyChallengerResult: () => notifyChallengerResult,
+  notifyNewChallenger: () => notifyNewChallenger,
+  notifyRatingResponse: () => notifyRatingResponse,
+  notifyTierUpgrade: () => notifyTierUpgrade,
+  sendPushNotification: () => sendPushNotification
+});
+async function sendPushNotification(tokens2, title, body, data) {
+  if (tokens2.length === 0) return [];
+  const messages = tokens2.map((token) => ({
+    to: token,
+    title,
+    body,
+    data,
+    sound: "default",
+    channelId: "default"
+  }));
+  if (process.env.NODE_ENV !== "production") {
+    pushLog.debug("DEV MODE \u2014 would send:", messages);
+    return messages.map(() => ({ status: "ok", id: `dev-${Date.now()}` }));
+  }
+  try {
+    const response = await fetch(EXPO_PUSH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify(messages)
+    });
+    const result = await response.json();
+    return result.data;
+  } catch (err) {
+    pushLog.error("Failed to send:", err);
+    return messages.map(() => ({ status: "error", message: String(err) }));
+  }
+}
+async function persistNotification(memberId, type, title, body, data) {
+  try {
+    const { createNotification: createNotification2 } = await Promise.resolve().then(() => (init_notifications(), notifications_exports));
+    await createNotification2({ memberId, type, title, body, data });
+  } catch (err) {
+    pushLog.error(`Failed to persist notification for ${memberId}: ${err}`);
+  }
+}
+async function notifyRatingResponse(userId, userToken, businessName, ownerReply) {
+  const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+  const member = await getMemberById2(userId);
+  const prefs = member?.notificationPrefs || {};
+  if (prefs.ratingResponses === false) return;
+  const truncated = ownerReply.length > 80 ? ownerReply.slice(0, 80) + "..." : ownerReply;
+  const title = `${businessName} replied to your rating`;
+  await sendPushNotification([userToken], title, truncated, { screen: "business" });
+  persistNotification(userId, "rating_response", title, truncated, { screen: "business" });
+}
+async function notifyTierUpgrade(userId, userToken, newTier) {
+  const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+  const member = await getMemberById2(userId);
+  const prefs = member?.notificationPrefs || {};
+  if (prefs.tierUpgrades === false) return;
+  const title = "You've been promoted!";
+  const body = `Your credibility just reached ${newTier} tier. Your ratings now carry more weight.`;
+  await sendPushNotification([userToken], title, body, { screen: "profile" });
+  persistNotification(userId, "tier_upgrade", title, body, { screen: "profile" });
+}
+async function notifyChallengerResult(followerIds, followerTokens, winnerName, category) {
+  const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+  const filteredTokens = [];
+  const eligibleFollowerIds = [];
+  for (let i = 0; i < followerIds.length; i++) {
+    const member = await getMemberById2(followerIds[i]);
+    const prefs = member?.notificationPrefs || {};
+    if (prefs.challengerResults === false) continue;
+    filteredTokens.push(followerTokens[i]);
+    eligibleFollowerIds.push(followerIds[i]);
+  }
+  if (filteredTokens.length === 0) return;
+  const title = `${category} Challenge ended`;
+  const body = `${winnerName} wins! See the final results and stats.`;
+  await sendPushNotification(filteredTokens, title, body, { screen: "challenger" });
+  for (const uid of eligibleFollowerIds) {
+    persistNotification(uid, "challenger_result", title, body, { screen: "challenger" });
+  }
+}
+async function notifyNewChallenger(cityUserIds, cityTokens, defenderName, challengerName, category) {
+  const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+  const filteredTokens = [];
+  const eligibleUserIds = [];
+  for (let i = 0; i < cityUserIds.length; i++) {
+    const member = await getMemberById2(cityUserIds[i]);
+    const prefs = member?.notificationPrefs || {};
+    if (prefs.newChallengers === false) continue;
+    filteredTokens.push(cityTokens[i]);
+    eligibleUserIds.push(cityUserIds[i]);
+  }
+  if (filteredTokens.length === 0) return;
+  const title = `New ${category} Challenge`;
+  const body = `${defenderName} vs ${challengerName} \u2014 30 days, weighted votes decide.`;
+  await sendPushNotification(filteredTokens, title, body, { screen: "challenger" });
+  for (const uid of eligibleUserIds) {
+    persistNotification(uid, "new_challenger", title, body, { screen: "challenger" });
+  }
+}
+var pushLog, EXPO_PUSH_URL;
+var init_push = __esm({
+  "server/push.ts"() {
+    "use strict";
+    init_logger();
+    pushLog = log.tag("Push");
+    EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
   }
 });
 
 // server/storage/challengers.ts
-import { eq as eq4, and as and3, sql as sql4 } from "drizzle-orm";
+var challengers_exports = {};
+__export(challengers_exports, {
+  closeExpiredChallenges: () => closeExpiredChallenges,
+  createChallenge: () => createChallenge,
+  getActiveChallenges: () => getActiveChallenges,
+  updateChallengerVotes: () => updateChallengerVotes
+});
+import { eq as eq5, and as and4, sql as sql5, lte } from "drizzle-orm";
+async function createChallenge(data) {
+  const endDate = /* @__PURE__ */ new Date();
+  endDate.setDate(endDate.getDate() + 30);
+  const [challenge] = await db.insert(challengers).values({
+    challengerId: data.challengerId,
+    defenderId: data.defenderId,
+    category: data.category,
+    city: data.city,
+    entryFeePaid: true,
+    stripePaymentIntentId: data.stripePaymentIntentId,
+    endDate,
+    status: "active"
+  }).returning();
+  log.info(`Challenge created: ${challenge.id} (${data.challengerId} vs ${data.defenderId})`);
+  try {
+    const [challengerBiz, defenderBiz] = await Promise.all([
+      db.select().from(businesses).where(eq5(businesses.id, data.challengerId)).then((r) => r[0]),
+      db.select().from(businesses).where(eq5(businesses.id, data.defenderId)).then((r) => r[0])
+    ]);
+    if (challengerBiz && defenderBiz) {
+      const { getMembersWithPushTokenByCity: getMembersWithPushTokenByCity2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+      const cityMembers = await getMembersWithPushTokenByCity2(data.city);
+      if (cityMembers.length > 0) {
+        const { notifyNewChallenger: notifyNewChallenger2 } = await Promise.resolve().then(() => (init_push(), push_exports));
+        notifyNewChallenger2(
+          cityMembers.map((m) => m.id),
+          cityMembers.map((m) => m.pushToken),
+          defenderBiz.name,
+          challengerBiz.name,
+          data.category
+        ).catch(() => {
+        });
+      }
+    }
+  } catch (err) {
+    log.error(`Failed to send new challenger notification: ${err}`);
+  }
+  return challenge;
+}
 async function getActiveChallenges(city, category) {
   const challengerRows = await db.select().from(challengers).where(
-    and3(
-      eq4(challengers.status, "active"),
-      eq4(challengers.city, city),
-      ...category ? [eq4(challengers.category, category)] : []
+    and4(
+      eq5(challengers.status, "active"),
+      eq5(challengers.city, city),
+      ...category ? [eq5(challengers.category, category)] : []
     )
   );
   if (challengerRows.length === 0) return [];
@@ -1053,7 +1993,7 @@ async function getActiveChallenges(city, category) {
     bizIds.add(c.defenderId);
   }
   const bizIdArr = Array.from(bizIds);
-  const bizRows = await db.select().from(businesses).where(sql4`${businesses.id} = ANY(ARRAY[${sql4.join(bizIdArr.map((id) => sql4`${id}`), sql4`,`)}]::text[])`);
+  const bizRows = await db.select().from(businesses).where(sql5`${businesses.id} = ANY(ARRAY[${sql5.join(bizIdArr.map((id) => sql5`${id}`), sql5`,`)}]::text[])`);
   const bizMap = new Map(bizRows.map((b) => [b.id, b]));
   return challengerRows.map((c) => ({
     ...c,
@@ -1063,28 +2003,129 @@ async function getActiveChallenges(city, category) {
 }
 async function updateChallengerVotes(businessId, weightedScore) {
   const asChallenger = await db.select().from(challengers).where(
-    and3(eq4(challengers.challengerId, businessId), eq4(challengers.status, "active"))
+    and4(eq5(challengers.challengerId, businessId), eq5(challengers.status, "active"))
   );
   for (const c of asChallenger) {
     const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       challengerWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql4`${challengers.totalVotes} + 1`
-    }).where(eq4(challengers.id, c.id));
+      totalVotes: sql5`${challengers.totalVotes} + 1`
+    }).where(eq5(challengers.id, c.id));
   }
   const asDefender = await db.select().from(challengers).where(
-    and3(eq4(challengers.defenderId, businessId), eq4(challengers.status, "active"))
+    and4(eq5(challengers.defenderId, businessId), eq5(challengers.status, "active"))
   );
   for (const c of asDefender) {
     const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       defenderWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql4`${challengers.totalVotes} + 1`
-    }).where(eq4(challengers.id, c.id));
+      totalVotes: sql5`${challengers.totalVotes} + 1`
+    }).where(eq5(challengers.id, c.id));
   }
+}
+async function closeExpiredChallenges() {
+  const now = /* @__PURE__ */ new Date();
+  const expired = await db.select().from(challengers).where(
+    and4(
+      eq5(challengers.status, "active"),
+      lte(challengers.endDate, now)
+    )
+  );
+  let closed = 0;
+  for (const c of expired) {
+    const challengerVotes = parseFloat(c.challengerWeightedVotes);
+    const defenderVotes = parseFloat(c.defenderWeightedVotes);
+    let winnerId = null;
+    if (challengerVotes > defenderVotes) {
+      winnerId = c.challengerId;
+    } else if (defenderVotes > challengerVotes) {
+      winnerId = c.defenderId;
+    }
+    await db.update(challengers).set({
+      status: "completed",
+      winnerId
+    }).where(eq5(challengers.id, c.id));
+    closed++;
+    log.info(`Challenge ${c.id} closed: winner=${winnerId || "draw"} (${challengerVotes} vs ${defenderVotes})`);
+    try {
+      const winnerBiz = winnerId ? await db.select().from(businesses).where(eq5(businesses.id, winnerId)).then((r) => r[0]) : null;
+      const winnerName = winnerBiz?.name || "It's a draw";
+      const { getMembersWithPushTokenByCity: getMembersWithPushTokenByCity2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+      const cityMembers = await getMembersWithPushTokenByCity2(c.city);
+      if (cityMembers.length > 0) {
+        const { notifyChallengerResult: notifyChallengerResult2 } = await Promise.resolve().then(() => (init_push(), push_exports));
+        notifyChallengerResult2(
+          cityMembers.map((m) => m.id),
+          cityMembers.map((m) => m.pushToken),
+          winnerName,
+          c.category
+        ).catch(() => {
+        });
+      }
+    } catch (err) {
+      log.error(`Failed to send challenger result notification: ${err}`);
+    }
+  }
+  if (closed > 0) {
+    log.info(`Closed ${closed} expired challenge(s)`);
+  }
+  return closed;
 }
 var init_challengers = __esm({
   "server/storage/challengers.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    init_logger();
+  }
+});
+
+// server/storage/referrals.ts
+var referrals_exports = {};
+__export(referrals_exports, {
+  activateReferral: () => activateReferral,
+  createReferral: () => createReferral,
+  getReferralStats: () => getReferralStats,
+  getReferrerForMember: () => getReferrerForMember,
+  resolveReferralCode: () => resolveReferralCode
+});
+import { eq as eq6, and as and5, desc as desc4 } from "drizzle-orm";
+async function createReferral(referrerId, referredId, referralCode) {
+  const [referral] = await db.insert(referrals).values({
+    referrerId,
+    referredId,
+    referralCode,
+    status: "signed_up"
+  }).returning();
+  return referral;
+}
+async function resolveReferralCode(code) {
+  if (!code || code.trim().length === 0) return null;
+  const username = code.trim().toLowerCase();
+  const [member] = await db.select({ id: members.id }).from(members).where(eq6(members.username, username));
+  return member?.id || null;
+}
+async function getReferralStats(memberId) {
+  const rows = await db.select({
+    id: referrals.id,
+    referredName: members.displayName,
+    referredUsername: members.username,
+    status: referrals.status,
+    createdAt: referrals.createdAt
+  }).from(referrals).innerJoin(members, eq6(referrals.referredId, members.id)).where(eq6(referrals.referrerId, memberId)).orderBy(desc4(referrals.createdAt));
+  const totalReferred = rows.length;
+  const activated = rows.filter((r) => r.status === "activated").length;
+  return { totalReferred, activated, referrals: rows };
+}
+async function activateReferral(referredId) {
+  await db.update(referrals).set({ status: "activated", activatedAt: /* @__PURE__ */ new Date() }).where(and5(eq6(referrals.referredId, referredId), eq6(referrals.status, "signed_up")));
+}
+async function getReferrerForMember(memberId) {
+  const [ref] = await db.select({ referrerId: referrals.referrerId }).from(referrals).where(eq6(referrals.referredId, memberId));
+  return ref?.referrerId || null;
+}
+var init_referrals = __esm({
+  "server/storage/referrals.ts"() {
     "use strict";
     init_schema();
     init_db();
@@ -1092,26 +2133,45 @@ var init_challengers = __esm({
 });
 
 // server/storage/ratings.ts
-import { eq as eq5, and as and4, sql as sql5, count as count3, gte as gte3 } from "drizzle-orm";
+var ratings_exports = {};
+__export(ratings_exports, {
+  deleteRating: () => deleteRating,
+  editRating: () => editRating,
+  getAutoFlaggedRatings: () => getAutoFlaggedRatings,
+  getRatingById: () => getRatingById,
+  reviewAutoFlaggedRating: () => reviewAutoFlaggedRating,
+  submitRating: () => submitRating,
+  submitRatingFlag: () => submitRatingFlag
+});
+import { eq as eq7, and as and6, sql as sql6, count as count5, gte as gte3, desc as desc5 } from "drizzle-orm";
+async function getRatingById(id) {
+  const [rating] = await db.select().from(ratings).where(eq7(ratings.id, id));
+  return rating;
+}
 async function detectAnomalies(member, business, rawScore) {
   const flags = [];
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
-  const [recentCount] = await db.select({ count: count3() }).from(ratings).where(
-    and4(
-      eq5(ratings.memberId, member.id),
+  const [recentCount] = await db.select({ count: count5() }).from(ratings).where(
+    and6(
+      eq7(ratings.memberId, member.id),
       gte3(ratings.createdAt, oneHourAgo)
     )
   );
   if (recentCount.count > 5) flags.push("burst_velocity");
-  if (member.totalRatings >= 10) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq5(ratings.memberId, member.id));
-    const fiveStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) >= 4.8).length;
-    if (fiveStarCount / memberRatings.length > 0.9) flags.push("perfect_score_pattern");
-  }
-  if (rawScore <= 1.5 && member.totalRatings >= 5) {
-    const memberRatings = await db.select({ rawScore: ratings.rawScore }).from(ratings).where(eq5(ratings.memberId, member.id));
-    const oneStarCount = memberRatings.filter((r) => parseFloat(r.rawScore) <= 1.5).length;
-    if (oneStarCount / memberRatings.length > 0.6) flags.push("one_star_bomber");
+  const needsPatternCheck = member.totalRatings >= 5;
+  if (needsPatternCheck) {
+    const [patternStats] = await db.select({
+      total: count5(),
+      highCount: sql6`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric >= 4.8)`,
+      lowCount: sql6`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric <= 1.5)`
+    }).from(ratings).where(eq7(ratings.memberId, member.id));
+    const total = Number(patternStats.total);
+    if (total >= 10 && Number(patternStats.highCount) / total > 0.9) {
+      flags.push("perfect_score_pattern");
+    }
+    if (rawScore <= 1.5 && total >= 5 && Number(patternStats.lowCount) / total > 0.6) {
+      flags.push("one_star_bomber");
+    }
   }
   if (member.totalRatings >= 8 && member.distinctBusinesses <= 2) {
     flags.push("single_business_fixation");
@@ -1124,9 +2184,9 @@ async function detectAnomalies(member, business, rawScore) {
   }
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  const [newAcctRatings] = await db.select({ count: count3() }).from(ratings).innerJoin(members, eq5(ratings.memberId, members.id)).where(
-    and4(
-      eq5(ratings.businessId, business.id),
+  const [newAcctRatings] = await db.select({ count: count5() }).from(ratings).innerJoin(members, eq7(ratings.memberId, members.id)).where(
+    and6(
+      eq7(ratings.businessId, business.id),
       gte3(ratings.createdAt, oneDayAgo),
       gte3(members.joinedAt, thirtyDaysAgo)
     )
@@ -1136,7 +2196,7 @@ async function detectAnomalies(member, business, rawScore) {
   }
   return flags;
 }
-async function submitRating(memberId, data) {
+async function submitRating(memberId, data, integrity) {
   const member = await getMemberById(memberId);
   if (!member) throw new Error("Member not found");
   if (member.isBanned) throw new Error("Account suspended");
@@ -1148,19 +2208,49 @@ async function submitRating(memberId, data) {
   if (daysActive < 3) throw new Error("Account must be 3+ days old to rate");
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
-  const [existingToday] = await db.select({ count: count3() }).from(ratings).where(
-    and4(
-      eq5(ratings.memberId, memberId),
-      eq5(ratings.businessId, data.businessId),
+  const [existingToday] = await db.select({ count: count5() }).from(ratings).where(
+    and6(
+      eq7(ratings.memberId, memberId),
+      eq7(ratings.businessId, data.businessId),
       gte3(ratings.createdAt, today)
     )
   );
   if (existingToday.count > 0) throw new Error("Already rated today. Come back tomorrow.");
-  const rawScore = (data.q1Score + data.q2Score + data.q3Score) / 3;
+  const visitType = data.visitType;
+  const dimensions = { foodScore: data.q1Score * 2 };
+  switch (visitType) {
+    case "dine_in":
+      dimensions.serviceScore = data.q2Score * 2;
+      dimensions.vibeScore = data.q3Score * 2;
+      break;
+    case "delivery":
+      dimensions.packagingScore = data.q2Score * 2;
+      dimensions.valueScore = data.q3Score * 2;
+      break;
+    case "takeaway":
+      dimensions.waitTimeScore = data.q2Score * 2;
+      dimensions.valueScore = data.q3Score * 2;
+      break;
+  }
+  const compositeScore = computeComposite(visitType, dimensions);
+  const rawScore = compositeScore / 2;
   const anomalyFlags = await detectAnomalies(member, business, rawScore);
+  if (integrity?.velocityFlagged && integrity.velocityRule) {
+    anomalyFlags.push(`velocity_${integrity.velocityRule}`);
+  }
   const autoFlagged = anomalyFlags.length > 0;
-  const weight = getVoteWeight(member.credibilityScore);
+  const baseWeight = getVoteWeight(member.credibilityScore);
+  const gamingMult = integrity?.velocityFlagged ? integrity.velocityWeight ?? 0.05 : 1;
+  const weight = integrity?.velocityFlagged ? Math.min(baseWeight, gamingMult) : baseWeight;
   const weighted = rawScore * weight;
+  const dishCompleted = !!(data.dishId || data.newDishName);
+  const timeOnPage = data.timeOnPageMs || 0;
+  const timePlausible = timeOnPage >= 1e4;
+  let vBoost = 0;
+  if (dishCompleted) vBoost += 0.05;
+  if (timePlausible) vBoost += 0.05;
+  const cappedBoost = Math.min(vBoost, 0.5);
+  const effWeight = baseWeight * (1 + cappedBoost) * gamingMult;
   const source = data.qrScanId ? "qr_scan" : "app";
   const [rating] = await db.insert(ratings).values({
     memberId,
@@ -1170,6 +2260,22 @@ async function submitRating(memberId, data) {
     q3Score: data.q3Score,
     wouldReturn: data.wouldReturn,
     note: data.note || null,
+    // Sprint 267: Persist visit type + dimensional scores
+    visitType,
+    foodScore: dimensions.foodScore.toFixed(1),
+    serviceScore: dimensions.serviceScore?.toFixed(1) ?? null,
+    vibeScore: dimensions.vibeScore?.toFixed(1) ?? null,
+    packagingScore: dimensions.packagingScore?.toFixed(1) ?? null,
+    waitTimeScore: dimensions.waitTimeScore?.toFixed(1) ?? null,
+    valueScore: dimensions.valueScore?.toFixed(1) ?? null,
+    compositeScore: compositeScore.toFixed(2),
+    // Sprint 267: Verification signals
+    dishFieldCompleted: dishCompleted,
+    verificationBoost: cappedBoost.toFixed(3),
+    effectiveWeight: effWeight.toFixed(4),
+    gamingMultiplier: gamingMult.toFixed(2),
+    gamingReason: integrity?.velocityFlagged ? `velocity_${integrity.velocityRule}` : null,
+    timeOnPageMs: timeOnPage > 0 ? timeOnPage : null,
     rawScore: rawScore.toFixed(2),
     weight: weight.toFixed(4),
     weightedScore: weighted.toFixed(4),
@@ -1185,21 +2291,21 @@ async function submitRating(memberId, data) {
       memberId,
       businessId: data.businessId
     });
-    await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq5(dishes.id, data.dishId));
+    await db.update(dishes).set({ voteCount: sql6`${dishes.voteCount} + 1` }).where(eq7(dishes.id, data.dishId));
   } else if (data.newDishName) {
     const normalized = data.newDishName.toLowerCase().trim();
     const words = normalized.split(/\s+/);
     if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
       const existing = await db.select().from(dishes).where(
-        and4(
-          eq5(dishes.businessId, data.businessId),
-          eq5(dishes.nameNormalized, normalized)
+        and6(
+          eq7(dishes.businessId, data.businessId),
+          eq7(dishes.nameNormalized, normalized)
         )
       );
       let dishId;
       if (existing.length > 0) {
         dishId = existing[0].id;
-        await db.update(dishes).set({ voteCount: sql5`${dishes.voteCount} + 1` }).where(eq5(dishes.id, dishId));
+        await db.update(dishes).set({ voteCount: sql6`${dishes.voteCount} + 1` }).where(eq7(dishes.id, dishId));
       } else {
         const [newDish] = await db.insert(dishes).values({
           businessId: data.businessId,
@@ -1231,13 +2337,18 @@ async function submitRating(memberId, data) {
   const { score: newScore, tier: newTier } = await recalculateCredibilityScore(memberId);
   const oldTier = member.credibilityTier;
   const tierUpgraded = newTier !== oldTier;
+  if (member.totalRatings === 0) {
+    const { activateReferral: activateReferral2 } = await Promise.resolve().then(() => (init_referrals(), referrals_exports));
+    activateReferral2(memberId).catch(() => {
+    });
+  }
   const prevRank = business.rankPosition;
   await recalculateBusinessScore(data.businessId);
   await recalculateRanks(business.city, business.category);
   await updateChallengerVotes(data.businessId, weighted);
   if (data.qrScanId) {
     const { qrScans: qrScans2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    await db.update(qrScans2).set({ converted: true }).where(eq5(qrScans2.id, data.qrScanId));
+    await db.update(qrScans2).set({ converted: true }).where(eq7(qrScans2.id, data.qrScanId));
   }
   const updatedBusiness = await getBusinessById(data.businessId);
   const newRank = updatedBusiness?.rankPosition ?? null;
@@ -1259,6 +2370,102 @@ async function submitRating(memberId, data) {
     dishCreated
   };
 }
+async function editRating(ratingId, memberId, updates) {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId !== memberId) throw new Error("Cannot edit another user's rating");
+  const hoursSinceCreation = (Date.now() - new Date(existing.createdAt).getTime()) / (1e3 * 60 * 60);
+  if (hoursSinceCreation > 24) throw new Error("Edit window has expired (24 hours)");
+  const q1 = updates.q1Score ?? existing.q1Score;
+  const q2 = updates.q2Score ?? existing.q2Score;
+  const q3 = updates.q3Score ?? existing.q3Score;
+  const rawScore = ((q1 + q2 + q3) / 3).toFixed(2);
+  const weightedScore = (parseFloat(rawScore) * parseFloat(existing.weight)).toFixed(3);
+  const [updated] = await db.update(ratings).set({
+    q1Score: q1,
+    q2Score: q2,
+    q3Score: q3,
+    wouldReturn: updates.wouldReturn ?? existing.wouldReturn,
+    note: updates.note !== void 0 ? updates.note : existing.note,
+    rawScore,
+    weightedScore
+  }).where(eq7(ratings.id, ratingId)).returning();
+  await recalculateBusinessScore(existing.businessId);
+  await recalculateRanks(
+    (await getBusinessById(existing.businessId))?.city || "dallas",
+    (await getBusinessById(existing.businessId))?.category || ""
+  );
+  await updateMemberStats(memberId);
+  return updated;
+}
+async function deleteRating(ratingId, memberId) {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId !== memberId) throw new Error("Cannot delete another user's rating");
+  await db.update(ratings).set({
+    isFlagged: true,
+    flagReason: "user_deleted"
+  }).where(eq7(ratings.id, ratingId));
+  await recalculateBusinessScore(existing.businessId);
+  await recalculateRanks(
+    (await getBusinessById(existing.businessId))?.city || "dallas",
+    (await getBusinessById(existing.businessId))?.category || ""
+  );
+  await updateMemberStats(memberId);
+}
+async function submitRatingFlag(ratingId, flaggerId, data) {
+  const existing = await getRatingById(ratingId);
+  if (!existing) throw new Error("Rating not found");
+  if (existing.memberId === flaggerId) throw new Error("Cannot flag your own rating");
+  const [flag] = await db.insert(ratingFlags).values({
+    ratingId,
+    flaggerId,
+    q1NoSpecificExperience: data.q1NoSpecificExperience || false,
+    q2ScoreMismatchNote: data.q2ScoreMismatchNote || false,
+    q3InsiderSuspected: data.q3InsiderSuspected || false,
+    q4CoordinatedPattern: data.q4CoordinatedPattern || false,
+    q5CompetitorBombing: data.q5CompetitorBombing || false,
+    explanation: data.explanation || ""
+  }).returning();
+  return flag;
+}
+async function getAutoFlaggedRatings(page = 1, perPage = 20) {
+  const offset = (page - 1) * perPage;
+  const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const results = await db.select({
+    id: ratings.id,
+    memberId: ratings.memberId,
+    businessId: ratings.businessId,
+    q1Score: ratings.q1Score,
+    q2Score: ratings.q2Score,
+    q3Score: ratings.q3Score,
+    rawScore: ratings.rawScore,
+    note: ratings.note,
+    flagReason: ratings.flagReason,
+    flagProbability: ratings.flagProbability,
+    autoFlagged: ratings.autoFlagged,
+    isFlagged: ratings.isFlagged,
+    createdAt: ratings.createdAt,
+    businessName: businesses2.name,
+    businessSlug: businesses2.slug
+  }).from(ratings).innerJoin(businesses2, eq7(ratings.businessId, businesses2.id)).where(and6(eq7(ratings.autoFlagged, true), eq7(ratings.isFlagged, false))).orderBy(desc5(ratings.createdAt)).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count5() }).from(ratings).where(and6(eq7(ratings.autoFlagged, true), eq7(ratings.isFlagged, false)));
+  return { ratings: results, total: totalResult?.count ?? 0 };
+}
+async function reviewAutoFlaggedRating(ratingId, action, reviewedBy) {
+  if (action === "confirm") {
+    await db.update(ratings).set({ isFlagged: true }).where(eq7(ratings.id, ratingId));
+    const rating = await getRatingById(ratingId);
+    if (rating) {
+      await recalculateBusinessScore(rating.businessId);
+      const biz = await getBusinessById(rating.businessId);
+      if (biz) await recalculateRanks(biz.city, biz.category);
+      await updateMemberStats(rating.memberId);
+    }
+  } else {
+    await db.update(ratings).set({ autoFlagged: false }).where(eq7(ratings.id, ratingId));
+  }
+}
 var init_ratings = __esm({
   "server/storage/ratings.ts"() {
     "use strict";
@@ -1269,13 +2476,25 @@ var init_ratings = __esm({
     init_businesses();
     init_members();
     init_challengers();
+    init_score_engine();
   }
 });
 
 // server/storage/dishes.ts
-import { eq as eq6, and as and5, desc as desc3, sql as sql6 } from "drizzle-orm";
+var dishes_exports = {};
+__export(dishes_exports, {
+  getBusinessDishes: () => getBusinessDishes,
+  getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
+  getDishLeaderboards: () => getDishLeaderboards,
+  getDishSuggestions: () => getDishSuggestions,
+  recalculateDishLeaderboard: () => recalculateDishLeaderboard,
+  searchDishes: () => searchDishes,
+  submitDishSuggestion: () => submitDishSuggestion,
+  voteDishSuggestion: () => voteDishSuggestion
+});
+import { eq as eq8, and as and7, desc as desc6, asc as asc2, sql as sql7, count as count6 } from "drizzle-orm";
 async function getBusinessDishes(businessId, limit = 5) {
-  return db.select().from(dishes).where(and5(eq6(dishes.businessId, businessId), eq6(dishes.isActive, true))).orderBy(desc3(dishes.voteCount)).limit(limit);
+  return db.select().from(dishes).where(and7(eq8(dishes.businessId, businessId), eq8(dishes.isActive, true))).orderBy(desc6(dishes.voteCount)).limit(limit);
 }
 async function searchDishes(businessId, query) {
   const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
@@ -1283,20 +2502,20 @@ async function searchDishes(businessId, query) {
     return getBusinessDishes(businessId, 5);
   }
   let results = await db.select().from(dishes).where(
-    and5(
-      eq6(dishes.businessId, businessId),
-      eq6(dishes.isActive, true),
-      sql6`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
+    and7(
+      eq8(dishes.businessId, businessId),
+      eq8(dishes.isActive, true),
+      sql7`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
     )
-  ).orderBy(desc3(dishes.voteCount)).limit(5);
+  ).orderBy(desc6(dishes.voteCount)).limit(5);
   if (results.length < 3) {
     const containsResults = await db.select().from(dishes).where(
-      and5(
-        eq6(dishes.businessId, businessId),
-        eq6(dishes.isActive, true),
-        sql6`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
+      and7(
+        eq8(dishes.businessId, businessId),
+        eq8(dishes.isActive, true),
+        sql7`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
       )
-    ).orderBy(desc3(dishes.voteCount)).limit(5);
+    ).orderBy(desc6(dishes.voteCount)).limit(5);
     const existingIds = new Set(results.map((r) => r.id));
     for (const r of containsResults) {
       if (!existingIds.has(r.id)) {
@@ -1305,6 +2524,167 @@ async function searchDishes(businessId, query) {
     }
   }
   return results.slice(0, 5);
+}
+async function getDishLeaderboards(city) {
+  const boards = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.city, city.toLowerCase()), eq8(dishLeaderboards.status, "active"))).orderBy(asc2(dishLeaderboards.displayOrder));
+  const result = [];
+  for (const board of boards) {
+    const [entryResult] = await db.select({ cnt: count6() }).from(dishLeaderboardEntries).where(eq8(dishLeaderboardEntries.leaderboardId, board.id));
+    result.push({ ...board, entryCount: Number(entryResult?.cnt ?? 0) });
+  }
+  return result;
+}
+async function getDishLeaderboardWithEntries(slug, city) {
+  const [board] = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.dishSlug, slug), eq8(dishLeaderboards.city, city.toLowerCase())));
+  if (!board) return null;
+  const entries = await db.select({
+    id: dishLeaderboardEntries.id,
+    leaderboardId: dishLeaderboardEntries.leaderboardId,
+    businessId: dishLeaderboardEntries.businessId,
+    dishScore: dishLeaderboardEntries.dishScore,
+    dishRatingCount: dishLeaderboardEntries.dishRatingCount,
+    rankPosition: dishLeaderboardEntries.rankPosition,
+    previousRank: dishLeaderboardEntries.previousRank,
+    photoUrl: dishLeaderboardEntries.photoUrl,
+    updatedAt: dishLeaderboardEntries.updatedAt,
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    neighborhood: businesses.neighborhood
+  }).from(dishLeaderboardEntries).innerJoin(businesses, eq8(dishLeaderboardEntries.businessId, businesses.id)).where(eq8(dishLeaderboardEntries.leaderboardId, board.id)).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  const eligibleCount = entries.filter((e) => e.dishRatingCount >= 3).length;
+  const isProvisional = board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1e3;
+  return {
+    leaderboard: board,
+    entries,
+    isProvisional,
+    minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount)
+  };
+}
+async function recalculateDishLeaderboard(leaderboardId) {
+  const [board] = await db.select().from(dishLeaderboards).where(eq8(dishLeaderboards.id, leaderboardId));
+  if (!board) return 0;
+  const dishSlug = board.dishSlug;
+  const matchingDishes = await db.select({
+    businessId: dishes.businessId,
+    dishId: dishes.id
+  }).from(dishes).innerJoin(businesses, eq8(dishes.businessId, businesses.id)).where(
+    and7(
+      eq8(businesses.city, board.city),
+      sql7`${dishes.nameNormalized} ILIKE ${"%" + dishSlug + "%"}`,
+      eq8(dishes.isActive, true)
+    )
+  );
+  if (matchingDishes.length === 0) return 0;
+  const bizDishMap = /* @__PURE__ */ new Map();
+  for (const m of matchingDishes) {
+    if (!bizDishMap.has(m.businessId)) bizDishMap.set(m.businessId, []);
+    bizDishMap.get(m.businessId).push(m.dishId);
+  }
+  const entries = [];
+  for (const [businessId, dishIds] of bizDishMap) {
+    const votes2 = await db.select({
+      ratingId: dishVotes.ratingId,
+      memberId: dishVotes.memberId
+    }).from(dishVotes).where(
+      and7(
+        eq8(dishVotes.businessId, businessId),
+        sql7`${dishVotes.dishId} = ANY(ARRAY[${sql7.join(dishIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`
+      )
+    );
+    if (votes2.length === 0) continue;
+    const ratingIds = votes2.map((v) => v.ratingId);
+    const ratingRows = await db.select({
+      id: ratings.id,
+      q1Score: ratings.q1Score,
+      q2Score: ratings.q2Score,
+      q3Score: ratings.q3Score,
+      weight: ratings.weight,
+      isFlagged: ratings.isFlagged
+    }).from(ratings).where(sql7`${ratings.id} = ANY(ARRAY[${sql7.join(ratingIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`);
+    let totalWeight = 0;
+    let weightedSum = 0;
+    let validCount = 0;
+    for (const r of ratingRows) {
+      if (r.isFlagged) continue;
+      const rawScore = (r.q1Score + r.q2Score + r.q3Score) / 3;
+      const w = parseFloat(r.weight);
+      weightedSum += rawScore * w;
+      totalWeight += w;
+      validCount++;
+    }
+    if (validCount < 1) continue;
+    const dishScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
+    const [photo] = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq8(businessPhotos.businessId, businessId)).orderBy(asc2(businessPhotos.sortOrder)).limit(1);
+    entries.push({
+      businessId,
+      dishScore: Math.round(dishScore * 100) / 100,
+      dishRatingCount: validCount,
+      photoUrl: photo?.photoUrl ?? null
+    });
+  }
+  entries.sort((a, b) => b.dishScore - a.dishScore);
+  await db.delete(dishLeaderboardEntries).where(eq8(dishLeaderboardEntries.leaderboardId, leaderboardId));
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    await db.insert(dishLeaderboardEntries).values({
+      leaderboardId,
+      businessId: e.businessId,
+      dishScore: e.dishScore.toFixed(2),
+      dishRatingCount: e.dishRatingCount,
+      rankPosition: i + 1,
+      photoUrl: e.photoUrl
+    });
+  }
+  return entries.length;
+}
+async function getDishSuggestions(city) {
+  return db.select().from(dishSuggestions).where(and7(eq8(dishSuggestions.city, city.toLowerCase()), eq8(dishSuggestions.status, "proposed"))).orderBy(desc6(dishSuggestions.voteCount)).limit(20);
+}
+async function submitDishSuggestion(memberId, city, dishName) {
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
+  const [recentCount] = await db.select({ cnt: count6() }).from(dishSuggestions).where(
+    and7(
+      eq8(dishSuggestions.suggestedBy, memberId),
+      sql7`${dishSuggestions.createdAt} >= ${oneWeekAgo}`
+    )
+  );
+  if (Number(recentCount.cnt) >= 3) {
+    throw new Error("You can only suggest 3 dishes per week");
+  }
+  const [suggestion] = await db.insert(dishSuggestions).values({
+    city: city.toLowerCase(),
+    dishName: dishName.trim(),
+    suggestedBy: memberId
+  }).returning();
+  return suggestion;
+}
+async function voteDishSuggestion(memberId, suggestionId) {
+  const [existingVote] = await db.select().from(dishSuggestionVotes).where(
+    and7(
+      eq8(dishSuggestionVotes.suggestionId, suggestionId),
+      eq8(dishSuggestionVotes.memberId, memberId)
+    )
+  );
+  if (existingVote) {
+    throw new Error("Already voted for this suggestion");
+  }
+  await db.insert(dishSuggestionVotes).values({ suggestionId, memberId });
+  const [updated] = await db.update(dishSuggestions).set({ voteCount: sql7`${dishSuggestions.voteCount} + 1` }).where(eq8(dishSuggestions.id, suggestionId)).returning();
+  if (!updated) throw new Error("Suggestion not found");
+  if (updated.voteCount >= updated.activationThreshold) {
+    await db.update(dishSuggestions).set({ status: "active" }).where(eq8(dishSuggestions.id, suggestionId));
+    const slug = updated.dishName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const [existing] = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.city, updated.city), eq8(dishLeaderboards.dishSlug, slug)));
+    if (!existing) {
+      await db.insert(dishLeaderboards).values({
+        city: updated.city,
+        dishName: updated.dishName,
+        dishSlug: slug,
+        source: "community"
+      });
+    }
+  }
+  return updated;
 }
 var init_dishes = __esm({
   "server/storage/dishes.ts"() {
@@ -1315,10 +2695,10 @@ var init_dishes = __esm({
 });
 
 // server/storage/categories.ts
-import { eq as eq7, desc as desc4 } from "drizzle-orm";
+import { eq as eq9, desc as desc7 } from "drizzle-orm";
 async function getDbCategories(activeOnly = true) {
   if (activeOnly) {
-    return db.select().from(categories).where(eq7(categories.isActive, true));
+    return db.select().from(categories).where(eq9(categories.isActive, true));
   }
   return db.select().from(categories);
 }
@@ -1332,10 +2712,10 @@ async function createCategorySuggestion(data) {
   return suggestion;
 }
 async function getPendingSuggestions() {
-  return db.select().from(categorySuggestions).where(eq7(categorySuggestions.status, "pending")).orderBy(desc4(categorySuggestions.voteCount));
+  return db.select().from(categorySuggestions).where(eq9(categorySuggestions.status, "pending")).orderBy(desc7(categorySuggestions.voteCount));
 }
 async function reviewSuggestion(id, status, reviewedBy) {
-  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq7(categorySuggestions.id, id)).returning();
+  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(categorySuggestions.id, id)).returning();
   return updated;
 }
 var init_categories = __esm({
@@ -1347,12 +2727,12 @@ var init_categories = __esm({
 });
 
 // server/storage/badges.ts
-import { eq as eq8, and as and6, count as count4, desc as desc5 } from "drizzle-orm";
+import { eq as eq10, and as and8, count as count7, desc as desc8 } from "drizzle-orm";
 async function getMemberBadges(memberId) {
-  return db.select().from(memberBadges).where(eq8(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
+  return db.select().from(memberBadges).where(eq10(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
 }
 async function getMemberBadgeCount(memberId) {
-  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(eq8(memberBadges.memberId, memberId));
+  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(eq10(memberBadges.memberId, memberId));
   return Number(result?.cnt ?? 0);
 }
 async function awardBadge(memberId, badgeId, badgeFamily) {
@@ -1364,11 +2744,11 @@ async function awardBadge(memberId, badgeId, badgeFamily) {
   }
 }
 async function hasBadge(memberId, badgeId) {
-  const [result] = await db.select({ cnt: count4() }).from(memberBadges).where(and6(eq8(memberBadges.memberId, memberId), eq8(memberBadges.badgeId, badgeId)));
+  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(and8(eq10(memberBadges.memberId, memberId), eq10(memberBadges.badgeId, badgeId)));
   return Number(result?.cnt ?? 0) > 0;
 }
 async function getEarnedBadgeIds(memberId) {
-  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq8(memberBadges.memberId, memberId));
+  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq10(memberBadges.memberId, memberId));
   return rows.map((r) => r.badgeId);
 }
 async function getBadgeLeaderboard(limit = 20) {
@@ -1378,8 +2758,8 @@ async function getBadgeLeaderboard(limit = 20) {
     username: members.username,
     avatarUrl: members.avatarUrl,
     credibilityTier: members.credibilityTier,
-    badgeCount: count4(memberBadges.id)
-  }).from(memberBadges).innerJoin(members, eq8(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc5(count4(memberBadges.id))).limit(limit);
+    badgeCount: count7(memberBadges.id)
+  }).from(memberBadges).innerJoin(members, eq10(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc8(count7(memberBadges.id))).limit(limit);
 }
 var init_badges = __esm({
   "server/storage/badges.ts"() {
@@ -1390,7 +2770,7 @@ var init_badges = __esm({
 });
 
 // server/storage/payments.ts
-import { eq as eq9, and as and7, desc as desc6, sql as sql7, count as count5, sum } from "drizzle-orm";
+import { eq as eq11, and as and9, desc as desc9, sql as sql8, count as count8, sum } from "drizzle-orm";
 async function createPaymentRecord(params) {
   const [payment] = await db.insert(payments).values({
     memberId: params.memberId,
@@ -1405,35 +2785,35 @@ async function createPaymentRecord(params) {
   return payment;
 }
 async function getPaymentById(id) {
-  const [payment] = await db.select().from(payments).where(eq9(payments.id, id)).limit(1);
+  const [payment] = await db.select().from(payments).where(eq11(payments.id, id)).limit(1);
   return payment ?? null;
 }
 async function updatePaymentStatus(id, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq9(payments.id, id)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq11(payments.id, id)).returning();
   return updated ?? null;
 }
 async function updatePaymentStatusByStripeId(stripePaymentIntentId, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq9(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq11(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
   return updated ?? null;
 }
 async function getMemberPayments(memberId, limit = 20) {
-  return db.select().from(payments).where(eq9(payments.memberId, memberId)).orderBy(desc6(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq11(payments.memberId, memberId)).orderBy(desc9(payments.createdAt)).limit(limit);
 }
 async function getBusinessPayments(businessId, limit = 20) {
-  return db.select().from(payments).where(eq9(payments.businessId, businessId)).orderBy(desc6(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq11(payments.businessId, businessId)).orderBy(desc9(payments.createdAt)).limit(limit);
 }
 async function getRevenueMetrics() {
   const byTypeRows = await db.select({
     type: payments.type,
-    count: count5(),
+    count: count8(),
     revenue: sum(payments.amount)
-  }).from(payments).where(eq9(payments.status, "succeeded")).groupBy(payments.type);
-  const [activeRow] = await db.select({ count: count5() }).from(payments).where(
-    and7(
-      eq9(payments.status, "succeeded")
+  }).from(payments).where(eq11(payments.status, "succeeded")).groupBy(payments.type);
+  const [activeRow] = await db.select({ count: count8() }).from(payments).where(
+    and9(
+      eq11(payments.status, "succeeded")
     )
   );
-  const [cancelledRow] = await db.select({ count: count5() }).from(payments).where(eq9(payments.status, "cancelled"));
+  const [cancelledRow] = await db.select({ count: count8() }).from(payments).where(eq11(payments.status, "cancelled"));
   const typeMap = {
     challenger_entry: { count: 0, revenue: 0 },
     dashboard_pro: { count: 0, revenue: 0 },
@@ -1455,10 +2835,10 @@ async function getRevenueMetrics() {
 }
 async function getRevenueByMonth(months = 6) {
   const results = await db.select({
-    month: sql7`strftime('%Y-%m', ${payments.createdAt})`,
-    revenue: sql7`COALESCE(SUM(${payments.amount}), 0)`,
-    count: sql7`COUNT(*)`
-  }).from(payments).where(eq9(payments.status, "succeeded")).groupBy(sql7`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql7`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
+    month: sql8`strftime('%Y-%m', ${payments.createdAt})`,
+    revenue: sql8`COALESCE(SUM(${payments.amount}), 0)`,
+    count: sql8`COUNT(*)`
+  }).from(payments).where(eq11(payments.status, "succeeded")).groupBy(sql8`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql8`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
   return results.map((r) => ({
     month: String(r.month),
     revenue: Number(r.revenue),
@@ -1474,7 +2854,7 @@ var init_payments = __esm({
 });
 
 // server/storage/webhook-events.ts
-import { eq as eq10, desc as desc7 } from "drizzle-orm";
+import { eq as eq12, desc as desc10 } from "drizzle-orm";
 async function logWebhookEvent(params) {
   const [event] = await db.insert(webhookEvents).values({
     source: params.source,
@@ -1487,14 +2867,14 @@ async function logWebhookEvent(params) {
   return event;
 }
 async function markWebhookProcessed(id, error) {
-  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq10(webhookEvents.id, id));
+  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq12(webhookEvents.id, id));
 }
 async function getWebhookEventById(id) {
-  const [event] = await db.select().from(webhookEvents).where(eq10(webhookEvents.id, id)).limit(1);
+  const [event] = await db.select().from(webhookEvents).where(eq12(webhookEvents.id, id)).limit(1);
   return event ?? null;
 }
 async function getRecentWebhookEvents(source, limit = 50) {
-  return db.select().from(webhookEvents).where(eq10(webhookEvents.source, source)).orderBy(desc7(webhookEvents.createdAt)).limit(limit);
+  return db.select().from(webhookEvents).where(eq12(webhookEvents.source, source)).orderBy(desc10(webhookEvents.createdAt)).limit(limit);
 }
 var init_webhook_events = __esm({
   "server/storage/webhook-events.ts"() {
@@ -1505,7 +2885,7 @@ var init_webhook_events = __esm({
 });
 
 // server/storage/featured-placements.ts
-import { eq as eq11, and as and8, gt, lte, desc as desc8 } from "drizzle-orm";
+import { eq as eq13, and as and10, gt, lte as lte2, desc as desc11 } from "drizzle-orm";
 async function createFeaturedPlacement(params) {
   const startsAt = /* @__PURE__ */ new Date();
   const expiresAt = new Date(startsAt.getTime() + FEATURED_DURATION_DAYS * 24 * 60 * 60 * 1e3);
@@ -1522,29 +2902,29 @@ async function createFeaturedPlacement(params) {
 async function getActiveFeaturedInCity(city) {
   const now = /* @__PURE__ */ new Date();
   return db.select().from(featuredPlacements).where(
-    and8(
-      eq11(featuredPlacements.city, city),
-      eq11(featuredPlacements.status, "active"),
+    and10(
+      eq13(featuredPlacements.city, city),
+      eq13(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
-  ).orderBy(desc8(featuredPlacements.createdAt));
+  ).orderBy(desc11(featuredPlacements.createdAt));
 }
 async function getBusinessFeaturedStatus(businessId) {
   const now = /* @__PURE__ */ new Date();
   const [placement] = await db.select().from(featuredPlacements).where(
-    and8(
-      eq11(featuredPlacements.businessId, businessId),
-      eq11(featuredPlacements.status, "active"),
+    and10(
+      eq13(featuredPlacements.businessId, businessId),
+      eq13(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
-  ).orderBy(desc8(featuredPlacements.createdAt)).limit(1);
+  ).orderBy(desc11(featuredPlacements.createdAt)).limit(1);
   return placement ?? null;
 }
 async function expireFeaturedByPayment(paymentId) {
   const [updated] = await db.update(featuredPlacements).set({ status: "cancelled" }).where(
-    and8(
-      eq11(featuredPlacements.paymentId, paymentId),
-      eq11(featuredPlacements.status, "active")
+    and10(
+      eq13(featuredPlacements.paymentId, paymentId),
+      eq13(featuredPlacements.status, "active")
     )
   ).returning();
   return updated ?? null;
@@ -1552,9 +2932,9 @@ async function expireFeaturedByPayment(paymentId) {
 async function expireOldPlacements() {
   const now = /* @__PURE__ */ new Date();
   const result = await db.update(featuredPlacements).set({ status: "expired" }).where(
-    and8(
-      eq11(featuredPlacements.status, "active"),
-      lte(featuredPlacements.expiresAt, now)
+    and10(
+      eq13(featuredPlacements.status, "active"),
+      lte2(featuredPlacements.expiresAt, now)
     )
   ).returning();
   return result.length;
@@ -1570,16 +2950,16 @@ var init_featured_placements = __esm({
 });
 
 // server/storage/claims.ts
-import { eq as eq12, and as and9, count as count6, desc as desc9 } from "drizzle-orm";
+import { eq as eq14, and as and11, count as count9, desc as desc12 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
 }
 async function getClaimByMemberAndBusiness(memberId, businessId) {
   const [claim] = await db.select().from(businessClaims).where(
-    and9(
-      eq12(businessClaims.memberId, memberId),
-      eq12(businessClaims.businessId, businessId)
+    and11(
+      eq14(businessClaims.memberId, memberId),
+      eq14(businessClaims.businessId, businessId)
     )
   );
   return claim;
@@ -1594,14 +2974,22 @@ async function getPendingClaims() {
     verificationMethod: businessClaims.verificationMethod,
     status: businessClaims.status,
     submittedAt: businessClaims.submittedAt
-  }).from(businessClaims).leftJoin(businesses, eq12(businessClaims.businessId, businesses.id)).leftJoin(members, eq12(businessClaims.memberId, members.id)).where(eq12(businessClaims.status, "pending")).orderBy(desc9(businessClaims.submittedAt));
+  }).from(businessClaims).leftJoin(businesses, eq14(businessClaims.businessId, businesses.id)).leftJoin(members, eq14(businessClaims.memberId, members.id)).where(eq14(businessClaims.status, "pending")).orderBy(desc12(businessClaims.submittedAt));
 }
 async function reviewClaim(id, status, reviewedBy) {
-  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq12(businessClaims.id, id)).returning();
-  return updated ?? null;
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq14(businessClaims.id, id)).returning();
+  if (!updated) return null;
+  if (status === "approved" && updated.businessId && updated.memberId) {
+    await db.update(businesses).set({
+      ownerId: updated.memberId,
+      isClaimed: true,
+      claimedAt: /* @__PURE__ */ new Date()
+    }).where(eq14(businesses.id, updated.businessId));
+  }
+  return updated;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count6() }).from(businessClaims).where(eq12(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count9() }).from(businessClaims).where(eq14(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -1613,14 +3001,14 @@ async function getPendingFlags() {
     aiFraudProbability: ratingFlags.aiFraudProbability,
     status: ratingFlags.status,
     createdAt: ratingFlags.createdAt
-  }).from(ratingFlags).leftJoin(members, eq12(ratingFlags.flaggerId, members.id)).where(eq12(ratingFlags.status, "pending")).orderBy(desc9(ratingFlags.createdAt));
+  }).from(ratingFlags).leftJoin(members, eq14(ratingFlags.flaggerId, members.id)).where(eq14(ratingFlags.status, "pending")).orderBy(desc12(ratingFlags.createdAt));
 }
 async function reviewFlag(id, status, reviewedBy) {
-  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq12(ratingFlags.id, id)).returning();
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq14(ratingFlags.id, id)).returning();
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count6() }).from(ratingFlags).where(eq12(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count9() }).from(ratingFlags).where(eq14(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -1631,22 +3019,310 @@ var init_claims = __esm({
   }
 });
 
+// server/storage/responses.ts
+import { eq as eq15, and as and12, desc as desc13, inArray } from "drizzle-orm";
+async function submitRatingResponse(ratingId, businessId, ownerId, responseText) {
+  const [existing] = await db.select().from(ratingResponses).where(eq15(ratingResponses.ratingId, ratingId));
+  if (existing) {
+    const [updated] = await db.update(ratingResponses).set({ responseText, updatedAt: /* @__PURE__ */ new Date() }).where(eq15(ratingResponses.id, existing.id)).returning();
+    return updated;
+  }
+  const [response] = await db.insert(ratingResponses).values({ ratingId, businessId, ownerId, responseText }).returning();
+  return response;
+}
+async function getRatingResponse(ratingId) {
+  const [response] = await db.select().from(ratingResponses).where(eq15(ratingResponses.ratingId, ratingId));
+  return response;
+}
+async function getBusinessResponses(businessId, limit = 20) {
+  return db.select().from(ratingResponses).where(eq15(ratingResponses.businessId, businessId)).orderBy(desc13(ratingResponses.createdAt)).limit(limit);
+}
+async function getResponsesForRatings(ratingIds) {
+  if (ratingIds.length === 0) return {};
+  const responses2 = await db.select().from(ratingResponses).where(inArray(ratingResponses.ratingId, ratingIds));
+  const map = {};
+  for (const r of responses2) {
+    map[r.ratingId] = r;
+  }
+  return map;
+}
+async function deleteRatingResponse(ratingId, ownerId) {
+  const [deleted] = await db.delete(ratingResponses).where(
+    and12(
+      eq15(ratingResponses.ratingId, ratingId),
+      eq15(ratingResponses.ownerId, ownerId)
+    )
+  ).returning();
+  return !!deleted;
+}
+var init_responses = __esm({
+  "server/storage/responses.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/qr.ts
+import { eq as eq16, count as count10, and as and13, gte as gte4, sql as sql9 } from "drizzle-orm";
+async function recordQrScan(businessId, memberId) {
+  const [scan] = await db.insert(qrScans).values({
+    businessId,
+    memberId: memberId || void 0
+  }).returning({ id: qrScans.id });
+  return scan;
+}
+async function getQrScanStats(businessId) {
+  const now = /* @__PURE__ */ new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
+  const [totalResult] = await db.select({ cnt: count10() }).from(qrScans).where(eq16(qrScans.businessId, businessId));
+  const totalScans = Number(totalResult?.cnt ?? 0);
+  const [uniqueResult] = await db.select({ cnt: sql9`count(distinct ${qrScans.memberId})` }).from(qrScans).where(eq16(qrScans.businessId, businessId));
+  const uniqueMembers = Number(uniqueResult?.cnt ?? 0);
+  const [conversionResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), eq16(qrScans.converted, true)));
+  const conversions = Number(conversionResult?.cnt ?? 0);
+  const [weekResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, sevenDaysAgo)));
+  const last7Days = Number(weekResult?.cnt ?? 0);
+  const [monthResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, thirtyDaysAgo)));
+  const last30Days = Number(monthResult?.cnt ?? 0);
+  const conversionRate = totalScans > 0 ? Math.round(conversions / totalScans * 100) : 0;
+  return { totalScans, uniqueMembers, conversions, conversionRate, last7Days, last30Days };
+}
+async function markQrScanConverted(scanId) {
+  await db.update(qrScans).set({ converted: true }).where(eq16(qrScans.id, scanId));
+}
+var init_qr = __esm({
+  "server/storage/qr.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/beta-invites.ts
+import { eq as eq17 } from "drizzle-orm";
+async function createBetaInvite(params) {
+  const [invite] = await db.insert(betaInvites).values({
+    email: params.email,
+    displayName: params.displayName,
+    referralCode: params.referralCode,
+    invitedBy: params.invitedBy
+  }).returning();
+  return invite;
+}
+async function getBetaInviteByEmail(email) {
+  const [invite] = await db.select().from(betaInvites).where(eq17(betaInvites.email, email));
+  return invite;
+}
+async function markBetaInviteJoined(email, memberId) {
+  await db.update(betaInvites).set({ status: "joined", joinedAt: /* @__PURE__ */ new Date(), memberId }).where(eq17(betaInvites.email, email));
+}
+async function getBetaInviteStats() {
+  const invites = await db.select().from(betaInvites);
+  const joined = invites.filter((i) => i.status === "joined").length;
+  return {
+    total: invites.length,
+    joined,
+    pending: invites.length - joined,
+    invites
+  };
+}
+var init_beta_invites = __esm({
+  "server/storage/beta-invites.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/analytics.ts
+var analytics_exports = {};
+__export(analytics_exports, {
+  DATA_RETENTION_POLICY: () => DATA_RETENTION_POLICY,
+  getPersistedDailyStats: () => getPersistedDailyStats,
+  getPersistedDailyStatsExtended: () => getPersistedDailyStatsExtended,
+  getPersistedEventCounts: () => getPersistedEventCounts,
+  getPersistedEventTotal: () => getPersistedEventTotal,
+  persistAnalyticsEvents: () => persistAnalyticsEvents,
+  purgeOldAnalyticsEvents: () => purgeOldAnalyticsEvents
+});
+import { gte as gte5, lt, sql as sql10, count as count11 } from "drizzle-orm";
+async function persistAnalyticsEvents(entries) {
+  if (entries.length === 0) return;
+  const values = entries.map((e) => ({
+    event: e.event,
+    userId: e.userId || null,
+    metadata: e.metadata || null,
+    createdAt: new Date(e.timestamp)
+  }));
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < values.length; i += CHUNK_SIZE) {
+    const chunk = values.slice(i, i + CHUNK_SIZE);
+    await db.insert(analyticsEvents).values(chunk);
+  }
+}
+async function getPersistedEventCounts(since) {
+  const rows = await db.select({
+    event: analyticsEvents.event,
+    count: count11()
+  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(analyticsEvents.event);
+  const result = {};
+  for (const row of rows) {
+    result[row.event] = row.count;
+  }
+  return result;
+}
+async function getPersistedDailyStats(days) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
+  const rows = await db.select({
+    date: sql10`DATE(${analyticsEvents.createdAt})`,
+    count: count11()
+  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql10`DATE(${analyticsEvents.createdAt})`).orderBy(sql10`DATE(${analyticsEvents.createdAt})`);
+  return rows.map((r) => ({ date: r.date, events: r.count }));
+}
+async function getPersistedDailyStatsExtended(days) {
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
+  const rows = await db.select({
+    date: sql10`DATE(${analyticsEvents.createdAt})`,
+    event: analyticsEvents.event,
+    count: count11()
+  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql10`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event).orderBy(sql10`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event);
+  return rows.map((r) => ({ date: r.date, event: r.event, count: r.count }));
+}
+async function getPersistedEventTotal() {
+  const [result] = await db.select({ count: count11() }).from(analyticsEvents);
+  return result.count;
+}
+async function purgeOldAnalyticsEvents(retentionDays = 90) {
+  const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1e3);
+  const result = await db.delete(analyticsEvents).where(lt(analyticsEvents.createdAt, cutoff));
+  return result.rowCount ?? 0;
+}
+var DATA_RETENTION_POLICY;
+var init_analytics = __esm({
+  "server/storage/analytics.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+    DATA_RETENTION_POLICY = {
+      analyticsEvents: { retentionDays: 90, description: "Analytics events older than 90 days are purged" },
+      betaInvites: { retentionDays: 365, description: "Beta invite records retained for 1 year" }
+    };
+  }
+});
+
+// server/storage/user-activity.ts
+var user_activity_exports = {};
+__export(user_activity_exports, {
+  getActiveUserStatsDb: () => getActiveUserStatsDb,
+  recordUserActivityDb: () => recordUserActivityDb
+});
+import { gte as gte6, count as count12 } from "drizzle-orm";
+async function recordUserActivityDb(userId) {
+  await db.insert(userActivity).values({ userId, lastSeenAt: /* @__PURE__ */ new Date() }).onConflictDoUpdate({
+    target: userActivity.userId,
+    set: { lastSeenAt: /* @__PURE__ */ new Date() }
+  });
+}
+async function getActiveUserStatsDb() {
+  const now = Date.now();
+  const windows = {
+    last1h: new Date(now - 60 * 60 * 1e3),
+    last24h: new Date(now - 24 * 60 * 60 * 1e3),
+    last7d: new Date(now - 7 * 24 * 60 * 60 * 1e3),
+    last30d: new Date(now - 30 * 24 * 60 * 60 * 1e3)
+  };
+  const [r1h, r24h, r7d, r30d] = await Promise.all([
+    db.select({ count: count12() }).from(userActivity).where(gte6(userActivity.lastSeenAt, windows.last1h)),
+    db.select({ count: count12() }).from(userActivity).where(gte6(userActivity.lastSeenAt, windows.last24h)),
+    db.select({ count: count12() }).from(userActivity).where(gte6(userActivity.lastSeenAt, windows.last7d)),
+    db.select({ count: count12() }).from(userActivity).where(gte6(userActivity.lastSeenAt, windows.last30d))
+  ]);
+  return {
+    last1h: r1h[0].count,
+    last24h: r24h[0].count,
+    last7d: r7d[0].count,
+    last30d: r30d[0].count
+  };
+}
+var init_user_activity = __esm({
+  "server/storage/user-activity.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/feedback.ts
+var feedback_exports = {};
+__export(feedback_exports, {
+  createFeedback: () => createFeedback,
+  getFeedbackStats: () => getFeedbackStats,
+  getRecentFeedback: () => getRecentFeedback
+});
+import { desc as desc16, count as count13 } from "drizzle-orm";
+async function createFeedback(params) {
+  const [result] = await db.insert(betaFeedback).values(params).returning();
+  return result;
+}
+async function getRecentFeedback(limit = 50) {
+  return db.select().from(betaFeedback).orderBy(desc16(betaFeedback.createdAt)).limit(limit);
+}
+async function getFeedbackStats() {
+  const rows = await db.select({
+    category: betaFeedback.category,
+    count: count13()
+  }).from(betaFeedback).groupBy(betaFeedback.category);
+  const total = rows.reduce((sum2, r) => sum2 + r.count, 0);
+  const byCategory = {};
+  for (const row of rows) {
+    byCategory[row.category] = row.count;
+  }
+  return { total, byCategory };
+}
+var init_feedback = __esm({
+  "server/storage/feedback.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
 // server/storage/index.ts
 var storage_exports = {};
 __export(storage_exports, {
+  activateReferral: () => activateReferral,
+  autocompleteBusinesses: () => autocompleteBusinesses,
   awardBadge: () => awardBadge,
+  bulkImportBusinesses: () => bulkImportBusinesses,
+  closeExpiredChallenges: () => closeExpiredChallenges,
+  createBetaInvite: () => createBetaInvite,
   createCategorySuggestion: () => createCategorySuggestion,
+  createChallenge: () => createChallenge,
   createFeaturedPlacement: () => createFeaturedPlacement,
+  createFeedback: () => createFeedback,
   createMember: () => createMember,
+  createNotification: () => createNotification,
   createPaymentRecord: () => createPaymentRecord,
+  createReferral: () => createReferral,
   deleteBusinessPhotos: () => deleteBusinessPhotos,
+  deleteRating: () => deleteRating,
+  deleteRatingResponse: () => deleteRatingResponse,
+  editRating: () => editRating,
   expireFeaturedByPayment: () => expireFeaturedByPayment,
   expireOldPlacements: () => expireOldPlacements,
+  generateEmailVerificationToken: () => generateEmailVerificationToken,
+  generatePasswordResetToken: () => generatePasswordResetToken,
   getActiveChallenges: () => getActiveChallenges,
   getActiveFeaturedInCity: () => getActiveFeaturedInCity,
+  getActiveUserStatsDb: () => getActiveUserStatsDb,
   getAdminMemberList: () => getAdminMemberList,
   getAllCategories: () => getAllCategories,
+  getAutoFlaggedRatings: () => getAutoFlaggedRatings,
   getBadgeLeaderboard: () => getBadgeLeaderboard,
+  getBetaInviteByEmail: () => getBetaInviteByEmail,
+  getBetaInviteStats: () => getBetaInviteStats,
   getBusinessById: () => getBusinessById,
   getBusinessBySlug: () => getBusinessBySlug,
   getBusinessDishes: () => getBusinessDishes,
@@ -1655,13 +3331,20 @@ __export(storage_exports, {
   getBusinessPhotos: () => getBusinessPhotos,
   getBusinessPhotosMap: () => getBusinessPhotosMap,
   getBusinessRatings: () => getBusinessRatings,
+  getBusinessResponses: () => getBusinessResponses,
+  getBusinessesByIds: () => getBusinessesByIds,
   getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
   getClaimByMemberAndBusiness: () => getClaimByMemberAndBusiness,
   getClaimCount: () => getClaimCount,
   getCredibilityTier: () => getCredibilityTier,
   getDbCategories: () => getDbCategories,
+  getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
+  getDishLeaderboards: () => getDishLeaderboards,
+  getDishSuggestions: () => getDishSuggestions,
   getEarnedBadgeIds: () => getEarnedBadgeIds,
+  getFeedbackStats: () => getFeedbackStats,
   getFlagCount: () => getFlagCount,
+  getImportStats: () => getImportStats,
   getLeaderboard: () => getLeaderboard,
   getMemberBadgeCount: () => getMemberBadgeCount,
   getMemberBadges: () => getMemberBadges,
@@ -1671,41 +3354,78 @@ __export(storage_exports, {
   getMemberByUsername: () => getMemberByUsername,
   getMemberCount: () => getMemberCount,
   getMemberImpact: () => getMemberImpact,
+  getMemberNotifications: () => getMemberNotifications,
   getMemberPayments: () => getMemberPayments,
   getMemberRatings: () => getMemberRatings,
+  getMembersWithPushTokenByCity: () => getMembersWithPushTokenByCity,
+  getOnboardingProgress: () => getOnboardingProgress,
   getPaymentById: () => getPaymentById,
   getPendingClaims: () => getPendingClaims,
   getPendingFlags: () => getPendingFlags,
   getPendingSuggestions: () => getPendingSuggestions,
+  getPersistedDailyStats: () => getPersistedDailyStats,
+  getPersistedEventCounts: () => getPersistedEventCounts,
+  getPersistedEventTotal: () => getPersistedEventTotal,
+  getPopularCategories: () => getPopularCategories,
+  getQrScanStats: () => getQrScanStats,
   getRankHistory: () => getRankHistory,
+  getRatingById: () => getRatingById,
+  getRatingResponse: () => getRatingResponse,
+  getRecentFeedback: () => getRecentFeedback,
   getRecentWebhookEvents: () => getRecentWebhookEvents,
+  getReferralStats: () => getReferralStats,
+  getReferrerForMember: () => getReferrerForMember,
+  getResponsesForRatings: () => getResponsesForRatings,
   getRevenueByMonth: () => getRevenueByMonth,
   getRevenueMetrics: () => getRevenueMetrics,
   getSeasonalRatingCounts: () => getSeasonalRatingCounts,
   getTemporalMultiplier: () => getTemporalMultiplier,
   getTierFromScore: () => getTierFromScore,
   getTrendingBusinesses: () => getTrendingBusinesses,
+  getUnreadNotificationCount: () => getUnreadNotificationCount,
   getVoteWeight: () => getVoteWeight,
   getWebhookEventById: () => getWebhookEventById,
   hasBadge: () => hasBadge,
   insertBusinessPhotos: () => insertBusinessPhotos,
+  isEmailVerified: () => isEmailVerified,
   logWebhookEvent: () => logWebhookEvent,
+  markAllNotificationsRead: () => markAllNotificationsRead,
+  markBetaInviteJoined: () => markBetaInviteJoined,
+  markNotificationRead: () => markNotificationRead,
+  markQrScanConverted: () => markQrScanConverted,
   markWebhookProcessed: () => markWebhookProcessed,
+  persistAnalyticsEvents: () => persistAnalyticsEvents,
   recalculateBusinessScore: () => recalculateBusinessScore,
   recalculateCredibilityScore: () => recalculateCredibilityScore,
+  recalculateDishLeaderboard: () => recalculateDishLeaderboard,
   recalculateRanks: () => recalculateRanks,
+  recordQrScan: () => recordQrScan,
+  recordUserActivityDb: () => recordUserActivityDb,
+  resetPasswordWithToken: () => resetPasswordWithToken,
+  resolveReferralCode: () => resolveReferralCode,
+  reviewAutoFlaggedRating: () => reviewAutoFlaggedRating,
   reviewClaim: () => reviewClaim,
   reviewFlag: () => reviewFlag,
   reviewSuggestion: () => reviewSuggestion,
   searchBusinesses: () => searchBusinesses,
   searchDishes: () => searchDishes,
   submitClaim: () => submitClaim,
+  submitDishSuggestion: () => submitDishSuggestion,
   submitRating: () => submitRating,
+  submitRatingFlag: () => submitRatingFlag,
+  submitRatingResponse: () => submitRatingResponse,
+  updateBusinessSubscription: () => updateBusinessSubscription,
   updateChallengerVotes: () => updateChallengerVotes,
+  updateMemberAvatar: () => updateMemberAvatar,
+  updateMemberEmail: () => updateMemberEmail,
+  updateMemberProfile: () => updateMemberProfile,
   updateMemberStats: () => updateMemberStats,
+  updateNotificationPrefs: () => updateNotificationPrefs,
   updatePaymentStatus: () => updatePaymentStatus,
   updatePaymentStatusByStripeId: () => updatePaymentStatusByStripeId,
-  updatePushToken: () => updatePushToken
+  updatePushToken: () => updatePushToken,
+  verifyEmailToken: () => verifyEmailToken,
+  voteDishSuggestion: () => voteDishSuggestion
 });
 var init_storage = __esm({
   "server/storage/index.ts"() {
@@ -1715,6 +3435,7 @@ var init_storage = __esm({
     init_businesses();
     init_ratings();
     init_challengers();
+    init_members();
     init_dishes();
     init_categories();
     init_badges();
@@ -1722,46 +3443,529 @@ var init_storage = __esm({
     init_webhook_events();
     init_featured_placements();
     init_claims();
+    init_responses();
+    init_qr();
+    init_referrals();
+    init_notifications();
+    init_beta_invites();
+    init_analytics();
+    init_user_activity();
+    init_feedback();
+  }
+});
+
+// shared/admin.ts
+var admin_exports = {};
+__export(admin_exports, {
+  ADMIN_EMAILS: () => ADMIN_EMAILS,
+  isAdminEmail: () => isAdminEmail
+});
+function isAdminEmail(email) {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
+var ADMIN_EMAILS;
+var init_admin = __esm({
+  "shared/admin.ts"() {
+    "use strict";
+    ADMIN_EMAILS = Object.freeze([
+      "rahul@topranker.com",
+      "admin@topranker.com"
+    ]);
+  }
+});
+
+// server/analytics.ts
+var analytics_exports2 = {};
+__export(analytics_exports2, {
+  clearAnalytics: () => clearAnalytics,
+  getActiveUserStats: () => getActiveUserStats,
+  getBetaConversionFunnel: () => getBetaConversionFunnel,
+  getDailyStats: () => getDailyStats,
+  getFunnelStats: () => getFunnelStats,
+  getHourlyStats: () => getHourlyStats,
+  getRateGateStats: () => getRateGateStats,
+  getRecentEvents: () => getRecentEvents,
+  recordUserActivity: () => recordUserActivity,
+  setFlushHandler: () => setFlushHandler,
+  stopFlush: () => stopFlush,
+  trackEvent: () => trackEvent
+});
+function trackEvent(event, userId, metadata) {
+  const entry = {
+    event,
+    userId,
+    metadata,
+    timestamp: Date.now()
+  };
+  buffer.push(entry);
+  analyticsLog.info(`${event}${userId ? ` [${userId}]` : ""}`);
+  if (buffer.length > MAX_BUFFER) {
+    buffer.splice(0, buffer.length - MAX_BUFFER);
+  }
+}
+function getFunnelStats() {
+  const stats2 = {};
+  for (const entry of buffer) {
+    stats2[entry.event] = (stats2[entry.event] || 0) + 1;
+  }
+  return stats2;
+}
+function getRecentEvents(limit = 50) {
+  return buffer.slice(-limit);
+}
+function getRateGateStats() {
+  const rejectionEvents = [
+    "rating_rejected_account_age",
+    "rating_rejected_duplicate",
+    "rating_rejected_suspended",
+    "rating_rejected_validation",
+    "rating_rejected_unknown"
+  ];
+  const submissions2 = buffer.filter((e) => e.event === "rating_submitted").length;
+  const rejections = buffer.filter(
+    (e) => rejectionEvents.includes(e.event)
+  );
+  const byReason = {};
+  for (const r of rejections) {
+    byReason[r.event] = (byReason[r.event] || 0) + 1;
+  }
+  const total = submissions2 + rejections.length;
+  return {
+    totalSubmissions: submissions2,
+    totalRejections: rejections.length,
+    rejectionRate: total > 0 ? (rejections.length / total * 100).toFixed(1) + "%" : "0%",
+    byReason,
+    recentRejections: rejections.slice(-20)
+  };
+}
+function clearAnalytics() {
+  buffer.length = 0;
+}
+function setFlushHandler(handler, intervalMs = 3e4) {
+  flushHandler = handler;
+  if (flushInterval) clearInterval(flushInterval);
+  flushInterval = setInterval(async () => {
+    if (buffer.length === 0 || !flushHandler) return;
+    const batch = buffer.splice(0, buffer.length);
+    try {
+      await flushHandler(batch);
+      analyticsLog.info(`Flushed ${batch.length} analytics events`);
+    } catch (err) {
+      buffer.unshift(...batch);
+      analyticsLog.error(`Flush failed, ${batch.length} events re-queued`);
+    }
+  }, intervalMs);
+}
+function stopFlush() {
+  if (flushInterval) {
+    clearInterval(flushInterval);
+    flushInterval = null;
+  }
+}
+function getHourlyStats(hours = 24) {
+  const now = Date.now();
+  const cutoff = now - hours * 60 * 60 * 1e3;
+  const filtered = buffer.filter((e) => e.timestamp >= cutoff);
+  const buckets = /* @__PURE__ */ new Map();
+  for (const entry of filtered) {
+    const d = new Date(entry.timestamp);
+    const key2 = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:00`;
+    if (!buckets.has(key2)) {
+      buckets.set(key2, { events: 0, byType: {} });
+    }
+    const bucket = buckets.get(key2);
+    bucket.events++;
+    bucket.byType[entry.event] = (bucket.byType[entry.event] || 0) + 1;
+  }
+  return Array.from(buckets.entries()).map(([hour, data]) => ({ hour, ...data })).sort((a, b) => a.hour.localeCompare(b.hour));
+}
+function getDailyStats(days = 7) {
+  const now = Date.now();
+  const cutoff = now - days * 24 * 60 * 60 * 1e3;
+  const filtered = buffer.filter((e) => e.timestamp >= cutoff);
+  const buckets = /* @__PURE__ */ new Map();
+  for (const entry of filtered) {
+    const d = new Date(entry.timestamp);
+    const key2 = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    if (!buckets.has(key2)) {
+      buckets.set(key2, { events: 0, users: /* @__PURE__ */ new Set(), byType: {} });
+    }
+    const bucket = buckets.get(key2);
+    bucket.events++;
+    if (entry.userId) bucket.users.add(entry.userId);
+    bucket.byType[entry.event] = (bucket.byType[entry.event] || 0) + 1;
+  }
+  return Array.from(buckets.entries()).map(([date2, data]) => ({ date: date2, events: data.events, uniqueUsers: data.users.size, byType: data.byType })).sort((a, b) => a.date.localeCompare(b.date));
+}
+function recordUserActivity(userId) {
+  activeUsers.set(userId, Date.now());
+}
+function getActiveUserStats() {
+  const now = Date.now();
+  let last1h = 0, last24h = 0, last7d = 0, last30d = 0;
+  for (const [, lastSeen] of activeUsers) {
+    const age = now - lastSeen;
+    if (age < 60 * 60 * 1e3) last1h++;
+    if (age < 24 * 60 * 60 * 1e3) last24h++;
+    if (age < 7 * 24 * 60 * 60 * 1e3) last7d++;
+    if (age < 30 * 24 * 60 * 60 * 1e3) last30d++;
+  }
+  return { last1h, last24h, last7d, last30d };
+}
+function getBetaConversionFunnel() {
+  const invitesSent = buffer.filter((e) => e.event === "beta_invite_sent").length;
+  const joinPageViews = buffer.filter((e) => e.event === "beta_join_page_view").length;
+  const signups = buffer.filter((e) => e.event === "beta_signup_completed").length;
+  const firstRatings = buffer.filter((e) => e.event === "beta_first_rating").length;
+  const referralsShared = buffer.filter((e) => e.event === "beta_referral_shared").length;
+  const pct = (n, d) => d > 0 ? (n / d * 100).toFixed(1) + "%" : "N/A";
+  return {
+    invitesSent,
+    joinPageViews,
+    signups,
+    firstRatings,
+    referralsShared,
+    conversionRates: {
+      inviteToView: pct(joinPageViews, invitesSent),
+      viewToSignup: pct(signups, joinPageViews),
+      signupToRating: pct(firstRatings, signups),
+      overallInviteToRating: pct(firstRatings, invitesSent)
+    }
+  };
+}
+var analyticsLog, buffer, MAX_BUFFER, flushHandler, flushInterval, activeUsers;
+var init_analytics2 = __esm({
+  "server/analytics.ts"() {
+    "use strict";
+    init_logger();
+    analyticsLog = log.tag("Analytics");
+    buffer = [];
+    MAX_BUFFER = 1e3;
+    flushHandler = null;
+    flushInterval = null;
+    activeUsers = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/seed-cities.ts
+var seed_cities_exports = {};
+__export(seed_cities_exports, {
+  seedCities: () => seedCities
+});
+async function seedCities() {
+  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 10 cities...`);
+  let seeded = 0;
+  for (const biz of ALL_CITY_BUSINESSES) {
+    try {
+      await db.insert(businesses).values({
+        name: biz.name,
+        slug: biz.slug,
+        category: biz.category,
+        city: biz.city,
+        neighborhood: biz.neighborhood,
+        address: biz.address,
+        phone: biz.phone,
+        lat: biz.lat,
+        lng: biz.lng,
+        weightedScore: biz.weightedScore,
+        rawAvgScore: biz.rawAvgScore,
+        rankPosition: biz.rankPosition,
+        rankDelta: biz.rankDelta,
+        totalRatings: biz.totalRatings,
+        description: biz.description,
+        priceRange: biz.priceRange,
+        isOpenNow: biz.isOpenNow,
+        photoUrl: biz.photoUrl || null,
+        isActive: true,
+        dataSource: "admin"
+      });
+      seeded++;
+    } catch (err) {
+      if (err.message?.includes("unique") || err.message?.includes("duplicate")) {
+        console.log(`  Skipping ${biz.name} (already exists)`);
+      } else {
+        console.error(`  Failed to seed ${biz.name}:`, err.message);
+      }
+    }
+  }
+  console.log(`
+Seeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
+  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10), Memphis (10), Nashville (10), Charlotte (10), Raleigh (10)");
+}
+var AUSTIN_BUSINESSES, HOUSTON_BUSINESSES, SAN_ANTONIO_BUSINESSES, FORT_WORTH_BUSINESSES, OKC_BUSINESSES, NOLA_BUSINESSES, MEMPHIS_BUSINESSES, NASHVILLE_BUSINESSES, CHARLOTTE_BUSINESSES, RALEIGH_BUSINESSES, ALL_CITY_BUSINESSES, isDirectRun;
+var init_seed_cities = __esm({
+  "server/seed-cities.ts"() {
+    "use strict";
+    init_db();
+    init_schema();
+    AUSTIN_BUSINESSES = [
+      { name: "Franklin Barbecue", slug: "franklin-barbecue-austin", city: "Austin", neighborhood: "East Austin", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "The most famous BBQ in Texas. Worth the 4-hour wait.", priceRange: "$$", phone: "(512) 653-1187", address: "900 E 11th St, Austin, TX", lat: "30.2701", lng: "-97.7267", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Uchi", slug: "uchi-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "James Beard-winning Japanese farmhouse dining.", priceRange: "$$$$", phone: "(512) 916-4808", address: "801 S Lamar Blvd, Austin, TX", lat: "30.2561", lng: "-97.7628", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop" },
+      { name: "Torchy's Tacos", slug: "torchys-tacos-austin", city: "Austin", neighborhood: "South Congress", category: "street_food", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Damn good tacos. The Trailer Park is legendary.", priceRange: "$", phone: "(512) 366-0537", address: "1311 S 1st St, Austin, TX", lat: "30.2502", lng: "-97.7540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Salt Lick BBQ", slug: "salt-lick-bbq-austin", city: "Austin", neighborhood: "Driftwood", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 1, totalRatings: 389, description: "Open-pit BBQ in the Hill Country since 1967.", priceRange: "$$", phone: "(512) 858-4959", address: "18300 FM 1826, Driftwood, TX", lat: "30.1561", lng: "-97.9410", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Ramen Tatsu-Ya", slug: "ramen-tatsu-ya-austin", city: "Austin", neighborhood: "North Loop", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Austin's best ramen. No compromise.", priceRange: "$$", phone: "(512) 893-5561", address: "8557 Research Blvd, Austin, TX", lat: "30.3561", lng: "-97.7310", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
+      { name: "Odd Duck", slug: "odd-duck-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Farm-to-table seasonal small plates.", priceRange: "$$$", phone: "(512) 433-6521", address: "1201 S Lamar Blvd, Austin, TX", lat: "30.2501", lng: "-97.7630", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "Jo's Coffee", slug: "jos-coffee-austin", city: "Austin", neighborhood: "South Congress", category: "cafe", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "I Love You So Much wall. Iconic SoCo coffee.", priceRange: "$", phone: "(512) 444-3800", address: "1300 S Congress Ave, Austin, TX", lat: "30.2490", lng: "-97.7491", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+      { name: "Rainey Street Bar District", slug: "rainey-street-austin", city: "Austin", neighborhood: "Rainey Street", category: "bar", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Historic bungalows turned into Austin's hottest bar street.", priceRange: "$$", phone: "(512) 555-0001", address: "Rainey Street, Austin, TX", lat: "30.2580", lng: "-97.7380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-austin", city: "Austin", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.200", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Texas institution. Honey butter chicken biscuit.", priceRange: "$", phone: "(512) 555-0002", address: "Multiple locations, Austin, TX", lat: "30.2672", lng: "-97.7431", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Quack's 43rd St Bakery", slug: "quacks-bakery-austin", city: "Austin", neighborhood: "Hyde Park", category: "bakery", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Neighborhood bakery with legendary carrot cake.", priceRange: "$", phone: "(512) 453-3399", address: "411 E 43rd St, Austin, TX", lat: "30.3051", lng: "-97.7230", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    HOUSTON_BUSINESSES = [
+      { name: "Killen's Barbecue", slug: "killens-bbq-houston", city: "Houston", neighborhood: "Pearland", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "Pitmaster Ronnie Killen's award-winning BBQ.", priceRange: "$$", phone: "(281) 485-2272", address: "3613 E Broadway St, Pearland, TX", lat: "29.5633", lng: "-95.2763", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Pappas Bros. Steakhouse", slug: "pappas-bros-houston", city: "Houston", neighborhood: "Galleria", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Houston's finest steakhouse. USDA Prime aged beef.", priceRange: "$$$$", phone: "(713) 780-7352", address: "5839 Westheimer Rd, Houston, TX", lat: "29.7372", lng: "-95.4888", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Crawfish & Noodles", slug: "crawfish-noodles-houston", city: "Houston", neighborhood: "Chinatown", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 1, totalRatings: 378, description: "Vietnamese-Cajun fusion that started a revolution.", priceRange: "$$", phone: "(281) 988-8098", address: "11360 Bellaire Blvd, Houston, TX", lat: "29.7045", lng: "-95.5358", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
+      { name: "Tacos Tierra Caliente", slug: "tacos-tierra-caliente-houston", city: "Houston", neighborhood: "Montrose", category: "street_food", weightedScore: "4.600", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Late-night taco truck with the best al pastor in Houston.", priceRange: "$", phone: "(713) 555-0003", address: "1220 Westheimer Rd, Houston, TX", lat: "29.7414", lng: "-95.3917", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Buc-ee's", slug: "buc-ees-houston", city: "Houston", neighborhood: "Baytown", category: "fast_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Texas-sized gas station with legendary BBQ and beaver nuggets.", priceRange: "$", phone: "(979) 238-6390", address: "4500 I-10 East, Baytown, TX", lat: "29.7827", lng: "-94.9594", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Blacksmith Coffee", slug: "blacksmith-coffee-houston", city: "Houston", neighborhood: "Montrose", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Third-wave coffee in a beautiful Montrose space.", priceRange: "$$", phone: "(713) 555-0004", address: "1018 Westheimer Rd, Houston, TX", lat: "29.7413", lng: "-95.3870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Julep", slug: "julep-houston", city: "Houston", neighborhood: "Washington Ave", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Southern cocktail bar with craft juleps and live music.", priceRange: "$$$", phone: "(713) 869-4383", address: "1919 Washington Ave, Houston, TX", lat: "29.7643", lng: "-95.3842", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Common Bond Bakery", slug: "common-bond-houston", city: "Houston", neighborhood: "Montrose", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "European-inspired bakery and cafe.", priceRange: "$$", phone: "(713) 529-3535", address: "1706 Westheimer Rd, Houston, TX", lat: "29.7434", lng: "-95.3977", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    SAN_ANTONIO_BUSINESSES = [
+      { name: "2M Smokehouse", slug: "2m-smokehouse-san-antonio", city: "San Antonio", neighborhood: "South Side", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "Tex-Mex meets BBQ. The brisket enchiladas are legendary.", priceRange: "$$", phone: "(210) 885-9352", address: "2731 S WW White Rd, San Antonio, TX", lat: "29.3921", lng: "-98.4347", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Mi Tierra Cafe", slug: "mi-tierra-san-antonio", city: "San Antonio", neighborhood: "Market Square", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "Open 24 hours since 1941. The Riverwalk institution.", priceRange: "$$", phone: "(210) 225-1262", address: "218 Produce Row, San Antonio, TX", lat: "29.4246", lng: "-98.4969", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Garcia's Mexican Food", slug: "garcias-san-antonio", city: "San Antonio", neighborhood: "West Side", category: "street_food", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "No-frills Tex-Mex. The puffy tacos are life-changing.", priceRange: "$", phone: "(210) 735-4525", address: "842 Fredericksburg Rd, San Antonio, TX", lat: "29.4521", lng: "-98.5121", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
+      { name: "Estate Coffee", slug: "estate-coffee-san-antonio", city: "San Antonio", neighborhood: "Southtown", category: "cafe", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 178, description: "Specialty coffee in the heart of Southtown arts district.", priceRange: "$$", phone: "(210) 555-0005", address: "1320 S Alamo St, San Antonio, TX", lat: "29.4150", lng: "-98.4901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-san-antonio", city: "San Antonio", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "Born right here in San Antonio. The HQ city.", priceRange: "$", phone: "(210) 555-0006", address: "Multiple locations, San Antonio, TX", lat: "29.4241", lng: "-98.4936", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "The Esquire Tavern", slug: "esquire-tavern-san-antonio", city: "San Antonio", neighborhood: "Riverwalk", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "The longest bar in Texas, right on the Riverwalk.", priceRange: "$$", phone: "(210) 222-2521", address: "155 E Commerce St, San Antonio, TX", lat: "29.4234", lng: "-98.4876", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Bird Bakery", slug: "bird-bakery-san-antonio", city: "San Antonio", neighborhood: "Alamo Heights", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Cupcakes and cookies by Elizabeth Chambers.", priceRange: "$$", phone: "(210) 804-2473", address: "5912 Broadway, San Antonio, TX", lat: "29.4633", lng: "-98.4623", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" }
+    ];
+    FORT_WORTH_BUSINESSES = [
+      { name: "Heim Barbecue", slug: "heim-bbq-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "restaurant", weightedScore: "4.700", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Bacon burnt ends put Heim on the map. Texas Monthly Top 50.", priceRange: "$$", phone: "(817) 882-6970", address: "1109 W Magnolia Ave, Fort Worth, TX", lat: "32.7185", lng: "-97.3448", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Joe T. Garcia's", slug: "joe-t-garcias-fort-worth", city: "Fort Worth", neighborhood: "Northside", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "The legendary patio. Enchiladas and fajitas only.", priceRange: "$$", phone: "(817) 626-4356", address: "2201 N Commerce St, Fort Worth, TX", lat: "32.7665", lng: "-97.3292", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Salsa Limon", slug: "salsa-limon-fort-worth", city: "Fort Worth", neighborhood: "Near South", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Mexican street food truck turned brick-and-mortar.", priceRange: "$", phone: "(817) 927-4328", address: "4200 S Freeway, Fort Worth, TX", lat: "32.7100", lng: "-97.3232", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Avoca Coffee", slug: "avoca-coffee-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "cafe", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Fort Worth's premier specialty coffee roaster.", priceRange: "$$", phone: "(817) 677-6741", address: "1311 W Magnolia Ave, Fort Worth, TX", lat: "32.7180", lng: "-97.3465", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Whataburger", slug: "whataburger-fort-worth", city: "Fort Worth", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Texas institution. Always there at 2am.", priceRange: "$", phone: "(817) 555-0007", address: "Multiple locations, Fort Worth, TX", lat: "32.7555", lng: "-97.3308", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "The Usual", slug: "the-usual-fort-worth", city: "Fort Worth", neighborhood: "Sundance Square", category: "bar", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Craft cocktail bar in Sundance Square.", priceRange: "$$$", phone: "(817) 810-0114", address: "310 Houston St, Fort Worth, TX", lat: "32.7548", lng: "-97.3313", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Swiss Pastry Shop", slug: "swiss-pastry-fort-worth", city: "Fort Worth", neighborhood: "Camp Bowie", category: "bakery", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Fort Worth's oldest bakery. Since 1950.", priceRange: "$", phone: "(817) 732-5661", address: "3936 W Vickery Blvd, Fort Worth, TX", lat: "32.7370", lng: "-97.3698", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
+    ];
+    OKC_BUSINESSES = [
+      { name: "Cattlemen's Steakhouse", slug: "cattlemens-steakhouse-okc", city: "Oklahoma City", neighborhood: "Stockyards City", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Oklahoma's most famous steakhouse since 1910", priceRange: "$$$", phone: "(405) 236-0416", address: "1309 S Agnew Ave, Oklahoma City, OK", lat: "35.4558", lng: "-97.5378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Nic's Grill", slug: "nics-grill-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 2, rankDelta: 0, totalRatings: 467, description: "Tiny counter spot. Best burger in OKC, maybe America", priceRange: "$", phone: "(405) 524-0999", address: "1201 N Pennsylvania Ave, Oklahoma City, OK", lat: "35.4780", lng: "-97.5168", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Waffle Champion", slug: "waffle-champion-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Gourmet waffles meet breakfast innovation", priceRange: "$$", phone: "(405) 601-9956", address: "1212 N Walker Ave, Oklahoma City, OK", lat: "35.4785", lng: "-97.5225", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
+      { name: "Empire Slice House", slug: "empire-slice-house-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "Artisan pizza with local OKC personality", priceRange: "$$", phone: "(405) 525-7423", address: "1734 NW 16th St, Oklahoma City, OK", lat: "35.4821", lng: "-97.5340", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+      { name: "Tamashii Ramen House", slug: "tamashii-ramen-okc", city: "Oklahoma City", neighborhood: "Asian District", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: 0, totalRatings: 278, description: "Authentic Japanese ramen in OKC's vibrant Asian District", priceRange: "$$", phone: "(405) 600-7788", address: "6608 N May Ave, Oklahoma City, OK", lat: "35.5122", lng: "-97.5605", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
+      { name: "The Jones Assembly", slug: "jones-assembly-okc", city: "Oklahoma City", neighborhood: "Film Row", category: "bar", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Restaurant, bar, and live music venue. OKC culture hub", priceRange: "$$$", phone: "(405) 212-2378", address: "901 W Sheridan Ave, Oklahoma City, OK", lat: "35.4660", lng: "-97.5280", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Pie Junkie", slug: "pie-junkie-okc", city: "Oklahoma City", neighborhood: "Classen", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Handmade pies with seasonal Oklahoma flavors", priceRange: "$$", phone: "(405) 605-8767", address: "1711 NW 16th St, Oklahoma City, OK", lat: "35.4819", lng: "-97.5320", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+      { name: "Big Truck Tacos", slug: "big-truck-tacos-okc", city: "Oklahoma City", neighborhood: "NW 23rd", category: "street_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 356, description: "Food truck turned institution. OKC taco legend", priceRange: "$", phone: "(405) 525-8226", address: "530 NW 23rd St, Oklahoma City, OK", lat: "35.4872", lng: "-97.5241", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Hideaway Pizza", slug: "hideaway-pizza-okc", city: "Oklahoma City", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Oklahoma pizza chain since 1957. The OG", priceRange: "$", phone: "(405) 840-2777", address: "6616 N Western Ave, Oklahoma City, OK", lat: "35.5130", lng: "-97.5435", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
+      { name: "The Press", slug: "the-press-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "cafe", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Coffee and community in the heart of Plaza District", priceRange: "$", phone: "(405) 524-0222", address: "1738 NW 16th St, Oklahoma City, OK", lat: "35.4822", lng: "-97.5342", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
+    ];
+    NOLA_BUSINESSES = [
+      { name: "Commander's Palace", slug: "commanders-palace-nola", city: "New Orleans", neighborhood: "Garden District", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 612, description: "Fine dining legend since 1893. Creole cuisine at its finest", priceRange: "$$$$", phone: "(504) 899-8221", address: "1403 Washington Ave, New Orleans, LA", lat: "29.9291", lng: "-90.0892", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "Dooky Chase's", slug: "dooky-chases-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Queen of Creole cuisine. Civil rights history meets gumbo perfection", priceRange: "$$$", phone: "(504) 821-0600", address: "2301 Orleans Ave, New Orleans, LA", lat: "29.9650", lng: "-90.0775", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Cafe Du Monde", slug: "cafe-du-monde-nola", city: "New Orleans", neighborhood: "French Quarter", category: "cafe", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Beignets and chicory coffee 24/7 since 1862", priceRange: "$", phone: "(504) 525-4544", address: "800 Decatur St, New Orleans, LA", lat: "29.9574", lng: "-90.0618", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Willie Mae's Scotch House", slug: "willie-maes-scotch-house-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Best fried chicken in America. James Beard Award winner", priceRange: "$$", phone: "(504) 822-9503", address: "2401 St Ann St, New Orleans, LA", lat: "29.9660", lng: "-90.0790", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Cochon", slug: "cochon-nola", city: "New Orleans", neighborhood: "Warehouse District", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 398, description: "Cajun nose-to-tail cooking with Louisiana soul", priceRange: "$$$", phone: "(504) 588-2123", address: "930 Tchoupitoulas St, New Orleans, LA", lat: "29.9430", lng: "-90.0680", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Bacchanal Wine", slug: "bacchanal-wine-nola", city: "New Orleans", neighborhood: "Bywater", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 423, description: "Wine bar meets backyard concert venue in the Bywater", priceRange: "$$", phone: "(504) 948-9111", address: "600 Poland Ave, New Orleans, LA", lat: "29.9630", lng: "-90.0400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Dong Phuong Bakery", slug: "dong-phuong-bakery-nola", city: "New Orleans", neighborhood: "New Orleans East", category: "bakery", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Vietnamese-French bakery. Best king cake and banh mi in NOLA", priceRange: "$", phone: "(504) 254-0214", address: "14207 Chef Menteur Hwy, New Orleans, LA", lat: "30.0280", lng: "-89.9580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+      { name: "Dat Dog", slug: "dat-dog-nola", city: "New Orleans", neighborhood: "Frenchmen Street", category: "street_food", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Gourmet hot dogs with wild toppings. NOLA street food icon", priceRange: "$", phone: "(504) 309-3362", address: "601 Frenchmen St, New Orleans, LA", lat: "29.9640", lng: "-90.0570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Raising Cane's", slug: "raising-canes-nola", city: "New Orleans", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Born in Baton Rouge, perfected in NOLA. One love \u2014 chicken fingers", priceRange: "$", phone: "(504) 304-6264", address: "Multiple locations, New Orleans, LA", lat: "29.9511", lng: "-90.0715", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "French Truck Coffee", slug: "french-truck-coffee-nola", city: "New Orleans", neighborhood: "CBD", category: "cafe", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 289, description: "Local roaster serving NOLA's best specialty coffee", priceRange: "$$", phone: "(504) 309-7880", address: "1200 Carondelet St, New Orleans, LA", lat: "29.9410", lng: "-90.0730", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
+    ];
+    MEMPHIS_BUSINESSES = [
+      { name: "Central BBQ", slug: "central-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "restaurant", weightedScore: "4.820", rawAvgScore: "4.70", rankPosition: 1, rankDelta: 0, totalRatings: 589, description: "Memphis dry-rub ribs perfected. Competition-winning BBQ.", priceRange: "$$", phone: "(901) 672-7760", address: "2249 Central Ave, Memphis, TN", lat: "35.1312", lng: "-89.9903", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Gus's World Famous Fried Chicken", slug: "gus-fried-chicken-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Spicy fried chicken legend. The original since 1953.", priceRange: "$$", phone: "(901) 527-4877", address: "310 S Front St, Memphis, TN", lat: "35.1380", lng: "-90.0560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Charlie Vergos' Rendezvous", slug: "rendezvous-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Underground dry-rub rib institution since 1948.", priceRange: "$$", phone: "(901) 523-2746", address: "52 S 2nd St, Memphis, TN", lat: "35.1420", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Dyer's Burgers", slug: "dyers-burgers-memphis", city: "Memphis", neighborhood: "Beale Street", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Deep-fried burgers on Beale Street since 1912. Legendary grease.", priceRange: "$", phone: "(901) 527-3937", address: "205 Beale St, Memphis, TN", lat: "35.1395", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Muddy's Bake Shop", slug: "muddys-bake-shop-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "bakery", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "From-scratch cupcakes and pies in Cooper-Young.", priceRange: "$", phone: "(901) 683-8844", address: "2263 Young Ave, Memphis, TN", lat: "35.1270", lng: "-89.9880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+      { name: "City & State Coffee", slug: "city-state-coffee-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Specialty coffee and community in the Cooper-Young district.", priceRange: "$$", phone: "(901) 249-2406", address: "2625 Broad Ave, Memphis, TN", lat: "35.1350", lng: "-89.9760", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Aldo's Pizza Pies", slug: "aldos-pizza-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "restaurant", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 5, rankDelta: 0, totalRatings: 198, description: "Neapolitan-style pizza in the heart of Cooper-Young.", priceRange: "$$", phone: "(901) 276-7600", address: "1937 Young Ave, Memphis, TN", lat: "35.1275", lng: "-89.9920", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+      { name: "Blues City Cafe", slug: "blues-city-cafe-memphis", city: "Memphis", neighborhood: "Beale Street", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 412, description: "Live blues and BBQ on Beale Street. Memphis nightlife icon.", priceRange: "$$", phone: "(901) 526-3637", address: "138 Beale St, Memphis, TN", lat: "35.1393", lng: "-90.0540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Payne's Bar-B-Q", slug: "paynes-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "street_food", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 367, description: "Chopped pork sandwich perfection. No-frills Memphis BBQ.", priceRange: "$", phone: "(901) 272-1523", address: "1762 Lamar Ave, Memphis, TN", lat: "35.1230", lng: "-89.9870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Jack Pirtle's Chicken", slug: "jack-pirtles-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "fast_food", weightedScore: "4.300", rawAvgScore: "4.15", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Memphis fried chicken chain since 1956. Local institution.", priceRange: "$", phone: "(901) 324-7800", address: "1217 S Bellevue Blvd, Memphis, TN", lat: "35.1240", lng: "-90.0100", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" }
+    ];
+    NASHVILLE_BUSINESSES = [
+      { name: "Prince's Hot Chicken Shack", slug: "princes-hot-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 623, description: "The original Nashville hot chicken. Since 1945.", priceRange: "$", phone: "(615) 226-9442", address: "123 Ewing Dr, Nashville, TN", lat: "36.1880", lng: "-86.7450", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Hattie B's Hot Chicken", slug: "hattie-bs-nashville", city: "Nashville", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Nashville hot chicken with Southern sides. Worth the wait.", priceRange: "$$", phone: "(615) 678-4794", address: "112 19th Ave S, Nashville, TN", lat: "36.1530", lng: "-86.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Martin's Bar-B-Que Joint", slug: "martins-bbq-nashville", city: "Nashville", neighborhood: "12South", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 445, description: "Whole-hog BBQ done right. West Tennessee pit tradition.", priceRange: "$$", phone: "(615) 288-0880", address: "2400 Elliston Pl, Nashville, TN", lat: "36.1540", lng: "-86.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Biscuit Love", slug: "biscuit-love-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Southern brunch institution. The Bonuts are legendary.", priceRange: "$$", phone: "(615) 490-9584", address: "316 11th Ave S, Nashville, TN", lat: "36.1520", lng: "-86.7880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
+      { name: "The Pharmacy Burger Parlor", slug: "pharmacy-burger-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 378, description: "German-style biergarten with craft burgers.", priceRange: "$$", phone: "(615) 712-9517", address: "731 McFerrin Ave, Nashville, TN", lat: "36.1850", lng: "-86.7620", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Five Daughters Bakery", slug: "five-daughters-bakery-nashville", city: "Nashville", neighborhood: "12South", category: "bakery", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "100-layer donuts and artisan pastries in 12South.", priceRange: "$$", phone: "(615) 490-6554", address: "1110 Caruthers Ave, Nashville, TN", lat: "36.1310", lng: "-86.7890", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
+      { name: "Robert's Western World", slug: "roberts-western-world-nashville", city: "Nashville", neighborhood: "Broadway", category: "bar", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Honky-tonk legend on Lower Broadway. Live country every night.", priceRange: "$", phone: "(615) 244-9552", address: "416 Broadway, Nashville, TN", lat: "36.1590", lng: "-86.7770", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Bolton's Spicy Chicken & Fish", slug: "boltons-spicy-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Hot fish and hot chicken. East Nashville staple.", priceRange: "$", phone: "(615) 254-8015", address: "624 Main St, Nashville, TN", lat: "36.1780", lng: "-86.7580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
+      { name: "Slim & Husky's", slug: "slim-huskys-nashville", city: "Nashville", neighborhood: "East Nashville", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Artisan pizza and craft beer. Black-owned Nashville favorite.", priceRange: "$", phone: "(615) 891-2433", address: "911 Buchanan St, Nashville, TN", lat: "36.1820", lng: "-86.7950", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
+      { name: "Barista Parlor", slug: "barista-parlor-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 267, description: "Nashville's craft coffee pioneer. Industrial chic spaces.", priceRange: "$$", phone: "(615) 712-9766", address: "519 Gallatin Ave, Nashville, TN", lat: "36.1740", lng: "-86.7560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
+    ];
+    CHARLOTTE_BUSINESSES = [
+      { name: "Midwood Smokehouse", slug: "midwood-smokehouse-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bbq", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 512, description: "Texas-style BBQ meets Carolina tradition. Brisket and pulled pork perfection.", priceRange: "$$", phone: "(704) 295-4227", address: "1401 Central Ave, Charlotte, NC", lat: "35.2180", lng: "-80.8190", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Haberdish", slug: "haberdish-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Southern sharing plates in the NoDa arts district.", priceRange: "$$$", phone: "(704) 817-7768", address: "3106 N Davidson St, Charlotte, NC", lat: "35.2450", lng: "-80.8120", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "Optimist Hall", slug: "optimist-hall-charlotte", city: "Charlotte", neighborhood: "South End", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 398, description: "Historic textile mill turned food hall with 20+ vendors.", priceRange: "$$", phone: "(704) 603-0400", address: "1115 N Brevard St, Charlotte, NC", lat: "35.2320", lng: "-80.8330", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
+      { name: "The Asbury", slug: "the-asbury-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 4, rankDelta: 0, totalRatings: 356, description: "Farm-to-table Southern fine dining in the Dunhill Hotel.", priceRange: "$$$$", phone: "(704) 342-1193", address: "237 N Tryon St, Charlotte, NC", lat: "35.2280", lng: "-80.8430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Not Just Coffee", slug: "not-just-coffee-charlotte", city: "Charlotte", neighborhood: "South End", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Charlotte's original specialty coffee roaster.", priceRange: "$$", phone: "(704) 831-7799", address: "224 E 7th St, Charlotte, NC", lat: "35.2260", lng: "-80.8390", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "Mac's Speed Shop", slug: "macs-speed-shop-charlotte", city: "Charlotte", neighborhood: "South End", category: "bbq", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 5, rankDelta: 0, totalRatings: 423, description: "BBQ and bikes. Legendary pulled pork and craft beer selection.", priceRange: "$$", phone: "(704) 522-6227", address: "2511 South Blvd, Charlotte, NC", lat: "35.2080", lng: "-80.8570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Amelie's French Bakery", slug: "amelies-french-bakery-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "24-hour French bakery and cafe. Charlotte institution.", priceRange: "$", phone: "(704) 376-1781", address: "2424 N Davidson St, Charlotte, NC", lat: "35.2410", lng: "-80.8140", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+      { name: "The Broken Spoke", slug: "broken-spoke-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bar", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Dive bar meets craft cocktails in Plaza Midwood.", priceRange: "$$", phone: "(704) 375-2882", address: "2416 Central Ave, Charlotte, NC", lat: "35.2185", lng: "-80.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
+      { name: "Leah & Louise", slug: "leah-and-louise-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 6, rankDelta: 0, totalRatings: 289, description: "Modern juke joint with Southern and global soul food.", priceRange: "$$$", phone: "(704) 343-1010", address: "301 E 7th St, Charlotte, NC", lat: "35.2275", lng: "-80.8370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Sunflour Baking Company", slug: "sunflour-baking-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Scratch-made pastries and brunch in the NoDa arts scene.", priceRange: "$$", phone: "(704) 741-0398", address: "220 E 36th St, Charlotte, NC", lat: "35.2440", lng: "-80.8160", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
+    ];
+    RALEIGH_BUSINESSES = [
+      { name: "Beasley's Chicken + Honey", slug: "beasleys-chicken-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Ashley Christensen's fried chicken temple. James Beard winner.", priceRange: "$$", phone: "(919) 322-0127", address: "237 S Wilmington St, Raleigh, NC", lat: "35.7760", lng: "-78.6380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
+      { name: "Poole's Diner", slug: "pooles-diner-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 456, description: "Farm-to-fork pioneer in a retro 1940s diner space.", priceRange: "$$$", phone: "(919) 832-4477", address: "426 S McDowell St, Raleigh, NC", lat: "35.7740", lng: "-78.6400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
+      { name: "The Pit Authentic Barbecue", slug: "the-pit-bbq-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "bbq", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Whole-hog Eastern NC barbecue in the Warehouse District.", priceRange: "$$", phone: "(919) 890-4500", address: "328 W Davie St, Raleigh, NC", lat: "35.7720", lng: "-78.6430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
+      { name: "Brewery Bhavana", slug: "brewery-bhavana-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 378, description: "Brewery, bookstore, dim sum parlor, and flower shop. All in one.", priceRange: "$$", phone: "(919) 829-9998", address: "218 S Blount St, Raleigh, NC", lat: "35.7755", lng: "-78.6360", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
+      { name: "Jolie", slug: "jolie-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "French-inspired neighborhood bistro in Five Points.", priceRange: "$$$", phone: "(919) 896-8783", address: "620 Glenwood Ave, Raleigh, NC", lat: "35.7870", lng: "-78.6470", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
+      { name: "Sitti", slug: "sitti-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "restaurant", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Lebanese cuisine on Glenwood South. Raleigh's Mediterranean gem.", priceRange: "$$", phone: "(919) 239-4070", address: "137 S Wilmington St, Raleigh, NC", lat: "35.7770", lng: "-78.6375", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
+      { name: "Videri Chocolate Factory", slug: "videri-chocolate-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "Bean-to-bar chocolate factory with cafe. Raleigh sweet spot.", priceRange: "$$", phone: "(919) 831-1180", address: "327 W Davie St, Raleigh, NC", lat: "35.7718", lng: "-78.6428", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
+      { name: "La Farm Bakery", slug: "la-farm-bakery-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "bakery", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan French bakery. Best bread in the Triangle.", priceRange: "$$", phone: "(919) 657-0657", address: "4248 NW Cary Pkwy, Raleigh, NC", lat: "35.8010", lng: "-78.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
+      { name: "Clyde Cooper's Barbecue", slug: "clyde-coopers-bbq-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bbq", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 423, description: "Eastern NC BBQ since 1938. Raleigh's oldest barbecue joint.", priceRange: "$", phone: "(919) 832-7614", address: "109 E Davie St, Raleigh, NC", lat: "35.7730", lng: "-78.6370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
+      { name: "Hummingbird", slug: "hummingbird-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Coffee and cocktails with Raleigh rooftop views.", priceRange: "$$", phone: "(919) 301-1749", address: "223 S Wilmington St, Raleigh, NC", lat: "35.7758", lng: "-78.6378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
+    ];
+    ALL_CITY_BUSINESSES = [
+      ...AUSTIN_BUSINESSES,
+      ...HOUSTON_BUSINESSES,
+      ...SAN_ANTONIO_BUSINESSES,
+      ...FORT_WORTH_BUSINESSES,
+      ...OKC_BUSINESSES,
+      ...NOLA_BUSINESSES,
+      ...MEMPHIS_BUSINESSES,
+      ...NASHVILLE_BUSINESSES,
+      ...CHARLOTTE_BUSINESSES,
+      ...RALEIGH_BUSINESSES
+    ];
+    isDirectRun = process.argv[1]?.includes("seed-cities");
+    if (isDirectRun) {
+      seedCities().then(() => process.exit(0)).catch((err) => {
+        console.error("Seed failed:", err);
+        process.exit(1);
+      });
+    }
+  }
+});
+
+// server/email-tracking.ts
+import crypto3 from "crypto";
+function findEvent(eventId) {
+  return events.find((e) => e.id === eventId);
+}
+function trackEmailSent(to, template, metadata) {
+  const id = crypto3.randomUUID();
+  const event = {
+    id,
+    to,
+    template,
+    sentAt: /* @__PURE__ */ new Date(),
+    status: "sent",
+    metadata
+  };
+  events.push(event);
+  if (events.length > MAX_EVENTS) {
+    events.splice(0, events.length - MAX_EVENTS);
+  }
+  log(`Email sent to=${to} template=${template} id=${id}`);
+  return id;
+}
+function trackEmailOpened(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "opened";
+  event.openedAt = /* @__PURE__ */ new Date();
+  log(`Email opened id=${eventId}`);
+}
+function trackEmailClicked(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "clicked";
+  event.clickedAt = /* @__PURE__ */ new Date();
+  log(`Email clicked id=${eventId}`);
+}
+function trackEmailFailed(eventId, reason) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "failed";
+  event.metadata = { ...event.metadata, failureReason: reason };
+  log(`Email failed id=${eventId} reason=${reason}`);
+}
+function trackEmailBounced(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "bounced";
+  log(`Email bounced id=${eventId}`);
+}
+function getEmailStats() {
+  const total = events.length;
+  const count15 = (s) => events.filter((e) => e.status === s).length;
+  const sent = count15("sent");
+  const delivered = count15("delivered");
+  const opened = count15("opened");
+  const clicked = count15("clicked");
+  const bounced = count15("bounced");
+  const failed = count15("failed");
+  const openRate = total > 0 ? (opened + clicked) / total : 0;
+  const clickRate = total > 0 ? clicked / total : 0;
+  return { total, sent, delivered, opened, clicked, bounced, failed, openRate, clickRate };
+}
+var MAX_EVENTS, events;
+var init_email_tracking = __esm({
+  "server/email-tracking.ts"() {
+    "use strict";
+    init_logger();
+    MAX_EVENTS = 1e3;
+    events = [];
   }
 });
 
 // server/email.ts
 var email_exports = {};
 __export(email_exports, {
+  sendBetaInviteEmail: () => sendBetaInviteEmail,
   sendClaimAdminNotification: () => sendClaimAdminNotification,
+  sendClaimApprovedEmail: () => sendClaimApprovedEmail,
   sendClaimConfirmationEmail: () => sendClaimConfirmationEmail,
+  sendClaimRejectedEmail: () => sendClaimRejectedEmail,
   sendEmail: () => sendEmail,
+  sendPasswordResetEmail: () => sendPasswordResetEmail,
   sendPaymentReceiptEmail: () => sendPaymentReceiptEmail,
+  sendVerificationEmail: () => sendVerificationEmail,
   sendWelcomeEmail: () => sendWelcomeEmail
 });
+async function sendWithRetry(payload, maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: FROM_ADDRESS,
+          to: [payload.to],
+          subject: payload.subject,
+          html: payload.html,
+          text: payload.text
+        })
+      });
+      if (res.ok) {
+        emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
+        return true;
+      }
+      const body = await res.text();
+      if (res.status < 500 && res.status !== 429) {
+        emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
+        return false;
+      }
+      emailLog.warn(`Resend API ${res.status} (attempt ${attempt + 1}/${maxRetries}): ${body.slice(0, 100)}`);
+    } catch (err) {
+      emailLog.warn(`Email send error (attempt ${attempt + 1}/${maxRetries}): ${err.message}`);
+    }
+    if (attempt < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+    }
+  }
+  emailLog.error(`Email to ${payload.to} failed after ${maxRetries} retries`);
+  return false;
+}
 async function sendEmail(payload) {
+  const templateName = payload.subject.slice(0, 50);
+  const trackingId = trackEmailSent(payload.to, templateName);
   if (!RESEND_API_KEY) {
     emailLog.info(`[DEV] To: ${payload.to} | Subject: ${payload.subject}`);
     return;
   }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        from: FROM_ADDRESS,
-        to: [payload.to],
-        subject: payload.subject,
-        html: payload.html,
-        text: payload.text
-      })
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      emailLog.error(`Resend API error ${res.status}: ${body.slice(0, 200)}`);
-    } else {
-      emailLog.info(`Sent to ${payload.to}: ${payload.subject}`);
-    }
-  } catch (err) {
-    emailLog.error(`Email send failed: ${err.message}`);
+  const success = await sendWithRetry(payload);
+  if (!success) {
+    trackEmailFailed(trackingId, "Resend API failed after retries");
   }
 }
 async function sendWelcomeEmail(params) {
@@ -1974,6 +4178,291 @@ Questions? Contact support@topranker.com
     text: text2
   });
 }
+async function sendClaimApprovedEmail(params) {
+  const { email, displayName, businessName, businessSlug } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Approved!</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, your claim for <strong>${businessName}</strong> has been approved.
+            You are now the verified owner.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">What You Can Do Now</p>
+            <ul style="margin:8px 0 0;padding-left:18px;color:#0D1B2A;font-size:14px;line-height:1.8;">
+              <li>Access your business dashboard with analytics</li>
+              <li>Respond to customer ratings</li>
+              <li>Display the verified owner badge</li>
+            </ul>
+          </div>
+          <a href="https://topranker.com/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            View Your Dashboard
+          </a>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+Your claim for ${businessName} has been approved! You are now the verified owner.
+
+What you can do now:
+- Access your business dashboard with analytics
+- Respond to customer ratings
+- Display the verified owner badge
+
+View your dashboard: https://topranker.com/business/${businessSlug}/dashboard
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Claim approved: ${businessName}`,
+    html,
+    text: text2
+  });
+}
+async function sendClaimRejectedEmail(params) {
+  const { email, displayName, businessName } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Claim Update</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we were unable to verify your claim for <strong>${businessName}</strong> at this time.
+          </p>
+          <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin-bottom:20px;">
+            <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Next Steps</p>
+            <p style="margin:8px 0 0;color:#0D1B2A;font-size:14px;line-height:1.6;">
+              If you believe this was in error, please contact us at
+              <a href="mailto:support@topranker.com" style="color:#C49A1A;">support@topranker.com</a>
+              with additional verification documents.
+            </p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+We were unable to verify your claim for ${businessName} at this time.
+
+If you believe this was in error, please contact us at support@topranker.com with additional verification documents.
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Claim update: ${businessName}`,
+    html,
+    text: text2
+  });
+}
+async function sendVerificationEmail(params) {
+  const { email, displayName, token } = params;
+  const firstName = displayName.split(" ")[0];
+  const verifyUrl = `https://topranker.com/verify-email?token=${token}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Verify Your Email</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, please verify your email address to complete your TopRanker account setup.
+          </p>
+          <a href="${verifyUrl}" style="display:block;text-align:center;background:#C49A1A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Verify Email Address
+          </a>
+          <p style="margin:20px 0 0;color:#888;font-size:12px;line-height:1.5;">
+            If you didn't create a TopRanker account, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+Please verify your email address to complete your TopRanker account setup.
+
+Verify here: ${verifyUrl}
+
+If you didn't create a TopRanker account, you can safely ignore this email.
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: "Verify your TopRanker email",
+    html,
+    text: text2
+  });
+}
+async function sendPasswordResetEmail(params) {
+  const { email, displayName, token } = params;
+  const firstName = displayName.split(" ")[0];
+  const resetUrl = `https://topranker.com/reset-password?token=${token}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Reset Your Password</h2>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, we received a request to reset your password. Click the button below to choose a new one.
+          </p>
+          <a href="${resetUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Reset Password
+          </a>
+          <p style="margin:20px 0 0;color:#888;font-size:12px;line-height:1.5;">
+            This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trust-weighted rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+We received a request to reset your TopRanker password.
+
+Reset here: ${resetUrl}
+
+This link expires in 1 hour.
+If you didn't request a password reset, you can safely ignore this email.
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: "Reset your TopRanker password",
+    html,
+    text: text2
+  });
+}
+async function sendBetaInviteEmail(params) {
+  const { email, displayName, referralCode, invitedBy } = params;
+  const firstName = displayName.split(" ")[0];
+  const joinUrl = `https://topranker.com/join?ref=${encodeURIComponent(referralCode)}`;
+  const inviteContext = invitedBy ? `${invitedBy} thinks you'd be a great addition to our trust network.` : `You've been selected as one of our first 25 beta testers.`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:28px 24px;text-align:center;">
+          <p style="margin:0;font-size:12px;letter-spacing:3px;color:#C49A1A;font-weight:700;">BETA INVITATION</p>
+          <h1 style="margin:8px 0 0;font-size:24px;color:#FFFFFF;font-weight:900;">Welcome to TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:28px 24px;">
+          <p style="margin:0 0 16px;color:#333;font-size:15px;line-height:1.6;">
+            Hi ${firstName},
+          </p>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            ${inviteContext}
+          </p>
+          <p style="margin:0 0 20px;color:#555;font-size:15px;line-height:1.6;">
+            TopRanker is building <strong>trustworthy restaurant rankings</strong> \u2014 no fake reviews, no pay-to-play. Your ratings carry real weight based on your credibility as a reviewer.
+          </p>
+          <a href="${joinUrl}" style="display:block;text-align:center;background:#C49A1A;color:#FFFFFF;padding:16px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+            Join the Beta
+          </a>
+          <p style="margin:20px 0 0;color:#555;font-size:14px;line-height:1.6;">
+            <strong>What to expect:</strong>
+          </p>
+          <ul style="color:#555;font-size:14px;line-height:1.8;padding-left:20px;">
+            <li>Rate restaurants honestly \u2014 your opinion shapes the rankings</li>
+            <li>Build your credibility score over time</li>
+            <li>Invite friends who care about honest dining reviews</li>
+          </ul>
+          <p style="margin:16px 0 0;color:#888;font-size:12px;">
+            Your referral code: <strong style="color:#C49A1A;">${referralCode}</strong>
+          </p>
+        </td></tr>
+        <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker Beta \u2014 Trust-weighted rankings for restaurants</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName},
+
+${inviteContext}
+
+TopRanker is building trustworthy restaurant rankings \u2014 no fake reviews, no pay-to-play. Your ratings carry real weight based on your credibility as a reviewer.
+
+Join the beta: ${joinUrl}
+
+What to expect:
+- Rate restaurants honestly \u2014 your opinion shapes the rankings
+- Build your credibility score over time
+- Invite friends who care about honest dining reviews
+
+Your referral code: ${referralCode}
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: "You're invited to TopRanker Beta",
+    html,
+    text: text2
+  });
+}
 async function sendClaimAdminNotification(params) {
   const adminEmail = "admin@topranker.com";
   await sendEmail({
@@ -1993,116 +4482,10 @@ var init_email = __esm({
   "server/email.ts"() {
     "use strict";
     init_logger();
+    init_email_tracking();
     emailLog = log.tag("Email");
     RESEND_API_KEY = process.env.RESEND_API_KEY || "";
     FROM_ADDRESS = process.env.EMAIL_FROM || "TopRanker <noreply@topranker.com>";
-  }
-});
-
-// server/seed-cities.ts
-var seed_cities_exports = {};
-__export(seed_cities_exports, {
-  seedCities: () => seedCities
-});
-async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 4 cities...`);
-  let seeded = 0;
-  for (const biz of ALL_CITY_BUSINESSES) {
-    try {
-      await db.insert(businesses).values({
-        name: biz.name,
-        slug: biz.slug,
-        category: biz.category,
-        city: biz.city,
-        neighborhood: biz.neighborhood,
-        address: biz.address,
-        phone: biz.phone,
-        lat: biz.lat,
-        lng: biz.lng,
-        weightedScore: biz.weightedScore,
-        rawAvgScore: biz.rawAvgScore,
-        rankPosition: biz.rankPosition,
-        rankDelta: biz.rankDelta,
-        totalRatings: biz.totalRatings,
-        description: biz.description,
-        priceRange: biz.priceRange,
-        isOpenNow: biz.isOpenNow,
-        photoUrl: biz.photoUrl || null,
-        isActive: true,
-        dataSource: "admin"
-      });
-      seeded++;
-    } catch (err) {
-      if (err.message?.includes("unique") || err.message?.includes("duplicate")) {
-        console.log(`  Skipping ${biz.name} (already exists)`);
-      } else {
-        console.error(`  Failed to seed ${biz.name}:`, err.message);
-      }
-    }
-  }
-  console.log(`
-Seeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7)");
-}
-var AUSTIN_BUSINESSES, HOUSTON_BUSINESSES, SAN_ANTONIO_BUSINESSES, FORT_WORTH_BUSINESSES, ALL_CITY_BUSINESSES, isDirectRun;
-var init_seed_cities = __esm({
-  "server/seed-cities.ts"() {
-    "use strict";
-    init_db();
-    init_schema();
-    AUSTIN_BUSINESSES = [
-      { name: "Franklin Barbecue", slug: "franklin-barbecue-austin", city: "Austin", neighborhood: "East Austin", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "The most famous BBQ in Texas. Worth the 4-hour wait.", priceRange: "$$", phone: "(512) 653-1187", address: "900 E 11th St, Austin, TX", lat: "30.2701", lng: "-97.7267", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Uchi", slug: "uchi-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "James Beard-winning Japanese farmhouse dining.", priceRange: "$$$$", phone: "(512) 916-4808", address: "801 S Lamar Blvd, Austin, TX", lat: "30.2561", lng: "-97.7628", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop" },
-      { name: "Torchy's Tacos", slug: "torchys-tacos-austin", city: "Austin", neighborhood: "South Congress", category: "street_food", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Damn good tacos. The Trailer Park is legendary.", priceRange: "$", phone: "(512) 366-0537", address: "1311 S 1st St, Austin, TX", lat: "30.2502", lng: "-97.7540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Salt Lick BBQ", slug: "salt-lick-bbq-austin", city: "Austin", neighborhood: "Driftwood", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 1, totalRatings: 389, description: "Open-pit BBQ in the Hill Country since 1967.", priceRange: "$$", phone: "(512) 858-4959", address: "18300 FM 1826, Driftwood, TX", lat: "30.1561", lng: "-97.9410", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Ramen Tatsu-Ya", slug: "ramen-tatsu-ya-austin", city: "Austin", neighborhood: "North Loop", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Austin's best ramen. No compromise.", priceRange: "$$", phone: "(512) 893-5561", address: "8557 Research Blvd, Austin, TX", lat: "30.3561", lng: "-97.7310", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
-      { name: "Odd Duck", slug: "odd-duck-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Farm-to-table seasonal small plates.", priceRange: "$$$", phone: "(512) 433-6521", address: "1201 S Lamar Blvd, Austin, TX", lat: "30.2501", lng: "-97.7630", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Jo's Coffee", slug: "jos-coffee-austin", city: "Austin", neighborhood: "South Congress", category: "cafe", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "I Love You So Much wall. Iconic SoCo coffee.", priceRange: "$", phone: "(512) 444-3800", address: "1300 S Congress Ave, Austin, TX", lat: "30.2490", lng: "-97.7491", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Rainey Street Bar District", slug: "rainey-street-austin", city: "Austin", neighborhood: "Rainey Street", category: "bar", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Historic bungalows turned into Austin's hottest bar street.", priceRange: "$$", phone: "(512) 555-0001", address: "Rainey Street, Austin, TX", lat: "30.2580", lng: "-97.7380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-austin", city: "Austin", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.200", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Texas institution. Honey butter chicken biscuit.", priceRange: "$", phone: "(512) 555-0002", address: "Multiple locations, Austin, TX", lat: "30.2672", lng: "-97.7431", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Quack's 43rd St Bakery", slug: "quacks-bakery-austin", city: "Austin", neighborhood: "Hyde Park", category: "bakery", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Neighborhood bakery with legendary carrot cake.", priceRange: "$", phone: "(512) 453-3399", address: "411 E 43rd St, Austin, TX", lat: "30.3051", lng: "-97.7230", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    HOUSTON_BUSINESSES = [
-      { name: "Killen's Barbecue", slug: "killens-bbq-houston", city: "Houston", neighborhood: "Pearland", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "Pitmaster Ronnie Killen's award-winning BBQ.", priceRange: "$$", phone: "(281) 485-2272", address: "3613 E Broadway St, Pearland, TX", lat: "29.5633", lng: "-95.2763", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Pappas Bros. Steakhouse", slug: "pappas-bros-houston", city: "Houston", neighborhood: "Galleria", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Houston's finest steakhouse. USDA Prime aged beef.", priceRange: "$$$$", phone: "(713) 780-7352", address: "5839 Westheimer Rd, Houston, TX", lat: "29.7372", lng: "-95.4888", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Crawfish & Noodles", slug: "crawfish-noodles-houston", city: "Houston", neighborhood: "Chinatown", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 1, totalRatings: 378, description: "Vietnamese-Cajun fusion that started a revolution.", priceRange: "$$", phone: "(281) 988-8098", address: "11360 Bellaire Blvd, Houston, TX", lat: "29.7045", lng: "-95.5358", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
-      { name: "Tacos Tierra Caliente", slug: "tacos-tierra-caliente-houston", city: "Houston", neighborhood: "Montrose", category: "street_food", weightedScore: "4.600", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Late-night taco truck with the best al pastor in Houston.", priceRange: "$", phone: "(713) 555-0003", address: "1220 Westheimer Rd, Houston, TX", lat: "29.7414", lng: "-95.3917", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Buc-ee's", slug: "buc-ees-houston", city: "Houston", neighborhood: "Baytown", category: "fast_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Texas-sized gas station with legendary BBQ and beaver nuggets.", priceRange: "$", phone: "(979) 238-6390", address: "4500 I-10 East, Baytown, TX", lat: "29.7827", lng: "-94.9594", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Blacksmith Coffee", slug: "blacksmith-coffee-houston", city: "Houston", neighborhood: "Montrose", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Third-wave coffee in a beautiful Montrose space.", priceRange: "$$", phone: "(713) 555-0004", address: "1018 Westheimer Rd, Houston, TX", lat: "29.7413", lng: "-95.3870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Julep", slug: "julep-houston", city: "Houston", neighborhood: "Washington Ave", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Southern cocktail bar with craft juleps and live music.", priceRange: "$$$", phone: "(713) 869-4383", address: "1919 Washington Ave, Houston, TX", lat: "29.7643", lng: "-95.3842", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Common Bond Bakery", slug: "common-bond-houston", city: "Houston", neighborhood: "Montrose", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "European-inspired bakery and cafe.", priceRange: "$$", phone: "(713) 529-3535", address: "1706 Westheimer Rd, Houston, TX", lat: "29.7434", lng: "-95.3977", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    SAN_ANTONIO_BUSINESSES = [
-      { name: "2M Smokehouse", slug: "2m-smokehouse-san-antonio", city: "San Antonio", neighborhood: "South Side", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "Tex-Mex meets BBQ. The brisket enchiladas are legendary.", priceRange: "$$", phone: "(210) 885-9352", address: "2731 S WW White Rd, San Antonio, TX", lat: "29.3921", lng: "-98.4347", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Mi Tierra Cafe", slug: "mi-tierra-san-antonio", city: "San Antonio", neighborhood: "Market Square", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "Open 24 hours since 1941. The Riverwalk institution.", priceRange: "$$", phone: "(210) 225-1262", address: "218 Produce Row, San Antonio, TX", lat: "29.4246", lng: "-98.4969", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Garcia's Mexican Food", slug: "garcias-san-antonio", city: "San Antonio", neighborhood: "West Side", category: "street_food", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "No-frills Tex-Mex. The puffy tacos are life-changing.", priceRange: "$", phone: "(210) 735-4525", address: "842 Fredericksburg Rd, San Antonio, TX", lat: "29.4521", lng: "-98.5121", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
-      { name: "Estate Coffee", slug: "estate-coffee-san-antonio", city: "San Antonio", neighborhood: "Southtown", category: "cafe", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 178, description: "Specialty coffee in the heart of Southtown arts district.", priceRange: "$$", phone: "(210) 555-0005", address: "1320 S Alamo St, San Antonio, TX", lat: "29.4150", lng: "-98.4901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-san-antonio", city: "San Antonio", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "Born right here in San Antonio. The HQ city.", priceRange: "$", phone: "(210) 555-0006", address: "Multiple locations, San Antonio, TX", lat: "29.4241", lng: "-98.4936", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "The Esquire Tavern", slug: "esquire-tavern-san-antonio", city: "San Antonio", neighborhood: "Riverwalk", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "The longest bar in Texas, right on the Riverwalk.", priceRange: "$$", phone: "(210) 222-2521", address: "155 E Commerce St, San Antonio, TX", lat: "29.4234", lng: "-98.4876", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Bird Bakery", slug: "bird-bakery-san-antonio", city: "San Antonio", neighborhood: "Alamo Heights", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Cupcakes and cookies by Elizabeth Chambers.", priceRange: "$$", phone: "(210) 804-2473", address: "5912 Broadway, San Antonio, TX", lat: "29.4633", lng: "-98.4623", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" }
-    ];
-    FORT_WORTH_BUSINESSES = [
-      { name: "Heim Barbecue", slug: "heim-bbq-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "restaurant", weightedScore: "4.700", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Bacon burnt ends put Heim on the map. Texas Monthly Top 50.", priceRange: "$$", phone: "(817) 882-6970", address: "1109 W Magnolia Ave, Fort Worth, TX", lat: "32.7185", lng: "-97.3448", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Joe T. Garcia's", slug: "joe-t-garcias-fort-worth", city: "Fort Worth", neighborhood: "Northside", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "The legendary patio. Enchiladas and fajitas only.", priceRange: "$$", phone: "(817) 626-4356", address: "2201 N Commerce St, Fort Worth, TX", lat: "32.7665", lng: "-97.3292", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Salsa Limon", slug: "salsa-limon-fort-worth", city: "Fort Worth", neighborhood: "Near South", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Mexican street food truck turned brick-and-mortar.", priceRange: "$", phone: "(817) 927-4328", address: "4200 S Freeway, Fort Worth, TX", lat: "32.7100", lng: "-97.3232", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Avoca Coffee", slug: "avoca-coffee-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "cafe", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Fort Worth's premier specialty coffee roaster.", priceRange: "$$", phone: "(817) 677-6741", address: "1311 W Magnolia Ave, Fort Worth, TX", lat: "32.7180", lng: "-97.3465", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-fort-worth", city: "Fort Worth", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Texas institution. Always there at 2am.", priceRange: "$", phone: "(817) 555-0007", address: "Multiple locations, Fort Worth, TX", lat: "32.7555", lng: "-97.3308", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "The Usual", slug: "the-usual-fort-worth", city: "Fort Worth", neighborhood: "Sundance Square", category: "bar", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Craft cocktail bar in Sundance Square.", priceRange: "$$$", phone: "(817) 810-0114", address: "310 Houston St, Fort Worth, TX", lat: "32.7548", lng: "-97.3313", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Swiss Pastry Shop", slug: "swiss-pastry-fort-worth", city: "Fort Worth", neighborhood: "Camp Bowie", category: "bakery", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Fort Worth's oldest bakery. Since 1950.", priceRange: "$", phone: "(817) 732-5661", address: "3936 W Vickery Blvd, Fort Worth, TX", lat: "32.7370", lng: "-97.3698", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    ALL_CITY_BUSINESSES = [
-      ...AUSTIN_BUSINESSES,
-      ...HOUSTON_BUSINESSES,
-      ...SAN_ANTONIO_BUSINESSES,
-      ...FORT_WORTH_BUSINESSES
-    ];
-    isDirectRun = process.argv[1]?.includes("seed-cities");
-    if (isDirectRun) {
-      seedCities().then(() => process.exit(0)).catch((err) => {
-        console.error("Seed failed:", err);
-        process.exit(1);
-      });
-    }
   }
 });
 
@@ -2131,7 +4514,59 @@ function verifyAndParseEvent(req) {
     return null;
   }
 }
+async function processSubscriptionEvent(event) {
+  const obj = event.data.object;
+  const metadata = obj.metadata || {};
+  const businessId = metadata.businessId;
+  if (!businessId) {
+    whLog.warn(`Subscription event ${event.type} missing businessId in metadata`);
+    return { updated: false };
+  }
+  const { updateBusinessSubscription: updateBusinessSubscription2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+  if (event.type === "checkout.session.completed") {
+    const subscriptionId = obj.subscription;
+    const customerId = obj.customer;
+    if (subscriptionId && customerId) {
+      await updateBusinessSubscription2(businessId, {
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscriptionId,
+        subscriptionStatus: "active"
+      });
+      whLog.info(`Subscription activated for business ${businessId}: ${subscriptionId}`);
+      return { updated: true };
+    }
+  }
+  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.created") {
+    const status = obj.status;
+    const periodEnd = obj.current_period_end;
+    const cancelAtPeriodEnd = obj.cancel_at_period_end;
+    const mappedStatus = cancelAtPeriodEnd ? "cancelled" : status === "active" ? "active" : status === "past_due" ? "past_due" : status === "canceled" ? "cancelled" : status === "trialing" ? "trialing" : "none";
+    await updateBusinessSubscription2(businessId, {
+      subscriptionStatus: mappedStatus,
+      subscriptionPeriodEnd: periodEnd ? new Date(periodEnd * 1e3) : void 0
+    });
+    whLog.info(`Subscription updated for business ${businessId}: ${mappedStatus}`);
+    return { updated: true };
+  }
+  if (event.type === "customer.subscription.deleted") {
+    await updateBusinessSubscription2(businessId, {
+      subscriptionStatus: "cancelled",
+      stripeSubscriptionId: null
+    });
+    whLog.info(`Subscription cancelled for business ${businessId}`);
+    return { updated: true };
+  }
+  if (event.type === "invoice.payment_failed") {
+    await updateBusinessSubscription2(businessId, { subscriptionStatus: "past_due" });
+    whLog.info(`Subscription past_due for business ${businessId}`);
+    return { updated: true };
+  }
+  return { updated: false };
+}
 async function processStripeEvent(event) {
+  if (SUBSCRIPTION_EVENTS.has(event.type)) {
+    return processSubscriptionEvent(event);
+  }
   const newStatus = STATUS_MAP[event.type];
   if (!newStatus) {
     whLog.info(`Ignoring event type: ${event.type}`);
@@ -2143,6 +4578,33 @@ async function processStripeEvent(event) {
   const updated = await updatePaymentStatusByStripeId(paymentIntentId, newStatus);
   if (!updated) {
     whLog.warn(`No payment record found for PI: ${paymentIntentId}`);
+  }
+  if (event.type === "payment_intent.succeeded") {
+    const metadata = obj.metadata || {};
+    if (metadata.type === "challenger_entry" && metadata.challengerId) {
+      try {
+        const { createChallenge: createChallenge2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const challengerBiz = await getBusinessById2(metadata.challengerId);
+        if (challengerBiz) {
+          const { getLeaderboard: getLeaderboard2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+          const leaderboard = await getLeaderboard2(challengerBiz.city, challengerBiz.category);
+          const defender = leaderboard.find((b) => b.id !== metadata.challengerId);
+          if (defender) {
+            await createChallenge2({
+              challengerId: metadata.challengerId,
+              defenderId: defender.id,
+              category: challengerBiz.category,
+              city: challengerBiz.city,
+              stripePaymentIntentId: paymentIntentId
+            });
+            whLog.info(`Challenger record created for PI: ${paymentIntentId}`);
+          }
+        }
+      } catch (err) {
+        whLog.error(`Failed to create challenger record: ${err.message}`);
+      }
+    }
   }
   return { updated: !!updated };
 }
@@ -2167,7 +4629,7 @@ async function handleStripeWebhook(req, res) {
     return res.status(500).json({ error: "Internal error processing webhook" });
   }
 }
-var whLog, STATUS_MAP;
+var whLog, STATUS_MAP, SUBSCRIPTION_EVENTS;
 var init_stripe_webhook = __esm({
   "server/stripe-webhook.ts"() {
     "use strict";
@@ -2179,6 +4641,322 @@ var init_stripe_webhook = __esm({
       "payment_intent.payment_failed": "failed",
       "charge.refunded": "refunded"
     };
+    SUBSCRIPTION_EVENTS = /* @__PURE__ */ new Set([
+      "customer.subscription.created",
+      "customer.subscription.updated",
+      "customer.subscription.deleted",
+      "invoice.payment_failed",
+      "checkout.session.completed"
+    ]);
+  }
+});
+
+// server/error-tracking.ts
+var error_tracking_exports = {};
+__export(error_tracking_exports, {
+  captureServerError: () => captureServerError,
+  errorHandlerMiddleware: () => errorHandlerMiddleware,
+  getErrorStats: () => getErrorStats,
+  getRecentServerErrors: () => getRecentServerErrors,
+  initErrorTracking: () => initErrorTracking
+});
+function initErrorTracking() {
+  if (SENTRY_DSN) {
+    errorLog.info("Error tracking initialized with Sentry DSN");
+    initialized = true;
+  } else {
+    errorLog.info("SENTRY_DSN not set \u2014 error tracking uses console fallback");
+  }
+  process.on("unhandledRejection", (reason) => {
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    captureServerError(err, { type: "unhandledRejection" }, "fatal");
+  });
+  process.on("uncaughtException", (err) => {
+    captureServerError(err, { type: "uncaughtException" }, "fatal");
+    setTimeout(() => process.exit(1), 2e3);
+  });
+}
+function captureServerError(error, context, severity = "error") {
+  const event = {
+    message: error.message,
+    stack: error.stack,
+    context,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    severity
+  };
+  recentErrors.unshift(event);
+  if (recentErrors.length > MAX_RECENT_ERRORS) {
+    recentErrors.length = MAX_RECENT_ERRORS;
+  }
+  if (initialized && SENTRY_DSN) {
+    errorLog.error(JSON.stringify({
+      sentry: true,
+      ...event
+    }));
+  } else {
+    errorLog.error(`${severity}: ${error.message}`, context);
+  }
+}
+function errorHandlerMiddleware(err, req, res, _next) {
+  const userId = req.user?.id;
+  const route = `${req.method} ${req.route?.path || req.path}`;
+  captureServerError(err, {
+    route,
+    userId,
+    query: req.query,
+    ip: req.ip
+  });
+  if (!res.headersSent) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+function getRecentServerErrors(limit = 20) {
+  return recentErrors.slice(0, limit);
+}
+function getErrorStats() {
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1e3;
+  return {
+    total: recentErrors.length,
+    fatal: recentErrors.filter((e) => e.severity === "fatal").length,
+    error: recentErrors.filter((e) => e.severity === "error").length,
+    warning: recentErrors.filter((e) => e.severity === "warning").length,
+    last24h: recentErrors.filter((e) => new Date(e.timestamp).getTime() > oneDayAgo).length
+  };
+}
+var errorLog, SENTRY_DSN, initialized, recentErrors, MAX_RECENT_ERRORS;
+var init_error_tracking = __esm({
+  "server/error-tracking.ts"() {
+    "use strict";
+    init_logger();
+    errorLog = log.tag("ErrorTracking");
+    SENTRY_DSN = process.env.SENTRY_DSN || "";
+    initialized = false;
+    recentErrors = [];
+    MAX_RECENT_ERRORS = 100;
+  }
+});
+
+// server/prerender.ts
+var prerender_exports = {};
+__export(prerender_exports, {
+  getPrerenderCacheStats: () => getPrerenderCacheStats,
+  invalidatePrerenderCache: () => invalidatePrerenderCache,
+  prerenderMiddleware: () => prerenderMiddleware
+});
+function isBot(userAgent) {
+  const ua = userAgent.toLowerCase();
+  return BOT_AGENTS.some((bot) => ua.includes(bot));
+}
+function getCached(key2) {
+  const entry = cache.get(key2);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    cache.delete(key2);
+    return null;
+  }
+  return entry.html;
+}
+function setCache(key2, html) {
+  if (cache.size >= CACHE_MAX) {
+    const firstKey = cache.keys().next().value;
+    if (firstKey) cache.delete(firstKey);
+  }
+  cache.set(key2, { html, timestamp: Date.now() });
+}
+function renderHtmlShell(meta) {
+  const escapedTitle = escapeHtml(meta.title);
+  const escapedDesc = escapeHtml(meta.description);
+  const imageTag = meta.image ? `<meta property="og:image" content="${escapeHtml(meta.image)}" />
+    <meta name="twitter:image" content="${escapeHtml(meta.image)}" />` : "";
+  const jsonLdTag = meta.jsonLd ? `<script type="application/ld+json">${JSON.stringify(meta.jsonLd)}</script>` : "";
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapedTitle}</title>
+    <meta name="description" content="${escapedDesc}" />
+    <link rel="canonical" href="${escapeHtml(meta.url)}" />
+    <meta property="og:title" content="${escapedTitle}" />
+    <meta property="og:description" content="${escapedDesc}" />
+    <meta property="og:url" content="${escapeHtml(meta.url)}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TopRanker" />
+    ${imageTag}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="${escapedTitle}" />
+    <meta name="twitter:description" content="${escapedDesc}" />
+    ${jsonLdTag}
+</head>
+<body>
+    <noscript>
+        <h1>${escapedTitle}</h1>
+        <p>${escapedDesc}</p>
+    </noscript>
+</body>
+</html>`;
+}
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+async function prerenderDish(slug, city) {
+  try {
+    const { getDishLeaderboardWithEntries: getDishLeaderboardWithEntries2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const board = await getDishLeaderboardWithEntries2(slug, city);
+    if (!board) return null;
+    const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+    const entries = board.entries || [];
+    const topNames = entries.slice(0, 3).map((e) => e.businessName).join(", ");
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: `Best ${board.dishName} in ${cityTitle}`,
+      description: `Community-ranked best ${board.dishName.toLowerCase()} in ${cityTitle}.`,
+      url: `${SITE_URL}/dish/${slug}`,
+      numberOfItems: entries.length,
+      itemListElement: entries.slice(0, 10).map((entry, idx) => ({
+        "@type": "ListItem",
+        position: idx + 1,
+        name: entry.businessName,
+        url: `${SITE_URL}/business/${entry.businessSlug}`
+      }))
+    };
+    return renderHtmlShell({
+      title: `Best ${board.dishName} in ${cityTitle} \u2014 TopRanker`,
+      description: `${entries.length} restaurants ranked by credibility-weighted reviews. Top spots: ${topNames || "Be the first to rate"}.`,
+      url: `${SITE_URL}/dish/${slug}`,
+      jsonLd
+    });
+  } catch (err) {
+    prerenderLog.error(`Dish prerender failed for ${slug}: ${err}`);
+    return null;
+  }
+}
+async function prerenderBusiness(slug) {
+  try {
+    const { getBusinessBySlug: getBusinessBySlug3 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const biz = await getBusinessBySlug3(slug);
+    if (!biz) return null;
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "Restaurant",
+      name: biz.name,
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: biz.city
+      },
+      aggregateRating: biz.totalRatings > 0 ? {
+        "@type": "AggregateRating",
+        ratingValue: biz.weightedScore,
+        ratingCount: biz.totalRatings,
+        bestRating: "5",
+        worstRating: "1"
+      } : void 0
+    };
+    return renderHtmlShell({
+      title: `${biz.name} \u2014 ${biz.category} in ${biz.city} \u2014 TopRanker`,
+      description: `${biz.name} ranked #${biz.currentRank || "unranked"} in ${biz.category} in ${biz.city}. ${biz.totalRatings} credibility-weighted ratings.`,
+      url: `${SITE_URL}/business/${slug}`,
+      image: biz.photoUrl || void 0,
+      jsonLd
+    });
+  } catch (err) {
+    prerenderLog.error(`Business prerender failed for ${slug}: ${err}`);
+    return null;
+  }
+}
+function prerenderMiddleware(req, res, next) {
+  const userAgent = req.headers["user-agent"] || "";
+  if (!isBot(userAgent)) {
+    next();
+    return;
+  }
+  const path3 = req.path;
+  const dishMatch = path3.match(/^\/dish\/([a-z0-9-]+)$/);
+  if (dishMatch) {
+    const slug = dishMatch[1];
+    const city = req.query.city || "dallas";
+    const cacheKey = `dish:${slug}:${city}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      prerenderLog.info(`Cache HIT: ${cacheKey}`);
+      res.type("text/html").send(cached);
+      return;
+    }
+    prerenderDish(slug, city).then((html) => {
+      if (html) {
+        setCache(cacheKey, html);
+        prerenderLog.info(`Prerendered: ${cacheKey}`);
+        res.type("text/html").send(html);
+      } else {
+        next();
+      }
+    }).catch(() => next());
+    return;
+  }
+  const bizMatch = path3.match(/^\/business\/([a-z0-9-]+)$/);
+  if (bizMatch) {
+    const slug = bizMatch[1];
+    const cacheKey = `biz:${slug}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+      prerenderLog.info(`Cache HIT: ${cacheKey}`);
+      res.type("text/html").send(cached);
+      return;
+    }
+    prerenderBusiness(slug).then((html) => {
+      if (html) {
+        setCache(cacheKey, html);
+        prerenderLog.info(`Prerendered: ${cacheKey}`);
+        res.type("text/html").send(html);
+      } else {
+        next();
+      }
+    }).catch(() => next());
+    return;
+  }
+  next();
+}
+function invalidatePrerenderCache(type, slug) {
+  const prefix = `${type}:${slug}`;
+  for (const key2 of cache.keys()) {
+    if (key2.startsWith(prefix)) {
+      cache.delete(key2);
+      prerenderLog.info(`Cache invalidated: ${key2}`);
+    }
+  }
+}
+function getPrerenderCacheStats() {
+  return { size: cache.size, maxSize: CACHE_MAX, ttlMs: CACHE_TTL_MS };
+}
+var prerenderLog, SITE_URL, BOT_AGENTS, CACHE_MAX, CACHE_TTL_MS, cache;
+var init_prerender = __esm({
+  "server/prerender.ts"() {
+    "use strict";
+    init_logger();
+    prerenderLog = log.tag("Prerender");
+    SITE_URL = process.env.SITE_URL || "https://topranker.com";
+    BOT_AGENTS = [
+      "googlebot",
+      "bingbot",
+      "slurp",
+      "duckduckbot",
+      "baiduspider",
+      "yandexbot",
+      "facebot",
+      "facebookexternalhit",
+      "twitterbot",
+      "linkedinbot",
+      "whatsapp",
+      "telegrambot",
+      "discordbot",
+      "slackbot",
+      "applebot",
+      "pinterestbot"
+    ];
+    CACHE_MAX = 200;
+    CACHE_TTL_MS = 5 * 60 * 1e3;
+    cache = /* @__PURE__ */ new Map();
   }
 });
 
@@ -2221,8 +4999,10 @@ var init_pricing = __esm({
 // server/payments.ts
 var payments_exports = {};
 __export(payments_exports, {
+  cancelSubscription: () => cancelSubscription,
   createChallengerPayment: () => createChallengerPayment,
   createDashboardProPayment: () => createDashboardProPayment,
+  createDashboardProSubscription: () => createDashboardProSubscription,
   createFeaturedPlacementPayment: () => createFeaturedPlacementPayment
 });
 async function createPaymentIntent(params) {
@@ -2282,6 +5062,83 @@ async function createDashboardProPayment(params) {
     customerEmail: params.customerEmail
   });
 }
+async function createDashboardProSubscription(params) {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (stripeKey) {
+    try {
+      const stripe = __require("stripe")(stripeKey);
+      let customerId = params.stripeCustomerId;
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: params.customerEmail,
+          metadata: { userId: params.userId, businessId: params.businessId }
+        });
+        customerId = customer.id;
+      }
+      const session2 = await stripe.checkout.sessions.create({
+        customer: customerId,
+        mode: "subscription",
+        line_items: [{
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: `Dashboard Pro: ${params.businessName}`,
+              description: "Advanced analytics and business insights \u2014 monthly subscription"
+            },
+            unit_amount: PRICING.dashboardPro.amountCents,
+            recurring: { interval: "month" }
+          },
+          quantity: 1
+        }],
+        success_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+        metadata: {
+          type: "dashboard_pro",
+          businessId: params.businessId,
+          userId: params.userId
+        },
+        subscription_data: {
+          metadata: {
+            type: "dashboard_pro",
+            businessId: params.businessId,
+            userId: params.userId
+          }
+        }
+      });
+      return {
+        id: session2.id,
+        url: session2.url,
+        status: "pending"
+      };
+    } catch (err) {
+      payLog.error("Stripe subscription error:", err.message);
+      throw new Error("Subscription checkout failed");
+    }
+  }
+  payLog.info(`Mock subscription: $49/mo | Dashboard Pro: ${params.businessName}`);
+  return {
+    id: `mock_cs_${Date.now()}`,
+    url: null,
+    status: "succeeded"
+  };
+}
+async function cancelSubscription(stripeSubscriptionId) {
+  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  if (stripeKey) {
+    try {
+      const stripe = __require("stripe")(stripeKey);
+      const sub = await stripe.subscriptions.update(stripeSubscriptionId, {
+        cancel_at_period_end: true
+      });
+      return { cancelAtPeriodEnd: sub.cancel_at_period_end };
+    } catch (err) {
+      payLog.error("Stripe cancel error:", err.message);
+      throw new Error("Subscription cancellation failed");
+    }
+  }
+  payLog.info(`Mock cancel subscription: ${stripeSubscriptionId}`);
+  return { cancelAtPeriodEnd: true };
+}
 async function createFeaturedPlacementPayment(params) {
   return createPaymentIntent({
     amount: PRICING.featuredPlacement.amountCents,
@@ -2310,7 +5167,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql8 } from "drizzle-orm";
+import { sql as sql13, eq as eq23, and as and15 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 async function seedDatabase() {
   console.log("Seeding database...");
@@ -2552,6 +5409,42 @@ async function seedDatabase() {
     }
   }
   console.log("Seeded dishes");
+  const SEED_DISH_BOARDS = [
+    { dishName: "Biryani", dishSlug: "biryani", dishEmoji: "\u{1F35B}", displayOrder: 1 },
+    { dishName: "Ramen", dishSlug: "ramen", dishEmoji: "\u{1F35C}", displayOrder: 2 },
+    { dishName: "Taco", dishSlug: "taco", dishEmoji: "\u{1F32E}", displayOrder: 3 },
+    { dishName: "Burger", dishSlug: "burger", dishEmoji: "\u{1F354}", displayOrder: 4 },
+    { dishName: "Coffee", dishSlug: "coffee", dishEmoji: "\u2615", displayOrder: 5 }
+  ];
+  for (const board of SEED_DISH_BOARDS) {
+    const [lb] = await db.insert(dishLeaderboards).values({
+      city: "dallas",
+      dishName: board.dishName,
+      dishSlug: board.dishSlug,
+      dishEmoji: board.dishEmoji,
+      status: "active",
+      displayOrder: board.displayOrder,
+      source: "system"
+    }).returning();
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq23(dishes.businessId, businesses.id)).where(and15(
+      eq23(businesses.city, "Dallas"),
+      sql13`${dishes.nameNormalized} ILIKE ${"%" + board.dishSlug + "%"}`
+    ));
+    const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
+    for (let i = 0; i < uniqueBizIds.length; i++) {
+      const biz = insertedBusinesses.find((b) => b.id === uniqueBizIds[i]);
+      if (!biz) continue;
+      await db.insert(dishLeaderboardEntries).values({
+        leaderboardId: lb.id,
+        businessId: biz.id,
+        dishScore: (4.5 - i * 0.3).toFixed(2),
+        dishRatingCount: Math.max(3, 15 - i * 3),
+        rankPosition: i + 1,
+        photoUrl: biz.photoUrl
+      });
+    }
+  }
+  console.log("Seeded dish leaderboards (5 boards for Dallas)");
   const spiceGarden = insertedBusinesses.find((b) => b.slug === "spice-garden-dallas");
   const yardKitchen = insertedBusinesses.find((b) => b.slug === "the-yard-kitchen-dallas");
   const luckyCat = insertedBusinesses.find((b) => b.slug === "lucky-cat-ramen-dallas");
@@ -2572,7 +5465,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql8`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql13`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -2696,12 +5589,564 @@ var init_seed = __esm({
   }
 });
 
+// server/notification-triggers.ts
+var notification_triggers_exports = {};
+__export(notification_triggers_exports, {
+  onClaimDecision: () => onClaimDecision,
+  onTierUpgrade: () => onTierUpgrade,
+  sendWeeklyDigestPush: () => sendWeeklyDigestPush,
+  startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
+});
+async function onTierUpgrade(memberId, pushToken, newTier) {
+  if (!pushToken) return;
+  try {
+    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+    const member = await getMemberById2(memberId);
+    const prefs = member?.notificationPrefs || {};
+    if (prefs.tierUpgrades === false) return;
+    await sendPushNotification(
+      [pushToken],
+      "You've been promoted!",
+      `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
+      { screen: "profile" }
+    );
+    triggerLog.info(`Tier upgrade push sent: ${memberId} \u2192 ${newTier}`);
+  } catch (err) {
+    triggerLog.error(`Tier upgrade push failed: ${memberId}`, err);
+  }
+}
+async function onClaimDecision(memberId, pushToken, businessName, approved) {
+  if (!pushToken) return;
+  try {
+    if (approved) {
+      await sendPushNotification(
+        [pushToken],
+        `Claim approved: ${businessName}`,
+        "You're now the verified owner. Access your dashboard to see analytics.",
+        { screen: "business" }
+      );
+    } else {
+      await sendPushNotification(
+        [pushToken],
+        `Claim update: ${businessName}`,
+        "Your claim could not be verified. Contact support for next steps.",
+        { screen: "profile" }
+      );
+    }
+    triggerLog.info(`Claim decision push sent: ${memberId}, approved=${approved}`);
+  } catch (err) {
+    triggerLog.error(`Claim decision push failed: ${memberId}`, err);
+  }
+}
+async function sendWeeklyDigestPush() {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { isNotNull: isNotNull3 } = await import("drizzle-orm");
+    const usersWithTokens = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      displayName: members4.displayName,
+      notificationPrefs: members4.notificationPrefs
+    }).from(members4).where(isNotNull3(members4.pushToken));
+    let sent = 0;
+    for (const user of usersWithTokens) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.weeklyDigest === false) continue;
+      const firstName = (user.displayName || "").split(" ")[0] || "there";
+      await sendPushNotification(
+        [user.pushToken],
+        "Your weekly rankings update",
+        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
+        { screen: "search" }
+      );
+      sent++;
+    }
+    triggerLog.info(`Weekly digest push sent to ${sent} users`);
+    return sent;
+  } catch (err) {
+    triggerLog.error("Weekly digest push failed:", err);
+    return 0;
+  }
+}
+function startWeeklyDigestScheduler() {
+  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(10, 0, 0, 0);
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog.info(`Weekly digest scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  const initialTimeout = setTimeout(() => {
+    sendWeeklyDigestPush();
+    setInterval(sendWeeklyDigestPush, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+var triggerLog;
+var init_notification_triggers = __esm({
+  "server/notification-triggers.ts"() {
+    "use strict";
+    init_push();
+    init_logger();
+    triggerLog = log.tag("NotifyTrigger");
+  }
+});
+
+// server/email-drip.ts
+async function sendEmail2(to, subject, html, text2) {
+  dripLog.info(`Sending drip: ${to} | ${subject}`);
+  await sendEmail({ to, subject, html, text: text2 });
+}
+function getDripStepForDay(daysSinceSignup) {
+  return DRIP_SEQUENCE.find((s) => s.day === daysSinceSignup);
+}
+async function sendDay2Email(params) {
+  const { email, displayName, city } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Top 5 near you, ${firstName}</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">You've been exploring ${city}'s rankings for 2 days now. Have you checked out the top spots in your neighborhood?</p>
+    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">See ${city}'s Top 5</a>
+  </td></tr>
+  ${BRAND_FOOTER}
+  </table></td></tr></table></body></html>`;
+  await sendEmail2(email, `Top 5 near you, ${firstName}`, html, `Top 5 restaurants near you in ${city}. Open TopRanker to explore.`);
+}
+async function sendDay3Email(params) {
+  const { email, displayName } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Your voice is unlocked! \u{1F389}</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, you've earned the right to rate businesses on TopRanker. Your ratings start at 0.10x weight \u2014 the more you rate, the more your voice matters.</p>
+    <div style="background:#F7F6F3;border-radius:10px;padding:14px;margin:16px 0;">
+      <p style="margin:0;color:#0D1B2A;font-size:13px;"><strong style="color:#C49A1A;">Your tier:</strong> New Member (0.10x)</p>
+      <p style="margin:4px 0 0;color:#888;font-size:12px;">Rate 10+ businesses to reach Regular (0.35x)</p>
+    </div>
+    <a href="https://topranker.com" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
+  </td></tr>
+  ${BRAND_FOOTER}
+  </table></td></tr></table></body></html>`;
+  await sendEmail2(email, `Your voice is unlocked, ${firstName}!`, html, `You can now rate businesses on TopRanker. Your voice matters.`);
+}
+async function sendDay7Email(params) {
+  const { email, displayName, city, ratingsCount, businessesRated } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Your first week on TopRanker</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">Here's what you accomplished in ${city}:</p>
+    <table width="100%" style="margin:16px 0;">
+      <tr>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:28px;font-weight:800;">${ratingsCount}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Ratings</p>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:28px;font-weight:800;">${businessesRated}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Businesses</p>
+        </td>
+      </tr>
+    </table>
+    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Keep Rating</a>
+  </td></tr>
+  ${BRAND_FOOTER}
+  </table></td></tr></table></body></html>`;
+  await sendEmail2(email, `Your first week, ${firstName}`, html, `Your first week: ${ratingsCount} ratings, ${businessesRated} businesses.`);
+}
+async function sendDay14Email(params) {
+  const { email, displayName, city } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Live challenges in ${city} \u26A1</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, the Challenger tab has live head-to-head competitions. Your weighted vote can decide which restaurant claims the #1 spot.</p>
+    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Vote in Live Challenges</a>
+  </td></tr>
+  ${BRAND_FOOTER}
+  </table></td></tr></table></body></html>`;
+  await sendEmail2(email, `Live challenges in ${city}`, html, `See live head-to-head challenges in ${city}. Your vote matters.`);
+}
+async function sendDay30Email(params) {
+  const { email, displayName, city, totalRatings, currentTier, credibilityScore } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">One month on TopRanker \u{1F389}</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, you've been shaping ${city}'s rankings for 30 days. Here's your impact:</p>
+    <table width="100%" style="margin:16px 0;">
+      <tr>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:24px;font-weight:800;">${totalRatings}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Total Ratings</p>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:24px;font-weight:800;">${currentTier}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Tier</p>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:24px;font-weight:800;">${credibilityScore}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Cred Score</p>
+        </td>
+      </tr>
+    </table>
+    <p style="color:#555;font-size:13px;text-align:center;">Thank you for being part of the trust movement.</p>
+    <a href="https://topranker.com" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:12px;">View Your Profile</a>
+  </td></tr>
+  ${BRAND_FOOTER}
+  </table></td></tr></table></body></html>`;
+  await sendEmail2(email, `Your first month, ${firstName}!`, html, `One month on TopRanker: ${totalRatings} ratings, ${currentTier} tier, ${credibilityScore} cred score.`);
+}
+var dripLog, DRIP_SEQUENCE, BRAND_HEADER, BRAND_FOOTER;
+var init_email_drip = __esm({
+  "server/email-drip.ts"() {
+    "use strict";
+    init_logger();
+    init_email();
+    dripLog = log.tag("EmailDrip");
+    DRIP_SEQUENCE = [
+      { day: 2, name: "top_5_neighborhood", send: sendDay2Email },
+      { day: 3, name: "rating_unlock", send: sendDay3Email },
+      { day: 7, name: "first_week_stats", send: sendDay7Email },
+      { day: 14, name: "challenger_intro", send: sendDay14Email },
+      { day: 30, name: "first_month_recap", send: sendDay30Email }
+    ];
+    BRAND_HEADER = `
+<tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+  <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+</td></tr>`;
+    BRAND_FOOTER = `
+<tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+  <p style="margin:0;color:#999;font-size:10px;">
+    TopRanker \u2014 Trust-weighted rankings<br>
+    <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+  </p>
+</td></tr>`;
+  }
+});
+
+// server/drip-scheduler.ts
+var drip_scheduler_exports = {};
+__export(drip_scheduler_exports, {
+  processDripEmails: () => processDripEmails,
+  startDripScheduler: () => startDripScheduler
+});
+import { isNotNull } from "drizzle-orm";
+async function processDripEmails() {
+  try {
+    const allMembers = await db.select({
+      id: members.id,
+      email: members.email,
+      displayName: members.displayName,
+      city: members.city,
+      username: members.username,
+      joinedAt: members.joinedAt,
+      notificationPrefs: members.notificationPrefs
+    }).from(members).where(isNotNull(members.email));
+    const now = Date.now();
+    let sent = 0;
+    for (const member of allMembers) {
+      if (!member.joinedAt) continue;
+      const daysSinceSignup = Math.floor((now - new Date(member.joinedAt).getTime()) / DAY_MS);
+      const step = getDripStepForDay(daysSinceSignup);
+      if (!step) continue;
+      const prefs = member.notificationPrefs || {};
+      if (prefs.emailDrip === false) continue;
+      try {
+        await step.send({
+          email: member.email,
+          displayName: member.displayName,
+          city: member.city,
+          username: member.username
+        });
+        dripLog2.info(`Drip "${step.name}" sent to ${member.id} (day ${daysSinceSignup})`);
+        sent++;
+      } catch (err) {
+        dripLog2.error(`Drip "${step.name}" failed for ${member.id}`, err);
+      }
+    }
+    dripLog2.info(`Drip run complete: ${sent} emails sent`);
+    return sent;
+  } catch (err) {
+    dripLog2.error("Drip processing failed:", err);
+    return 0;
+  }
+}
+function startDripScheduler() {
+  const now = /* @__PURE__ */ new Date();
+  const next9am = new Date(now);
+  next9am.setUTCHours(9, 0, 0, 0);
+  if (next9am <= now) next9am.setUTCDate(next9am.getUTCDate() + 1);
+  const msUntilFirst = next9am.getTime() - now.getTime();
+  dripLog2.info(`Drip scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  const initialTimeout = setTimeout(() => {
+    processDripEmails();
+    setInterval(processDripEmails, DAY_MS);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+var dripLog2, DAY_MS;
+var init_drip_scheduler = __esm({
+  "server/drip-scheduler.ts"() {
+    "use strict";
+    init_email_drip();
+    init_db();
+    init_schema();
+    init_logger();
+    dripLog2 = log.tag("DripScheduler");
+    DAY_MS = 24 * 60 * 60 * 1e3;
+  }
+});
+
+// server/email-owner-outreach.ts
+async function sendOwnerProUpgradeEmail(params) {
+  const { email, businessName, ownerName, totalRatings, weightedScore } = params;
+  const firstName = ownerName.split(" ")[0];
+  outreachLog.info(`Sending Pro upgrade: ${email} | ${businessName}`);
+  const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#F7F6F3;font-family:sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+  <tr><td align="center"><table width="100%" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;">
+  ${BRAND_HEADER2}
+  <tr><td style="padding:24px;">
+    <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Unlock ${businessName}'s full analytics</h2>
+    <p style="color:#555;font-size:14px;line-height:1.5;">Hi ${firstName}, ${businessName} has ${totalRatings} ratings with a weighted score of ${weightedScore.toFixed(1)}. Upgrade to Business Pro to get deeper insights and grow your ranking.</p>
+    <table width="100%" style="margin:16px 0;">
+      <tr>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:28px;font-weight:800;">${totalRatings}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Total Ratings</p>
+        </td>
+        <td style="width:8px;"></td>
+        <td style="text-align:center;padding:12px;background:#F7F6F3;border-radius:10px;">
+          <p style="margin:0;color:#C49A1A;font-size:28px;font-weight:800;">${weightedScore.toFixed(1)}</p>
+          <p style="margin:2px 0 0;color:#888;font-size:11px;">Weighted Score</p>
+        </td>
+      </tr>
+    </table>
+    <div style="border:1px solid #E8E6E1;border-radius:10px;padding:16px;margin:16px 0;">
+      <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Business Pro \u2014 $49/mo</p>
+      <ul style="margin:8px 0 0;padding-left:18px;color:#0D1B2A;font-size:14px;line-height:1.8;">
+        <li>Rating trends and historical analytics</li>
+        <li>Competitor insights and benchmarking</li>
+        <li>Featured placement in search results</li>
+        <li>Priority support from the TopRanker team</li>
+      </ul>
+    </div>
+    <a href="https://topranker.com/business-pro" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Upgrade to Pro</a>
+  </td></tr>
+  ${BRAND_FOOTER2}
+  </table></td></tr></table></body></html>`;
+  const text2 = `Hi ${firstName},
+
+${businessName} has ${totalRatings} ratings with a weighted score of ${weightedScore.toFixed(1)}.
+
+Upgrade to Business Pro ($49/mo) to unlock:
+- Rating trends and historical analytics
+- Competitor insights and benchmarking
+- Featured placement in search results
+- Priority support from the TopRanker team
+
+Upgrade now: https://topranker.com/business-pro
+
+\u2014 The TopRanker Team`;
+  await sendEmail({
+    to: email,
+    subject: `Unlock ${businessName}'s full analytics`,
+    html,
+    text: text2
+  });
+}
+var outreachLog, BRAND_HEADER2, BRAND_FOOTER2;
+var init_email_owner_outreach = __esm({
+  "server/email-owner-outreach.ts"() {
+    "use strict";
+    init_email();
+    init_logger();
+    outreachLog = log.tag("OwnerOutreach");
+    BRAND_HEADER2 = `
+<tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+  <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+</td></tr>`;
+    BRAND_FOOTER2 = `
+<tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
+  <p style="margin:0;color:#999;font-size:10px;">
+    TopRanker \u2014 Trust-weighted rankings<br>
+    <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+  </p>
+</td></tr>`;
+  }
+});
+
+// server/outreach-history.ts
+function key(businessId, templateName) {
+  return `${businessId}:${templateName}`;
+}
+function recordOutreachSent(businessId, templateName) {
+  const k = key(businessId, templateName);
+  if (!store2.has(k)) {
+    store2.set(k, /* @__PURE__ */ new Set());
+  }
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  store2.get(k).add(today);
+  historyLog.info(`Recorded outreach: ${templateName} \u2192 business ${businessId} on ${today}`);
+}
+function hasOutreachBeenSent(businessId, templateName, withinDays) {
+  const k = key(businessId, templateName);
+  const dates = store2.get(k);
+  if (!dates || dates.size === 0) return false;
+  const cutoff = /* @__PURE__ */ new Date();
+  cutoff.setDate(cutoff.getDate() - withinDays);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  for (const d of dates) {
+    if (d >= cutoffStr) return true;
+  }
+  return false;
+}
+var historyLog, store2;
+var init_outreach_history = __esm({
+  "server/outreach-history.ts"() {
+    "use strict";
+    init_logger();
+    historyLog = log.tag("OutreachHistory");
+    store2 = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/outreach-scheduler.ts
+var outreach_scheduler_exports = {};
+__export(outreach_scheduler_exports, {
+  processOwnerOutreach: () => processOwnerOutreach,
+  startOutreachScheduler: () => startOutreachScheduler
+});
+import { eq as eq24, isNotNull as isNotNull2, and as and16 } from "drizzle-orm";
+async function processOwnerOutreach() {
+  let claimInvites = 0;
+  let proUpgrades = 0;
+  try {
+    const claimCandidates = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      slug: businesses.slug,
+      city: businesses.city,
+      totalRatings: businesses.totalRatings,
+      rankPosition: businesses.rankPosition
+    }).from(businesses).where(
+      and16(
+        eq24(businesses.isClaimed, false),
+        isNotNull2(businesses.rankPosition)
+      )
+    );
+    for (const biz of claimCandidates) {
+      if (biz.totalRatings < 5) continue;
+      outreachLog2.info(
+        `Claim candidate: ${biz.name} (${biz.slug}) \u2014 ${biz.totalRatings} ratings, rank #${biz.rankPosition} in ${biz.city}`
+      );
+      claimInvites++;
+    }
+    const proCandidates = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      ownerId: businesses.ownerId,
+      totalRatings: businesses.totalRatings,
+      weightedScore: businesses.weightedScore
+    }).from(businesses).where(
+      and16(
+        eq24(businesses.isClaimed, true),
+        isNotNull2(businesses.ownerId),
+        eq24(businesses.subscriptionStatus, "none")
+      )
+    );
+    for (const biz of proCandidates) {
+      if (biz.totalRatings < 10 || !biz.ownerId) continue;
+      if (hasOutreachBeenSent(String(biz.id), "pro_upgrade", 30)) {
+        outreachLog2.info(`Skipping Pro upgrade for ${biz.name} \u2014 sent within 30 days`);
+        continue;
+      }
+      try {
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq24(members.id, biz.ownerId));
+        if (!owner?.email) continue;
+        await sendOwnerProUpgradeEmail({
+          email: owner.email,
+          businessName: biz.name,
+          ownerName: owner.displayName || "Business Owner",
+          totalRatings: biz.totalRatings,
+          weightedScore: parseFloat(biz.weightedScore ?? "0")
+        });
+        recordOutreachSent(String(biz.id), "pro_upgrade");
+        proUpgrades++;
+      } catch (err) {
+        outreachLog2.error(`Pro upgrade email failed for business ${biz.id}`, err);
+      }
+    }
+    outreachLog2.info(
+      `Outreach complete: ${claimInvites} claim candidates logged, ${proUpgrades} Pro upgrade emails sent`
+    );
+  } catch (err) {
+    outreachLog2.error("Outreach processing failed:", err);
+  }
+  return { claimInvites, proUpgrades };
+}
+function startOutreachScheduler() {
+  const now = /* @__PURE__ */ new Date();
+  const nextWed = new Date(now);
+  const daysUntilWed = (3 - now.getUTCDay() + 7) % 7 || 7;
+  nextWed.setUTCDate(now.getUTCDate() + daysUntilWed);
+  nextWed.setUTCHours(10, 0, 0, 0);
+  if (nextWed <= now) nextWed.setUTCDate(nextWed.getUTCDate() + 7);
+  const msUntilFirst = nextWed.getTime() - now.getTime();
+  outreachLog2.info(
+    `Outreach scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h (next Wed 10am UTC)`
+  );
+  const initialTimeout = setTimeout(() => {
+    processOwnerOutreach();
+    setInterval(processOwnerOutreach, WEEK_MS);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+var outreachLog2, DAY_MS2, WEEK_MS;
+var init_outreach_scheduler = __esm({
+  "server/outreach-scheduler.ts"() {
+    "use strict";
+    init_email_owner_outreach();
+    init_db();
+    init_schema();
+    init_logger();
+    init_outreach_history();
+    outreachLog2 = log.tag("OutreachScheduler");
+    DAY_MS2 = 24 * 60 * 60 * 1e3;
+    WEEK_MS = 7 * DAY_MS2;
+  }
+});
+
 // server/index.ts
 import express from "express";
 
 // server/routes.ts
 import { createServer } from "node:http";
-import passport2 from "passport";
 
 // server/auth.ts
 init_db();
@@ -2744,9 +6189,11 @@ var config = {
   googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
   // Email (optional — console fallback if not set)
   resendApiKey: process.env.RESEND_API_KEY || null,
-  // Replit (optional — for CORS)
+  // Hosting platform (optional — for CORS)
   replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
-  replitDomains: process.env.REPLIT_DOMAINS || null
+  replitDomains: process.env.REPLIT_DOMAINS || null,
+  railwayPublicDomain: process.env.RAILWAY_PUBLIC_DOMAIN || null,
+  corsOrigins: process.env.CORS_ORIGINS || null
 };
 
 // server/auth.ts
@@ -2854,23 +6301,38 @@ async function registerMember(data) {
     city: data.city
   });
 }
-async function authenticateGoogleUser(idToken) {
+async function authenticateGoogleUser(token) {
   const googleClientId = config.googleClientId;
   if (!googleClientId) {
     throw new Error("Google Sign-In is not configured");
   }
-  const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
-  if (!res.ok) {
-    throw new Error("Invalid Google token");
+  let googleId;
+  let email;
+  let displayName;
+  let avatarUrl;
+  const idTokenRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+  if (idTokenRes.ok) {
+    const payload = await idTokenRes.json();
+    if (payload.aud !== googleClientId) {
+      throw new Error("Token audience mismatch");
+    }
+    googleId = payload.sub;
+    email = payload.email.toLowerCase();
+    displayName = payload.name || email.split("@")[0];
+    avatarUrl = payload.picture || null;
+  } else {
+    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!userInfoRes.ok) {
+      throw new Error("Invalid Google token");
+    }
+    const userInfo = await userInfoRes.json();
+    googleId = userInfo.sub;
+    email = userInfo.email.toLowerCase();
+    displayName = userInfo.name || email.split("@")[0];
+    avatarUrl = userInfo.picture || null;
   }
-  const payload = await res.json();
-  if (payload.aud !== googleClientId) {
-    throw new Error("Token audience mismatch");
-  }
-  const googleId = payload.sub;
-  const email = payload.email.toLowerCase();
-  const displayName = payload.name || email.split("@")[0];
-  const avatarUrl = payload.picture || null;
   let member = await getMemberByAuthId(googleId);
   if (member) {
     return member;
@@ -2878,9 +6340,9 @@ async function authenticateGoogleUser(idToken) {
   member = await getMemberByEmail(email);
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { members: members2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq13 } = await import("drizzle-orm");
-    await db2.update(members2).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq13(members2.id, member.id));
+    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq25(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -2903,7 +6365,7 @@ async function authenticateGoogleUser(idToken) {
 // server/deploy.ts
 init_logger();
 import { exec } from "child_process";
-import * as crypto from "crypto";
+import * as crypto2 from "crypto";
 var deployLog = log.tag("Deploy");
 var deployStatus = {
   status: "idle",
@@ -2919,10 +6381,10 @@ function verifySignature(req) {
   const signature = req.header("x-hub-signature-256");
   if (!signature) return false;
   const body = req.rawBody;
-  const hmac = crypto.createHmac("sha256", secret);
-  hmac.update(body);
-  const expected = `sha256=${hmac.digest("hex")}`;
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const hmac2 = crypto2.createHmac("sha256", secret);
+  hmac2.update(body);
+  const expected = `sha256=${hmac2.digest("hex")}`;
+  return crypto2.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 function runCommand(cmd, cwd) {
   return new Promise((resolve2, reject) => {
@@ -3002,7 +6464,7 @@ function sendNotification(title, message) {
     deployLog.warn(`Notification failed: ${err.message}`);
   });
 }
-function handleWebhook(req, res) {
+async function handleWebhook(req, res) {
   if (!verifySignature(req)) {
     return res.status(403).json({ error: "Invalid signature" });
   }
@@ -3027,7 +6489,7 @@ function handleWebhook(req, res) {
     commit: payload?.head_commit?.id?.slice(0, 7) || "unknown"
   });
 }
-function handleDeployStatus(_req, res) {
+async function handleDeployStatus(_req, res) {
   res.json(deployStatus);
 }
 
@@ -3223,7 +6685,7 @@ function generateBadgeHtml(badgeId, username) {
 </body>
 </html>`;
 }
-function handleBadgeShare(req, res) {
+async function handleBadgeShare(req, res) {
   const badgeId = req.params.badgeId;
   const username = req.query.user || null;
   const html = generateBadgeHtml(badgeId, username);
@@ -3232,18 +6694,8 @@ function handleBadgeShare(req, res) {
   res.send(html);
 }
 
-// server/routes.ts
-init_email();
-
-// shared/admin.ts
-var ADMIN_EMAILS = Object.freeze([
-  "rahul@topranker.com",
-  "admin@topranker.com"
-]);
-function isAdminEmail(email) {
-  if (!email) return false;
-  return ADMIN_EMAILS.includes(email.toLowerCase());
-}
+// server/routes-admin.ts
+init_admin();
 
 // server/sanitize.ts
 function stripHtml(input) {
@@ -3310,6 +6762,63 @@ async function fetchPlacePhotos(googlePlaceId, limit = 5) {
     return [];
   }
 }
+async function searchNearbyRestaurants(city, category = "restaurant", maxResults = 20) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) {
+    log.tag("GooglePlaces").warn("No API key \u2014 skipping nearby search");
+    return [];
+  }
+  const typeQuery = category === "restaurant" ? "restaurants" : category === "cafe" ? "cafes" : category === "bar" ? "bars" : category === "bakery" ? "bakeries" : category === "street_food" ? "street food" : category === "fast_food" ? "fast food" : "restaurants";
+  try {
+    const response = await fetch(`${API_BASE}/places:searchText`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.priceLevel,places.types"
+      },
+      body: JSON.stringify({
+        textQuery: `best ${typeQuery} in ${city}`,
+        maxResultCount: Math.min(maxResults, 20)
+      }),
+      signal: AbortSignal.timeout(15e3)
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      log.tag("GooglePlaces").error(`Nearby search failed: ${response.status} \u2014 ${body.slice(0, 200)}`);
+      return [];
+    }
+    const data = await response.json();
+    if (!data.places || data.places.length === 0) return [];
+    const priceLevelMap = {
+      PRICE_LEVEL_FREE: "$",
+      PRICE_LEVEL_INEXPENSIVE: "$",
+      PRICE_LEVEL_MODERATE: "$$",
+      PRICE_LEVEL_EXPENSIVE: "$$$",
+      PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
+    };
+    return data.places.map((p) => ({
+      placeId: p.id,
+      name: p.displayName?.text || "Unknown",
+      address: p.formattedAddress || "",
+      lat: p.location?.latitude || 0,
+      lng: p.location?.longitude || 0,
+      rating: p.rating || null,
+      priceLevel: priceLevelMap[p.priceLevel] || "$$",
+      types: p.types || []
+    }));
+  } catch (err) {
+    log.tag("GooglePlaces").error(`Nearby search error: ${err.message}`);
+    return [];
+  }
+}
+function normalizeCategory(types) {
+  if (types.includes("cafe") || types.includes("coffee_shop")) return "cafe";
+  if (types.includes("bar") || types.includes("night_club")) return "bar";
+  if (types.includes("bakery")) return "bakery";
+  if (types.includes("meal_delivery") || types.includes("meal_takeaway")) return "fast_food";
+  return "restaurant";
+}
 async function fetchAndStorePhotos(businessId, googlePlaceId) {
   const photoRefs = await fetchPlacePhotos(googlePlaceId, 5);
   if (photoRefs.length === 0) return 0;
@@ -3330,6 +6839,117 @@ async function fetchAndStorePhotos(businessId, googlePlaceId) {
 
 // server/perf-monitor.ts
 init_logger();
+
+// lib/performance-budget.ts
+var BUDGETS = [
+  { metric: "ttfb", budget: 200, unit: "ms" },
+  { metric: "fcp", budget: 1500, unit: "ms" },
+  { metric: "bundle_size", budget: 500, unit: "kb" },
+  { metric: "api_response_avg", budget: 200, unit: "ms" },
+  { metric: "api_response_max", budget: 2e3, unit: "ms" },
+  { metric: "slow_request_rate", budget: 5, unit: "%" }
+];
+
+// server/alerting.ts
+init_logger();
+var alertLog = log.tag("Alerting");
+var alerts = [];
+var MAX_ALERTS = 200;
+var lastFired = /* @__PURE__ */ new Map();
+var DEFAULT_RULES = [
+  {
+    name: "health_check_failed",
+    condition: "Health endpoint returns non-200",
+    severity: "critical",
+    channels: ["console"],
+    cooldownMs: 6e4
+    // 1 minute cooldown
+  },
+  {
+    name: "high_error_rate",
+    condition: "Error rate exceeds 5% in 5-minute window",
+    severity: "critical",
+    channels: ["console"],
+    cooldownMs: 3e5
+    // 5 minute cooldown
+  },
+  {
+    name: "slow_response",
+    condition: "Average response time exceeds 500ms",
+    severity: "warning",
+    channels: ["console"],
+    cooldownMs: 3e5
+  },
+  {
+    name: "high_memory",
+    condition: "Heap usage exceeds 512MB",
+    severity: "warning",
+    channels: ["console"],
+    cooldownMs: 6e5
+    // 10 minute cooldown
+  },
+  {
+    name: "rate_limit_spike",
+    condition: "Rate limit rejections exceed 100/min",
+    severity: "warning",
+    channels: ["console"],
+    cooldownMs: 3e5
+  }
+];
+function fireAlert(ruleName, message, severity = "warning", metadata) {
+  const now = Date.now();
+  const rule = DEFAULT_RULES.find((r) => r.name === ruleName);
+  const cooldown = rule?.cooldownMs ?? 6e4;
+  const last = lastFired.get(ruleName) ?? 0;
+  if (now - last < cooldown) {
+    return false;
+  }
+  lastFired.set(ruleName, now);
+  const alert = {
+    id: `alert_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    rule: ruleName,
+    severity,
+    message,
+    timestamp: new Date(now).toISOString(),
+    acknowledged: false,
+    metadata
+  };
+  alerts.push(alert);
+  if (alerts.length > MAX_ALERTS) {
+    alerts.splice(0, alerts.length - MAX_ALERTS);
+  }
+  const icon = severity === "critical" ? "\u{1F534}" : severity === "warning" ? "\u26A0\uFE0F" : "\u2139\uFE0F";
+  alertLog.warn(`${icon} [${severity.toUpperCase()}] ${ruleName}: ${message}`);
+  return true;
+}
+function getRecentAlerts(limit = 50) {
+  return alerts.slice(-limit);
+}
+function acknowledgeAlert(alertId) {
+  const alert = alerts.find((a) => a.id === alertId);
+  if (alert) {
+    alert.acknowledged = true;
+    return true;
+  }
+  return false;
+}
+function getAlertStats() {
+  const bySeverity = { critical: 0, warning: 0, info: 0 };
+  for (const a of alerts) {
+    bySeverity[a.severity]++;
+  }
+  return {
+    total: alerts.length,
+    unacknowledged: alerts.filter((a) => !a.acknowledged).length,
+    bySeverity,
+    lastAlert: alerts.length > 0 ? alerts[alerts.length - 1].timestamp : null
+  };
+}
+function getAlertRules() {
+  return [...DEFAULT_RULES];
+}
+
+// server/perf-monitor.ts
 var perfLog = log.tag("Perf");
 var SLOW_THRESHOLD_MS = 500;
 var stats = {
@@ -3360,12 +6980,49 @@ function perfMonitor(req, res, next) {
     if (duration > SLOW_THRESHOLD_MS) {
       stats.slowRequests++;
       perfLog.warn(`Slow request: ${route} took ${duration.toFixed(0)}ms`);
+      fireAlert("slow_response", `${route} took ${duration.toFixed(0)}ms (threshold: ${SLOW_THRESHOLD_MS}ms)`, "warning", { route, duration: Math.round(duration) });
+    }
+    const heapMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+    if (heapMB > 512) {
+      fireAlert("high_memory", `Heap usage: ${heapMB}MB exceeds 512MB threshold`, "warning", { heapMB });
     }
     if (!res.headersSent) {
       res.setHeader("Server-Timing", `total;dur=${duration.toFixed(1)}`);
     }
   });
   next();
+}
+function getPerformanceValidation() {
+  const avgBudget = BUDGETS.find((b) => b.metric === "api_response_avg")?.budget ?? 200;
+  const maxBudget = BUDGETS.find((b) => b.metric === "api_response_max")?.budget ?? 2e3;
+  const slowBudget = BUDGETS.find((b) => b.metric === "slow_request_rate")?.budget ?? 5;
+  const checks = [
+    {
+      name: "Avg Response Time",
+      passed: stats.avgDurationMs <= avgBudget,
+      actual: Math.round(stats.avgDurationMs),
+      budget: avgBudget,
+      unit: "ms"
+    },
+    {
+      name: "Max Response Time",
+      passed: stats.maxDurationMs <= maxBudget,
+      actual: Math.round(stats.maxDurationMs),
+      budget: maxBudget,
+      unit: "ms"
+    },
+    {
+      name: "Slow Request Rate",
+      passed: stats.totalRequests === 0 || stats.slowRequests / stats.totalRequests < slowBudget / 100,
+      actual: stats.totalRequests > 0 ? Math.round(stats.slowRequests / stats.totalRequests * 100) : 0,
+      budget: slowBudget,
+      unit: "%"
+    }
+  ];
+  return {
+    healthy: checks.every((c) => c.passed),
+    checks
+  };
 }
 function getPerfStats() {
   const routes = Array.from(stats.byRoute.entries()).map(([route, s]) => ({
@@ -3383,33 +7040,193 @@ function getPerfStats() {
   };
 }
 
-// server/analytics.ts
+// server/routes-admin.ts
+init_analytics2();
+
+// server/routes-admin-analytics.ts
+init_admin();
+init_analytics2();
+
+// server/wrap-async.ts
 init_logger();
-var analyticsLog = log.tag("Analytics");
-var buffer = [];
-var MAX_BUFFER = 1e3;
-function trackEvent(event, userId, metadata) {
-  const entry = {
-    event,
-    userId,
-    metadata,
-    timestamp: Date.now()
+function wrapAsync(fn) {
+  return (req, res, next) => {
+    fn(req, res, next).catch((err) => {
+      log.error(`Unhandled route error: ${req.method} ${req.path}`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message || "Internal Server Error" });
+      }
+    });
   };
-  buffer.push(entry);
-  analyticsLog.info(`${event}${userId ? ` [${userId}]` : ""}`);
-  if (buffer.length > MAX_BUFFER) {
-    buffer.splice(0, buffer.length - MAX_BUFFER);
-  }
 }
-function getFunnelStats() {
-  const stats2 = {};
-  for (const entry of buffer) {
-    stats2[entry.event] = (stats2[entry.event] || 0) + 1;
+
+// server/middleware.ts
+init_analytics2();
+function requireAuth(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
   }
-  return stats2;
+  if (req.user?.id) {
+    recordUserActivity(req.user.id);
+    Promise.resolve().then(() => (init_user_activity(), user_activity_exports)).then(({ recordUserActivityDb: recordUserActivityDb2 }) => recordUserActivityDb2(req.user.id)).catch(() => {
+    });
+  }
+  next();
 }
-function getRecentEvents(limit = 50) {
-  return buffer.slice(-limit);
+
+// server/routes-admin-analytics.ts
+function requireAdmin(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminAnalyticsRoutes(app2) {
+  app2.get("/api/admin/analytics", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const data = {
+      funnel: getFunnelStats(),
+      recentEvents: getRecentEvents(20)
+    };
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const stats2 = getFunnelStats();
+    const recent = getRecentEvents(50);
+    const signups = stats2.signup_completed || 0;
+    const pageViews = stats2.page_view || 0;
+    const firstRatings = stats2.first_rating || 0;
+    const challengerEntries = stats2.challenger_entered || 0;
+    const dashboardSubs = stats2.dashboard_pro_subscribed || 0;
+    const dashboard = {
+      overview: {
+        totalEvents: Object.values(stats2).reduce((a, b) => a + b, 0),
+        uniqueEventTypes: Object.keys(stats2).length
+      },
+      funnel: {
+        pageViews,
+        signups,
+        firstRatings,
+        challengerEntries,
+        dashboardSubs,
+        signupRate: pageViews > 0 ? (signups / pageViews * 100).toFixed(1) + "%" : "N/A",
+        ratingRate: signups > 0 ? (firstRatings / signups * 100).toFixed(1) + "%" : "N/A"
+      },
+      recentActivity: recent.slice(0, 10),
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    return res.json({ data: dashboard });
+  }));
+  app2.get("/api/admin/analytics/hourly", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const hours = Math.min(168, Math.max(1, parseInt(req.query.hours) || 24));
+    return res.json({ data: getHourlyStats(hours) });
+  }));
+  app2.get("/api/admin/analytics/daily", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const days = Math.min(90, Math.max(1, parseInt(req.query.days) || 7));
+    return res.json({ data: getDailyStats(days) });
+  }));
+  app2.get("/api/admin/analytics/active-users", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    return res.json({ data: getActiveUserStats() });
+  }));
+  app2.get("/api/admin/analytics/beta-funnel", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const { getBetaInviteStats: getBetaInviteStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const funnel = getBetaConversionFunnel();
+    const inviteStats = await getBetaInviteStats2();
+    return res.json({
+      data: {
+        ...funnel,
+        inviteTracking: {
+          total: inviteStats.total,
+          joined: inviteStats.joined,
+          pending: inviteStats.pending
+        },
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      }
+    });
+  }));
+  app2.post("/api/admin/analytics/purge", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { purgeOldAnalyticsEvents: purgeOldAnalyticsEvents2, DATA_RETENTION_POLICY: DATA_RETENTION_POLICY2 } = await Promise.resolve().then(() => (init_analytics(), analytics_exports));
+    const retentionDays = Math.max(30, parseInt(req.body.retentionDays) || 90);
+    const purged = await purgeOldAnalyticsEvents2(retentionDays);
+    return res.json({ purged, retentionDays, policy: DATA_RETENTION_POLICY2 });
+  }));
+  app2.get("/api/admin/analytics/retention-policy", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+    const { DATA_RETENTION_POLICY: DATA_RETENTION_POLICY2 } = await Promise.resolve().then(() => (init_analytics(), analytics_exports));
+    return res.json({ policy: DATA_RETENTION_POLICY2 });
+  }));
+  app2.get("/api/admin/analytics/export", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const { getPersistedDailyStats: getPersistedDailyStats2, getPersistedEventCounts: getPersistedEventCounts2, getPersistedDailyStatsExtended: getPersistedDailyStatsExtended2 } = await Promise.resolve().then(() => (init_analytics(), analytics_exports));
+    const days = Math.min(365, Math.max(1, parseInt(req.query.days) || 90));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
+    const detailed = req.query.detailed === "true";
+    const format = req.query.format || "json";
+    if (detailed) {
+      const extendedStats = await getPersistedDailyStatsExtended2(days);
+      if (format === "csv") {
+        const csvHeader = "date,event,count\n";
+        const csvRows = extendedStats.map((d) => `${d.date},${d.event},${d.count}`).join("\n");
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename=analytics-detailed-${days}d.csv`);
+        return res.send(csvHeader + csvRows);
+      }
+      return res.json({ data: { days, detailed: true, stats: extendedStats, exportedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+    }
+    const [dailyStats, eventCounts] = await Promise.all([
+      getPersistedDailyStats2(days),
+      getPersistedEventCounts2(since)
+    ]);
+    if (format === "csv") {
+      const csvHeader = "date,events\n";
+      const csvRows = dailyStats.map((d) => `${d.date},${d.events}`).join("\n");
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=analytics-export-${days}d.csv`);
+      return res.send(csvHeader + csvRows);
+    }
+    return res.json({ data: { days, dailyStats, eventCounts, exportedAt: (/* @__PURE__ */ new Date()).toISOString() } });
+  }));
+  app2.get("/api/admin/analytics/launch-metrics", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+    const days = Math.min(30, Math.max(1, parseInt(req.query.days) || 7));
+    const daily = getDailyStats(days);
+    const funnel = getFunnelStats();
+    const beta = getBetaConversionFunnel();
+    const active = getActiveUserStats();
+    const totalSignups = funnel.signup_completed || 0;
+    const totalFirstRatings = funnel.first_rating || 0;
+    const totalFifthRatings = funnel.fifth_rating || 0;
+    const totalTierUpgrades = funnel.tier_upgrade || 0;
+    const activationRate = totalSignups > 0 ? (totalFirstRatings / totalSignups * 100).toFixed(1) + "%" : "N/A";
+    const deepEngagementRate = totalFirstRatings > 0 ? (totalFifthRatings / totalFirstRatings * 100).toFixed(1) + "%" : "N/A";
+    const tierConversionRate = totalSignups > 0 ? (totalTierUpgrades / totalSignups * 100).toFixed(1) + "%" : "N/A";
+    const challengerEntries = funnel.challenger_entered || 0;
+    const dashboardSubs = funnel.dashboard_pro_subscribed || 0;
+    const featuredPurchases = funnel.featured_purchased || 0;
+    const estimatedMRR = challengerEntries * 99 + dashboardSubs * 49 + featuredPurchases * 199;
+    return res.json({
+      data: {
+        period: `${days} days`,
+        generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        userMetrics: {
+          totalSignups,
+          totalFirstRatings,
+          totalFifthRatings,
+          totalTierUpgrades,
+          activationRate,
+          deepEngagementRate,
+          tierConversionRate
+        },
+        activeUsers: active,
+        revenueMetrics: {
+          challengerEntries,
+          dashboardSubs,
+          featuredPurchases,
+          estimatedMRR: `$${estimatedMRR}`,
+          breakEvenTarget: "$247/mo",
+          breakEvenMet: estimatedMRR >= 247
+        },
+        betaFunnel: beta,
+        dailyTrend: daily
+      }
+    });
+  }));
 }
 
 // server/request-logger.ts
@@ -3478,17 +7295,17 @@ var MemoryStore = class {
   constructor() {
     this.cleanupTimer = setInterval(() => {
       const now = Date.now();
-      for (const [key, entry] of this.windows) {
-        if (now > entry.resetAt) this.windows.delete(key);
+      for (const [key2, entry] of this.windows) {
+        if (now > entry.resetAt) this.windows.delete(key2);
       }
     }, 6e4);
   }
-  async increment(key, windowMs) {
+  async increment(key2, windowMs) {
     const now = Date.now();
-    let entry = this.windows.get(key);
+    let entry = this.windows.get(key2);
     if (!entry || now > entry.resetAt) {
       entry = { count: 0, resetAt: now + windowMs };
-      this.windows.set(key, entry);
+      this.windows.set(key2, entry);
     }
     entry.count++;
     return { count: entry.count, resetAt: entry.resetAt };
@@ -3497,7 +7314,35 @@ var MemoryStore = class {
     clearInterval(this.cleanupTimer);
   }
 };
-var defaultStore = new MemoryStore();
+var RedisStore = class {
+  constructor(redisClient) {
+    this.redisClient = redisClient;
+  }
+  async increment(key2, windowMs) {
+    const redisKey = `rl:${key2}`;
+    const count15 = await this.redisClient.incr(redisKey);
+    if (count15 === 1) await this.redisClient.pexpire(redisKey, windowMs);
+    const ttl = await this.redisClient.pttl(redisKey);
+    return { count: count15, resetAt: Date.now() + Math.max(ttl, 0) };
+  }
+};
+function createDefaultStore() {
+  const redisUrl = process.env.REDIS_URL;
+  if (redisUrl) {
+    try {
+      const Redis2 = __require("ioredis");
+      const client = new Redis2(redisUrl, { maxRetriesPerRequest: 1, connectTimeout: 3e3, lazyConnect: true });
+      client.connect().catch(() => {
+      });
+      rlLog.info("Using Redis rate-limit store");
+      return new RedisStore(client);
+    } catch {
+      rlLog.info("Redis unavailable \u2014 falling back to memory rate-limit store");
+    }
+  }
+  return new MemoryStore();
+}
+var defaultStore = createDefaultStore();
 var DEFAULT_OPTIONS = {
   windowMs: 6e4,
   // 1 minute
@@ -3506,18 +7351,18 @@ var DEFAULT_OPTIONS = {
 };
 function rateLimiter(options = {}) {
   const { windowMs, maxRequests } = { ...DEFAULT_OPTIONS, ...options };
-  const store = options.store || defaultStore;
+  const store3 = options.store || defaultStore;
   const keyPrefix = options.keyPrefix || "global";
   return (req, res, next) => {
     const ip = req.ip || req.socket.remoteAddress || "unknown";
-    const key = `${keyPrefix}:${ip}`;
+    const key2 = `${keyPrefix}:${ip}`;
     const now = Date.now();
-    store.increment(key, windowMs).then(({ count: count7, resetAt }) => {
+    store3.increment(key2, windowMs).then(({ count: count15, resetAt }) => {
       res.setHeader("X-RateLimit-Limit", String(maxRequests));
-      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count7)));
+      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, maxRequests - count15)));
       res.setHeader("X-RateLimit-Reset", String(Math.ceil(resetAt / 1e3)));
-      if (count7 > maxRequests) {
-        rlLog.warn(`Rate limit exceeded for ${ip}: ${count7}/${maxRequests}`);
+      if (count15 > maxRequests) {
+        rlLog.warn(`Rate limit exceeded for ${ip}: ${count15}/${maxRequests}`);
         return res.status(429).json({
           error: "Too many requests. Please try again later.",
           retryAfter: Math.ceil((resetAt - now) / 1e3)
@@ -3535,32 +7380,192 @@ var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100, keyPrefix: "
 var paymentRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 20, keyPrefix: "payments" });
 var adminRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: "admin" });
 
-// server/wrap-async.ts
-init_logger();
-function wrapAsync(fn) {
-  return (req, res, next) => {
-    fn(req, res, next).catch((err) => {
-      log.error(`Unhandled route error: ${req.method} ${req.path}`, err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: err.message || "Internal Server Error" });
-      }
-    });
-  };
-}
-
 // server/routes-admin.ts
 init_tier_staleness();
 
-// server/middleware.ts
-function requireAuth(req, res, next) {
-  if (!req.isAuthenticated()) {
-    return res.status(401).json({ error: "Authentication required" });
+// server/city-engagement.ts
+init_logger();
+init_db();
+init_schema();
+import { sql as sql12, eq as eq20, count as count14 } from "drizzle-orm";
+
+// shared/city-config.ts
+var CITY_REGISTRY = {
+  Dallas: {
+    name: "Dallas",
+    state: "Texas",
+    stateCode: "TX",
+    region: "DFW Metroplex",
+    timezone: "America/Chicago",
+    coordinates: { lat: 32.7767, lng: -96.797 },
+    status: "active",
+    launchDate: "2026-03-09",
+    minBusinesses: 10
+  },
+  Austin: {
+    name: "Austin",
+    state: "Texas",
+    stateCode: "TX",
+    region: "Central Texas",
+    timezone: "America/Chicago",
+    coordinates: { lat: 30.2672, lng: -97.7431 },
+    status: "active",
+    launchDate: "2026-03-09",
+    minBusinesses: 10
+  },
+  Houston: {
+    name: "Houston",
+    state: "Texas",
+    stateCode: "TX",
+    region: "Greater Houston",
+    timezone: "America/Chicago",
+    coordinates: { lat: 29.7604, lng: -95.3698 },
+    status: "active",
+    launchDate: "2026-03-09",
+    minBusinesses: 8
+  },
+  "San Antonio": {
+    name: "San Antonio",
+    state: "Texas",
+    stateCode: "TX",
+    region: "South Texas",
+    timezone: "America/Chicago",
+    coordinates: { lat: 29.4241, lng: -98.4936 },
+    status: "active",
+    launchDate: "2026-03-09",
+    minBusinesses: 7
+  },
+  "Fort Worth": {
+    name: "Fort Worth",
+    state: "Texas",
+    stateCode: "TX",
+    region: "DFW Metroplex",
+    timezone: "America/Chicago",
+    coordinates: { lat: 32.7555, lng: -97.3308 },
+    status: "active",
+    launchDate: "2026-03-09",
+    minBusinesses: 7
+  },
+  // Phase 2 — planned for post-launch expansion
+  "Oklahoma City": {
+    name: "Oklahoma City",
+    state: "Oklahoma",
+    stateCode: "OK",
+    region: "Central Oklahoma",
+    timezone: "America/Chicago",
+    coordinates: { lat: 35.4676, lng: -97.5164 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 10
+  },
+  "New Orleans": {
+    name: "New Orleans",
+    state: "Louisiana",
+    stateCode: "LA",
+    region: "Greater New Orleans",
+    timezone: "America/Chicago",
+    coordinates: { lat: 29.9511, lng: -90.0715 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 10
+  },
+  // Phase 3 — Tennessee expansion (Sprint 234)
+  Memphis: {
+    name: "Memphis",
+    state: "Tennessee",
+    stateCode: "TN",
+    region: "West Tennessee",
+    timezone: "America/Chicago",
+    coordinates: { lat: 35.1495, lng: -90.049 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 30
+  },
+  Nashville: {
+    name: "Nashville",
+    state: "Tennessee",
+    stateCode: "TN",
+    region: "Middle Tennessee",
+    timezone: "America/Chicago",
+    coordinates: { lat: 36.1627, lng: -86.7816 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 40
+  },
+  // Phase 4 — North Carolina expansion (Sprint 248)
+  Charlotte: {
+    name: "Charlotte",
+    state: "North Carolina",
+    stateCode: "NC",
+    region: "Piedmont",
+    timezone: "America/New_York",
+    coordinates: { lat: 35.2271, lng: -80.8431 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 40
+  },
+  Raleigh: {
+    name: "Raleigh",
+    state: "North Carolina",
+    stateCode: "NC",
+    region: "Research Triangle",
+    timezone: "America/New_York",
+    coordinates: { lat: 35.7796, lng: -78.6382 },
+    status: "beta",
+    launchDate: "2026-03-09",
+    minBusinesses: 30
   }
-  next();
+};
+function getActiveCities() {
+  return Object.values(CITY_REGISTRY).filter((c) => c.status === "active").map((c) => c.name);
+}
+function getCityConfig(name) {
+  return CITY_REGISTRY[name];
+}
+function getBetaCities() {
+  return Object.values(CITY_REGISTRY).filter((c) => c.status === "beta").map((c) => c.name);
+}
+
+// server/city-engagement.ts
+var engLog = log.tag("CityEngagement");
+async function getCityEngagement(city) {
+  engLog.debug(`Fetching engagement for city: ${city}`);
+  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
+  const totalMembers = memberResult?.total ?? 0;
+  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq20(businesses.city, city));
+  const totalBusinesses = bizResult?.total ?? 0;
+  const ratingsResult = await db.execute(sql12`
+    SELECT COUNT(r.id)::int AS total
+    FROM ratings r
+    JOIN businesses b ON r.business_id = b.id
+    WHERE b.city = ${city}
+  `);
+  const totalRatings = ratingsResult.rows[0]?.total ?? 0;
+  const avgRatingsPerMember = totalMembers > 0 ? Math.round(totalRatings / totalMembers * 100) / 100 : 0;
+  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq20(businesses.city, city)).groupBy(businesses.category).orderBy(sql12`count(*) DESC`).limit(1);
+  const topCategory = categoryResult[0]?.category ?? "N/A";
+  engLog.info(`City engagement for ${city}: ${totalMembers} members, ${totalBusinesses} businesses, ${totalRatings} ratings`);
+  return {
+    city,
+    totalMembers,
+    totalBusinesses,
+    totalRatings,
+    avgRatingsPerMember,
+    topCategory
+  };
+}
+async function getAllCityEngagement() {
+  const activeCities = getActiveCities();
+  const betaCities = getBetaCities();
+  const allCities = [...activeCities, ...betaCities];
+  engLog.info(`Fetching engagement for ${allCities.length} cities (${activeCities.length} active, ${betaCities.length} beta)`);
+  const results = await Promise.all(allCities.map((city) => getCityEngagement(city)));
+  results.sort((a, b) => b.totalMembers - a.totalMembers);
+  return results;
 }
 
 // server/routes-admin.ts
-function requireAdmin(req, res, next) {
+function requireAdmin2(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
   }
@@ -3568,7 +7573,7 @@ function requireAdmin(req, res, next) {
 }
 function registerAdminRoutes(app2) {
   app2.use("/api/admin", adminRateLimiter);
-  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
@@ -3580,12 +7585,12 @@ function registerAdminRoutes(app2) {
     }
     return res.json({ data: updated });
   }));
-  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
     await seedCities2();
     return res.json({ data: { message: "Cities seeded successfully" } });
   }));
-  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const city = sanitizeString(req.body.city, 100) || void 0;
     const limit = Math.min(50, parseInt(req.body.limit) || 20);
     const businesses2 = await getBusinessesWithoutPhotos(city, limit);
@@ -3595,9 +7600,9 @@ function registerAdminRoutes(app2) {
     let totalFetched = 0;
     const results = [];
     for (const biz of businesses2) {
-      const count7 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
-      totalFetched += count7;
-      results.push({ name: biz.name, photos: count7 });
+      const count15 = await fetchAndStorePhotos(biz.id, biz.googlePlaceId);
+      totalFetched += count15;
+      results.push({ name: biz.name, photos: count15 });
     }
     return res.json({
       data: {
@@ -3607,28 +7612,125 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/claims", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/import-restaurants", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.body.city, 100);
+    const category = sanitizeString(req.body.category, 50) || "restaurant";
+    if (!city) {
+      return res.status(400).json({ error: "City is required" });
+    }
+    const places = await searchNearbyRestaurants(city, category, 20);
+    if (places.length === 0) {
+      return res.json({ data: { message: "No places found from Google Places", imported: 0, skipped: 0 } });
+    }
+    const importData = places.map((p) => ({
+      placeId: p.placeId,
+      name: p.name,
+      address: p.address,
+      city,
+      category: normalizeCategory(p.types),
+      lat: p.lat,
+      lng: p.lng,
+      googleRating: p.rating,
+      priceRange: p.priceLevel || "$$"
+    }));
+    const { bulkImportBusinesses: bulkImportBusinesses2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const result = await bulkImportBusinesses2(importData);
+    let photosFetched = 0;
+    for (const r of result.results) {
+      if (r.status === "imported") {
+        const place = importData.find((p) => p.name === r.name);
+        if (place) {
+          try {
+            const count15 = await fetchAndStorePhotos(place.placeId, place.placeId);
+            photosFetched += count15;
+          } catch {
+          }
+        }
+      }
+    }
+    return res.json({
+      data: {
+        message: `Imported ${result.imported} restaurants, skipped ${result.skipped}`,
+        imported: result.imported,
+        skipped: result.skipped,
+        photosFetched,
+        results: result.results
+      }
+    });
+  }));
+  app2.get("/api/admin/import-stats", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { getImportStats: getImportStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const stats2 = await getImportStats2();
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/claims", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const data = await getPendingClaims();
     return res.json({ data });
   }));
-  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
     }
     const updated = await reviewClaim(req.params.id, status, req.user.id);
     if (!updated) return res.status(404).json({ error: "Claim not found" });
+    if (updated.memberId && updated.businessId) {
+      const { getMemberById: getMemberById2, getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const [member, business] = await Promise.all([
+        getMemberById2(updated.memberId),
+        getBusinessById2(updated.businessId)
+      ]);
+      if (member?.email && business) {
+        const { sendClaimApprovedEmail: sendClaimApprovedEmail2, sendClaimRejectedEmail: sendClaimRejectedEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+        if (status === "approved") {
+          sendClaimApprovedEmail2({
+            email: member.email,
+            displayName: member.displayName || "User",
+            businessName: business.name,
+            businessSlug: business.slug || business.id
+          }).catch(() => {
+          });
+        } else {
+          sendClaimRejectedEmail2({
+            email: member.email,
+            displayName: member.displayName || "User",
+            businessName: business.name
+          }).catch(() => {
+          });
+        }
+      }
+      if (member?.pushToken) {
+        const { sendPushNotification: sendPushNotification3 } = await Promise.resolve().then(() => (init_push(), push_exports));
+        if (status === "approved") {
+          sendPushNotification3(
+            [member.pushToken],
+            `Claim approved: ${business?.name}`,
+            "You're now the verified owner. Access your dashboard to see analytics.",
+            { screen: "business" }
+          ).catch(() => {
+          });
+        } else {
+          sendPushNotification3(
+            [member.pushToken],
+            `Claim update: ${business?.name}`,
+            "Your claim could not be verified. Contact support for next steps.",
+            { screen: "profile" }
+          ).catch(() => {
+          });
+        }
+      }
+    }
     return res.json({ data: updated });
   }));
-  app2.get("/api/admin/claims/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
-    const count7 = await getClaimCount();
-    return res.json({ data: { count: count7 } });
+  app2.get("/api/admin/claims/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const count15 = await getClaimCount();
+    return res.json({ data: { count: count15 } });
   }));
-  app2.get("/api/admin/flags", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/flags", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const data = await getPendingFlags();
     return res.json({ data });
   }));
-  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["confirmed", "dismissed"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
@@ -3637,11 +7739,11 @@ function registerAdminRoutes(app2) {
     if (!updated) return res.status(404).json({ error: "Flag not found" });
     return res.json({ data: updated });
   }));
-  app2.get("/api/admin/flags/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
-    const count7 = await getFlagCount();
-    return res.json({ data: { count: count7 } });
+  app2.get("/api/admin/flags/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const count15 = await getFlagCount();
+    return res.json({ data: { count: count15 } });
   }));
-  app2.get("/api/admin/members", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/members", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const data = await getAdminMemberList(limit);
     const freshData = data.map((m) => ({
@@ -3650,17 +7752,17 @@ function registerAdminRoutes(app2) {
     }));
     return res.json({ data: freshData });
   }));
-  app2.get("/api/admin/members/count", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
-    const count7 = await getMemberCount();
-    return res.json({ data: { count: count7 } });
+  app2.get("/api/admin/members/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const count15 = await getMemberCount();
+    return res.json({ data: { count: count15 } });
   }));
-  app2.get("/api/admin/webhooks", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/webhooks", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const source = sanitizeString(req.query.source, 50) || "stripe";
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-    const events = await getRecentWebhookEvents(source, limit);
-    return res.json({ data: events });
+    const events3 = await getRecentWebhookEvents(source, limit);
+    return res.json({ data: events3 });
   }));
-  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const event = await getWebhookEventById(req.params.id);
     if (!event) return res.status(404).json({ error: "Webhook event not found" });
     const { processStripeEvent: processStripeEvent2 } = await Promise.resolve().then(() => (init_stripe_webhook(), stripe_webhook_exports));
@@ -3671,50 +7773,79 @@ function registerAdminRoutes(app2) {
     }
     return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
   }));
-  app2.get("/api/admin/perf", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
-    const data = getPerfStats();
+  app2.get("/api/admin/perf", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const { getCacheStats: getCacheStats2 } = await Promise.resolve().then(() => (init_redis(), redis_exports));
+    const { getErrorStats: getErrorStats2 } = await Promise.resolve().then(() => (init_error_tracking(), error_tracking_exports));
+    const data = {
+      ...getPerfStats(),
+      cache: getCacheStats2(),
+      errors: getErrorStats2()
+    };
     return res.json({ data });
   }));
-  app2.get("/api/admin/revenue", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/perf/validate", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const validation = getPerformanceValidation();
+    return res.json({ data: validation });
+  }));
+  app2.get("/api/admin/analytics/active-users-db", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const { getActiveUserStatsDb: getActiveUserStatsDb2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const stats2 = await getActiveUserStatsDb2();
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/city-engagement", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const city = req.query.city;
+    if (city) {
+      const engagement = await getCityEngagement(city);
+      return res.json({ data: engagement });
+    }
+    const all = await getAllCityEngagement();
+    return res.json({ data: all });
+  }));
+  app2.get("/api/admin/errors", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { getRecentServerErrors: getRecentServerErrors2 } = await Promise.resolve().then(() => (init_error_tracking(), error_tracking_exports));
+    const limit = Math.min(100, parseInt(req.query.limit) || 20);
+    const data = getRecentServerErrors2(limit);
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/revenue", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const { getRevenueMetrics: getRevenueMetrics2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const metrics = await getRevenueMetrics2();
     return res.json({ data: metrics });
   }));
-  app2.get("/api/admin/analytics", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
-    const data = {
-      funnel: getFunnelStats(),
-      recentEvents: getRecentEvents(20)
-    };
-    return res.json({ data });
+  registerAdminAnalyticsRoutes(app2);
+  app2.get("/api/admin/feedback", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { getRecentFeedback: getRecentFeedback2, getFeedbackStats: getFeedbackStats2 } = await Promise.resolve().then(() => (init_feedback(), feedback_exports));
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const [recent, stats2] = await Promise.all([
+      getRecentFeedback2(limit),
+      getFeedbackStats2()
+    ]);
+    return res.json({ data: { recent, stats: stats2 } });
   }));
-  app2.get("/api/admin/analytics/dashboard", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
-    const stats2 = getFunnelStats();
-    const recent = getRecentEvents(50);
-    const signups = stats2.signup_completed || 0;
-    const pageViews = stats2.page_view || 0;
-    const firstRatings = stats2.first_rating || 0;
-    const challengerEntries = stats2.challenger_entered || 0;
-    const dashboardSubs = stats2.dashboard_pro_subscribed || 0;
-    const dashboard = {
-      overview: {
-        totalEvents: Object.values(stats2).reduce((a, b) => a + b, 0),
-        uniqueEventTypes: Object.keys(stats2).length
-      },
-      funnel: {
-        pageViews,
-        signups,
-        firstRatings,
-        challengerEntries,
-        dashboardSubs,
-        signupRate: pageViews > 0 ? (signups / pageViews * 100).toFixed(1) + "%" : "N/A",
-        ratingRate: signups > 0 ? (firstRatings / signups * 100).toFixed(1) + "%" : "N/A"
-      },
-      recentActivity: recent.slice(0, 10),
-      generatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    return res.json({ data: dashboard });
+  app2.get("/api/admin/moderation-queue", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { getAutoFlaggedRatings: getAutoFlaggedRatings2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const perPage = Math.min(50, Math.max(1, parseInt(req.query.perPage) || 20));
+    const result = await getAutoFlaggedRatings2(page, perPage);
+    return res.json({
+      data: result.ratings,
+      pagination: { page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage) }
+    });
   }));
-  app2.get("/api/admin/metrics", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+  app2.patch("/api/admin/moderation/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { reviewAutoFlaggedRating: reviewAutoFlaggedRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    const action = req.body.action;
+    if (action !== "confirm" && action !== "dismiss") {
+      return res.status(400).json({ error: "action must be 'confirm' or 'dismiss'" });
+    }
+    await reviewAutoFlaggedRating2(req.params.id, action, req.user.id);
+    return res.json({ data: { reviewed: true, action } });
+  }));
+  app2.get("/api/admin/rate-gate-stats", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const stats2 = getRateGateStats();
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/metrics", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage().heapUsed;
     const nodeVersion = process.version;
@@ -3730,7 +7861,7 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
     const mem = process.memoryUsage();
     const cpu = process.cpuUsage();
     const flags = getAllFlags();
@@ -3750,11 +7881,19 @@ function registerAdminRoutes(app2) {
         },
         activeConnections: 0,
         featureFlags: flags,
+        prerenderCache: (() => {
+          try {
+            const { getPrerenderCacheStats: getPrerenderCacheStats2 } = (init_prerender(), __toCommonJS(prerender_exports));
+            return getPrerenderCacheStats2();
+          } catch {
+            return null;
+          }
+        })(),
         generatedAt: (/* @__PURE__ */ new Date()).toISOString()
       }
     });
   }));
-  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
     return res.json({
       data: {
         thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
@@ -3762,11 +7901,135 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
     const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
     const { getRevenueByMonth: getRevenueByMonth2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const data = await getRevenueByMonth2(months);
     return res.json({ data });
+  }));
+  app2.post("/api/admin/beta-invite", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { sendBetaInviteEmail: sendBetaInviteEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+    const { getMemberByEmail: getMemberByEmail2, createBetaInvite: createBetaInvite2, getBetaInviteByEmail: getBetaInviteByEmail2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const email = sanitizeString(req.body.email, 254);
+    const displayName = sanitizeString(req.body.displayName, 100);
+    const referralCode = sanitizeString(req.body.referralCode || "", 50) || "BETA25";
+    if (!email || !displayName) {
+      return res.status(400).json({ error: "email and displayName are required" });
+    }
+    const existing = await getMemberByEmail2(email);
+    if (existing) {
+      return res.status(409).json({ error: "User already has an account" });
+    }
+    const existingInvite = await getBetaInviteByEmail2(email);
+    if (existingInvite) {
+      return res.status(409).json({ error: "Invite already sent to this email" });
+    }
+    await sendBetaInviteEmail2({
+      email,
+      displayName,
+      referralCode,
+      invitedBy: req.body.invitedBy ? sanitizeString(req.body.invitedBy, 100) : void 0
+    });
+    await createBetaInvite2({ email, displayName, referralCode, invitedBy: req.user?.email });
+    const { trackEvent: trackEvent2 } = await Promise.resolve().then(() => (init_analytics2(), analytics_exports2));
+    trackEvent2("beta_invite_sent", req.user?.id, { email });
+    return res.json({ data: { sent: true, email } });
+  }));
+  app2.get("/api/admin/beta-invites", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const { getBetaInviteStats: getBetaInviteStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const stats2 = await getBetaInviteStats2();
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/alerts", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const limit = Math.min(100, parseInt(req.query.limit) || 50);
+    const alerts2 = getRecentAlerts(limit);
+    const stats2 = getAlertStats();
+    const rules = getAlertRules();
+    return res.json({ data: { alerts: alerts2, stats: stats2, rules } });
+  }));
+  app2.post("/api/admin/alerts/:id/acknowledge", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const result = acknowledgeAlert(req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: "Alert not found" });
+    }
+    return res.json({ data: { acknowledged: true } });
+  }));
+  app2.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { sendBetaInviteEmail: sendBetaInviteEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+    const { getMemberByEmail: getMemberByEmail2, createBetaInvite: createBetaInvite2, getBetaInviteByEmail: getBetaInviteByEmail2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const invites = req.body.invites;
+    if (!Array.isArray(invites) || invites.length === 0 || invites.length > 100) {
+      return res.status(400).json({ error: "invites must be an array of 1-100 entries" });
+    }
+    const results = [];
+    for (const invite of invites) {
+      const email = sanitizeString(invite.email, 254);
+      const displayName = sanitizeString(invite.displayName, 100);
+      const referralCode = sanitizeString(invite.referralCode || "", 50) || "BETA25";
+      if (!email || !displayName) {
+        results.push({ email: email || "unknown", status: "skipped", reason: "missing fields" });
+        continue;
+      }
+      const existing = await getMemberByEmail2(email);
+      if (existing) {
+        results.push({ email, status: "skipped", reason: "already registered" });
+        continue;
+      }
+      const existingInvite = await getBetaInviteByEmail2(email);
+      if (existingInvite) {
+        results.push({ email, status: "skipped", reason: "already invited" });
+        continue;
+      }
+      await sendBetaInviteEmail2({ email, displayName, referralCode });
+      await createBetaInvite2({ email, displayName, referralCode, invitedBy: req.user?.email });
+      results.push({ email, status: "sent" });
+    }
+    const sent = results.filter((r) => r.status === "sent").length;
+    return res.json({ data: { total: invites.length, sent, skipped: invites.length - sent, results } });
+  }));
+  app2.get("/api/admin/eligibility", requireAuth, wrapAsync(async (req, res) => {
+    if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const allBusinesses = await db2.select({
+      id: businesses2.id,
+      name: businesses2.name,
+      city: businesses2.city,
+      category: businesses2.category,
+      totalRatings: businesses2.totalRatings,
+      dineInCount: businesses2.dineInCount,
+      credibilityWeightedSum: businesses2.credibilityWeightedSum,
+      leaderboardEligible: businesses2.leaderboardEligible,
+      weightedScore: businesses2.weightedScore
+    }).from(businesses2).where(eq25(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
+    const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
+    const nearEligible = ineligible.filter(
+      (b) => b.totalRatings >= 2 || parseFloat(b.credibilityWeightedSum) >= 0.3
+    );
+    return res.json({
+      data: {
+        totalActive: allBusinesses.length,
+        eligible: eligible.length,
+        ineligible: ineligible.length,
+        nearEligible: nearEligible.length,
+        nearEligibleBusinesses: nearEligible.map((b) => ({
+          id: b.id,
+          name: b.name,
+          city: b.city,
+          category: b.category,
+          totalRatings: b.totalRatings,
+          dineInCount: b.dineInCount,
+          credibilityWeightedSum: parseFloat(b.credibilityWeightedSum),
+          missingRequirements: [
+            b.totalRatings < 3 ? `Need ${3 - b.totalRatings} more raters` : null,
+            b.dineInCount < 1 ? "Need 1+ dine-in rating" : null,
+            parseFloat(b.credibilityWeightedSum) < 0.5 ? `Credibility sum ${parseFloat(b.credibilityWeightedSum).toFixed(2)} < 0.50` : null
+          ].filter(Boolean)
+        }))
+      }
+    });
   }));
 }
 
@@ -3846,32 +8109,74 @@ function registerPaymentRoutes(app2) {
     if (!business) {
       return res.status(404).json({ error: "Business not found" });
     }
-    const { createDashboardProPayment: createDashboardProPayment2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
-    const payment = await createDashboardProPayment2({
+    if (business.ownerId !== req.user.id) {
+      return res.status(403).json({ error: "Only the business owner can subscribe" });
+    }
+    if (business.subscriptionStatus === "active") {
+      return res.status(409).json({ error: "Business already has an active subscription" });
+    }
+    const { createDashboardProSubscription: createDashboardProSubscription2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+    const siteUrl = process.env.SITE_URL || "https://topranker.com";
+    const checkout = await createDashboardProSubscription2({
       businessId: business.id,
       businessName: business.name,
       customerEmail: req.user.email || "",
-      userId: req.user.id
+      userId: req.user.id,
+      stripeCustomerId: business.stripeCustomerId || void 0,
+      successUrl: `${siteUrl}/business/${slug}/dashboard?subscription=success`,
+      cancelUrl: `${siteUrl}/business/${slug}/dashboard?subscription=cancelled`
     });
     await createPaymentRecord({
       memberId: req.user.id,
       businessId: business.id,
       type: "dashboard_pro",
-      amount: payment.amount,
-      stripePaymentIntentId: payment.id,
-      status: payment.status,
-      metadata: payment.metadata
+      amount: 4900,
+      // $49 — actual charge happens via Stripe webhook
+      stripePaymentIntentId: checkout.id,
+      status: checkout.status === "succeeded" ? "succeeded" : "pending",
+      metadata: { checkoutSessionId: checkout.id }
     });
-    sendPaymentReceiptEmail({
-      email: req.user.email || "",
-      displayName: req.user.displayName || "Member",
-      type: "dashboard_pro",
-      amount: payment.amount,
-      businessName: business.name,
-      paymentId: payment.id
-    }).catch(() => {
+    if (!checkout.url) {
+      const { updateBusinessSubscription: updateBusinessSubscription2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      await updateBusinessSubscription2(business.id, {
+        subscriptionStatus: "active",
+        stripeCustomerId: `mock_cus_${Date.now()}`,
+        stripeSubscriptionId: `mock_sub_${Date.now()}`,
+        subscriptionPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1e3)
+      });
+    }
+    return res.json({ data: { id: checkout.id, url: checkout.url, status: checkout.status } });
+  }));
+  app2.get("/api/payments/subscription-status/:slug", requireAuth, wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    return res.json({
+      data: {
+        subscriptionStatus: business.subscriptionStatus || "none",
+        subscriptionPeriodEnd: business.subscriptionPeriodEnd,
+        isActive: business.subscriptionStatus === "active" || business.subscriptionStatus === "trialing"
+      }
     });
-    return res.json({ data: payment });
+  }));
+  app2.post("/api/payments/subscription-cancel/:slug", requireAuth, wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    if (business.ownerId !== req.user.id) {
+      return res.status(403).json({ error: "Only the business owner can cancel" });
+    }
+    if (!business.stripeSubscriptionId) {
+      return res.status(400).json({ error: "No active subscription to cancel" });
+    }
+    const { cancelSubscription: cancelSubscription2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
+    await cancelSubscription2(business.stripeSubscriptionId);
+    const { updateBusinessSubscription: updateBusinessSubscription2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    await updateBusinessSubscription2(business.id, { subscriptionStatus: "cancelled" });
+    log.info(`Subscription cancelled: business=${business.id} by user=${req.user.id}`);
+    return res.json({ data: { cancelled: true } });
   }));
   app2.post("/api/payments/featured", requireAuth, wrapAsync(async (req, res) => {
     const slug = sanitizeSlug(req.body.slug);
@@ -4105,6 +8410,18 @@ function getOutcomeStats(experimentId) {
 function getUserExperiments(userId) {
   return exposures.filter((e) => e.userId === userId).map((e) => e.experimentId);
 }
+function wilsonScore(successes, total, z2 = 1.96) {
+  if (total === 0) return { lower: 0, upper: 0, center: 0 };
+  const p = successes / total;
+  const denominator = 1 + z2 * z2 / total;
+  const center = (p + z2 * z2 / (2 * total)) / denominator;
+  const margin = z2 * Math.sqrt(p * (1 - p) / total + z2 * z2 / (4 * total * total)) / denominator;
+  return {
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+    center
+  };
+}
 function computeExperimentDashboard(experimentId) {
   const expStats = getExposureStats(experimentId);
   const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
@@ -4126,11 +8443,13 @@ function computeExperimentDashboard(experimentId) {
   }
   const variants = [];
   for (const [variant, data] of variantMap.entries()) {
+    const ci = wilsonScore(data.outcomes, data.exposures);
     variants.push({
       variant,
       exposures: data.exposures,
       outcomes: data.outcomes,
       conversionRate: data.exposures > 0 ? data.outcomes / data.exposures * 100 : 0,
+      confidence: ci,
       byAction: data.byAction
     });
   }
@@ -4143,15 +8462,36 @@ function computeExperimentDashboard(experimentId) {
   } else {
     const controlVariant = variants.find((v) => v.variant === "control");
     const treatmentVariant = variants.find((v) => v.variant === "treatment");
-    const controlRate = controlVariant?.conversionRate ?? 0;
-    const treatmentRate = treatmentVariant?.conversionRate ?? 0;
-    const diff = treatmentRate - controlRate;
-    if (diff > 5) {
-      recommendation = "treatment_winning";
-    } else if (diff < -5) {
-      recommendation = "control_winning";
+    const controlCI = controlVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
+    const treatmentCI = treatmentVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
+    const controlExposures = controlVariant?.exposures ?? 0;
+    const treatmentExposures = treatmentVariant?.exposures ?? 0;
+    if (controlExposures < 100 || treatmentExposures < 100) {
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
     } else {
-      recommendation = "inconclusive";
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
     }
   }
   return {
@@ -4164,6 +8504,7 @@ function computeExperimentDashboard(experimentId) {
 }
 
 // server/routes-experiments.ts
+init_admin();
 var expLog = log.tag("Experiments");
 var experiments = {
   confidence_tooltip: {
@@ -4199,8 +8540,8 @@ function assignVariant(userId, experimentId) {
   if (!experiment || !experiment.active) {
     return { variant: "control", isDefault: true };
   }
-  const key = `${userId}:${experimentId}`;
-  const bucket = hashString(key) % 100;
+  const key2 = `${userId}:${experimentId}`;
+  const bucket = hashString(key2) % 100;
   let cumulative = 0;
   for (const v of experiment.variants) {
     cumulative += v.weight;
@@ -4211,7 +8552,7 @@ function assignVariant(userId, experimentId) {
   return { variant: experiment.variants[0].id, isDefault: false };
 }
 function registerExperimentRoutes(app2) {
-  app2.get("/api/experiments", apiRateLimiter, wrapAsync((_req, res) => {
+  app2.get("/api/experiments", apiRateLimiter, wrapAsync(async (_req, res) => {
     const active = Object.values(experiments).filter((exp) => exp.active).map((exp) => ({
       id: exp.id,
       description: exp.description,
@@ -4219,7 +8560,7 @@ function registerExperimentRoutes(app2) {
     }));
     return res.json({ data: active });
   }));
-  app2.get("/api/experiments/assign", apiRateLimiter, wrapAsync((req, res) => {
+  app2.get("/api/experiments/assign", apiRateLimiter, wrapAsync(async (req, res) => {
     const experimentId = req.query.experimentId;
     if (!experimentId) {
       return res.status(400).json({ error: "experimentId query parameter is required" });
@@ -4247,7 +8588,7 @@ function registerExperimentRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/experiments/metrics", requireAuth, wrapAsync((req, res) => {
+  app2.get("/api/admin/experiments/metrics", requireAuth, wrapAsync(async (req, res) => {
     if (!isAdminEmail(req.user?.email)) {
       return res.status(403).json({ error: "Admin access required" });
     }
@@ -4279,121 +8620,152 @@ function registerExperimentRoutes(app2) {
   }));
 }
 
-// server/routes.ts
-init_stripe_webhook();
+// server/email-ab-testing.ts
+init_logger();
+import crypto4 from "crypto";
+var abLog = log.tag("EmailAB");
+var experiments2 = [];
+var assignments = /* @__PURE__ */ new Map();
+var MAX_EXPERIMENTS = 50;
+function createExperiment(name, variants) {
+  if (experiments2.length >= MAX_EXPERIMENTS) {
+    experiments2.shift();
+  }
+  const experiment = {
+    id: crypto4.randomUUID(),
+    name,
+    variants: variants.map((v) => ({
+      ...v,
+      id: crypto4.randomUUID(),
+      weight: v.weight || 1
+    })),
+    createdAt: /* @__PURE__ */ new Date(),
+    status: "active"
+  };
+  experiments2.push(experiment);
+  abLog.info(`Created email experiment "${name}" with ${variants.length} variants`);
+  return experiment;
+}
+function getExperiment(experimentId) {
+  return experiments2.find((e) => e.id === experimentId);
+}
+function completeExperiment(experimentId, winnerVariantId) {
+  const experiment = getExperiment(experimentId);
+  if (!experiment) return;
+  experiment.status = "completed";
+  experiment.winnerVariantId = winnerVariantId;
+  abLog.info(`Experiment "${experiment.name}" completed \u2014 winner: ${winnerVariantId}`);
+}
+function getExperimentStats(experimentId) {
+  const experiment = getExperiment(experimentId);
+  if (!experiment) return null;
+  return experiment.variants.map((v) => ({
+    variantId: v.id,
+    name: v.name,
+    assignedCount: [...assignments.entries()].filter(([key2, val]) => key2.startsWith(`${experimentId}:`) && val === v.id).length
+  }));
+}
+function getActiveExperiments() {
+  return experiments2.filter((e) => e.status === "active");
+}
+
+// server/routes-admin-experiments.ts
+init_email_tracking();
+function requireAdmin3(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminExperimentRoutes(app2) {
+  app2.get("/api/admin/experiments", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const experiments3 = getActiveExperiments();
+    const experimentsWithStats = experiments3.map((exp) => ({
+      ...exp,
+      stats: getExperimentStats(exp.id)
+    }));
+    return res.json({
+      data: {
+        experiments: experimentsWithStats,
+        emailStats: getEmailStats()
+      }
+    });
+  }));
+  app2.get("/api/admin/experiments/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const experiment = getExperiment(req.params.id);
+    if (!experiment) {
+      return res.status(404).json({ error: "Experiment not found" });
+    }
+    const stats2 = getExperimentStats(req.params.id);
+    return res.json({ data: { experiment, stats: stats2 } });
+  }));
+  app2.post("/api/admin/experiments", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const { name, variants } = req.body;
+    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
+      return res.status(400).json({ error: "name and variants[] are required" });
+    }
+    const experiment = createExperiment(name, variants);
+    return res.json({ data: experiment });
+  }));
+  app2.post("/api/admin/experiments/:id/complete", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const experiment = getExperiment(req.params.id);
+    if (!experiment) {
+      return res.status(404).json({ error: "Experiment not found" });
+    }
+    const { winnerVariantId } = req.body;
+    completeExperiment(req.params.id, winnerVariantId);
+    return res.json({ data: { completed: true } });
+  }));
+}
+
+// server/routes-auth.ts
+import passport2 from "passport";
+init_email();
 init_logger();
 init_storage();
-init_schema();
+init_analytics2();
+init_tier_staleness();
 
 // server/gdpr.ts
-var deletionRequests = /* @__PURE__ */ new Map();
-function scheduleDeletion(userId, gracePeriodDays) {
+init_db();
+init_schema();
+import { eq as eq21, and as and14, lte as lte3 } from "drizzle-orm";
+async function scheduleDeletion(userId, gracePeriodDays) {
   const now = /* @__PURE__ */ new Date();
   const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1e3);
-  const request = {
-    userId,
-    scheduledAt: now,
-    deleteAt,
+  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending")));
+  const [row] = await db.insert(deletionRequests).values({
+    memberId: userId,
+    requestedAt: now,
+    scheduledDeletionAt: deleteAt,
     status: "pending"
+  }).returning();
+  return {
+    userId,
+    scheduledAt: row.requestedAt,
+    deleteAt: row.scheduledDeletionAt,
+    status: row.status
   };
-  deletionRequests.set(userId, request);
-  return request;
 }
-function cancelDeletion(userId) {
-  const request = deletionRequests.get(userId);
-  if (!request || request.status !== "pending") {
-    return false;
-  }
-  request.status = "cancelled";
-  deletionRequests.set(userId, request);
-  return true;
+async function cancelDeletion(userId) {
+  const now = /* @__PURE__ */ new Date();
+  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending"))).returning();
+  return result.length > 0;
 }
-function getDeletionStatus(userId) {
-  return deletionRequests.get(userId) || null;
+async function getDeletionStatus(userId) {
+  const rows = await db.select().from(deletionRequests).where(eq21(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
+  if (rows.length === 0) return null;
+  const row = rows[0];
+  return {
+    userId: row.memberId,
+    scheduledAt: row.requestedAt,
+    deleteAt: row.scheduledDeletionAt,
+    status: row.status
+  };
 }
 
-// server/routes.ts
-init_tier_staleness();
-async function registerRoutes(app2) {
-  setupAuth(app2);
-  app2.use("/api", (req, res, next) => {
-    const start = Date.now();
-    const originalEnd = res.end;
-    res.end = function(...args) {
-      const duration = Date.now() - start;
-      const method = req.method;
-      const url = req.originalUrl || req.url;
-      const status = res.statusCode;
-      if (duration > 200) {
-        log.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
-      } else {
-        log.info(`${method} ${url} ${status} ${duration}ms`);
-      }
-      return originalEnd.apply(this, args);
-    };
-    next();
-  });
-  app2.get("/api/health", (req, res) => {
-    const uptime = process.uptime();
-    const memUsage = process.memoryUsage();
-    res.json({
-      status: "healthy",
-      version: "1.0.0",
-      uptime: Math.floor(uptime),
-      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-      nodeVersion: process.version,
-      memoryUsage: memUsage.heapUsed,
-      memory: {
-        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
-        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
-        rss: Math.round(memUsage.rss / 1024 / 1024)
-      }
-    });
-  });
-  const SSE_MAX_PER_IP = 5;
-  const SSE_TIMEOUT_MS = 18e5;
-  const sseConnectionsByIp = /* @__PURE__ */ new Map();
-  app2.get("/api/events", (req, res) => {
-    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
-    const currentCount = sseConnectionsByIp.get(clientIp) || 0;
-    if (currentCount >= SSE_MAX_PER_IP) {
-      log.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
-      return res.status(429).json({ error: "Too many SSE connections from this IP" });
-    }
-    sseConnectionsByIp.set(clientIp, currentCount + 1);
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no"
-    });
-    res.write('data: {"type":"connected","timestamp":' + Date.now() + "}\n\n");
-    addClient(res);
-    const keepAlive = setInterval(() => {
-      try {
-        res.write(": ping\n\n");
-      } catch {
-        clearInterval(keepAlive);
-      }
-    }, 3e4);
-    const timeout = setTimeout(() => {
-      try {
-        res.end();
-      } catch {
-      }
-    }, SSE_TIMEOUT_MS);
-    const cleanup = () => {
-      clearInterval(keepAlive);
-      clearTimeout(timeout);
-      const count7 = sseConnectionsByIp.get(clientIp) || 1;
-      if (count7 <= 1) {
-        sseConnectionsByIp.delete(clientIp);
-      } else {
-        sseConnectionsByIp.set(clientIp, count7 - 1);
-      }
-    };
-    req.on("close", cleanup);
-  });
+// server/routes-auth.ts
+function registerAuthRoutes(app2) {
   app2.post("/api/auth/signup", authRateLimiter, wrapAsync(async (req, res) => {
     try {
       const { password, city } = req.body;
@@ -4410,6 +8782,26 @@ async function registerRoutes(app2) {
         return res.status(400).json({ error: "Password must contain at least one number" });
       }
       const member = await registerMember({ displayName, username, email, password, city });
+      const referralCode = sanitizeString(req.body.referralCode, 50);
+      if (referralCode) {
+        const { resolveReferralCode: resolveReferralCode2, createReferral: createReferral2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const referrerId = await resolveReferralCode2(referralCode);
+        if (referrerId && referrerId !== member.id) {
+          createReferral2(referrerId, member.id, referralCode).catch(
+            (err) => log.error("Referral tracking failed:", err)
+          );
+        }
+      }
+      const { markBetaInviteJoined: markBetaInviteJoined2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      markBetaInviteJoined2(email, member.id).catch(() => {
+      });
+      const { generateEmailVerificationToken: generateEmailVerificationToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const verificationToken = await generateEmailVerificationToken2(member.id);
+      sendVerificationEmail({
+        email: member.email,
+        displayName: member.displayName,
+        token: verificationToken
+      }).catch((err) => log.error("Verification email failed:", err));
       sendWelcomeEmail({
         email: member.email,
         displayName: member.displayName,
@@ -4484,12 +8876,75 @@ async function registerRoutes(app2) {
     }
     return res.json({ data: req.user });
   });
+  app2.post("/api/auth/verify-email", wrapAsync(async (req, res) => {
+    const token = sanitizeString(req.body.token, 100);
+    if (!token) {
+      return res.status(400).json({ error: "Verification token is required" });
+    }
+    const { verifyEmailToken: verifyEmailToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const result = await verifyEmailToken2(token);
+    if (!result.success) {
+      return res.status(400).json({ error: "Invalid or expired verification token" });
+    }
+    return res.json({ data: { verified: true } });
+  }));
+  app2.post("/api/auth/resend-verification", requireAuth, wrapAsync(async (req, res) => {
+    const { isEmailVerified: isEmailVerified2, generateEmailVerificationToken: generateEmailVerificationToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const verified = await isEmailVerified2(req.user.id);
+    if (verified) {
+      return res.json({ data: { message: "Email already verified" } });
+    }
+    const token = await generateEmailVerificationToken2(req.user.id);
+    sendVerificationEmail({
+      email: req.user.email,
+      displayName: req.user.displayName,
+      token
+    }).catch((err) => log.error("Resend verification failed:", err));
+    return res.json({ data: { message: "Verification email sent" } });
+  }));
+  app2.post("/api/auth/forgot-password", authRateLimiter, wrapAsync(async (req, res) => {
+    const email = sanitizeEmail(req.body.email);
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    const { generatePasswordResetToken: generatePasswordResetToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const result = await generatePasswordResetToken2(email);
+    if (result) {
+      sendPasswordResetEmail({
+        email,
+        displayName: result.displayName,
+        token: result.token
+      }).catch((err) => log.error("Password reset email failed:", err));
+    }
+    return res.json({ data: { message: "If an account exists with that email, a reset link has been sent" } });
+  }));
+  app2.post("/api/auth/reset-password", authRateLimiter, wrapAsync(async (req, res) => {
+    const token = sanitizeString(req.body.token, 100);
+    const password = req.body.password;
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token and new password are required" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+    if (!/\d/.test(password)) {
+      return res.status(400).json({ error: "Password must contain at least one number" });
+    }
+    const bcrypt3 = await import("bcrypt");
+    const hashedPassword = await bcrypt3.hash(password, 10);
+    const { resetPasswordWithToken: resetPasswordWithToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const result = await resetPasswordWithToken2(token, hashedPassword);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error || "Password reset failed" });
+    }
+    return res.json({ data: { message: "Password has been reset successfully" } });
+  }));
   app2.get("/api/account/export", wrapAsync(async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Authentication required" });
     }
     const userId = req.user.id;
-    const [profile, ratings3, impact, seasonal, badges] = await Promise.all([
+    const [profile, ratings5, impact, seasonal, badges] = await Promise.all([
       getMemberById(userId),
       getMemberRatings(userId, 1, 1e4),
       getMemberImpact(userId),
@@ -4511,7 +8966,7 @@ async function registerRoutes(app2) {
         joinedAt: profile.joinedAt,
         lastActive: profile.lastActive
       } : null,
-      ratings: ratings3 || [],
+      ratings: ratings5 || [],
       impact: impact || null,
       seasonalActivity: seasonal || [],
       badges: badges || []
@@ -4539,7 +8994,7 @@ async function registerRoutes(app2) {
   }));
   app2.post("/api/account/schedule-deletion", requireAuth, wrapAsync(async (req, res) => {
     const userId = req.user.id;
-    const request = scheduleDeletion(userId, 30);
+    const request = await scheduleDeletion(userId, 30);
     log.tag("GDPR").info(
       `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
     );
@@ -4556,7 +9011,7 @@ async function registerRoutes(app2) {
   }));
   app2.post("/api/account/cancel-deletion", requireAuth, wrapAsync(async (req, res) => {
     const userId = req.user.id;
-    const cancelled = cancelDeletion(userId);
+    const cancelled = await cancelDeletion(userId);
     if (!cancelled) {
       return res.status(404).json({ error: "No pending deletion request found" });
     }
@@ -4567,7 +9022,7 @@ async function registerRoutes(app2) {
   }));
   app2.get("/api/account/deletion-status", requireAuth, wrapAsync(async (req, res) => {
     const userId = req.user.id;
-    const status = getDeletionStatus(userId);
+    const status = await getDeletionStatus(userId);
     if (!status) {
       return res.json({ data: { hasPendingDeletion: false } });
     }
@@ -4580,48 +9035,320 @@ async function registerRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/leaderboard", wrapAsync(async (req, res) => {
-    const city = sanitizeString(req.query.city, 100) || "Dallas";
-    const category = sanitizeString(req.query.category, 50) || "restaurant";
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-    const bizList = await getLeaderboard(city, category, limit);
-    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
-    const data = bizList.map((b) => ({
-      ...b,
-      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
-    }));
-    return res.json({ data });
-  }));
-  app2.get("/api/featured", wrapAsync(async (req, res) => {
-    const city = sanitizeString(req.query.city, 100) || "Dallas";
-    const placements = await getActiveFeaturedInCity(city);
-    if (placements.length === 0) {
-      return res.json({ data: [] });
+}
+
+// server/routes-members.ts
+init_logger();
+init_storage();
+init_tier_staleness();
+
+// server/file-storage.ts
+init_logger();
+import { promises as fs } from "node:fs";
+import path from "node:path";
+var UPLOADS_DIR = path.resolve(process.cwd(), "public", "uploads");
+var LocalFileStorage = class {
+  ready;
+  constructor() {
+    this.ready = fs.mkdir(UPLOADS_DIR, { recursive: true }).then(() => {
+      log.info(`[FileStorage] Local storage ready at ${UPLOADS_DIR}`);
+    });
+  }
+  async upload(key2, data, _contentType) {
+    await this.ready;
+    const filePath = path.join(UPLOADS_DIR, key2);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, data);
+    return this.getUrl(key2);
+  }
+  async delete(key2) {
+    await this.ready;
+    const filePath = path.join(UPLOADS_DIR, key2);
+    try {
+      await fs.unlink(filePath);
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
     }
-    const featured = await Promise.all(
-      placements.map(async (p) => {
-        const biz = await getBusinessById(p.businessId);
-        if (!biz) return null;
-        const photoMap = await getBusinessPhotosMap([biz.id]);
-        return {
-          id: biz.id,
-          name: biz.name,
-          slug: biz.slug,
-          category: biz.category,
-          photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || void 0,
-          weightedScore: biz.weightedScore || 0,
-          tagline: biz.tagline || `Top ${biz.category} in ${city}`,
-          totalRatings: biz.totalRatings || 0,
-          expiresAt: p.expiresAt
-        };
+  }
+  getUrl(key2) {
+    return `/uploads/${key2}`;
+  }
+};
+var R2FileStorage = class {
+  client;
+  // S3Client — lazily typed to avoid hard dep at import time
+  bucket;
+  publicUrl;
+  constructor() {
+    const {
+      R2_ACCOUNT_ID,
+      R2_ACCESS_KEY_ID,
+      R2_SECRET_ACCESS_KEY,
+      R2_BUCKET_NAME,
+      R2_PUBLIC_URL
+    } = process.env;
+    if (!R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ACCOUNT_ID) {
+      throw new Error(
+        "[FileStorage] R2 storage requires R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME env vars"
+      );
+    }
+    this.bucket = R2_BUCKET_NAME;
+    this.publicUrl = R2_PUBLIC_URL || `https://${R2_BUCKET_NAME}.r2.dev`;
+    const { S3Client } = __require("@aws-sdk/client-s3");
+    this.client = new S3Client({
+      region: "auto",
+      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY
+      }
+    });
+    log.info(`[FileStorage] R2 storage ready \u2014 bucket: ${this.bucket}`);
+  }
+  async upload(key2, data, contentType) {
+    const { PutObjectCommand } = __require("@aws-sdk/client-s3");
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key2,
+        Body: data,
+        ContentType: contentType
       })
     );
-    return res.json({ data: featured.filter(Boolean) });
+    return this.getUrl(key2);
+  }
+  async delete(key2) {
+    const { DeleteObjectCommand } = __require("@aws-sdk/client-s3");
+    await this.client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key2
+      })
+    );
+  }
+  getUrl(key2) {
+    return `${this.publicUrl}/${key2}`;
+  }
+};
+function createFileStorage() {
+  if (process.env.R2_BUCKET_NAME) {
+    return new R2FileStorage();
+  }
+  return new LocalFileStorage();
+}
+var fileStorage = createFileStorage();
+
+// server/routes-members.ts
+import crypto5 from "node:crypto";
+function registerMemberRoutes(app2) {
+  app2.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req, res) => {
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    const MAX_SIZE = 2 * 1024 * 1024;
+    const isMultipart = (req.headers["content-type"] || "").includes("multipart/form-data");
+    if (!isMultipart) {
+      return res.status(400).json({
+        error: "Avatar upload requires multipart/form-data with an 'avatar' file field."
+      });
+    }
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({
+        error: "No file found in multipart request. Send an 'avatar' field."
+      });
+    }
+    if (!ALLOWED_TYPES.includes(file.mimetype)) {
+      return res.status(400).json({
+        error: `Unsupported image type: ${file.mimetype}. Allowed: ${ALLOWED_TYPES.join(", ")}`
+      });
+    }
+    if (file.size > MAX_SIZE) {
+      return res.status(413).json({ error: "Image exceeds 2 MB limit" });
+    }
+    const fileBuffer = file.buffer;
+    const contentType = file.mimetype;
+    const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
+    const uniqueId = crypto5.randomBytes(8).toString("hex");
+    const key2 = `avatars/${req.user.id}-${uniqueId}.${ext}`;
+    const avatarUrl = await fileStorage.upload(key2, fileBuffer, contentType);
+    const { updateMemberAvatar: updateMemberAvatar2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const updated = await updateMemberAvatar2(req.user.id, avatarUrl);
+    if (!updated) {
+      return res.status(404).json({ error: "Member not found" });
+    }
+    return res.json({ data: { avatarUrl: updated.avatarUrl } });
   }));
-  app2.get("/api/leaderboard/categories", wrapAsync(async (req, res) => {
-    const city = sanitizeString(req.query.city, 100) || "Dallas";
-    const data = await getAllCategories(city);
+  app2.get("/api/members/me", requireAuth, wrapAsync(async (req, res) => {
+    const member = await getMemberById(req.user.id);
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
+    const tier = checkAndRefreshTier(computedTier, score);
+    const { ratings: ratings5, total } = await getMemberRatings(member.id);
+    const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const seasonal = await getSeasonalRatingCounts2(member.id);
+    const daysActive = Math.floor(
+      (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
+    );
+    return res.json({
+      data: {
+        id: member.id,
+        displayName: member.displayName,
+        username: member.username,
+        email: member.email,
+        city: member.city,
+        avatarUrl: member.avatarUrl,
+        credibilityScore: score,
+        credibilityTier: tier,
+        totalRatings: member.totalRatings,
+        totalCategories: member.totalCategories,
+        distinctBusinesses: member.distinctBusinesses,
+        isFoundingMember: member.isFoundingMember,
+        joinedAt: member.joinedAt,
+        daysActive,
+        ratingVariance: parseFloat(member.ratingVariance),
+        credibilityBreakdown: breakdown,
+        ratingHistory: ratings5,
+        ...seasonal
+      }
+    });
+  }));
+  app2.put("/api/members/me/email", requireAuth, wrapAsync(async (req, res) => {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ error: "Email is required" });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+    try {
+      const { updateMemberEmail: updateMemberEmail2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      const updated = await updateMemberEmail2(req.user.id, email);
+      if (!updated) {
+        return res.status(404).json({ error: "Member not found" });
+      }
+      log.tag("EmailChange").info(
+        `Email changed for user ${req.user.id} to ${email}`
+      );
+      return res.json({ data: { email: updated.email } });
+    } catch (err) {
+      if (err.message === "Email already in use") {
+        return res.status(409).json({ error: "Email already in use" });
+      }
+      throw err;
+    }
+  }));
+  app2.put("/api/members/me", requireAuth, wrapAsync(async (req, res) => {
+    const { displayName, username } = req.body;
+    const updates = {};
+    if (displayName !== void 0) {
+      if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
+        return res.status(400).json({ error: "displayName must be 1-50 characters" });
+      }
+      updates.displayName = displayName;
+    }
+    if (username !== void 0) {
+      if (typeof username !== "string" || !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+        return res.status(400).json({ error: "username must be 3-30 alphanumeric or underscore characters" });
+      }
+      updates.username = username;
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+    const { updateMemberProfile: updateMemberProfile2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const updated = await updateMemberProfile2(req.user.id, updates);
+    if (!updated) return res.status(404).json({ error: "Member not found" });
+    return res.json({ data: updated });
+  }));
+  app2.get("/api/members/:username", wrapAsync(async (req, res) => {
+    const { getMemberByUsername: getMemberByUsername2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const member = await getMemberByUsername2(req.params.username);
+    if (!member) return res.status(404).json({ error: "Member not found" });
+    const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
+    return res.json({
+      data: {
+        displayName: member.displayName,
+        username: member.username,
+        credibilityTier: freshTier,
+        totalRatings: member.totalRatings,
+        joinedAt: member.joinedAt
+      }
+    });
+  }));
+  app2.get("/api/members/me/impact", requireAuth, wrapAsync(async (req, res) => {
+    const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const data = await getMemberImpact2(req.user.id);
     return res.json({ data });
+  }));
+  app2.post("/api/members/me/push-token", requireAuth, wrapAsync(async (req, res) => {
+    const { pushToken } = req.body;
+    if (!pushToken || typeof pushToken !== "string") {
+      return res.status(400).json({ error: "pushToken is required" });
+    }
+    const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    await updatePushToken2(req.user.id, pushToken);
+    return res.json({ ok: true });
+  }));
+  app2.get("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
+    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const member = await getMemberById2(req.user.id);
+    const stored = member?.notificationPrefs || {};
+    const prefs = {
+      ratingResponses: true,
+      tierUpgrades: true,
+      challengerResults: true,
+      newChallengers: true,
+      weeklyDigest: false,
+      marketingEmails: false,
+      ...stored
+    };
+    return res.json({ data: prefs });
+  }));
+  app2.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
+    const {
+      ratingResponses: ratingResponses2,
+      tierUpgrades,
+      challengerResults,
+      newChallengers,
+      weeklyDigest,
+      marketingEmails
+    } = req.body;
+    const prefs = {
+      ratingResponses: ratingResponses2 !== false,
+      tierUpgrades: tierUpgrades !== false,
+      challengerResults: challengerResults !== false,
+      newChallengers: newChallengers !== false,
+      weeklyDigest: weeklyDigest === true,
+      marketingEmails: marketingEmails === true
+    };
+    const { updateNotificationPrefs: updateNotificationPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const saved = await updateNotificationPrefs2(req.user.id, prefs);
+    log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
+    return res.json({ data: saved });
+  }));
+  app2.get("/api/members/me/onboarding", requireAuth, wrapAsync(async (req, res) => {
+    const { getOnboardingProgress: getOnboardingProgress2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const progress = await getOnboardingProgress2(req.user.id);
+    return res.json({ data: progress });
+  }));
+}
+
+// server/routes-businesses.ts
+init_storage();
+function registerBusinessRoutes(app2) {
+  app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
+    const query = sanitizeString(req.query.q, 50);
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    if (!query || query.trim().length === 0) {
+      return res.json({ data: [] });
+    }
+    const suggestions = await autocompleteBusinesses(query, city);
+    return res.json({ data: suggestions });
+  }));
+  app2.get("/api/businesses/popular-categories", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const categories2 = await getPopularCategories(city);
+    return res.json({ data: categories2 });
   }));
   app2.get("/api/businesses/search", wrapAsync(async (req, res) => {
     const query = sanitizeString(req.query.q, 200);
@@ -4640,22 +9367,22 @@ async function registerRoutes(app2) {
     if (!business) {
       return res.status(404).json({ error: "Business not found" });
     }
-    let [{ ratings: ratings3 }, dishList, photos] = await Promise.all([
+    let [{ ratings: ratings5 }, dishList, photos] = await Promise.all([
       getBusinessRatings(business.id, 1, 20),
       getBusinessDishes(business.id, 5),
       getBusinessPhotos(business.id)
     ]);
     if (photos.length === 0 && business.googlePlaceId) {
       try {
-        const count7 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
-        if (count7 > 0) {
+        const count15 = await fetchAndStorePhotos(business.id, business.googlePlaceId);
+        if (count15 > 0) {
           photos = await getBusinessPhotos(business.id);
         }
       } catch {
       }
     }
     const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
-    return res.json({ data: { ...business, photoUrls, recentRatings: ratings3, dishes: dishList } });
+    return res.json({ data: { ...business, photoUrls, recentRatings: ratings5, dishes: dishList } });
   }));
   app2.get("/api/businesses/:id/ratings", wrapAsync(async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -4700,42 +9427,2738 @@ async function registerRoutes(app2) {
     if (!business) {
       return res.status(404).json({ error: "Business not found" });
     }
+    const { isAdminEmail: isAdminEmail2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    const isOwner = business.ownerId && business.ownerId === req.user.id;
+    const isAdmin = isAdminEmail2(req.user?.email);
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "Dashboard access requires business ownership" });
+    }
     const { getRankHistory: getRankHistory2, getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const [{ ratings: ratings3, total }, rankHistory2, dishes2] = await Promise.all([
+    const [{ ratings: ratings5, total }, rankHistory2, dishes2] = await Promise.all([
       getBusinessRatings(business.id, 1, 10),
       getRankHistory2(business.id, 49),
-      // 7 weeks
       getBusinessDishes2(business.id, 5)
     ]);
     const totalRatings = business.totalRatings || 0;
     const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
     const rankPosition = business.rankPosition || 0;
     const rankDelta = business.rankDelta || 0;
-    const returners = ratings3.filter((r) => r.wouldReturn === true).length;
-    const returnTotal = ratings3.filter((r) => r.wouldReturn !== null && r.wouldReturn !== void 0).length;
+    const returners = ratings5.filter((r) => r.wouldReturn === true).length;
+    const returnTotal = ratings5.filter((r) => r.wouldReturn !== null && r.wouldReturn !== void 0).length;
     const wouldReturnPct = returnTotal > 0 ? Math.round(returners / returnTotal * 100) : 0;
     const topDish = dishes2.length > 0 ? dishes2[0] : null;
     const ratingTrend = rankHistory2.map((h) => h.score);
+    const isPro = business.subscriptionStatus === "active" || business.subscriptionStatus === "trialing" || isAdmin;
+    const baseData = {
+      totalRatings,
+      avgScore,
+      rankPosition,
+      rankDelta,
+      wouldReturnPct,
+      topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
+      ratingTrend: isPro ? ratingTrend : ratingTrend.slice(-7),
+      // Free: 7 days, Pro: full history
+      recentRatings: (isPro ? ratings5 : ratings5.slice(0, 3)).map((r) => ({
+        id: r.id,
+        user: r.memberName || "Anonymous",
+        score: parseFloat(r.rawScore),
+        tier: r.memberTier || "community",
+        note: isPro ? r.note : void 0,
+        // Notes are Pro-only
+        date: r.createdAt
+      })),
+      subscriptionStatus: business.subscriptionStatus || "none",
+      isPro
+    };
+    return res.json({ data: baseData });
+  }));
+  app2.get("/api/businesses/:id/rank-history", wrapAsync(async (req, res) => {
+    const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
+    const data = await getRankHistory2(req.params.id, days);
+    return res.json({ data });
+  }));
+  app2.post("/api/ratings/:id/response", requireAuth, wrapAsync(async (req, res) => {
+    const ratingId = req.params.id;
+    const responseText = sanitizeString(req.body.responseText, 500);
+    if (!responseText || responseText.length < 2) {
+      return res.status(400).json({ error: "Response text is required (2-500 characters)" });
+    }
+    const { getRatingById: getRatingById2, submitRatingResponse: submitRatingResponse2, getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const rating = await getRatingById2(ratingId);
+    if (!rating) {
+      return res.status(404).json({ error: "Rating not found" });
+    }
+    const business = await getBusinessBySlug(rating.businessId);
+    const businessById = business || await (await Promise.resolve().then(() => (init_storage(), storage_exports))).getBusinessById(rating.businessId);
+    if (!businessById) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    if (businessById.ownerId !== req.user.id) {
+      return res.status(403).json({ error: "Only the business owner can respond to ratings" });
+    }
+    const { isAdminEmail: isAdminEmail2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    const isAdmin = isAdminEmail2(req.user?.email);
+    const isPro = businessById.subscriptionStatus === "active" || businessById.subscriptionStatus === "trialing";
+    if (!isPro && !isAdmin) {
+      return res.status(403).json({ error: "Dashboard Pro subscription required to respond to ratings" });
+    }
+    const response = await submitRatingResponse2(ratingId, businessById.id, req.user.id, responseText);
+    const rater = await getMemberById2(rating.memberId);
+    if (rater?.pushToken) {
+      const { notifyRatingResponse: notifyRatingResponse2 } = await Promise.resolve().then(() => (init_push(), push_exports));
+      notifyRatingResponse2(rater.id, rater.pushToken, businessById.name, responseText).catch(() => {
+      });
+    }
+    return res.status(201).json({ data: response });
+  }));
+  app2.get("/api/ratings/:id/response", wrapAsync(async (req, res) => {
+    const { getRatingResponse: getRatingResponse2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const response = await getRatingResponse2(req.params.id);
+    if (!response) {
+      return res.status(404).json({ error: "No response found" });
+    }
+    return res.json({ data: response });
+  }));
+  app2.delete("/api/ratings/:id/response", requireAuth, wrapAsync(async (req, res) => {
+    const ratingId = req.params.id;
+    const { getRatingById: getRatingById2, deleteRatingResponse: deleteRatingResponse2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const rating = await getRatingById2(ratingId);
+    if (!rating) {
+      return res.status(404).json({ error: "Rating not found" });
+    }
+    const businessById = await (await Promise.resolve().then(() => (init_storage(), storage_exports))).getBusinessById(rating.businessId);
+    if (!businessById || businessById.ownerId !== req.user.id) {
+      return res.status(403).json({ error: "Only the business owner can delete responses" });
+    }
+    const deleted = await deleteRatingResponse2(ratingId, req.user.id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Response not found" });
+    }
+    return res.json({ data: { deleted: true } });
+  }));
+}
+
+// server/routes-dishes.ts
+init_schema();
+init_storage();
+function registerDishRoutes(app2) {
+  app2.get("/api/dish-leaderboards", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "dallas";
+    const data = await getDishLeaderboards(city);
+    return res.json({ data });
+  }));
+  app2.get("/api/dish-leaderboards/:slug", wrapAsync(async (req, res) => {
+    const slug = req.params.slug;
+    const city = sanitizeString(req.query.city, 100) || "dallas";
+    const result = await getDishLeaderboardWithEntries(slug, city);
+    if (!result) return res.status(404).json({ error: "Dish leaderboard not found" });
+    return res.json({ data: result });
+  }));
+  app2.get("/api/dish-suggestions", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "dallas";
+    const data = await getDishSuggestions(city);
+    return res.json({ data });
+  }));
+  app2.post("/api/dish-suggestions", requireAuth, wrapAsync(async (req, res) => {
+    const parsed = insertDishSuggestionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0].message });
+    const memberId = req.user.id;
+    try {
+      const suggestion = await submitDishSuggestion(memberId, parsed.data.city, parsed.data.dishName);
+      return res.status(201).json({ data: suggestion });
+    } catch (err) {
+      if (err.message.includes("3 dishes per week")) return res.status(429).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.post("/api/dish-suggestions/:id/vote", requireAuth, wrapAsync(async (req, res) => {
+    const memberId = req.user.id;
+    try {
+      const suggestion = await voteDishSuggestion(memberId, req.params.id);
+      return res.json({ data: suggestion });
+    } catch (err) {
+      if (err.message.includes("Already voted")) return res.status(409).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.get("/api/businesses/:id/top-dishes", wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const { getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_dishes(), dishes_exports));
+    const topDishes = await getBusinessDishes2(businessId, 10);
+    const enriched = topDishes.map((d) => ({
+      id: d.id,
+      name: d.name,
+      slug: d.slug,
+      voteCount: d.voteCount,
+      photoUrl: d.photoUrl
+    }));
+    return res.json({ data: enriched });
+  }));
+}
+
+// server/routes-seo.ts
+init_storage();
+var SITE_URL2 = process.env.SITE_URL || "https://topranker.com";
+function registerSeoRoutes(app2) {
+  app2.get("/robots.txt", (_req, res) => {
+    res.type("text/plain").send(`User-agent: *
+Allow: /
+Allow: /dish/
+Allow: /business/
+
+Disallow: /admin/
+Disallow: /api/
+Disallow: /auth/
+
+Sitemap: ${SITE_URL2}/sitemap.xml
+`);
+  });
+  app2.get("/sitemap.xml", wrapAsync(async (_req, res) => {
+    const cities = ["dallas", "fort-worth", "austin", "houston", "san-antonio"];
+    const allBoards = [];
+    for (const city of cities) {
+      const boards = await getDishLeaderboards(city);
+      for (const b of boards) {
+        allBoards.push({ slug: b.dishSlug, city });
+      }
+    }
+    const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_URL2}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <lastmod>${today}</lastmod>
+  </url>
+  <url>
+    <loc>${SITE_URL2}/auth/login</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${SITE_URL2}/auth/signup</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${SITE_URL2}/legal/terms</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>${SITE_URL2}/legal/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>`;
+    for (const board of allBoards) {
+      xml += `
+  <url>
+    <loc>${SITE_URL2}/dish/${board.slug}</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+    <lastmod>${today}</lastmod>
+  </url>`;
+    }
+    xml += `
+</urlset>`;
+    res.type("application/xml").send(xml);
+  }));
+  app2.get("/api/seo/dish/:slug", wrapAsync(async (req, res) => {
+    const { getDishLeaderboardWithEntries: getDishLeaderboardWithEntries2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const slug = req.params.slug;
+    const city = req.query.city || "dallas";
+    const board = await getDishLeaderboardWithEntries2(slug, city);
+    if (!board) {
+      return res.status(404).json({ error: "Not found" });
+    }
+    const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+    const entries = board.entries || [];
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: `Best ${board.dishName} in ${cityTitle}`,
+      description: `Community-ranked best ${board.dishName.toLowerCase()} in ${cityTitle}. ${entries.length} spots rated by credibility-weighted reviews.`,
+      url: `${SITE_URL2}/dish/${board.dishSlug}`,
+      numberOfItems: entries.length,
+      itemListElement: entries.slice(0, 10).map((entry, idx) => ({
+        "@type": "ListItem",
+        position: idx + 1,
+        name: entry.businessName,
+        url: `${SITE_URL2}/business/${entry.businessSlug}`
+      }))
+    };
+    return res.json({ data: jsonLd });
+  }));
+  app2.get("/api/seo/challenger/:id", wrapAsync(async (req, res) => {
+    const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25 } = await import("drizzle-orm");
+    const challengeId = req.params.id;
+    const [challenge] = await db2.select().from(challengers2).where(eq25(challengers2.id, challengeId));
+    if (!challenge) {
+      return res.status(404).json({ error: "Challenge not found" });
+    }
+    const [challengerBiz, defenderBiz] = await Promise.all([
+      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq25(businesses2.id, challenge.defenderId)).then((r) => r[0])
+    ]);
+    const challengerName = challengerBiz?.name || "Challenger";
+    const defenderName = defenderBiz?.name || "Defender";
+    const isActive = challenge.status === "active";
+    const daysLeft = isActive ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - Date.now()) / (1e3 * 60 * 60 * 24))) : 0;
+    const title = `${challengerName} vs ${defenderName} \u2014 ${challenge.category}`;
+    const description = isActive ? `${daysLeft} days left to vote! Who has the best ${challenge.category.toLowerCase()} in ${challenge.city}?` : challenge.winnerId ? `Challenge complete! See who won the ${challenge.category.toLowerCase()} showdown in ${challenge.city}.` : `It was a draw! ${challenge.category} challenge in ${challenge.city}.`;
     return res.json({
+      og: {
+        title,
+        description,
+        url: `${SITE_URL2}/challenger?id=${challengeId}`,
+        type: "website",
+        siteName: "TopRanker",
+        image: challengerBiz?.photoUrl || defenderBiz?.photoUrl || `${SITE_URL2}/og-default.png`
+      },
       data: {
-        totalRatings,
-        avgScore,
-        rankPosition,
-        rankDelta,
-        wouldReturnPct,
-        topDish: topDish ? { name: topDish.name, votes: topDish.voteCount || 0 } : null,
-        ratingTrend,
-        recentRatings: ratings3.map((r) => ({
-          id: r.id,
-          user: r.memberName || "Anonymous",
-          score: parseFloat(r.rawScore),
-          tier: r.memberTier || "community",
-          note: r.note,
-          date: r.createdAt
-        }))
+        id: challenge.id,
+        status: challenge.status,
+        category: challenge.category,
+        city: challenge.city,
+        challengerName,
+        defenderName,
+        challengerSlug: challengerBiz?.slug,
+        defenderSlug: defenderBiz?.slug,
+        totalVotes: challenge.totalVotes,
+        daysLeft,
+        winnerId: challenge.winnerId
       }
     });
   }));
+}
+
+// server/routes-qr.ts
+init_storage();
+init_logger();
+var qrLog = log.tag("QR");
+var SITE_URL3 = process.env.SITE_URL || "https://topranker.com";
+function registerQrRoutes(app2) {
+  app2.get("/api/businesses/:slug/qr", wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const rateUrl = `${SITE_URL3}/rate/${business.slug}?source=qr`;
+    const profileUrl = `${SITE_URL3}/business/${business.slug}`;
+    return res.json({
+      data: {
+        businessId: business.id,
+        businessName: business.name,
+        businessSlug: business.slug,
+        rateUrl,
+        profileUrl,
+        qrConfig: {
+          data: rateUrl,
+          width: 300,
+          height: 300,
+          dotsOptions: {
+            color: "#0D1B2A",
+            type: "rounded"
+          },
+          cornersSquareOptions: {
+            color: "#C49A1A",
+            type: "extra-rounded"
+          },
+          cornersDotOptions: {
+            color: "#C49A1A",
+            type: "dot"
+          },
+          backgroundOptions: {
+            color: "#FFFFFF"
+          }
+        },
+        printTemplate: {
+          headline: `Rate ${business.name}`,
+          subline: "Scan to rate on TopRanker",
+          footer: "topranker.com"
+        }
+      }
+    });
+  }));
+  app2.post("/api/qr/scan", wrapAsync(async (req, res) => {
+    const businessId = sanitizeString(req.body.businessId, 100);
+    if (!businessId) {
+      return res.status(400).json({ error: "businessId is required" });
+    }
+    const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const business = await getBusinessById2(businessId);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { recordQrScan: recordQrScan2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const memberId = req.user?.id || null;
+    const scan = await recordQrScan2(businessId, memberId);
+    qrLog.info(`QR scan: business=${business.name}, member=${memberId || "anonymous"}`);
+    return res.json({
+      data: {
+        scanId: scan.id,
+        businessSlug: business.slug,
+        businessName: business.name
+      }
+    });
+  }));
+  app2.get("/api/businesses/:slug/qr-stats", requireAuth, wrapAsync(async (req, res) => {
+    const business = await getBusinessBySlug(req.params.slug);
+    if (!business) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    const { isAdminEmail: isAdminEmail2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    const isOwner = business.ownerId && business.ownerId === req.user.id;
+    const isAdmin = isAdminEmail2(req.user?.email);
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: "QR stats require business ownership" });
+    }
+    const { getQrScanStats: getQrScanStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const stats2 = await getQrScanStats2(business.id);
+    return res.json({ data: stats2 });
+  }));
+}
+
+// server/routes-notifications.ts
+init_logger();
+
+// server/notifications.ts
+init_logger();
+var notifLog = log.tag("Notifications");
+var store = /* @__PURE__ */ new Map();
+function getNotifications(memberId, limit) {
+  const list = store.get(memberId) || [];
+  return list.slice(0, limit || 20);
+}
+function getUnreadCount(memberId) {
+  return (store.get(memberId) || []).filter((n) => !n.read).length;
+}
+function markAsRead(notificationId) {
+  for (const list of store.values()) {
+    const notif = list.find((n) => n.id === notificationId);
+    if (notif) {
+      notif.read = true;
+      return true;
+    }
+  }
+  return false;
+}
+function markAllRead(memberId) {
+  const list = store.get(memberId) || [];
+  let count15 = 0;
+  for (const n of list) {
+    if (!n.read) {
+      n.read = true;
+      count15++;
+    }
+  }
+  return count15;
+}
+function deleteNotification(notificationId) {
+  for (const [memberId, list] of store) {
+    const idx = list.findIndex((n) => n.id === notificationId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+// server/routes-notifications.ts
+var notifRouteLog = log.tag("NotifRoutes");
+function registerNotificationRoutes(app2) {
+  app2.get("/api/notifications", requireAuth, (req, res) => {
+    const memberId = req.memberId || "anonymous";
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 20;
+    const all = getNotifications(memberId, 100);
+    const totalPages = Math.ceil(all.length / perPage) || 1;
+    const start = (page - 1) * perPage;
+    const notifications2 = all.slice(start, start + perPage);
+    res.json({ notifications: notifications2, unreadCount: getUnreadCount(memberId), page, perPage, totalPages });
+  });
+  app2.get("/api/notifications/unread-count", requireAuth, (req, res) => {
+    const memberId = req.memberId || "anonymous";
+    res.json({ count: getUnreadCount(memberId) });
+  });
+  app2.post("/api/notifications/:id/read", requireAuth, (req, res) => {
+    const result = markAsRead(req.params.id);
+    if (!result) return res.status(404).json({ error: "Notification not found" });
+    res.json({ success: true });
+  });
+  app2.post("/api/notifications/mark-all-read", requireAuth, (req, res) => {
+    const memberId = req.memberId || "anonymous";
+    const count15 = markAllRead(memberId);
+    res.json({ markedRead: count15 });
+  });
+  app2.delete("/api/notifications/:id", requireAuth, (req, res) => {
+    const result = deleteNotification(req.params.id);
+    if (!result) return res.status(404).json({ error: "Notification not found" });
+    res.json({ success: true });
+  });
+}
+
+// server/routes-referrals.ts
+function registerReferralRoutes(app2) {
+  app2.get("/api/referrals/me", requireAuth, wrapAsync(async (req, res) => {
+    const { getReferralStats: getReferralStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const stats2 = await getReferralStats2(req.user.id);
+    const code = req.user.username.toUpperCase();
+    const shareUrl = `https://topranker.com/join?ref=${encodeURIComponent(code)}`;
+    return res.json({
+      data: {
+        code,
+        shareUrl,
+        ...stats2
+      }
+    });
+  }));
+  app2.get("/api/referrals/validate", wrapAsync(async (req, res) => {
+    const code = (req.query.code || "").trim();
+    if (!code) {
+      return res.status(400).json({ error: "Referral code is required" });
+    }
+    const { resolveReferralCode: resolveReferralCode2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const referrerId = await resolveReferralCode2(code);
+    if (!referrerId) {
+      return res.json({ data: { valid: false } });
+    }
+    return res.json({ data: { valid: true } });
+  }));
+}
+
+// server/routes-unsubscribe.ts
+init_db();
+init_schema();
+init_logger();
+import { eq as eq22 } from "drizzle-orm";
+
+// server/unsubscribe-tokens.ts
+import crypto6 from "crypto";
+var SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
+function hmac(data) {
+  return crypto6.createHmac("sha256", SECRET).update(data).digest("base64url");
+}
+function verifyUnsubscribeToken(token) {
+  const parts = token.split(".");
+  if (parts.length < 3) return null;
+  const signature = parts.pop();
+  const type = parts.pop();
+  const memberId = parts.join(".");
+  const expected = hmac(`${memberId}.${type}`);
+  if (!crypto6.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return null;
+  }
+  return { memberId, type };
+}
+
+// server/routes-unsubscribe.ts
+var VALID_TYPES = ["drip", "weekly", "all"];
+function flagsForType(type, value) {
+  if (type === "drip") return { emailDrip: value };
+  if (type === "weekly") return { weeklyDigest: value };
+  return { emailDrip: value, weeklyDigest: value };
+}
+function labelForType(type) {
+  if (type === "drip") return "drip campaign";
+  if (type === "weekly") return "weekly digest";
+  return "all";
+}
+function htmlPage(title, body) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} \u2014 TopRanker</title>
+<style>body{margin:0;font-family:'DM Sans',system-ui,sans-serif;background:#0D1B2A;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#162636;border-radius:12px;padding:40px;max-width:420px;text-align:center}
+h1{color:#C49A1A;font-size:1.4rem;margin:0 0 12px}p{line-height:1.5;margin:0 0 20px;color:#ccc}
+a{color:#C49A1A;text-decoration:underline}</style></head>
+<body><div class="card"><h1>${title}</h1>${body}</div></body></html>`;
+}
+function registerUnsubscribeRoutes(app2) {
+  app2.get("/api/unsubscribe", wrapAsync(async (req, res) => {
+    const token = sanitizeString(req.query.token, 200);
+    if (!token) {
+      return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+    }
+    let memberId;
+    let type;
+    const signed = verifyUnsubscribeToken(token);
+    if (signed && VALID_TYPES.includes(signed.type)) {
+      memberId = signed.memberId;
+      type = signed.type;
+    } else {
+      memberId = token;
+      type = sanitizeString(req.query.type, 10) || "all";
+      if (!VALID_TYPES.includes(type)) {
+        return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+      }
+    }
+    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    if (!member) {
+      return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
+    }
+    const existing = member.notificationPrefs || {};
+    const updated = { ...existing, ...flagsForType(type, false) };
+    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    log.info(`Unsubscribed member ${memberId} from ${type} emails`);
+    const label = labelForType(type);
+    const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
+    return res.send(htmlPage("Unsubscribed", `<p>You've been unsubscribed from <strong>${label}</strong> emails.</p><p><a href="${resubLink}">Re-subscribe</a></p>`));
+  }));
+  app2.get("/api/resubscribe", wrapAsync(async (req, res) => {
+    const token = sanitizeString(req.query.token, 200);
+    if (!token) {
+      return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+    }
+    let memberId;
+    let type;
+    const signed = verifyUnsubscribeToken(token);
+    if (signed && VALID_TYPES.includes(signed.type)) {
+      memberId = signed.memberId;
+      type = signed.type;
+    } else {
+      memberId = token;
+      type = sanitizeString(req.query.type, 10) || "all";
+      if (!VALID_TYPES.includes(type)) {
+        return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
+      }
+    }
+    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    if (!member) {
+      return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
+    }
+    const existing = member.notificationPrefs || {};
+    const updated = { ...existing, ...flagsForType(type, true) };
+    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    log.info(`Resubscribed member ${memberId} to ${type} emails`);
+    const label = labelForType(type);
+    return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
+  }));
+}
+
+// server/routes-webhooks.ts
+init_logger();
+import crypto7 from "node:crypto";
+init_email_tracking();
+
+// server/email-id-mapping.ts
+init_logger();
+var mapLog = log.tag("EmailIdMapping");
+var resendToTracking = /* @__PURE__ */ new Map();
+function getTrackingIdFromResend(resendId) {
+  return resendToTracking.get(resendId);
+}
+
+// server/routes-webhooks.ts
+function verifySignature2(payload, signature, secret) {
+  const expected = crypto7.createHmac("sha256", secret).update(payload).digest("hex");
+  return crypto7.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+}
+function registerWebhookRoutes(app2) {
+  app2.post("/api/webhooks/resend", wrapAsync(async (req, res) => {
+    const rawBody = JSON.stringify(req.body);
+    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    if (secret) {
+      const signature = req.headers["resend-signature"];
+      if (!signature || !verifySignature2(rawBody, signature, secret)) {
+        log.warn("Resend webhook: invalid signature");
+        return res.status(400).json({ error: "Invalid webhook signature" });
+      }
+    } else {
+      log.warn("Resend webhook: RESEND_WEBHOOK_SECRET not set \u2014 skipping signature verification (dev mode)");
+    }
+    const { type, data } = req.body;
+    const trackingId = getTrackingIdFromResend(data.email_id) || data.email_id;
+    const eventId = trackingId;
+    log.info(`Resend webhook: ${type} for email ${eventId}`);
+    switch (type) {
+      case "email.opened":
+        await trackEmailOpened(eventId);
+        break;
+      case "email.clicked":
+        await trackEmailClicked(eventId);
+        break;
+      case "email.bounced":
+        await trackEmailBounced(eventId);
+        break;
+      case "email.delivery_error":
+      case "email.complained": {
+        const reason = String(data.reason || data.error || type);
+        await trackEmailFailed(eventId, reason);
+        break;
+      }
+      default:
+        log.info(`Resend webhook: unhandled event type "${type}"`);
+    }
+    return res.json({ received: true });
+  }));
+}
+
+// server/routes-admin-promotion.ts
+init_logger();
+
+// server/city-promotion.ts
+init_logger();
+var promoLog = log.tag("CityPromotion");
+var thresholds = {
+  minBusinesses: 50,
+  minMembers: 100,
+  minRatings: 200,
+  minDaysInBeta: 30
+};
+function getPromotionThresholds() {
+  return { ...thresholds };
+}
+function setPromotionThresholds(t) {
+  thresholds = { ...thresholds, ...t };
+  promoLog.info("Promotion thresholds updated", thresholds);
+  return { ...thresholds };
+}
+async function getPromotionStatus(city) {
+  const config2 = getCityConfig(city);
+  if (!config2 || config2.status !== "beta") return null;
+  const engagement = await getCityEngagement(city);
+  const launchDate = config2.launchDate ? new Date(config2.launchDate) : /* @__PURE__ */ new Date();
+  const daysInBeta = Math.floor(
+    (Date.now() - launchDate.getTime()) / (1e3 * 60 * 60 * 24)
+  );
+  const missing = [];
+  if (engagement.totalBusinesses < thresholds.minBusinesses) missing.push("businesses");
+  if (engagement.totalMembers < thresholds.minMembers) missing.push("members");
+  if (engagement.totalRatings < thresholds.minRatings) missing.push("ratings");
+  if (daysInBeta < thresholds.minDaysInBeta) missing.push("daysInBeta");
+  return {
+    city,
+    eligible: missing.length === 0,
+    currentMetrics: {
+      businesses: engagement.totalBusinesses,
+      members: engagement.totalMembers,
+      ratings: engagement.totalRatings,
+      daysInBeta
+    },
+    thresholds: { ...thresholds },
+    missingCriteria: missing
+  };
+}
+function promoteCity(city) {
+  const config2 = getCityConfig(city);
+  if (!config2 || config2.status !== "beta") {
+    promoLog.warn(`Cannot promote ${city}: not a beta city`);
+    return false;
+  }
+  CITY_REGISTRY[city].status = "active";
+  CITY_REGISTRY[city].launchDate = CITY_REGISTRY[city].launchDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  promoLog.info(`Promoted ${city} from beta to active`);
+  return true;
+}
+
+// server/routes-admin-promotion.ts
+var adminPromoLog = log.tag("AdminPromotion");
+function registerAdminPromotionRoutes(app2) {
+  app2.get(
+    "/api/admin/promotion-status/:city",
+    wrapAsync(async (req, res) => {
+      const status = await getPromotionStatus(req.params.city);
+      if (!status) {
+        return res.status(404).json({ error: "City not found or not in beta" });
+      }
+      res.json(status);
+    })
+  );
+  app2.post("/api/admin/promote/:city", (req, res) => {
+    const result = promoteCity(req.params.city);
+    if (!result) {
+      return res.status(400).json({ error: "Cannot promote city" });
+    }
+    adminPromoLog.info(`Admin promoted ${req.params.city}`);
+    res.json({ success: true, city: req.params.city, newStatus: "active" });
+  });
+  app2.get("/api/admin/promotion-thresholds", (_req, res) => {
+    res.json(getPromotionThresholds());
+  });
+  app2.put("/api/admin/promotion-thresholds", (req, res) => {
+    const updated = setPromotionThresholds(req.body);
+    adminPromoLog.info("Promotion thresholds updated");
+    res.json(updated);
+  });
+}
+
+// server/routes-admin-ratelimit.ts
+init_logger();
+
+// server/rate-limit-dashboard.ts
+init_logger();
+var rlDashLog = log.tag("RateLimitDash");
+var events2 = [];
+function getRateLimitStats(limit) {
+  const recentLimit = limit ?? 50;
+  const totalRequests = events2.length;
+  const blockedRequests = events2.filter((e) => e.blocked).length;
+  const blockRate = totalRequests > 0 ? blockedRequests / totalRequests : 0;
+  const ipCounts = /* @__PURE__ */ new Map();
+  for (const e of events2) {
+    ipCounts.set(e.ip, (ipCounts.get(e.ip) || 0) + 1);
+  }
+  const topOffenders = Array.from(ipCounts.entries()).map(([ip, count15]) => ({ ip, count: count15 })).sort((a, b) => b.count - a.count).slice(0, 10);
+  const pathCounts = /* @__PURE__ */ new Map();
+  for (const e of events2) {
+    pathCounts.set(e.path, (pathCounts.get(e.path) || 0) + 1);
+  }
+  const topPaths = Array.from(pathCounts.entries()).map(([path3, count15]) => ({ path: path3, count: count15 })).sort((a, b) => b.count - a.count).slice(0, 10);
+  const recentEvents = events2.slice(-recentLimit);
+  return {
+    totalRequests,
+    blockedRequests,
+    blockRate,
+    topOffenders,
+    topPaths,
+    recentEvents
+  };
+}
+function getBlockedIPs(minHits) {
+  const threshold = minHits ?? 5;
+  const blockedEvents = events2.filter((e) => e.blocked);
+  const ipData = /* @__PURE__ */ new Map();
+  for (const e of blockedEvents) {
+    const existing = ipData.get(e.ip);
+    if (!existing || e.timestamp > existing.lastSeen) {
+      ipData.set(e.ip, {
+        count: (existing?.count || 0) + 1,
+        lastSeen: e.timestamp
+      });
+    } else {
+      existing.count++;
+    }
+  }
+  return Array.from(ipData.entries()).map(([ip, data]) => ({ ip, count: data.count, lastSeen: data.lastSeen })).filter((entry) => entry.count >= threshold).sort((a, b) => b.count - a.count);
+}
+
+// server/abuse-detection.ts
+init_logger();
+var abuseLog = log.tag("AbuseDetection");
+var incidents = [];
+function getActiveIncidents() {
+  return incidents.filter((i) => !i.resolved);
+}
+function resolveIncident(id) {
+  const incident = incidents.find((i) => i.id === id);
+  if (!incident) {
+    return false;
+  }
+  incident.resolved = true;
+  abuseLog.info(`Resolved abuse incident ${id} (${incident.pattern} from ${incident.source})`);
+  return true;
+}
+function getAbuseStats() {
+  const byType = {};
+  for (const i of incidents) {
+    byType[i.pattern] = (byType[i.pattern] || 0) + 1;
+  }
+  return {
+    total: incidents.length,
+    active: incidents.filter((i) => !i.resolved).length,
+    byType
+  };
+}
+
+// server/routes-admin-ratelimit.ts
+var adminRLLog = log.tag("AdminRateLimit");
+function registerAdminRateLimitRoutes(app2) {
+  app2.get("/api/admin/rate-limits", (_req, res) => {
+    adminRLLog.info("Fetching rate limit stats");
+    res.json(getRateLimitStats());
+  });
+  app2.get("/api/admin/rate-limits/blocked", (req, res) => {
+    const minHits = parseInt(req.query.minHits) || 5;
+    adminRLLog.info(`Fetching blocked IPs (minHits: ${minHits})`);
+    res.json(getBlockedIPs(minHits));
+  });
+  app2.get("/api/admin/abuse/incidents", (_req, res) => {
+    adminRLLog.info("Fetching active abuse incidents");
+    res.json(getActiveIncidents());
+  });
+  app2.get("/api/admin/abuse/stats", (_req, res) => {
+    adminRLLog.info("Fetching abuse stats");
+    res.json(getAbuseStats());
+  });
+  app2.post("/api/admin/abuse/resolve/:id", (req, res) => {
+    const result = resolveIncident(req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: "Incident not found" });
+    }
+    adminRLLog.info(`Resolved abuse incident ${req.params.id}`);
+    res.json({ success: true });
+  });
+}
+
+// server/routes-admin-claims-verification.ts
+init_logger();
+
+// server/claim-verification.ts
+init_logger();
+var claimLog = log.tag("ClaimVerification");
+var claims = /* @__PURE__ */ new Map();
+function getClaimStatus(claimId) {
+  return claims.get(claimId) || null;
+}
+function getPendingClaims2() {
+  return Array.from(claims.values()).filter((c) => c.status === "pending");
+}
+function getClaimsByBusiness(businessId) {
+  return Array.from(claims.values()).filter((c) => c.businessId === businessId);
+}
+function rejectClaim(claimId, reason) {
+  const claim = claims.get(claimId);
+  if (!claim || claim.status !== "pending") return false;
+  claim.status = "rejected";
+  claim.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  claimLog.info(`Claim ${claimId} rejected: ${reason || "no reason"}`);
+  return true;
+}
+function getClaimStats() {
+  const all = Array.from(claims.values());
+  return {
+    total: all.length,
+    pending: all.filter((c) => c.status === "pending").length,
+    verified: all.filter((c) => c.status === "verified").length,
+    rejected: all.filter((c) => c.status === "rejected").length,
+    expired: all.filter((c) => c.status === "expired").length
+  };
+}
+
+// server/routes-admin-claims-verification.ts
+var adminClaimLog = log.tag("AdminClaimVerify");
+function registerAdminClaimVerificationRoutes(app2) {
+  app2.get("/api/admin/claims/pending", (_req, res) => {
+    res.json(getPendingClaims2());
+  });
+  app2.get("/api/admin/claims/stats", (_req, res) => {
+    res.json(getClaimStats());
+  });
+  app2.get("/api/admin/claims/:id", (req, res) => {
+    const claim = getClaimStatus(req.params.id);
+    if (!claim) return res.status(404).json({ error: "Claim not found" });
+    res.json(claim);
+  });
+  app2.get("/api/admin/claims/business/:businessId", (req, res) => {
+    res.json(getClaimsByBusiness(req.params.businessId));
+  });
+  app2.post("/api/admin/claims/:id/reject", (req, res) => {
+    const result = rejectClaim(req.params.id, req.body?.reason);
+    if (!result) return res.status(400).json({ error: "Cannot reject claim" });
+    adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
+    res.json({ success: true });
+  });
+}
+
+// server/routes-admin-reputation.ts
+init_logger();
+
+// server/reputation-v2.ts
+init_logger();
+var repLog = log.tag("ReputationV2");
+var reputationCache = /* @__PURE__ */ new Map();
+function getReputation(memberId) {
+  return reputationCache.get(memberId) || null;
+}
+function getTierThresholds() {
+  return {
+    newcomer: { min: 0, max: 19 },
+    contributor: { min: 20, max: 39 },
+    trusted: { min: 40, max: 59 },
+    expert: { min: 60, max: 79 },
+    authority: { min: 80, max: 100 }
+  };
+}
+function getReputationLeaderboard(limit) {
+  return Array.from(reputationCache.values()).sort((a, b) => b.score - a.score).slice(0, limit || 10);
+}
+function getReputationStats() {
+  const all = Array.from(reputationCache.values());
+  const avg = all.length > 0 ? all.reduce((sum2, r) => sum2 + r.score, 0) / all.length : 0;
+  const byTier = { newcomer: 0, contributor: 0, trusted: 0, expert: 0, authority: 0 };
+  for (const r of all) byTier[r.tier]++;
+  return { totalScored: all.length, averageScore: Math.round(avg * 100) / 100, byTier };
+}
+
+// server/routes-admin-reputation.ts
+var adminRepLog = log.tag("AdminReputation");
+function registerAdminReputationRoutes(app2) {
+  app2.get("/api/admin/reputation/stats", (_req, res) => {
+    adminRepLog.info("Fetching reputation stats");
+    res.json(getReputationStats());
+  });
+  app2.get("/api/admin/reputation/leaderboard", (req, res) => {
+    const limit = parseInt(req.query.limit) || 10;
+    adminRepLog.info(`Fetching reputation leaderboard (limit: ${limit})`);
+    res.json(getReputationLeaderboard(limit));
+  });
+  app2.get("/api/admin/reputation/:memberId", (req, res) => {
+    const { memberId } = req.params;
+    adminRepLog.info(`Fetching reputation for member ${memberId}`);
+    const reputation = getReputation(memberId);
+    if (!reputation) {
+      return res.status(404).json({ error: "Member reputation not found" });
+    }
+    res.json(reputation);
+  });
+  app2.get("/api/admin/reputation/tiers", (_req, res) => {
+    adminRepLog.info("Fetching tier thresholds");
+    res.json(getTierThresholds());
+  });
+}
+
+// server/routes-admin-moderation.ts
+init_logger();
+
+// server/moderation-queue.ts
+init_logger();
+var modLog = log.tag("ModerationQueue");
+var queue = [];
+function getPendingItems(limit) {
+  return queue.filter((i) => i.status === "pending").slice(0, limit || 50);
+}
+function approveItem(itemId, moderatorId, note) {
+  const item = queue.find((i) => i.id === itemId);
+  if (!item || item.status !== "pending") return false;
+  item.status = "approved";
+  item.moderatorId = moderatorId;
+  item.moderatorNote = note || null;
+  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
+  modLog.info(`Approved: ${itemId} by ${moderatorId}`);
+  return true;
+}
+function rejectItem(itemId, moderatorId, note) {
+  const item = queue.find((i) => i.id === itemId);
+  if (!item || item.status !== "pending") return false;
+  item.status = "rejected";
+  item.moderatorId = moderatorId;
+  item.moderatorNote = note || null;
+  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
+  modLog.info(`Rejected: ${itemId} by ${moderatorId}`);
+  return true;
+}
+function getQueueStats() {
+  return {
+    total: queue.length,
+    pending: queue.filter((i) => i.status === "pending").length,
+    approved: queue.filter((i) => i.status === "approved").length,
+    rejected: queue.filter((i) => i.status === "rejected").length
+  };
+}
+function getItemsByBusiness(businessId) {
+  return queue.filter((i) => i.businessId === businessId);
+}
+
+// server/routes-admin-moderation.ts
+var adminModLog = log.tag("AdminModeration");
+function registerAdminModerationRoutes(app2) {
+  app2.get("/api/admin/moderation/queue", (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminModLog.info(`Fetching moderation queue (limit: ${limit})`);
+    res.json(getPendingItems(limit));
+  });
+  app2.get("/api/admin/moderation/stats", (_req, res) => {
+    adminModLog.info("Fetching moderation stats");
+    res.json(getQueueStats());
+  });
+  app2.post("/api/admin/moderation/:id/approve", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminModLog.info(`Approving moderation item ${id}`);
+    const success = approveItem(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Item not found or already resolved" });
+    }
+    res.json({ success: true });
+  });
+  app2.post("/api/admin/moderation/:id/reject", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminModLog.info(`Rejecting moderation item ${id}`);
+    const success = rejectItem(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Item not found or already resolved" });
+    }
+    res.json({ success: true });
+  });
+  app2.get("/api/admin/moderation/business/:businessId", (req, res) => {
+    const { businessId } = req.params;
+    adminModLog.info(`Fetching moderation items for business ${businessId}`);
+    res.json(getItemsByBusiness(businessId));
+  });
+}
+
+// server/routes-admin-ranking.ts
+init_logger();
+
+// server/search-ranking-v2.ts
+init_logger();
+var rankLog = log.tag("SearchRankingV2");
+var weights = {
+  reputationWeight: 0.6,
+  recencyBoost: 0.15,
+  ratingCountFloor: 10,
+  bayesianPrior: 3.5,
+  bayesianStrength: 5
+};
+function getRankingWeights() {
+  return { ...weights };
+}
+function setRankingWeights(w) {
+  weights = { ...weights, ...w };
+  rankLog.info("Ranking weights updated", weights);
+  return { ...weights };
+}
+
+// server/routes-admin-ranking.ts
+var adminRankLog = log.tag("AdminRanking");
+function registerAdminRankingRoutes(app2) {
+  app2.get("/api/admin/ranking/weights", (_req, res) => {
+    adminRankLog.info("Fetching ranking weights");
+    res.json(getRankingWeights());
+  });
+  app2.put("/api/admin/ranking/weights", (req, res) => {
+    adminRankLog.info("Updating ranking weights", req.body);
+    const updated = setRankingWeights(req.body);
+    res.json(updated);
+  });
+  app2.get("/api/admin/ranking/confidence-levels", (_req, res) => {
+    adminRankLog.info("Fetching confidence level definitions");
+    const weights2 = getRankingWeights();
+    res.json({
+      levels: [
+        { level: "low", description: `Fewer than ${Math.floor(weights2.ratingCountFloor / 2)} ratings`, minRatings: 0 },
+        { level: "medium", description: `${Math.floor(weights2.ratingCountFloor / 2)}\u2013${weights2.ratingCountFloor - 1} ratings`, minRatings: Math.floor(weights2.ratingCountFloor / 2) },
+        { level: "high", description: `${weights2.ratingCountFloor}+ ratings`, minRatings: weights2.ratingCountFloor }
+      ]
+    });
+  });
+}
+
+// server/routes-admin-templates.ts
+init_logger();
+
+// server/email-templates.ts
+init_logger();
+import crypto8 from "crypto";
+var tmplLog = log.tag("EmailTemplates");
+var templates = /* @__PURE__ */ new Map();
+var MAX_TEMPLATES = 200;
+var BUILT_IN_TEMPLATES = [
+  {
+    name: "welcome",
+    subject: "Welcome to TrustMe, {{memberName}}!",
+    htmlBody: "<h1>Welcome, {{memberName}}!</h1><p>You've joined the most trusted ranking platform in {{city}}.</p>",
+    textBody: "Welcome, {{memberName}}! You've joined the most trusted ranking platform in {{city}}.",
+    variables: ["memberName", "city"],
+    category: "transactional"
+  },
+  {
+    name: "claim_approved",
+    subject: "Your claim for {{businessName}} has been approved",
+    htmlBody: "<h1>Congratulations!</h1><p>Your claim for {{businessName}} in {{city}} has been verified.</p>",
+    textBody: "Congratulations! Your claim for {{businessName}} in {{city}} has been verified.",
+    variables: ["businessName", "city"],
+    category: "transactional"
+  },
+  {
+    name: "weekly_digest",
+    subject: "Your weekly {{city}} food scene update",
+    htmlBody: "<h1>{{city}} This Week</h1><p>Hey {{memberName}}, here's what's trending in {{city}}.</p><p>Top rated: {{topBusiness}}</p>",
+    textBody: "Hey {{memberName}}, here's what's trending in {{city}}. Top rated: {{topBusiness}}",
+    variables: ["memberName", "city", "topBusiness"],
+    category: "digest"
+  },
+  {
+    name: "pro_upgrade",
+    subject: "Unlock Pro features for {{businessName}}",
+    htmlBody: "<h1>Go Pro</h1><p>{{businessName}} could reach more customers with TrustMe Pro.</p>",
+    textBody: "{{businessName}} could reach more customers with TrustMe Pro.",
+    variables: ["businessName"],
+    category: "outreach"
+  },
+  {
+    name: "tier_promotion",
+    subject: "You've been promoted to {{tierName}}!",
+    htmlBody: "<h1>Level Up!</h1><p>Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.</p>",
+    textBody: "Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.",
+    variables: ["memberName", "tierName"],
+    category: "transactional"
+  }
+];
+function initBuiltInTemplates() {
+  for (const t of BUILT_IN_TEMPLATES) {
+    const tmpl = {
+      ...t,
+      id: crypto8.randomUUID(),
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    templates.set(tmpl.name, tmpl);
+  }
+  tmplLog.info(`Initialized ${BUILT_IN_TEMPLATES.length} built-in templates`);
+}
+initBuiltInTemplates();
+function getTemplate(name) {
+  return templates.get(name) || null;
+}
+function getAllTemplates() {
+  return Array.from(templates.values());
+}
+function createTemplate(tmpl) {
+  if (templates.size >= MAX_TEMPLATES) {
+    const oldest = Array.from(templates.values()).filter((t) => !BUILT_IN_TEMPLATES.some((b) => b.name === t.name)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (oldest) templates.delete(oldest.name);
+  }
+  const created = {
+    ...tmpl,
+    id: crypto8.randomUUID(),
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  templates.set(created.name, created);
+  tmplLog.info(`Template created: ${created.name}`);
+  return created;
+}
+function renderTemplate(name, vars) {
+  const tmpl = templates.get(name);
+  if (!tmpl) return null;
+  let subject = tmpl.subject;
+  let html = tmpl.htmlBody;
+  let text2 = tmpl.textBody;
+  for (const [key2, value] of Object.entries(vars)) {
+    const pattern = new RegExp(`\\{\\{${key2}\\}\\}`, "g");
+    subject = subject.replace(pattern, value);
+    html = html.replace(pattern, value);
+    text2 = text2.replace(pattern, value);
+  }
+  return { subject, html, text: text2 };
+}
+function previewTemplate(name) {
+  const tmpl = templates.get(name);
+  if (!tmpl) return null;
+  const vars = {};
+  for (const v of tmpl.variables) {
+    vars[v] = `[${v}]`;
+  }
+  return renderTemplate(name, vars);
+}
+
+// server/routes-admin-templates.ts
+var adminTmplLog = log.tag("AdminTemplates");
+function registerAdminTemplateRoutes(app2) {
+  app2.get("/api/admin/templates", (_req, res) => {
+    adminTmplLog.info("Fetching all email templates");
+    res.json(getAllTemplates());
+  });
+  app2.get("/api/admin/templates/:name", (req, res) => {
+    const { name } = req.params;
+    adminTmplLog.info(`Fetching template: ${name}`);
+    const tmpl = getTemplate(name);
+    if (!tmpl) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(tmpl);
+  });
+  app2.post("/api/admin/templates", (req, res) => {
+    const { name, subject, htmlBody, textBody, variables, category } = req.body;
+    if (!name || !subject || !htmlBody || !textBody || !category) {
+      res.status(400).json({ error: "Missing required fields: name, subject, htmlBody, textBody, category" });
+      return;
+    }
+    adminTmplLog.info(`Creating template: ${name}`);
+    const created = createTemplate({
+      name,
+      subject,
+      htmlBody,
+      textBody,
+      variables: variables || [],
+      category
+    });
+    res.status(201).json(created);
+  });
+  app2.get("/api/admin/templates/:name/preview", (req, res) => {
+    const { name } = req.params;
+    adminTmplLog.info(`Previewing template: ${name}`);
+    const result = previewTemplate(name);
+    if (!result) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(result);
+  });
+  app2.post("/api/admin/templates/:name/render", (req, res) => {
+    const { name } = req.params;
+    const vars = req.body.variables || req.body;
+    adminTmplLog.info(`Rendering template: ${name}`, vars);
+    const result = renderTemplate(name, vars);
+    if (!result) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(result);
+  });
+}
+
+// server/routes-admin-tier-limits.ts
+init_logger();
+
+// server/tiered-rate-limiter.ts
+init_logger();
+var tierRLLog = log.tag("TieredRateLimit");
+var TIER_LIMITS = {
+  free: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5e3, burstLimit: 10 },
+  pro: { requestsPerMinute: 120, requestsPerHour: 3e3, requestsPerDay: 5e4, burstLimit: 30 },
+  enterprise: { requestsPerMinute: 600, requestsPerHour: 2e4, requestsPerDay: 5e5, burstLimit: 100 },
+  admin: { requestsPerMinute: 1e3, requestsPerHour: 5e4, requestsPerDay: 1e6, burstLimit: 200 }
+};
+var usage = /* @__PURE__ */ new Map();
+function getUsage(key2) {
+  return usage.get(key2) || null;
+}
+function getTierLimits(tier) {
+  return { ...TIER_LIMITS[tier] };
+}
+function getAllTierLimits() {
+  return JSON.parse(JSON.stringify(TIER_LIMITS));
+}
+function getUsageStats() {
+  const byTier = { free: 0, pro: 0, enterprise: 0, admin: 0 };
+  for (const record of usage.values()) {
+    byTier[record.tier] = (byTier[record.tier] || 0) + 1;
+  }
+  return { totalTracked: usage.size, byTier };
+}
+
+// server/routes-admin-tier-limits.ts
+var adminTierLog = log.tag("AdminTierLimits");
+function registerAdminTierLimitRoutes(app2) {
+  app2.get("/api/admin/tier-limits", (_req, res) => {
+    adminTierLog.info("Fetching all tier limits");
+    res.json(getAllTierLimits());
+  });
+  app2.get("/api/admin/tier-limits/usage/stats", (_req, res) => {
+    adminTierLog.info("Fetching tier usage stats");
+    res.json(getUsageStats());
+  });
+  app2.get("/api/admin/tier-limits/usage/:key", (req, res) => {
+    const record = getUsage(req.params.key);
+    if (!record) {
+      return res.status(404).json({ error: "No usage record found for key" });
+    }
+    adminTierLog.info(`Fetching usage for key: ${req.params.key}`);
+    res.json(record);
+  });
+  app2.get("/api/admin/tier-limits/:tier", (req, res) => {
+    const tier = req.params.tier;
+    const validTiers = ["free", "pro", "enterprise", "admin"];
+    if (!validTiers.includes(tier)) {
+      return res.status(400).json({ error: `Invalid tier: ${tier}. Must be one of: ${validTiers.join(", ")}` });
+    }
+    adminTierLog.info(`Fetching limits for tier: ${tier}`);
+    res.json(getTierLimits(tier));
+  });
+}
+
+// server/routes-admin-websocket.ts
+init_logger();
+
+// server/websocket-manager.ts
+init_logger();
+var wsLog = log.tag("WebSocketManager");
+var connections = /* @__PURE__ */ new Map();
+var memberConnections = /* @__PURE__ */ new Map();
+var messageLog = [];
+var MAX_MESSAGE_LOG = 1e3;
+function getActiveConnections() {
+  return Array.from(connections.values());
+}
+function broadcastToAll(message) {
+  messageLog.unshift(message);
+  if (messageLog.length > MAX_MESSAGE_LOG) messageLog.pop();
+  return connections.size;
+}
+function getConnectionStats() {
+  return {
+    totalConnections: connections.size,
+    uniqueMembers: memberConnections.size,
+    messagesSent: messageLog.length
+  };
+}
+function getRecentMessages(limit) {
+  return messageLog.slice(0, limit || 20);
+}
+
+// server/routes-admin-websocket.ts
+var adminWSLog = log.tag("AdminWebSocket");
+function registerAdminWebSocketRoutes(app2) {
+  app2.get("/api/admin/websocket/connections", (_req, res) => {
+    adminWSLog.info("Fetching active WebSocket connections");
+    res.json({ data: getActiveConnections() });
+  });
+  app2.get("/api/admin/websocket/stats", (_req, res) => {
+    adminWSLog.info("Fetching WebSocket stats");
+    res.json({ data: getConnectionStats() });
+  });
+  app2.get("/api/admin/websocket/messages", (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    adminWSLog.info(`Fetching recent messages (limit: ${limit})`);
+    res.json({ data: getRecentMessages(limit) });
+  });
+  app2.post("/api/admin/websocket/broadcast", (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "message (string) is required" });
+    }
+    const wsMessage = {
+      type: "system",
+      payload: { message },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const count15 = broadcastToAll(wsMessage);
+    adminWSLog.info(`Broadcast system message to ${count15} connections`);
+    res.json({ data: { delivered: count15, message } });
+  });
+}
+
+// server/city-health-monitor.ts
+init_logger();
+var healthLog = log.tag("CityHealth");
+var healthData = /* @__PURE__ */ new Map();
+function getCityHealth(city) {
+  return healthData.get(city) || null;
+}
+function getAllCityHealth() {
+  return Array.from(healthData.values());
+}
+function getHealthySummary() {
+  const all = Array.from(healthData.values());
+  return {
+    total: all.length,
+    healthy: all.filter((c) => c.status === "healthy").length,
+    degraded: all.filter((c) => c.status === "degraded").length,
+    critical: all.filter((c) => c.status === "critical").length
+  };
+}
+
+// server/routes-admin-health.ts
+function registerAdminHealthRoutes(app2) {
+  app2.get(
+    "/api/admin/city-health/summary",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const summary = getHealthySummary();
+      return res.json({ data: summary });
+    })
+  );
+  app2.get(
+    "/api/admin/city-health",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const all = getAllCityHealth();
+      return res.json({ data: all });
+    })
+  );
+  app2.get(
+    "/api/admin/city-health/:city",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const city = req.params.city;
+      const health = getCityHealth(city);
+      if (!health) {
+        return res.status(404).json({ error: `No health data for city: ${city}` });
+      }
+      return res.json({ data: health });
+    })
+  );
+}
+
+// server/routes-admin-photos.ts
+init_logger();
+
+// server/photo-moderation.ts
+init_logger();
+var photoModLog = log.tag("PhotoModeration");
+var submissions = /* @__PURE__ */ new Map();
+var MAX_FILE_SIZE = 10 * 1024 * 1024;
+function approvePhoto(photoId, moderatorId, note) {
+  const sub = submissions.get(photoId);
+  if (!sub || sub.status !== "pending") return false;
+  sub.status = "approved";
+  sub.moderatorId = moderatorId;
+  sub.moderatorNote = note || null;
+  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+  photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
+  return true;
+}
+function rejectPhoto(photoId, moderatorId, reason, note) {
+  const sub = submissions.get(photoId);
+  if (!sub || sub.status !== "pending") return false;
+  sub.status = "rejected";
+  sub.rejectionReason = reason;
+  sub.moderatorId = moderatorId;
+  sub.moderatorNote = note || null;
+  sub.reviewedAt = (/* @__PURE__ */ new Date()).toISOString();
+  photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
+  return true;
+}
+function getPendingPhotos(limit) {
+  return Array.from(submissions.values()).filter((s) => s.status === "pending").slice(0, limit || 50);
+}
+function getPhotosByBusiness(businessId) {
+  return Array.from(submissions.values()).filter((s) => s.businessId === businessId && s.status === "approved");
+}
+function getPhotoStats() {
+  const all = Array.from(submissions.values());
+  const byReason = {};
+  for (const s of all) {
+    if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
+  }
+  return {
+    total: all.length,
+    pending: all.filter((s) => s.status === "pending").length,
+    approved: all.filter((s) => s.status === "approved").length,
+    rejected: all.filter((s) => s.status === "rejected").length,
+    byReason
+  };
+}
+
+// server/routes-admin-photos.ts
+var adminPhotoLog = log.tag("AdminPhotos");
+function registerAdminPhotoRoutes(app2) {
+  app2.get("/api/admin/photos/pending", (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminPhotoLog.info(`Fetching pending photos (limit: ${limit})`);
+    res.json(getPendingPhotos(limit));
+  });
+  app2.get("/api/admin/photos/stats", (_req, res) => {
+    adminPhotoLog.info("Fetching photo stats");
+    res.json(getPhotoStats());
+  });
+  app2.post("/api/admin/photos/:id/approve", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminPhotoLog.info(`Approving photo ${id}`);
+    const success = approvePhoto(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Photo not found or already reviewed" });
+    }
+    res.json({ success: true });
+  });
+  app2.post("/api/admin/photos/:id/reject", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const { reason, note } = req.body || {};
+    if (!reason) {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+    adminPhotoLog.info(`Rejecting photo ${id} (reason: ${reason})`);
+    const success = rejectPhoto(id, moderatorId, reason, note);
+    if (!success) {
+      return res.status(404).json({ error: "Photo not found or already reviewed" });
+    }
+    res.json({ success: true });
+  });
+  app2.get("/api/photos/business/:businessId", (req, res) => {
+    const { businessId } = req.params;
+    adminPhotoLog.info(`Fetching approved photos for business ${businessId}`);
+    res.json(getPhotosByBusiness(businessId));
+  });
+}
+
+// server/routes-push.ts
+init_logger();
+
+// server/push-notifications.ts
+init_logger();
+import crypto9 from "crypto";
+var pushLog2 = log.tag("PushNotifications");
+var tokens = /* @__PURE__ */ new Map();
+var messageLog2 = [];
+var MAX_MESSAGES = 5e3;
+function registerPushToken(memberId, token, platform) {
+  if (!tokens.has(memberId)) tokens.set(memberId, []);
+  const existing = tokens.get(memberId).find((t) => t.token === token);
+  if (existing) {
+    existing.lastUsed = (/* @__PURE__ */ new Date()).toISOString();
+    return existing;
+  }
+  const entry = {
+    memberId,
+    token,
+    platform,
+    registeredAt: (/* @__PURE__ */ new Date()).toISOString(),
+    lastUsed: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  tokens.get(memberId).push(entry);
+  pushLog2.info(`Push token registered: ${platform} for ${memberId}`);
+  return entry;
+}
+function removePushToken(memberId, token) {
+  const list = tokens.get(memberId);
+  if (!list) return false;
+  const idx = list.findIndex((t) => t.token === token);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  if (list.length === 0) tokens.delete(memberId);
+  return true;
+}
+function getMemberTokens(memberId) {
+  return tokens.get(memberId) || [];
+}
+function sendPushNotification2(memberId, title, body, data) {
+  const msg = {
+    id: crypto9.randomUUID(),
+    memberId,
+    title,
+    body,
+    data,
+    status: "queued",
+    sentAt: null,
+    error: null
+  };
+  const memberTokens = tokens.get(memberId);
+  if (!memberTokens || memberTokens.length === 0) {
+    msg.status = "failed";
+    msg.error = "No push tokens registered";
+  } else {
+    msg.status = "sent";
+    msg.sentAt = (/* @__PURE__ */ new Date()).toISOString();
+    pushLog2.info(`Push sent to ${memberId}: ${title}`);
+  }
+  messageLog2.unshift(msg);
+  if (messageLog2.length > MAX_MESSAGES) messageLog2.pop();
+  return msg;
+}
+function sendBulkPush(memberIds, title, body, data) {
+  let sent = 0, failed = 0;
+  for (const id of memberIds) {
+    const msg = sendPushNotification2(id, title, body, data);
+    if (msg.status === "sent") sent++;
+    else failed++;
+  }
+  return { sent, failed };
+}
+function getPushStats() {
+  let totalTokens = 0;
+  for (const list of tokens.values()) totalTokens += list.length;
+  return {
+    totalTokens,
+    uniqueMembers: tokens.size,
+    messagesSent: messageLog2.filter((m) => m.status === "sent").length,
+    messagesFailed: messageLog2.filter((m) => m.status === "failed").length
+  };
+}
+
+// server/routes-push.ts
+var pushRouteLog = log.tag("PushRoutes");
+function registerPushRoutes(app2) {
+  app2.post("/api/push/register", requireAuth, (req, res) => {
+    const memberId = req.user?.id || req.memberId;
+    if (!memberId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const { token, platform } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "token is required" });
+    }
+    if (!platform || !["ios", "android", "web"].includes(platform)) {
+      return res.status(400).json({ error: "platform must be ios, android, or web" });
+    }
+    const result = registerPushToken(memberId, token, platform);
+    pushRouteLog.info(`Token registered for member ${memberId}`);
+    res.json({ token: result });
+  });
+  app2.delete("/api/push/token", requireAuth, (req, res) => {
+    const memberId = req.user?.id || req.memberId;
+    if (!memberId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const { token } = req.body;
+    if (!token || typeof token !== "string") {
+      return res.status(400).json({ error: "token is required" });
+    }
+    const removed = removePushToken(memberId, token);
+    if (!removed) {
+      return res.status(404).json({ error: "Token not found" });
+    }
+    pushRouteLog.info(`Token removed for member ${memberId}`);
+    res.json({ removed: true });
+  });
+  app2.get("/api/push/tokens", requireAuth, (req, res) => {
+    const memberId = req.user?.id || req.memberId;
+    if (!memberId) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const tokens2 = getMemberTokens(memberId);
+    res.json({ tokens: tokens2 });
+  });
+  app2.get("/api/admin/push/stats", requireAuth, (req, res) => {
+    const user = req.user;
+    if (!user?.role || user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const stats2 = getPushStats();
+    res.json({ stats: stats2 });
+  });
+  app2.post("/api/admin/push/broadcast", requireAuth, (req, res) => {
+    const user = req.user;
+    if (!user?.role || user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const { memberIds, title, body, data } = req.body;
+    if (!Array.isArray(memberIds) || memberIds.length === 0) {
+      return res.status(400).json({ error: "memberIds array is required" });
+    }
+    if (!title || typeof title !== "string") {
+      return res.status(400).json({ error: "title is required" });
+    }
+    if (!body || typeof body !== "string") {
+      return res.status(400).json({ error: "body is required" });
+    }
+    const result = sendBulkPush(memberIds, title, body, data);
+    pushRouteLog.info(`Broadcast sent: ${result.sent} sent, ${result.failed} failed`);
+    res.json({ result });
+  });
+}
+
+// server/routes-owner-responses.ts
+init_logger();
+
+// server/business-responses.ts
+init_logger();
+import crypto10 from "crypto";
+var respLog = log.tag("BusinessResponses");
+var responses = /* @__PURE__ */ new Map();
+var reviewResponses = /* @__PURE__ */ new Map();
+var MAX_RESPONSES = 5e3;
+function createResponse(reviewId, businessId, ownerId, content) {
+  if (reviewResponses.has(reviewId)) {
+    respLog.warn(`Response already exists for review ${reviewId}`);
+    return null;
+  }
+  if (content.length < 10 || content.length > 2e3) {
+    respLog.warn(`Response content length invalid: ${content.length}`);
+    return null;
+  }
+  const resp = {
+    id: crypto10.randomUUID(),
+    reviewId,
+    businessId,
+    ownerId,
+    content,
+    status: "visible",
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  responses.set(resp.id, resp);
+  reviewResponses.set(reviewId, resp.id);
+  if (responses.size > MAX_RESPONSES) {
+    const oldest = Array.from(responses.values()).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (oldest) {
+      responses.delete(oldest.id);
+      reviewResponses.delete(oldest.reviewId);
+    }
+  }
+  respLog.info(`Response created for review ${reviewId} by owner ${ownerId}`);
+  return resp;
+}
+function getResponseForReview(reviewId) {
+  const respId = reviewResponses.get(reviewId);
+  if (!respId) return null;
+  return responses.get(respId) || null;
+}
+function getResponsesByBusiness(businessId) {
+  return Array.from(responses.values()).filter((r) => r.businessId === businessId);
+}
+function updateResponse(responseId, content) {
+  const resp = responses.get(responseId);
+  if (!resp) return false;
+  if (content.length < 10 || content.length > 2e3) return false;
+  resp.content = content;
+  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  return true;
+}
+function flagResponse(responseId) {
+  const resp = responses.get(responseId);
+  if (!resp) return false;
+  resp.status = "flagged";
+  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  return true;
+}
+function hideResponse(responseId) {
+  const resp = responses.get(responseId);
+  if (!resp) return false;
+  resp.status = "hidden";
+  resp.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  return true;
+}
+function getResponseStats() {
+  const all = Array.from(responses.values());
+  return {
+    total: all.length,
+    visible: all.filter((r) => r.status === "visible").length,
+    hidden: all.filter((r) => r.status === "hidden").length,
+    flagged: all.filter((r) => r.status === "flagged").length
+  };
+}
+
+// server/routes-owner-responses.ts
+var respRouteLog = log.tag("OwnerResponseRoutes");
+function registerOwnerResponseRoutes(app2) {
+  app2.post("/api/owner/responses", requireAuth, (req, res) => {
+    const { reviewId, businessId, ownerId, content } = req.body;
+    if (!reviewId || !businessId || !ownerId || !content) {
+      return res.status(400).json({ error: "Missing required fields: reviewId, businessId, ownerId, content" });
+    }
+    const resp = createResponse(reviewId, businessId, ownerId, content);
+    if (!resp) {
+      return res.status(409).json({ error: "Response already exists for this review or content invalid" });
+    }
+    respRouteLog.info(`Owner ${ownerId} responded to review ${reviewId}`);
+    return res.status(201).json(resp);
+  });
+  app2.get("/api/owner/responses/:businessId", requireAuth, (req, res) => {
+    const { businessId } = req.params;
+    respRouteLog.info(`Fetching responses for business ${businessId}`);
+    return res.json(getResponsesByBusiness(businessId));
+  });
+  app2.put("/api/owner/responses/:id", requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { content } = req.body;
+    if (!content) {
+      return res.status(400).json({ error: "Missing required field: content" });
+    }
+    const ok = updateResponse(id, content);
+    if (!ok) {
+      return res.status(404).json({ error: "Response not found or content invalid" });
+    }
+    respRouteLog.info(`Response ${id} updated`);
+    return res.json({ success: true });
+  });
+  app2.get("/api/reviews/:reviewId/response", (req, res) => {
+    const { reviewId } = req.params;
+    const resp = getResponseForReview(reviewId);
+    if (!resp) {
+      return res.status(404).json({ error: "No response found for this review" });
+    }
+    return res.json(resp);
+  });
+  app2.post("/api/admin/responses/:id/flag", requireAuth, (req, res) => {
+    const { id } = req.params;
+    const ok = flagResponse(id);
+    if (!ok) {
+      return res.status(404).json({ error: "Response not found" });
+    }
+    respRouteLog.info(`Response ${id} flagged by admin`);
+    return res.json({ success: true });
+  });
+  app2.post("/api/admin/responses/:id/hide", requireAuth, (req, res) => {
+    const { id } = req.params;
+    const ok = hideResponse(id);
+    if (!ok) {
+      return res.status(404).json({ error: "Response not found" });
+    }
+    respRouteLog.info(`Response ${id} hidden by admin`);
+    return res.json({ success: true });
+  });
+  app2.get("/api/admin/responses/stats", requireAuth, (_req, res) => {
+    respRouteLog.info("Fetching response stats");
+    return res.json(getResponseStats());
+  });
+}
+
+// server/routes-owner-dashboard.ts
+init_logger();
+
+// server/business-analytics.ts
+init_logger();
+var bizAnalyticsLog = log.tag("BusinessAnalytics");
+var viewEvents = [];
+function getBusinessMetrics(businessId, period) {
+  const now = Date.now();
+  const days = period === "7d" ? 7 : period === "30d" ? 30 : 90;
+  const cutoff = new Date(now - days * 24 * 60 * 60 * 1e3).toISOString();
+  const relevant = viewEvents.filter(
+    (e) => e.businessId === businessId && e.timestamp >= cutoff
+  );
+  const uniqueVisitorSet = new Set(relevant.map((e) => e.visitorId));
+  bizAnalyticsLog.info(
+    `Metrics for ${businessId} (${period}): ${relevant.length} views, ${uniqueVisitorSet.size} unique`
+  );
+  return {
+    businessId,
+    views: relevant.length,
+    uniqueVisitors: uniqueVisitorSet.size,
+    ratingsReceived: 0,
+    // Would be populated from DB
+    averageRating: 0,
+    searchAppearances: relevant.filter((e) => e.source === "search").length,
+    profileClicks: relevant.filter((e) => e.source === "direct").length,
+    bookmarks: 0,
+    // Would be populated from DB
+    challengerAppearances: relevant.filter((e) => e.source === "challenger").length,
+    period
+  };
+}
+function getTopBusinesses(limit) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const e of viewEvents) {
+    counts.set(e.businessId, (counts.get(e.businessId) || 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([businessId, views]) => ({ businessId, views })).sort((a, b) => b.views - a.views).slice(0, limit || 10);
+}
+function getViewSources(businessId) {
+  const sources = {
+    search: 0,
+    direct: 0,
+    challenger: 0,
+    referral: 0
+  };
+  for (const e of viewEvents) {
+    if (e.businessId === businessId) {
+      sources[e.source] = (sources[e.source] || 0) + 1;
+    }
+  }
+  return sources;
+}
+function getAnalyticsStats() {
+  const businesses2 = new Set(viewEvents.map((e) => e.businessId));
+  const visitors = new Set(viewEvents.map((e) => e.visitorId));
+  return {
+    totalEvents: viewEvents.length,
+    uniqueBusinesses: businesses2.size,
+    uniqueVisitors: visitors.size
+  };
+}
+
+// server/routes-owner-dashboard.ts
+var ownerDashLog = log.tag("OwnerDashboard");
+function registerOwnerDashboardRoutes(app2) {
+  app2.get("/api/owner/analytics/:businessId", (req, res) => {
+    const { businessId } = req.params;
+    const period = req.query.period || "30d";
+    ownerDashLog.info(`Fetching analytics for business ${businessId} (${period})`);
+    res.json(getBusinessMetrics(businessId, period));
+  });
+  app2.get("/api/owner/analytics/:businessId/sources", (req, res) => {
+    const { businessId } = req.params;
+    ownerDashLog.info(`Fetching view sources for business ${businessId}`);
+    res.json(getViewSources(businessId));
+  });
+  app2.get("/api/owner/analytics/:businessId/trends", (req, res) => {
+    const { businessId } = req.params;
+    ownerDashLog.info(`Fetching trends for business ${businessId}`);
+    res.json({
+      weekly: getBusinessMetrics(businessId, "7d"),
+      monthly: getBusinessMetrics(businessId, "30d")
+    });
+  });
+  app2.get("/api/admin/analytics/top-businesses", (req, res) => {
+    const limit = parseInt(req.query.limit) || 10;
+    ownerDashLog.info(`Fetching top businesses (limit: ${limit})`);
+    res.json(getTopBusinesses(limit));
+  });
+  app2.get("/api/admin/analytics/stats", (_req, res) => {
+    ownerDashLog.info("Fetching analytics stats");
+    res.json(getAnalyticsStats());
+  });
+}
+
+// server/routes-search.ts
+init_logger();
+
+// server/search-suggestions.ts
+init_logger();
+var suggestLog = log.tag("SearchSuggestions");
+var suggestionIndex = /* @__PURE__ */ new Map();
+function getSuggestions(query, city, limit) {
+  const index2 = suggestionIndex.get(city) || [];
+  const q = query.toLowerCase();
+  return index2.filter((s) => s.text.toLowerCase().includes(q)).sort((a, b) => b.score - a.score).slice(0, limit || 10);
+}
+function getPopularSearches(city, limit) {
+  const index2 = suggestionIndex.get(city) || [];
+  return index2.filter((s) => s.type === "business").sort((a, b) => b.score - a.score).slice(0, limit || 5);
+}
+function getCitySuggestionCount(city) {
+  return (suggestionIndex.get(city) || []).length;
+}
+function getAllIndexedCities() {
+  return Array.from(suggestionIndex.keys());
+}
+
+// server/routes-search.ts
+var searchRouteLog = log.tag("SearchRoutes");
+function registerSearchRoutes(app2) {
+  app2.get("/api/search/suggestions", (req, res) => {
+    const query = sanitizeString(req.query.q, 200) || "";
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    if (!query) {
+      return res.json({ data: [] });
+    }
+    const suggestions = getSuggestions(query, city, limit);
+    searchRouteLog.info(`Suggestions for "${query}" in ${city}: ${suggestions.length} results`);
+    return res.json({ data: suggestions });
+  });
+  app2.get("/api/search/popular", (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 5));
+    const popular = getPopularSearches(city, limit);
+    return res.json({ data: popular });
+  });
+  app2.get("/api/admin/search/index-stats", (req, res) => {
+    const cities = getAllIndexedCities();
+    const stats2 = cities.map((city) => ({
+      city,
+      count: getCitySuggestionCount(city)
+    }));
+    return res.json({ data: { cities: stats2, totalCities: cities.length } });
+  });
+}
+
+// server/review-helpfulness.ts
+init_logger();
+var helpLog = log.tag("ReviewHelpfulness");
+var votes = [];
+var MAX_VOTES = 5e4;
+var voteIdCounter = 0;
+function generateVoteId() {
+  voteIdCounter += 1;
+  return `hv_${Date.now()}_${voteIdCounter}`;
+}
+function wilsonScoreLowerBound(helpful, total, z2 = 1.96) {
+  if (total === 0) return 0;
+  const p = helpful / total;
+  const denominator = 1 + z2 * z2 / total;
+  const center = (p + z2 * z2 / (2 * total)) / denominator;
+  const margin = z2 * Math.sqrt(p * (1 - p) / total + z2 * z2 / (4 * total * total)) / denominator;
+  return Math.max(0, center - margin);
+}
+function castHelpfulnessVote(reviewId, voterId, reviewerId, helpful) {
+  if (voterId === reviewerId) {
+    helpLog.info(`Self-vote rejected: voter=${voterId} review=${reviewId}`);
+    return null;
+  }
+  const existing = votes.find(
+    (v) => v.reviewId === reviewId && v.voterId === voterId
+  );
+  if (existing) {
+    helpLog.info(`Duplicate vote rejected: voter=${voterId} review=${reviewId}`);
+    return null;
+  }
+  if (votes.length >= MAX_VOTES) {
+    votes.shift();
+    helpLog.warn(`FIFO eviction: store at capacity (${MAX_VOTES})`);
+  }
+  const vote = {
+    id: generateVoteId(),
+    reviewId,
+    voterId,
+    reviewerId,
+    helpful,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  votes.push(vote);
+  helpLog.info(
+    `Vote cast: voter=${voterId} review=${reviewId} helpful=${helpful}`
+  );
+  return vote;
+}
+function getReviewHelpfulness(reviewId) {
+  const reviewVotes = votes.filter((v) => v.reviewId === reviewId);
+  const helpfulCount = reviewVotes.filter((v) => v.helpful).length;
+  const notHelpfulCount = reviewVotes.filter((v) => !v.helpful).length;
+  const totalVotes = reviewVotes.length;
+  return {
+    reviewId,
+    helpfulCount,
+    notHelpfulCount,
+    helpfulnessScore: wilsonScoreLowerBound(helpfulCount, totalVotes),
+    totalVotes
+  };
+}
+function getMemberHelpfulnessReceived(memberId) {
+  const memberVotes = votes.filter((v) => v.reviewerId === memberId);
+  const totalHelpful = memberVotes.filter((v) => v.helpful).length;
+  const totalNotHelpful = memberVotes.filter((v) => !v.helpful).length;
+  const reviewIds = new Set(memberVotes.map((v) => v.reviewId));
+  return {
+    totalHelpful,
+    totalNotHelpful,
+    totalVotes: memberVotes.length,
+    reviewsWithVotes: reviewIds.size
+  };
+}
+function getTopHelpfulReviews(limit = 10) {
+  const reviewIds = new Set(votes.map((v) => v.reviewId));
+  const stats2 = [];
+  for (const reviewId of reviewIds) {
+    stats2.push(getReviewHelpfulness(reviewId));
+  }
+  return stats2.filter((s) => s.totalVotes > 0).sort((a, b) => b.helpfulnessScore - a.helpfulnessScore).slice(0, limit);
+}
+function updateVote(reviewId, voterId, helpful) {
+  const existing = votes.find(
+    (v) => v.reviewId === reviewId && v.voterId === voterId
+  );
+  if (!existing) {
+    helpLog.info(`Vote update failed \u2014 not found: voter=${voterId} review=${reviewId}`);
+    return false;
+  }
+  existing.helpful = helpful;
+  helpLog.info(
+    `Vote updated: voter=${voterId} review=${reviewId} helpful=${helpful}`
+  );
+  return true;
+}
+function getHelpfulnessStats() {
+  const helpfulVotes = votes.filter((v) => v.helpful).length;
+  const notHelpfulVotes = votes.filter((v) => !v.helpful).length;
+  const uniqueVoters = new Set(votes.map((v) => v.voterId)).size;
+  const uniqueReviews = new Set(votes.map((v) => v.reviewId)).size;
+  return {
+    totalVotes: votes.length,
+    helpfulVotes,
+    notHelpfulVotes,
+    uniqueVoters,
+    uniqueReviews
+  };
+}
+
+// server/routes-review-helpfulness.ts
+init_logger();
+var routeLog = log.tag("ReviewHelpfulnessRoutes");
+function registerReviewHelpfulnessRoutes(app2) {
+  app2.post("/api/reviews/:reviewId/helpful", requireAuth, wrapAsync(async (req, res) => {
+    const { reviewId } = req.params;
+    const voterId = String(req.user.id);
+    const reviewerId = req.body.reviewerId;
+    if (!reviewerId) {
+      return res.status(400).json({ error: "reviewerId is required" });
+    }
+    const vote = castHelpfulnessVote(reviewId, voterId, reviewerId, true);
+    if (!vote) {
+      return res.status(409).json({ error: "Cannot vote: duplicate or self-vote" });
+    }
+    routeLog.info(`Helpful vote cast on review ${reviewId} by ${voterId}`);
+    return res.status(201).json({ data: vote });
+  }));
+  app2.post("/api/reviews/:reviewId/not-helpful", requireAuth, wrapAsync(async (req, res) => {
+    const { reviewId } = req.params;
+    const voterId = String(req.user.id);
+    const reviewerId = req.body.reviewerId;
+    if (!reviewerId) {
+      return res.status(400).json({ error: "reviewerId is required" });
+    }
+    const vote = castHelpfulnessVote(reviewId, voterId, reviewerId, false);
+    if (!vote) {
+      return res.status(409).json({ error: "Cannot vote: duplicate or self-vote" });
+    }
+    routeLog.info(`Not-helpful vote cast on review ${reviewId} by ${voterId}`);
+    return res.status(201).json({ data: vote });
+  }));
+  app2.get("/api/reviews/:reviewId/helpfulness", wrapAsync(async (req, res) => {
+    const { reviewId } = req.params;
+    const stats2 = getReviewHelpfulness(reviewId);
+    return res.json({ data: stats2 });
+  }));
+  app2.put("/api/reviews/:reviewId/helpfulness-vote", requireAuth, wrapAsync(async (req, res) => {
+    const { reviewId } = req.params;
+    const voterId = String(req.user.id);
+    const { helpful } = req.body;
+    if (typeof helpful !== "boolean") {
+      return res.status(400).json({ error: "helpful (boolean) is required" });
+    }
+    const updated = updateVote(reviewId, voterId, helpful);
+    if (!updated) {
+      return res.status(404).json({ error: "No existing vote found to update" });
+    }
+    routeLog.info(`Vote updated on review ${reviewId} by ${voterId} to helpful=${helpful}`);
+    return res.json({ data: { updated: true } });
+  }));
+  app2.get("/api/members/:memberId/helpfulness", wrapAsync(async (req, res) => {
+    const { memberId } = req.params;
+    const stats2 = getMemberHelpfulnessReceived(memberId);
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/helpfulness/stats", requireAuth, wrapAsync(async (req, res) => {
+    const stats2 = getHelpfulnessStats();
+    return res.json({ data: stats2 });
+  }));
+  app2.get("/api/admin/helpfulness/top-reviews", requireAuth, wrapAsync(async (req, res) => {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
+    const topReviews = getTopHelpfulReviews(limit);
+    return res.json({ data: topReviews });
+  }));
+}
+
+// shared/best-in-categories.ts
+var BEST_IN_CATEGORIES = [
+  // Indian Food (Phase 1 — Indian Dallas First strategy)
+  { slug: "biryani", displayName: "Biryani", emoji: "\u{1F35A}", parentCategory: "restaurant", city: "Dallas", description: "Find the best biryani in Dallas, rated by real diners", tags: ["hyderabadi", "dum biryani", "chicken biryani", "goat biryani"], isActive: true, sortOrder: 1 },
+  { slug: "chai", displayName: "Chai", emoji: "\u2615", parentCategory: "cafe", city: "Dallas", description: "Find the best chai in Dallas", tags: ["masala chai", "cutting chai", "karak"], isActive: true, sortOrder: 2 },
+  { slug: "dosa", displayName: "Dosa", emoji: "\u{1FAD3}", parentCategory: "restaurant", city: "Dallas", description: "Find the best dosa in Dallas", tags: ["masala dosa", "paper dosa", "mysore dosa", "rava dosa"], isActive: true, sortOrder: 3 },
+  { slug: "butter-chicken", displayName: "Butter Chicken", emoji: "\u{1F357}", parentCategory: "restaurant", city: "Dallas", description: "Find the best butter chicken in Dallas", tags: ["murgh makhani", "tikka masala"], isActive: true, sortOrder: 4 },
+  // Universal Categories
+  { slug: "tacos", displayName: "Tacos", emoji: "\u{1F32E}", parentCategory: "restaurant", city: "Dallas", description: "Find the best tacos in Dallas", tags: ["street tacos", "al pastor", "carnitas", "birria"], isActive: true, sortOrder: 5 },
+  { slug: "bbq", displayName: "BBQ", emoji: "\u{1F525}", parentCategory: "bbq", city: "Dallas", description: "Find the best BBQ in Dallas", tags: ["brisket", "ribs", "pulled pork", "smoked"], isActive: true, sortOrder: 6 },
+  { slug: "pizza", displayName: "Pizza", emoji: "\u{1F355}", parentCategory: "pizza", city: "Dallas", description: "Find the best pizza in Dallas", tags: ["neapolitan", "ny style", "deep dish", "wood fired"], isActive: true, sortOrder: 7 },
+  { slug: "burgers", displayName: "Burgers", emoji: "\u{1F354}", parentCategory: "restaurant", city: "Dallas", description: "Find the best burgers in Dallas", tags: ["smash burger", "wagyu", "double stack"], isActive: true, sortOrder: 8 },
+  { slug: "sushi", displayName: "Sushi", emoji: "\u{1F363}", parentCategory: "restaurant", city: "Dallas", description: "Find the best sushi in Dallas", tags: ["omakase", "nigiri", "sashimi", "rolls"], isActive: true, sortOrder: 9 },
+  { slug: "pho", displayName: "Pho", emoji: "\u{1F35C}", parentCategory: "restaurant", city: "Dallas", description: "Find the best pho in Dallas", tags: ["pho bo", "pho ga", "bun bo hue"], isActive: true, sortOrder: 10 },
+  { slug: "wings", displayName: "Wings", emoji: "\u{1F357}", parentCategory: "restaurant", city: "Dallas", description: "Find the best wings in Dallas", tags: ["buffalo", "korean", "lemon pepper", "hot wings"], isActive: true, sortOrder: 11 },
+  { slug: "coffee", displayName: "Coffee", emoji: "\u2615", parentCategory: "cafe", city: "Dallas", description: "Find the best coffee in Dallas", tags: ["espresso", "cold brew", "pour over", "latte"], isActive: true, sortOrder: 12 },
+  { slug: "ramen", displayName: "Ramen", emoji: "\u{1F35C}", parentCategory: "restaurant", city: "Dallas", description: "Find the best ramen in Dallas", tags: ["tonkotsu", "miso", "shoyu", "spicy"], isActive: true, sortOrder: 13 },
+  { slug: "fried-chicken", displayName: "Fried Chicken", emoji: "\u{1F357}", parentCategory: "restaurant", city: "Dallas", description: "Find the best fried chicken in Dallas", tags: ["nashville hot", "korean fried", "southern", "buttermilk"], isActive: true, sortOrder: 14 },
+  { slug: "ice-cream", displayName: "Ice Cream", emoji: "\u{1F366}", parentCategory: "dessert", city: "Dallas", description: "Find the best ice cream in Dallas", tags: ["gelato", "kulfi", "soft serve", "artisan"], isActive: true, sortOrder: 15 }
+];
+function getActiveCategories() {
+  return BEST_IN_CATEGORIES.filter((c) => c.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+}
+function getCategoryBySlug(slug) {
+  return BEST_IN_CATEGORIES.find((c) => c.slug === slug);
+}
+function searchCategories(query) {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  return BEST_IN_CATEGORIES.filter(
+    (c) => c.slug.toLowerCase().includes(q) || c.displayName.toLowerCase().includes(q) || c.tags.some((t) => t.toLowerCase().includes(q))
+  );
+}
+function getBestInTitle(slug, city) {
+  const cat = getCategoryBySlug(slug);
+  const name = cat ? cat.displayName : slug;
+  const targetCity = city || (cat ? cat.city : "Dallas");
+  return `Best ${name} in ${targetCity}`;
+}
+function getCategoryCount() {
+  return {
+    total: BEST_IN_CATEGORIES.length,
+    active: BEST_IN_CATEGORIES.filter((c) => c.isActive).length
+  };
+}
+
+// server/routes-best-in.ts
+function generateLeaderboardEntries(_slug) {
+  return [];
+}
+function registerBestInRoutes(app2) {
+  app2.get("/api/best-in", wrapAsync(async (req, res) => {
+    const categories2 = getActiveCategories();
+    return res.json({ data: categories2 });
+  }));
+  app2.get("/api/best-in/search", wrapAsync(async (req, res) => {
+    const q = sanitizeString(req.query.q, 200) || "";
+    if (!q) return res.json({ data: [] });
+    const results = searchCategories(q);
+    return res.json({ data: results });
+  }));
+  app2.get("/api/best-in/:slug", wrapAsync(async (req, res) => {
+    const slug = req.params.slug;
+    const category = getCategoryBySlug(slug);
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    const title = getBestInTitle(slug);
+    return res.json({
+      data: {
+        ...category,
+        title,
+        businesses: []
+        // TODO: wire to storage layer
+      }
+    });
+  }));
+  app2.get("/api/best-in/:slug/leaderboard", wrapAsync(async (req, res) => {
+    const slug = req.params.slug;
+    const category = getCategoryBySlug(slug);
+    if (!category) {
+      return res.status(404).json({ error: "Category not found" });
+    }
+    const city = sanitizeString(req.query.city, 100) || category.city;
+    const title = getBestInTitle(slug, city);
+    const leaderboard = generateLeaderboardEntries(slug);
+    const message = leaderboard.length === 0 ? "Not enough ratings yet. Be one of the first to rate!" : void 0;
+    return res.json({
+      data: {
+        category: { slug: category.slug, displayName: category.displayName, emoji: category.emoji },
+        title,
+        leaderboard,
+        message
+      }
+    });
+  }));
+  app2.get("/api/admin/best-in/stats", requireAuth, wrapAsync(async (req, res) => {
+    const counts = getCategoryCount();
+    const byParent = {};
+    for (const cat of BEST_IN_CATEGORIES) {
+      byParent[cat.parentCategory] = (byParent[cat.parentCategory] || 0) + 1;
+    }
+    return res.json({
+      data: {
+        ...counts,
+        byParent
+      }
+    });
+  }));
+}
+
+// server/routes-rating-photos.ts
+init_logger();
+import crypto11 from "crypto";
+var photoLog = log.tag("RatingPhoto");
+var ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
+var PHOTO_BOOST = 0.15;
+var MAX_VERIFICATION_BOOST = 0.5;
+function registerRatingPhotoRoutes(app2) {
+  app2.post("/api/ratings/:id/photo", requireAuth, wrapAsync(async (req, res) => {
+    const ratingId = req.params.id;
+    const memberId = req.user.id;
+    const { getRatingById: getRatingById2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    const rating = await getRatingById2(ratingId);
+    if (!rating) {
+      return res.status(404).json({ error: "Rating not found" });
+    }
+    if (rating.memberId !== memberId) {
+      return res.status(403).json({ error: "Cannot upload photo for another user's rating" });
+    }
+    const { data: photoData, mimeType: rawMime, isReceipt } = req.body;
+    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
+    if (!photoData || typeof photoData !== "string") {
+      return res.status(400).json({ error: "Photo data is required (base64)" });
+    }
+    if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid file type. Allowed: ${ALLOWED_MIME_TYPES.join(", ")}` });
+    }
+    const buffer2 = Buffer.from(photoData, "base64");
+    if (buffer2.length > MAX_FILE_SIZE2) {
+      return res.status(400).json({ error: "Photo too large (max 10MB)" });
+    }
+    if (buffer2.length < 1024) {
+      return res.status(400).json({ error: "Photo too small \u2014 may be corrupted" });
+    }
+    const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
+    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto11.randomUUID().slice(0, 8)}.${ext}`;
+    try {
+      const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
+      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+      const { eq: eq25 } = await import("drizzle-orm");
+      const [photo] = await db2.insert(ratingPhotos2).values({
+        ratingId,
+        photoUrl,
+        cdnKey,
+        isVerifiedReceipt: isReceipt === true
+      }).returning();
+      const photoBoost = PHOTO_BOOST;
+      const receiptBoost = isReceipt === true ? 0.25 : 0;
+      const totalBoost = Math.min(photoBoost + receiptBoost, MAX_VERIFICATION_BOOST);
+      const currentBoost = parseFloat(String(rating.verificationBoost ?? "0"));
+      const newBoost = Math.min(currentBoost + totalBoost, MAX_VERIFICATION_BOOST);
+      await db2.update(ratings5).set({
+        hasPhoto: true,
+        hasReceipt: isReceipt === true ? true : void 0,
+        verificationBoost: newBoost.toFixed(3)
+      }).where(eq25(ratings5.id, ratingId));
+      const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
+      const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+      await recalculateBusinessScore2(rating.businessId);
+      const biz = await getBusinessById2(rating.businessId);
+      if (biz) await recalculateRanks2(biz.city, biz.category);
+      photoLog.info("Rating photo uploaded", {
+        ratingId,
+        memberId,
+        cdnKey,
+        isReceipt: isReceipt === true,
+        boost: totalBoost
+      });
+      return res.status(201).json({
+        data: {
+          id: photo.id,
+          photoUrl,
+          isReceipt: isReceipt === true,
+          verificationBoost: totalBoost
+        }
+      });
+    } catch (err) {
+      photoLog.error("Photo upload failed", { ratingId, error: err.message });
+      return res.status(500).json({ error: "Photo upload failed. Please try again." });
+    }
+  }));
+  app2.get("/api/ratings/:id/photos", wrapAsync(async (req, res) => {
+    const ratingId = req.params.id;
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq25(ratingPhotos2.ratingId, ratingId));
+    return res.json({ data: photos });
+  }));
+}
+
+// server/routes-score-breakdown.ts
+init_logger();
+init_score_engine();
+var breakdownLog = log.tag("ScoreBreakdown");
+function registerScoreBreakdownRoutes(app2) {
+  app2.get("/api/businesses/:id/score-breakdown", wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25, and: and17, sql: sql15, count: count15 } = await import("drizzle-orm");
+    const allRatings = await db2.select({
+      visitType: ratings5.visitType,
+      foodScore: ratings5.foodScore,
+      serviceScore: ratings5.serviceScore,
+      vibeScore: ratings5.vibeScore,
+      packagingScore: ratings5.packagingScore,
+      waitTimeScore: ratings5.waitTimeScore,
+      valueScore: ratings5.valueScore,
+      compositeScore: ratings5.compositeScore,
+      rawScore: ratings5.rawScore,
+      weight: ratings5.weight,
+      weightedScore: ratings5.weightedScore,
+      effectiveWeight: ratings5.effectiveWeight,
+      verificationBoost: ratings5.verificationBoost,
+      hasPhoto: ratings5.hasPhoto,
+      hasReceipt: ratings5.hasReceipt,
+      wouldReturn: ratings5.wouldReturn,
+      createdAt: ratings5.createdAt
+    }).from(ratings5).where(and17(
+      eq25(ratings5.businessId, businessId),
+      eq25(ratings5.isFlagged, false)
+    ));
+    if (allRatings.length === 0) {
+      return res.json({
+        data: {
+          totalRatings: 0,
+          overallScore: 0,
+          foodScoreOnly: 0,
+          dineIn: null,
+          delivery: null,
+          takeaway: null,
+          verifiedPercentage: 0,
+          wouldReturnPercentage: 0,
+          raterDistribution: { dineIn: 0, delivery: 0, takeaway: 0 }
+        }
+      });
+    }
+    const dineIn = allRatings.filter((r) => r.visitType === "dine_in");
+    const delivery = allRatings.filter((r) => r.visitType === "delivery");
+    const takeaway = allRatings.filter((r) => r.visitType === "takeaway");
+    const weightedAvg = (items, field) => {
+      let num = 0, den = 0;
+      for (const r of items) {
+        const val = parseFloat(String(r[field] ?? 0));
+        const w = parseFloat(String(r.effectiveWeight ?? r.weight ?? 1));
+        const ageDays = Math.floor(
+          (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
+        );
+        const decay = computeDecayFactor(ageDays);
+        const decayedW = w * decay;
+        num += val * decayedW;
+        den += decayedW;
+      }
+      return den > 0 ? Math.round(num / den * 100) / 100 : 0;
+    };
+    const overallScore = weightedAvg(allRatings, "compositeScore");
+    const foodScoreOnly = weightedAvg(allRatings, "foodScore");
+    const visitBreakdown = (items) => {
+      if (items.length === 0) return null;
+      return {
+        count: items.length,
+        overallScore: weightedAvg(items, "compositeScore"),
+        foodScore: weightedAvg(items, "foodScore")
+      };
+    };
+    const withPhoto = allRatings.filter((r) => r.hasPhoto).length;
+    const verifiedPercentage = Math.round(withPhoto / allRatings.length * 100);
+    const returners = allRatings.filter((r) => r.wouldReturn).length;
+    const wouldReturnPercentage = Math.round(returners / allRatings.length * 100);
+    breakdownLog.info("Score breakdown served", {
+      businessId,
+      totalRatings: allRatings.length
+    });
+    return res.json({
+      data: {
+        totalRatings: allRatings.length,
+        overallScore,
+        foodScoreOnly,
+        dineIn: visitBreakdown(dineIn),
+        delivery: visitBreakdown(delivery),
+        takeaway: visitBreakdown(takeaway),
+        verifiedPercentage,
+        wouldReturnPercentage,
+        raterDistribution: {
+          dineIn: dineIn.length,
+          delivery: delivery.length,
+          takeaway: takeaway.length
+        }
+      }
+    });
+  }));
+  app2.get("/api/businesses/:id/score-trend", wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq25, asc: asc3 } = await import("drizzle-orm");
+    const history = await db2.select({
+      date: rankHistory2.snapshotDate,
+      score: rankHistory2.weightedScore
+    }).from(rankHistory2).where(eq25(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    const data = history.map((h) => ({
+      date: h.date,
+      score: parseFloat(h.score)
+    }));
+    return res.json({ data });
+  }));
+}
+
+// server/routes.ts
+init_stripe_webhook();
+init_logger();
+init_storage();
+init_schema();
+init_analytics2();
+init_tier_staleness();
+
+// server/rating-integrity.ts
+init_logger();
+var integrityLog = log.tag("RatingIntegrity");
+var claimedBusinesses = /* @__PURE__ */ new Map();
+var blockedSelfRatingCount = 0;
+function checkOwnerSelfRating(businessId, raterId, raterIp) {
+  const claim = claimedBusinesses.get(businessId);
+  if (!claim) {
+    return { allowed: true };
+  }
+  if (raterId === claim.ownerId) {
+    blockedSelfRatingCount++;
+    integrityLog.warn("Owner self-rating blocked", { businessId, raterId });
+    return {
+      allowed: false,
+      reason: "As the business owner, you cannot rate your own restaurant. This ensures trust and fairness for all users."
+    };
+  }
+  if (raterIp && claim.claimIp && raterIp === claim.claimIp) {
+    blockedSelfRatingCount++;
+    integrityLog.warn("Potential self-rating from claim IP", {
+      businessId,
+      raterId,
+      raterIp
+    });
+    return {
+      allowed: false,
+      reason: "As the business owner, you cannot rate your own restaurant. This ensures trust and fairness for all users."
+    };
+  }
+  return { allowed: true };
+}
+var ratingLog = [];
+var velocityFlagCount = 0;
+var MAX_RATING_LOG = 1e5;
+function logRatingSubmission(businessId, raterId, raterIp) {
+  ratingLog.push({ businessId, raterId, raterIp, timestamp: Date.now() });
+  if (ratingLog.length > MAX_RATING_LOG) {
+    ratingLog.splice(0, ratingLog.length - MAX_RATING_LOG);
+  }
+  integrityLog.debug("Rating submission logged", { businessId, raterId });
+}
+function checkVelocity(businessId, raterId, raterIp) {
+  const now = Date.now();
+  const HOUR = 36e5;
+  const DAY = 864e5;
+  const sameIpSameBiz24h = ratingLog.filter(
+    (e) => e.businessId === businessId && e.raterIp === raterIp && now - e.timestamp < DAY
+  );
+  if (sameIpSameBiz24h.length > 5) {
+    velocityFlagCount++;
+    integrityLog.warn("Velocity V1: >5 same-IP same-business in 24h", {
+      businessId,
+      raterIp,
+      count: sameIpSameBiz24h.length
+    });
+    return { flagged: true, rule: "V1", reducedWeight: 0.05 };
+  }
+  const sameAccount1h = ratingLog.filter(
+    (e) => e.raterId === raterId && now - e.timestamp < HOUR
+  );
+  if (sameAccount1h.length > 10) {
+    velocityFlagCount++;
+    integrityLog.warn("Velocity V2: >10 ratings from account in 1h", {
+      raterId,
+      count: sameAccount1h.length
+    });
+    return { flagged: true, rule: "V2", reducedWeight: 0.05 };
+  }
+  const sameBiz12h = ratingLog.filter(
+    (e) => e.businessId === businessId && now - e.timestamp < 12 * HOUR
+  );
+  if (sameBiz12h.length > 20) {
+    velocityFlagCount++;
+    integrityLog.warn("Velocity V3: >20 ratings for business in 12h", {
+      businessId,
+      count: sameBiz12h.length
+    });
+    return { flagged: true, rule: "V3", reducedWeight: 0.05 };
+  }
+  const raterHistory = ratingLog.filter((e) => e.raterId === raterId).sort((a, b) => a.timestamp - b.timestamp);
+  if (raterHistory.length >= 2) {
+    const lastTwo = raterHistory.slice(-2);
+    const gap = lastTwo[1].timestamp - lastTwo[0].timestamp;
+    if (gap > 30 * DAY) {
+      velocityFlagCount++;
+      integrityLog.warn("Velocity V4: Inactive >30 days then rated", {
+        raterId,
+        gapDays: Math.round(gap / DAY)
+      });
+      return { flagged: true, rule: "V4", reducedWeight: 0.05 };
+    }
+  }
+  return { flagged: false, reducedWeight: 1 };
+}
+
+// server/routes.ts
+async function registerRoutes(app2) {
+  setupAuth(app2);
+  app2.use("/api", (req, res, next) => {
+    const start = Date.now();
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      const duration = Date.now() - start;
+      const method = req.method;
+      const url = req.originalUrl || req.url;
+      const status = res.statusCode;
+      if (duration > 200) {
+        log.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
+      } else {
+        log.info(`${method} ${url} ${status} ${duration}ms`);
+      }
+      return originalEnd.apply(this, args);
+    };
+    next();
+  });
+  app2.get("/api/health", (req, res) => {
+    const uptime = process.uptime();
+    const memUsage = process.memoryUsage();
+    res.json({
+      status: "healthy",
+      version: "1.0.0",
+      uptime: Math.floor(uptime),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      nodeVersion: process.version,
+      memoryUsage: memUsage.heapUsed,
+      memory: {
+        heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+        heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+        rss: Math.round(memUsage.rss / 1024 / 1024)
+      }
+    });
+  });
+  const SSE_MAX_PER_IP = 5;
+  const SSE_TIMEOUT_MS = 18e5;
+  const sseConnectionsByIp = /* @__PURE__ */ new Map();
+  app2.get("/api/events", (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+    const currentCount = sseConnectionsByIp.get(clientIp) || 0;
+    if (currentCount >= SSE_MAX_PER_IP) {
+      log.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
+      return res.status(429).json({ error: "Too many SSE connections from this IP" });
+    }
+    sseConnectionsByIp.set(clientIp, currentCount + 1);
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no"
+    });
+    res.write('data: {"type":"connected","timestamp":' + Date.now() + "}\n\n");
+    addClient(res);
+    const keepAlive = setInterval(() => {
+      try {
+        res.write(": ping\n\n");
+      } catch {
+        clearInterval(keepAlive);
+      }
+    }, 3e4);
+    const timeout = setTimeout(() => {
+      try {
+        res.end();
+      } catch {
+      }
+    }, SSE_TIMEOUT_MS);
+    const cleanup = () => {
+      clearInterval(keepAlive);
+      clearTimeout(timeout);
+      const count15 = sseConnectionsByIp.get(clientIp) || 1;
+      if (count15 <= 1) {
+        sseConnectionsByIp.delete(clientIp);
+      } else {
+        sseConnectionsByIp.set(clientIp, count15 - 1);
+      }
+    };
+    req.on("close", cleanup);
+  });
+  registerAuthRoutes(app2);
+  app2.get("/api/leaderboard", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || "restaurant";
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const bizList = await getLeaderboard(city, category, limit);
+    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const data = bizList.map((b) => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+    }));
+    return res.json({ data });
+  }));
+  app2.get("/api/featured", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const placements = await getActiveFeaturedInCity(city);
+    if (placements.length === 0) {
+      return res.json({ data: [] });
+    }
+    const bizIds = placements.map((p) => p.businessId);
+    const [bizList, photoMap] = await Promise.all([
+      getBusinessesByIds(bizIds),
+      getBusinessPhotosMap(bizIds)
+    ]);
+    const bizMap = new Map(bizList.map((b) => [b.id, b]));
+    const featured = placements.map((p) => {
+      const biz = bizMap.get(p.businessId);
+      if (!biz) return null;
+      return {
+        id: biz.id,
+        name: biz.name,
+        slug: biz.slug,
+        category: biz.category,
+        photoUrl: (photoMap[biz.id] || [])[0] || biz.photoUrl || void 0,
+        weightedScore: biz.weightedScore || 0,
+        tagline: biz.tagline || `Top ${biz.category} in ${city}`,
+        totalRatings: biz.totalRatings || 0,
+        expiresAt: p.expiresAt
+      };
+    }).filter(Boolean);
+    return res.json({ data: featured });
+  }));
+  app2.get("/api/leaderboard/categories", wrapAsync(async (req, res) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const data = await getAllCategories(city);
+    return res.json({ data });
+  }));
+  registerBusinessRoutes(app2);
   registerPaymentRoutes(app2);
   app2.get("/api/dishes/search", wrapAsync(async (req, res) => {
     const businessId = req.query.business_id;
@@ -4744,90 +12167,142 @@ async function registerRoutes(app2) {
     const data = await searchDishes(businessId, query);
     return res.json({ data });
   }));
+  registerDishRoutes(app2);
+  registerSeoRoutes(app2);
+  registerQrRoutes(app2);
+  registerNotificationRoutes(app2);
+  registerReferralRoutes(app2);
   app2.post("/api/ratings", requireAuth, wrapAsync(async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: parsed.error.errors[0].message });
       }
-      parsed.data.score = sanitizeNumber(parsed.data.score, 1, 5, 3);
+      parsed.data.q1Score = sanitizeNumber(parsed.data.q1Score, 1, 5, 3);
+      parsed.data.q2Score = sanitizeNumber(parsed.data.q2Score, 1, 5, 3);
+      parsed.data.q3Score = sanitizeNumber(parsed.data.q3Score, 1, 5, 3);
       const memberId = req.user.id;
-      const result = await submitRating(memberId, parsed.data);
+      const raterIp = req.ip || req.socket.remoteAddress || "unknown";
+      const ownerCheck = checkOwnerSelfRating(parsed.data.businessId, memberId, raterIp);
+      if (!ownerCheck.allowed) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId: parsed.data.businessId });
+        return res.status(403).json({ error: ownerCheck.reason });
+      }
+      const velocityCheck = checkVelocity(parsed.data.businessId, memberId, raterIp);
+      if (velocityCheck.flagged) {
+        log.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
+      }
+      logRatingSubmission(parsed.data.businessId, memberId, raterIp);
+      const result = await submitRating(memberId, parsed.data, {
+        velocityFlagged: velocityCheck.flagged,
+        velocityRule: velocityCheck.rule,
+        velocityWeight: velocityCheck.reducedWeight
+      });
       const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
       if (verifiedTier !== result.newTier) {
         result.newTier = verifiedTier;
         result.tierUpgraded = verifiedTier !== req.user.credibilityTier;
       }
       broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
-      broadcast("ranking_updated", { city: "Dallas", category: parsed.data.category });
+      broadcast("ranking_updated", { businessId: parsed.data.businessId });
+      broadcast("challenger_updated", { businessId: parsed.data.businessId });
       trackEvent("first_rating", memberId);
+      trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
+      if (result.tierUpgraded && req.user.pushToken) {
+        const { notifyTierUpgrade: notifyTierUpgrade2 } = await Promise.resolve().then(() => (init_push(), push_exports));
+        notifyTierUpgrade2(memberId, req.user.pushToken, result.newTier).catch(() => {
+        });
+      }
+      try {
+        const { invalidatePrerenderCache: invalidatePrerenderCache2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
+        const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const biz = await getBusinessById2(parsed.data.businessId);
+        if (biz?.slug) invalidatePrerenderCache2("biz", biz.slug);
+      } catch {
+      }
       const userExperiments = getUserExperiments(String(memberId));
       for (const expId of userExperiments) {
-        trackOutcome(String(memberId), expId, "rated", parsed.data.score);
+        trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
       }
       return res.status(201).json({ data: result });
     } catch (err) {
+      const memberId = req.user?.id;
+      const businessId = req.body?.businessId;
       if (err.message.includes("3+ days")) {
+        trackEvent("rating_rejected_account_age", memberId, { businessId });
         return res.status(403).json({ error: err.message });
       }
       if (err.message.includes("Already rated")) {
+        trackEvent("rating_rejected_duplicate", memberId, { businessId });
         return res.status(409).json({ error: err.message });
       }
       if (err.message.includes("suspended")) {
+        trackEvent("rating_rejected_suspended", memberId, { businessId });
         return res.status(403).json({ error: err.message });
+      }
+      if (err.message.includes("business owner")) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId });
+        return res.status(403).json({ error: err.message });
+      }
+      trackEvent("rating_rejected_unknown", memberId, { businessId, error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.patch("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
+    const { editRating: editRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    const ratingId = req.params.id;
+    const updates = {
+      q1Score: req.body.q1Score ? sanitizeNumber(req.body.q1Score, 1, 5, void 0) : void 0,
+      q2Score: req.body.q2Score ? sanitizeNumber(req.body.q2Score, 1, 5, void 0) : void 0,
+      q3Score: req.body.q3Score ? sanitizeNumber(req.body.q3Score, 1, 5, void 0) : void 0,
+      wouldReturn: req.body.wouldReturn,
+      note: req.body.note !== void 0 ? sanitizeString(req.body.note, 160) : void 0
+    };
+    try {
+      const updated = await editRating2(ratingId, req.user.id, updates);
+      broadcast("rating_updated", { ratingId, businessId: updated.businessId });
+      return res.json({ data: updated });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot edit")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("expired")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.delete("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
+    const { deleteRating: deleteRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    try {
+      await deleteRating2(req.params.id, req.user.id);
+      broadcast("rating_deleted", { ratingId: req.params.id });
+      return res.json({ data: { deleted: true } });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot delete")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.post("/api/ratings/:id/flag", requireAuth, wrapAsync(async (req, res) => {
+    const { submitRatingFlag: submitRatingFlag2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    try {
+      const flag = await submitRatingFlag2(req.params.id, req.user.id, {
+        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
+        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
+        q3InsiderSuspected: req.body.q3InsiderSuspected,
+        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
+        q5CompetitorBombing: req.body.q5CompetitorBombing,
+        explanation: sanitizeString(req.body.explanation, 500)
+      });
+      return res.status(201).json({ data: flag });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("own rating")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("unique") || err.message.includes("duplicate")) {
+        return res.status(409).json({ error: "You have already flagged this rating" });
       }
       return res.status(400).json({ error: err.message });
     }
   }));
-  app2.get("/api/members/me", requireAuth, wrapAsync(async (req, res) => {
-    const member = await getMemberById(req.user.id);
-    if (!member) return res.status(404).json({ error: "Member not found" });
-    const { score, tier: computedTier, breakdown } = await recalculateCredibilityScore(member.id);
-    const tier = checkAndRefreshTier(computedTier, score);
-    const { ratings: ratings3, total } = await getMemberRatings(member.id);
-    const { getSeasonalRatingCounts: getSeasonalRatingCounts2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const seasonal = await getSeasonalRatingCounts2(member.id);
-    const daysActive = Math.floor(
-      (Date.now() - new Date(member.joinedAt).getTime()) / (1e3 * 60 * 60 * 24)
-    );
-    return res.json({
-      data: {
-        id: member.id,
-        displayName: member.displayName,
-        username: member.username,
-        email: member.email,
-        city: member.city,
-        avatarUrl: member.avatarUrl,
-        credibilityScore: score,
-        credibilityTier: tier,
-        totalRatings: member.totalRatings,
-        totalCategories: member.totalCategories,
-        distinctBusinesses: member.distinctBusinesses,
-        isFoundingMember: member.isFoundingMember,
-        joinedAt: member.joinedAt,
-        daysActive,
-        ratingVariance: parseFloat(member.ratingVariance),
-        credibilityBreakdown: breakdown,
-        ratingHistory: ratings3,
-        ...seasonal
-      }
-    });
-  }));
-  app2.get("/api/members/:username", wrapAsync(async (req, res) => {
-    const { getMemberByUsername: getMemberByUsername2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const member = await getMemberByUsername2(req.params.username);
-    if (!member) return res.status(404).json({ error: "Member not found" });
-    const freshTier = checkAndRefreshTier(member.credibilityTier, member.credibilityScore);
-    return res.json({
-      data: {
-        displayName: member.displayName,
-        username: member.username,
-        credibilityTier: freshTier,
-        totalRatings: member.totalRatings,
-        joinedAt: member.joinedAt
-      }
-    });
-  }));
+  registerMemberRoutes(app2);
   app2.get("/api/challengers/active", wrapAsync(async (req, res) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || void 0;
@@ -4846,46 +12321,6 @@ async function registerRoutes(app2) {
     }));
     return res.json({ data });
   }));
-  app2.get("/api/businesses/:id/rank-history", wrapAsync(async (req, res) => {
-    const { getRankHistory: getRankHistory2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const days = Math.min(90, Math.max(7, parseInt(req.query.days) || 30));
-    const data = await getRankHistory2(req.params.id, days);
-    return res.json({ data });
-  }));
-  app2.get("/api/members/me/impact", requireAuth, wrapAsync(async (req, res) => {
-    const { getMemberImpact: getMemberImpact2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const data = await getMemberImpact2(req.user.id);
-    return res.json({ data });
-  }));
-  app2.post("/api/members/me/push-token", requireAuth, wrapAsync(async (req, res) => {
-    const { pushToken } = req.body;
-    if (!pushToken || typeof pushToken !== "string") {
-      return res.status(400).json({ error: "pushToken is required" });
-    }
-    const { updatePushToken: updatePushToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    await updatePushToken2(req.user.id, pushToken);
-    return res.json({ ok: true });
-  }));
-  app2.get("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
-    const prefs = {
-      ratingUpdates: true,
-      challengeResults: true,
-      weeklyDigest: false,
-      ...req.user.notificationPrefs || {}
-    };
-    return res.json({ data: prefs });
-  }));
-  app2.put("/api/members/me/notification-preferences", requireAuth, wrapAsync(async (req, res) => {
-    const { ratingUpdates, challengeResults, weeklyDigest } = req.body;
-    const prefs = {
-      ratingUpdates: ratingUpdates !== false,
-      challengeResults: challengeResults !== false,
-      weeklyDigest: weeklyDigest === true
-    };
-    req.user.notificationPrefs = prefs;
-    log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(prefs)}`);
-    return res.json({ data: prefs });
-  }));
   app2.post("/api/category-suggestions", requireAuth, wrapAsync(async (req, res) => {
     const parsed = insertCategorySuggestionSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -4903,27 +12338,71 @@ async function registerRoutes(app2) {
     const data = await getPendingSuggestions2();
     return res.json({ data });
   }));
-  app2.get("/api/photos/proxy", handlePhotoProxy);
-  app2.post("/api/webhook/stripe", handleStripeWebhook);
+  app2.get("/api/photos/proxy", wrapAsync(handlePhotoProxy));
+  app2.post("/api/webhook/stripe", wrapAsync(handleStripeWebhook));
   app2.get("/api/payments/history", requireAuth, wrapAsync(async (req, res) => {
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const payments2 = await getMemberPayments(req.user.id, limit);
     return res.json({ data: payments2 });
   }));
-  app2.post("/api/webhook/deploy", handleWebhook);
-  app2.get("/api/deploy/status", handleDeployStatus);
-  app2.get("/share/badge/:badgeId", handleBadgeShare);
+  app2.post("/api/webhook/deploy", wrapAsync(handleWebhook));
+  app2.get("/api/deploy/status", wrapAsync(handleDeployStatus));
+  app2.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
+  app2.post("/api/feedback", requireAuth, wrapAsync(async (req, res) => {
+    const { createFeedback: createFeedback2 } = await Promise.resolve().then(() => (init_feedback(), feedback_exports));
+    const { rating, category, message, screenContext, appVersion } = req.body;
+    if (!rating || !category || !message) {
+      return res.status(400).json({ error: "rating, category, and message are required" });
+    }
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "rating must be 1-5" });
+    }
+    if (!["bug", "feature", "praise", "other"].includes(category)) {
+      return res.status(400).json({ error: "category must be bug, feature, praise, or other" });
+    }
+    const feedback = await createFeedback2({
+      memberId: req.user.id,
+      rating: Math.round(rating),
+      category,
+      message: String(message).slice(0, 2e3),
+      screenContext: screenContext ? String(screenContext).slice(0, 100) : void 0,
+      appVersion: appVersion ? String(appVersion).slice(0, 50) : void 0
+    });
+    return res.status(201).json({ data: feedback });
+  }));
   registerBadgeRoutes(app2);
   registerAdminRoutes(app2);
   registerExperimentRoutes(app2);
+  registerAdminExperimentRoutes(app2);
+  registerUnsubscribeRoutes(app2);
+  registerWebhookRoutes(app2);
+  registerAdminPromotionRoutes(app2);
+  registerAdminRateLimitRoutes(app2);
+  registerAdminClaimVerificationRoutes(app2);
+  registerAdminReputationRoutes(app2);
+  registerAdminModerationRoutes(app2);
+  registerAdminRankingRoutes(app2);
+  registerOwnerDashboardRoutes(app2);
+  registerAdminTemplateRoutes(app2);
+  registerAdminTierLimitRoutes(app2);
+  registerAdminWebSocketRoutes(app2);
+  registerAdminHealthRoutes(app2);
+  registerAdminPhotoRoutes(app2);
+  registerPushRoutes(app2);
+  registerOwnerResponseRoutes(app2);
+  registerSearchRoutes(app2);
+  registerReviewHelpfulnessRoutes(app2);
+  registerBestInRoutes(app2);
+  registerRatingPhotoRoutes(app2);
+  registerScoreBreakdownRoutes(app2);
   const httpServer = createServer(app2);
   return httpServer;
 }
 
 // server/index.ts
 init_logger();
-import * as fs from "fs";
-import * as path from "path";
+import * as fs2 from "fs";
+import * as path2 from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 // server/security-headers.ts
@@ -4931,6 +12410,8 @@ function buildAllowedOrigins() {
   const origins = /* @__PURE__ */ new Set();
   origins.add("https://topranker.com");
   origins.add("https://www.topranker.com");
+  origins.add("https://topranker.io");
+  origins.add("https://www.topranker.io");
   const envOrigins = process.env.CORS_ORIGINS;
   if (envOrigins) {
     envOrigins.split(",").forEach((o) => {
@@ -4938,16 +12419,9 @@ function buildAllowedOrigins() {
       if (trimmed) origins.add(trimmed);
     });
   }
-  const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
-  if (replitDevDomain) {
-    origins.add(`https://${replitDevDomain}`);
-  }
-  const replitDomains = process.env.REPLIT_DOMAINS;
-  if (replitDomains) {
-    replitDomains.split(",").forEach((d) => {
-      const trimmed = d.trim();
-      if (trimmed) origins.add(`https://${trimmed}`);
-    });
+  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (railwayDomain) {
+    origins.add(`https://${railwayDomain}`);
   }
   return origins;
 }
@@ -5027,8 +12501,53 @@ function securityHeaders(req, res, next) {
 }
 
 // server/index.ts
+init_error_tracking();
+
+// server/cache-headers.ts
+var CACHE_RULES = {
+  "/api/leaderboard": { public: true, maxAge: 300, staleWhileRevalidate: 60 },
+  "/api/trending": { public: true, maxAge: 600, staleWhileRevalidate: 120 },
+  "/api/leaderboard/categories": { public: true, maxAge: 7200 },
+  "/api/businesses/popular-categories": { public: true, maxAge: 3600 },
+  "/api/businesses/autocomplete": { public: true, maxAge: 30 },
+  "/api/businesses/search": { public: true, maxAge: 30 },
+  "/api/featured": { public: true, maxAge: 300 },
+  "/api/health": { public: true, maxAge: 10 },
+  "/api/referrals/validate": { public: true, maxAge: 60 }
+};
+function cacheHeaders(req, res, next) {
+  if (req.method !== "GET") {
+    res.setHeader("Cache-Control", "no-store");
+    return next();
+  }
+  const path3 = req.path;
+  const config2 = CACHE_RULES[path3];
+  if (config2) {
+    const parts = [];
+    parts.push(config2.public ? "public" : "private");
+    parts.push(`max-age=${config2.maxAge}`);
+    if (config2.staleWhileRevalidate) {
+      parts.push(`stale-while-revalidate=${config2.staleWhileRevalidate}`);
+    }
+    res.setHeader("Cache-Control", parts.join(", "));
+  } else if (path3.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "private, no-cache");
+  }
+  next();
+}
+
+// server/index.ts
+init_analytics2();
 var app = express();
 var log2 = console.log;
+initErrorTracking();
+(async () => {
+  try {
+    const { persistAnalyticsEvents: persistAnalyticsEvents2 } = await Promise.resolve().then(() => (init_analytics(), analytics_exports));
+    setFlushHandler(persistAnalyticsEvents2, 3e4);
+  } catch {
+  }
+})();
 function setupBodyParsing(app2) {
   app2.use(
     "/api/webhooks",
@@ -5047,7 +12566,7 @@ function setupBodyParsing(app2) {
 function setupRequestLogging(app2) {
   app2.use((req, res, next) => {
     const start = Date.now();
-    const path2 = req.path;
+    const path3 = req.path;
     let capturedJsonResponse = void 0;
     const originalResJson = res.json;
     res.json = function(bodyJson, ...args) {
@@ -5055,9 +12574,9 @@ function setupRequestLogging(app2) {
       return originalResJson.apply(res, [bodyJson, ...args]);
     };
     res.on("finish", () => {
-      if (!path2.startsWith("/api")) return;
+      if (!path3.startsWith("/api")) return;
       const duration = Date.now() - start;
-      let logLine = `${req.method} ${path2} ${res.statusCode} in ${duration}ms`;
+      let logLine = `${req.method} ${path3} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
@@ -5071,8 +12590,8 @@ function setupRequestLogging(app2) {
 }
 function getAppName() {
   try {
-    const appJsonPath = path.resolve(process.cwd(), "app.json");
-    const appJsonContent = fs.readFileSync(appJsonPath, "utf-8");
+    const appJsonPath = path2.resolve(process.cwd(), "app.json");
+    const appJsonContent = fs2.readFileSync(appJsonPath, "utf-8");
     const appJson = JSON.parse(appJsonContent);
     return appJson.expo?.name || "App Landing Page";
   } catch {
@@ -5080,19 +12599,19 @@ function getAppName() {
   }
 }
 function serveExpoManifest(platform, res) {
-  const manifestPath = path.resolve(
+  const manifestPath = path2.resolve(
     process.cwd(),
     "static-build",
     platform,
     "manifest.json"
   );
-  if (!fs.existsSync(manifestPath)) {
+  if (!fs2.existsSync(manifestPath)) {
     return res.status(404).json({ error: `Manifest not found for platform: ${platform}` });
   }
   res.setHeader("expo-protocol-version", "1");
   res.setHeader("expo-sfv-version", "0");
   res.setHeader("content-type", "application/json");
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
+  const manifest = fs2.readFileSync(manifestPath, "utf-8");
   res.send(manifest);
 }
 function serveLandingPage({
@@ -5114,13 +12633,13 @@ function serveLandingPage({
   res.status(200).send(html);
 }
 function configureExpoAndLanding(app2) {
-  const templatePath = path.resolve(
+  const templatePath = path2.resolve(
     process.cwd(),
     "server",
     "templates",
     "landing-page.html"
   );
-  const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
+  const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
   const isProduction = process.env.NODE_ENV === "production";
   log2("Serving static Expo files with dynamic manifest routing");
@@ -5140,10 +12659,10 @@ function configureExpoAndLanding(app2) {
     }
     next();
   });
-  app2.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app2.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
-  const distPath = path.resolve(process.cwd(), "dist");
-  const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
+  app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
+  app2.use(express.static(path2.resolve(process.cwd(), "static-build"), { index: false }));
+  const distPath = path2.resolve(process.cwd(), "dist");
+  const hasDistBuild = fs2.existsSync(path2.join(distPath, "index.html"));
   if (hasDistBuild) {
     app2.use(express.static(distPath, {
       maxAge: isProduction ? "1d" : 0,
@@ -5250,7 +12769,7 @@ document.body.appendChild(s);
         return next();
       }
       if (hasDistBuild) {
-        return res.sendFile(path.join(distPath, "index.html"));
+        return res.sendFile(path2.join(distPath, "index.html"));
       }
       return serveLandingPage({ req, res, landingPageTemplate, appName });
     });
@@ -5273,38 +12792,75 @@ function setupErrorHandler(app2) {
   app.use(securityHeaders);
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
+  app.use(cacheHeaders);
   app.use(perfMonitor);
   app.use((req, res, next) => {
     const start = process.hrtime();
-    res.on("finish", () => {
-      if (res.headersSent) return;
-      const [seconds, nanoseconds] = process.hrtime(start);
-      const durationMs = (seconds * 1e3 + nanoseconds / 1e6).toFixed(2);
-      res.setHeader("X-Response-Time", `${durationMs}ms`);
-    });
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      if (!res.headersSent) {
+        const [seconds, nanoseconds] = process.hrtime(start);
+        const durationMs = (seconds * 1e3 + nanoseconds / 1e6).toFixed(2);
+        res.setHeader("X-Response-Time", `${durationMs}ms`);
+      }
+      return originalEnd.apply(res, args);
+    };
     next();
   });
   setupRequestLogging(app);
+  const { prerenderMiddleware: prerenderMiddleware2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
+  app.use(prerenderMiddleware2);
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
   const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
   seedDatabase2().catch((err) => log.error("Seed error:", err));
+  const { closeExpiredChallenges: closeExpiredChallenges2 } = await Promise.resolve().then(() => (init_challengers(), challengers_exports));
+  closeExpiredChallenges2().catch((err) => log.error("Initial challenger closure error:", err));
+  const challengerInterval = setInterval(() => {
+    closeExpiredChallenges2().catch((err) => log.error("Challenger closure error:", err));
+  }, 60 * 60 * 1e3);
+  const { recalculateDishLeaderboard: recalculateDishLeaderboard2 } = await Promise.resolve().then(() => (init_dishes(), dishes_exports));
+  const { dishLeaderboards: dishLeaderboards2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const { db: dishDb } = await Promise.resolve().then(() => (init_db(), db_exports));
+  async function recalculateAllDishBoards() {
+    try {
+      const boards = await dishDb.select().from(dishLeaderboards2);
+      let totalEntries = 0;
+      for (const board of boards) {
+        const count15 = await recalculateDishLeaderboard2(board.id);
+        totalEntries += count15;
+      }
+      log.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
+    } catch (err) {
+      log.error("Dish leaderboard recalculation error:", err);
+    }
+  }
+  recalculateAllDishBoards();
+  const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1e3);
+  const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
+  const weeklyDigestTimeout = startWeeklyDigestScheduler2();
+  const { startDripScheduler: startDripScheduler2 } = await Promise.resolve().then(() => (init_drip_scheduler(), drip_scheduler_exports));
+  const dripSchedulerTimeout = startDripScheduler2();
+  const { startOutreachScheduler: startOutreachScheduler2 } = await Promise.resolve().then(() => (init_outreach_scheduler(), outreach_scheduler_exports));
+  const outreachSchedulerTimeout = startOutreachScheduler2();
   setupErrorHandler(app);
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true
-    },
+    port,
+    "0.0.0.0",
     () => {
-      log2(`express server serving on port ${port}`);
+      log2(`express server serving on port ${port} (0.0.0.0)`);
     }
   );
   function gracefulShutdown(signal) {
     log.info(`${signal} received. Starting graceful shutdown...`);
+    clearInterval(challengerInterval);
+    clearInterval(dishRecalcInterval);
+    clearTimeout(weeklyDigestTimeout);
+    clearTimeout(dripSchedulerTimeout);
+    clearTimeout(outreachSchedulerTimeout);
     server.close(() => {
       log.info("HTTP server closed");
       process.exit(0);
