@@ -12,11 +12,13 @@ export async function getLeaderboard(
   city: string,
   category: string,
   limit: number = 50,
+  cuisine?: string,
 ): Promise<Business[]> {
-  const key = `leaderboard:${city}:${category}:${limit}`;
+  const key = `leaderboard:${city}:${category}:${cuisine || "all"}:${limit}`;
   return cacheAside(key, 300, async () => {
     trackCacheMiss();
     // Sprint 273: Filter by leaderboard eligibility (3+ raters, 1+ dine-in, credibility >= 0.5)
+    // Sprint 286: Optional cuisine filter for Category → Cuisine → Dish workflow
     return db
       .select()
       .from(businesses)
@@ -26,6 +28,7 @@ export async function getLeaderboard(
           eq(businesses.category, category),
           eq(businesses.isActive, true),
           eq(businesses.leaderboardEligible, true),
+          ...(cuisine ? [eq(businesses.cuisine, cuisine)] : []),
         ),
       )
       .orderBy(asc(businesses.rankPosition))
@@ -122,6 +125,27 @@ export async function searchBusinesses(
     )
     .orderBy(desc(businesses.weightedScore))
     .limit(limit);
+}
+
+// Sprint 286: Get distinct cuisines for a city+category
+export async function getCuisines(city: string, category?: string): Promise<string[]> {
+  const key = `cuisines:${city}:${category || "all"}`;
+  return cacheAside(key, 7200, async () => {
+    trackCacheMiss();
+    const rows = await db
+      .select({ cuisine: businesses.cuisine })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.city, city),
+          eq(businesses.isActive, true),
+          sql`${businesses.cuisine} IS NOT NULL`,
+          ...(category ? [eq(businesses.category, category)] : []),
+        ),
+      )
+      .groupBy(businesses.cuisine);
+    return rows.map(r => r.cuisine!).filter(Boolean);
+  });
 }
 
 export async function getAllCategories(city: string): Promise<string[]> {

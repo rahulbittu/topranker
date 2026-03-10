@@ -283,11 +283,11 @@ async function apiFetch<T>(path: string): Promise<T> {
   }
 }
 
-export async function fetchLeaderboard(city: string, category: string, limit: number = 50) {
+export async function fetchLeaderboard(city: string, category: string, limit: number = 50, cuisine?: string) {
   const apiCategory = categoryToApi(category);
-  const businesses = await apiFetch<ApiBusiness[]>(
-    `/api/leaderboard?city=${encodeURIComponent(city)}&category=${encodeURIComponent(apiCategory)}&limit=${limit}`,
-  );
+  let url = `/api/leaderboard?city=${encodeURIComponent(city)}&category=${encodeURIComponent(apiCategory)}&limit=${limit}`;
+  if (cuisine) url += `&cuisine=${encodeURIComponent(cuisine)}`;
+  const businesses = await apiFetch<ApiBusiness[]>(url);
   return businesses.map(mapApiBusiness);
 }
 

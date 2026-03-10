@@ -58,6 +58,7 @@ export const businesses = pgTable(
     name: text("name").notNull(),
     slug: text("slug").unique().notNull(),
     category: text("category").notNull(),
+    cuisine: text("cuisine"), // Sprint 286: indian, mexican, japanese, etc.
     city: text("city").notNull(),
     neighborhood: text("neighborhood"),
     address: text("address"),
@@ -105,6 +106,7 @@ export const businesses = pgTable(
   },
   (table) => [
     index("idx_biz_city_cat").on(table.city, table.category),
+    index("idx_biz_cuisine").on(table.city, table.cuisine),
     index("idx_biz_score").on(table.weightedScore),
     index("idx_biz_rank").on(table.city, table.category, table.rankPosition),
     index("idx_biz_slug").on(table.slug),

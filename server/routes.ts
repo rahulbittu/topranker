@@ -48,6 +48,7 @@ import {
   submitRating,
   getActiveChallenges,
   getAllCategories,
+  getCuisines,
   getBusinessPhotosMap,
   getMemberPayments,
   getActiveFeaturedInCity,
@@ -166,9 +167,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/leaderboard", wrapAsync(async (req: Request, res: Response) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || "restaurant";
+    const cuisine = sanitizeString(req.query.cuisine, 50) || undefined;
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
 
-    const bizList = await getLeaderboard(city, category, limit);
+    const bizList = await getLeaderboard(city, category, limit, cuisine);
     const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
     const data = bizList.map(b => ({
       ...b,
@@ -213,6 +215,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/leaderboard/categories", wrapAsync(async (req: Request, res: Response) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const data = await getAllCategories(city);
+    return res.json({ data });
+  }));
+
+  // Sprint 286: Get distinct cuisines for a city+category
+  app.get("/api/leaderboard/cuisines", wrapAsync(async (req: Request, res: Response) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || undefined;
+    const data = await getCuisines(city, category);
     return res.json({ data });
   }));
 

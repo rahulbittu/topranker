@@ -69,8 +69,8 @@ export default function LeaderboardScreen() {
     [dbCategories]);
 
   const { data: businesses = [], isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
-    queryKey: ["leaderboard", city, activeCategory],
-    queryFn: () => fetchLeaderboard(city, activeCategory, 50),
+    queryKey: ["leaderboard", city, activeCategory, selectedCuisine],
+    queryFn: () => fetchLeaderboard(city, activeCategory, 50, selectedCuisine || undefined),
     staleTime: 30000,
   });
 

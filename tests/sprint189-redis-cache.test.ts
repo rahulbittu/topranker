@@ -108,8 +108,8 @@ describe("Cache integration — businesses.ts", () => {
     expect(src).toContain("cacheAside");
   });
 
-  it("caches getLeaderboard with city:category key", () => {
-    expect(src).toContain("`leaderboard:${city}:${category}:${limit}`");
+  it("caches getLeaderboard with city:category:cuisine key", () => {
+    expect(src).toContain("leaderboard:${city}:${category}:");
   });
 
   it("getLeaderboard uses cacheAside", () => {

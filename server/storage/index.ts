@@ -44,6 +44,7 @@ export {
   getBusinessesByIds,
   searchBusinesses,
   getAllCategories,
+  getCuisines,
   recalculateBusinessScore,
   recalculateRanks,
   getBusinessPhotos,
