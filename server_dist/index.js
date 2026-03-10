@@ -9754,6 +9754,10 @@ function registerMemberRoutes(app2) {
       challengerResults: true,
       newChallengers: true,
       weeklyDigest: false,
+      // Sprint 479: Push notification categories
+      rankingChanges: true,
+      savedBusinessAlerts: true,
+      cityAlerts: true,
       marketingEmails: false,
       ...stored
     };
@@ -9765,13 +9769,20 @@ function registerMemberRoutes(app2) {
       challengerResults,
       newChallengers,
       weeklyDigest,
-      marketingEmails
+      marketingEmails,
+      // Sprint 479: Push notification categories
+      rankingChanges,
+      savedBusinessAlerts,
+      cityAlerts
     } = req.body;
     const prefs = {
       tierUpgrades: tierUpgrades !== false,
       challengerResults: challengerResults !== false,
       newChallengers: newChallengers !== false,
       weeklyDigest: weeklyDigest === true,
+      rankingChanges: rankingChanges !== false,
+      savedBusinessAlerts: savedBusinessAlerts !== false,
+      cityAlerts: cityAlerts !== false,
       marketingEmails: marketingEmails === true
     };
     const { updateNotificationPrefs: updateNotificationPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));

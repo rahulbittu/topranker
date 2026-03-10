@@ -220,6 +220,10 @@ export function registerMemberRoutes(app: Express) {
       challengerResults: true,
       newChallengers: true,
       weeklyDigest: false,
+      // Sprint 479: Push notification categories
+      rankingChanges: true,
+      savedBusinessAlerts: true,
+      cityAlerts: true,
       marketingEmails: false,
       ...stored,
     };
@@ -230,12 +234,17 @@ export function registerMemberRoutes(app: Express) {
     const {
       tierUpgrades, challengerResults,
       newChallengers, weeklyDigest, marketingEmails,
+      // Sprint 479: Push notification categories
+      rankingChanges, savedBusinessAlerts, cityAlerts,
     } = req.body;
     const prefs: Record<string, boolean> = {
       tierUpgrades: tierUpgrades !== false,
       challengerResults: challengerResults !== false,
       newChallengers: newChallengers !== false,
       weeklyDigest: weeklyDigest === true,
+      rankingChanges: rankingChanges !== false,
+      savedBusinessAlerts: savedBusinessAlerts !== false,
+      cityAlerts: cityAlerts !== false,
       marketingEmails: marketingEmails === true,
     };
     const { updateNotificationPrefs } = await import("./storage");

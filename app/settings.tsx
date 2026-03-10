@@ -21,6 +21,10 @@ const NOTIFICATION_KEYS = {
   challengerResults: "notif_challenger_results",
   newChallengers: "notif_new_challengers",
   weeklyDigest: "notif_weekly_digest",
+  // Sprint 479: Push notification categories
+  rankingChanges: "notif_ranking_changes",
+  savedBusinessAlerts: "notif_saved_biz_alerts",
+  cityAlerts: "notif_city_alerts",
   marketingEmails: "notif_marketing_emails",
 };
 
@@ -129,6 +133,10 @@ export default function SettingsScreen() {
     challengerResults: true,
     newChallengers: true,
     weeklyDigest: true,
+    // Sprint 479: Push notification categories
+    rankingChanges: true,
+    savedBusinessAlerts: true,
+    cityAlerts: true,
     marketingEmails: true,
   });
 
@@ -277,6 +285,27 @@ export default function SettingsScreen() {
             sublabel="Your weekly activity summary"
             value={notifPrefs.weeklyDigest}
             onToggle={toggleNotif("weeklyDigest")}
+          />
+          <SettingRow
+            icon="swap-vertical-outline"
+            label="Ranking Changes"
+            sublabel="When a saved restaurant moves up or down"
+            value={notifPrefs.rankingChanges}
+            onToggle={toggleNotif("rankingChanges")}
+          />
+          <SettingRow
+            icon="bookmark-outline"
+            label="Saved Place Updates"
+            sublabel="New ratings on your saved restaurants"
+            value={notifPrefs.savedBusinessAlerts}
+            onToggle={toggleNotif("savedBusinessAlerts")}
+          />
+          <SettingRow
+            icon="location-outline"
+            label="City Highlights"
+            sublabel="Notable ranking shifts in your city"
+            value={notifPrefs.cityAlerts}
+            onToggle={toggleNotif("cityAlerts")}
           />
           <SettingRow
             icon="mail-outline"

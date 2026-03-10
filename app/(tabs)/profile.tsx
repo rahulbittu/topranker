@@ -31,8 +31,9 @@ import { FadeInView } from "@/components/animations/FadeInView";
 import {
   TierBadge, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
-  TierRewardsSection, NotificationSettingsLink, LegalLinksSection,
+  TierRewardsSection, LegalLinksSection,
 } from "@/components/profile/SubComponents";
+import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 import { SavedPlacesSection } from "@/components/profile/SavedPlacesSection";
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
@@ -405,7 +406,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </TouchableOpacity>
       )}
 
-      <NotificationSettingsLink />
+      <NotificationPreferencesCard />
 
       <LegalLinksSection />
     </ScrollView>

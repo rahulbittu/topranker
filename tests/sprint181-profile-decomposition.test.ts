@@ -204,7 +204,7 @@ describe("Profile.tsx — import compatibility", () => {
     expect(profileSrc).toContain("PaymentHistoryRow");
     expect(profileSrc).toContain("CredibilityJourney");
     expect(profileSrc).toContain("TierRewardsSection");
-    expect(profileSrc).toContain("NotificationSettingsLink");
+    expect(profileSrc).toContain("NotificationPreferencesCard");
     expect(profileSrc).toContain("LegalLinksSection");
     expect(profileSrc).toContain("LoggedOutView");
   });
