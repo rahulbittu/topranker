@@ -33,12 +33,14 @@ describe("RatingExport — exports", () => {
     expect(src).toContain("export interface RatingExportButtonProps");
   });
 
-  it("exports ratingsToCSV function", () => {
-    expect(src).toContain("export function ratingsToCSV");
+  it("re-exports ratingsToCSV function", () => {
+    // Sprint 461: extracted to lib/rating-export-utils.ts, re-exported
+    expect(src).toContain("ratingsToCSV");
   });
 
-  it("exports ExportableRating interface", () => {
-    expect(src).toContain("export interface ExportableRating");
+  it("re-exports ExportableRating interface", () => {
+    // Sprint 461: extracted to lib/rating-export-utils.ts, re-exported
+    expect(src).toContain("ExportableRating");
   });
 });
 
@@ -46,7 +48,8 @@ describe("RatingExport — exports", () => {
 // 2. CSV generation
 // ---------------------------------------------------------------------------
 describe("RatingExport — CSV generation", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("has CSV headers", () => {
     expect(src).toContain("CSV_HEADERS");
@@ -74,7 +77,8 @@ describe("RatingExport — CSV generation", () => {
 // 3. CSV escaping
 // ---------------------------------------------------------------------------
 describe("RatingExport — CSV escaping", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("has escapeCSV function", () => {
     expect(src).toContain("function escapeCSV");
@@ -98,7 +102,8 @@ describe("RatingExport — CSV escaping", () => {
 // 4. Visit type labels
 // ---------------------------------------------------------------------------
 describe("RatingExport — visit types", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("labels dine-in correctly", () => {
     expect(src).toContain('"Dine-in"');

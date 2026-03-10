@@ -20,7 +20,8 @@ const readFile = (relPath: string) =>
 // 1. JSON export format
 // ---------------------------------------------------------------------------
 describe("RatingExport — JSON format", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("exports ratingsToJSON function", () => {
     expect(src).toContain("export function ratingsToJSON");
@@ -55,7 +56,8 @@ describe("RatingExport — JSON format", () => {
 // 2. Summary statistics
 // ---------------------------------------------------------------------------
 describe("RatingExport — summary statistics", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("exports computeExportSummary function", () => {
     expect(src).toContain("export function computeExportSummary");
@@ -96,7 +98,8 @@ describe("RatingExport — summary statistics", () => {
 // 3. Date range filtering
 // ---------------------------------------------------------------------------
 describe("RatingExport — date range filter", () => {
-  const src = readFile("components/profile/RatingExport.tsx");
+  // Sprint 461: utilities extracted to lib/rating-export-utils.ts
+  const src = readFile("lib/rating-export-utils.ts");
 
   it("exports filterByDateRange function", () => {
     expect(src).toContain("export function filterByDateRange");
