@@ -100,9 +100,10 @@ describe("PhotoTips — guidance component", () => {
 describe("RatingExtrasStep — photo improvements", () => {
   const src = readFile("components/rate/RatingExtrasStep.tsx");
 
-  it("imports PhotoBoostMeter and PhotoTips", () => {
+  it("imports PhotoBoostMeter and prompt helpers", () => {
+    // Sprint 466: PhotoTips replaced by visit-type prompts from RatingPrompts
     expect(src).toContain("PhotoBoostMeter");
-    expect(src).toContain("PhotoTips");
+    expect(src).toContain("getPhotoPromptsByVisitType");
   });
 
   it("renders PhotoBoostMeter with photo count and receipt state", () => {

@@ -18,7 +18,8 @@ const readFile = (relPath: string) =>
 // 1. Receipt hint helper
 // ---------------------------------------------------------------------------
 describe("Receipt prompts — getReceiptHint", () => {
-  const src = readFile("components/rate/RatingExtrasStep.tsx");
+  // Sprint 466: extracted to RatingPrompts.tsx
+  const src = readFile("components/rate/RatingPrompts.tsx");
 
   it("defines getReceiptHint function", () => {
     expect(src).toContain("function getReceiptHint");

@@ -143,10 +143,10 @@ describe("Sprint 266: Rating Photo Upload", () => {
 
   // ── UI Verification Boost Messaging ─────────────────────────────
 
-  // Sprint 424: boost hint replaced by PhotoBoostMeter + PhotoTips
-  it("photo section includes boost meter and tips", () => {
+  // Sprint 424→466: boost meter + visit-type prompts (PhotoTips replaced)
+  it("photo section includes boost meter and prompts", () => {
     expect(extrasSrc).toContain("PhotoBoostMeter");
-    expect(extrasSrc).toContain("PhotoTips");
+    expect(extrasSrc).toContain("getPhotoPromptsByVisitType");
   });
 
   it("photo preview shows index badge", () => {

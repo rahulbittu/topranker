@@ -19,7 +19,8 @@ const readFile = (relPath: string) =>
 // 1. Photo prompts helper
 // ---------------------------------------------------------------------------
 describe("Photo prompts — getPhotoPromptsByVisitType", () => {
-  const src = readFile("components/rate/RatingExtrasStep.tsx");
+  // Sprint 466: extracted to RatingPrompts.tsx
+  const src = readFile("components/rate/RatingPrompts.tsx");
 
   it("defines getPhotoPromptsByVisitType function", () => {
     expect(src).toContain("getPhotoPromptsByVisitType");
@@ -74,7 +75,8 @@ describe("Photo prompts — visitType prop wiring", () => {
   });
 
   it("VisitType type includes all 3 variants", () => {
-    const src = readFile("components/rate/RatingExtrasStep.tsx");
+    // Sprint 466: extracted to RatingPrompts.tsx
+    const src = readFile("components/rate/RatingPrompts.tsx");
     expect(src).toContain('"dine_in"');
     expect(src).toContain('"delivery"');
     expect(src).toContain('"takeaway"');

@@ -41,9 +41,8 @@ describe("Sprint 382 — receipt upload UI", () => {
   });
 
   it("has visit-type-aware receipt hint", () => {
-    // Sprint 462: dynamic receipt hints per visit type
+    // Sprint 462→466: receipt hints extracted to RatingPrompts.tsx
     expect(extrasSrc).toContain("getReceiptHint");
-    expect(extrasSrc).toContain("Verified Purchase badge");
   });
 
   it("has pickReceipt function", () => {
