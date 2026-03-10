@@ -73,8 +73,9 @@ describe("dish leaderboard page — app/dish/[slug].tsx", () => {
   });
 
   it("renders ranked entries with business links", () => {
-    expect(pageSrc).toContain("businessSlug");
-    expect(pageSrc).toContain('pathname: "/business/[id]"');
+    // Sprint 317: Entry card extracted to DishEntryCard component
+    expect(pageSrc).toContain("DishEntryCard");
+    expect(pageSrc).toContain("dishName={board.dishName}");
   });
 
   it("handles loading state", () => {

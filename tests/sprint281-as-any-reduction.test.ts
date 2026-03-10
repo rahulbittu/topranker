@@ -67,8 +67,9 @@ describe("Sprint 281: pct() Helper Adoption", () => {
     expect(src).not.toContain('"100%" as any');
   });
 
-  it("app/dish/[slug].tsx uses pct()", () => {
-    const src = readFile("app/dish/[slug].tsx");
+  it("app/dish/[slug].tsx entry card uses pct() (extracted to DishEntryCard)", () => {
+    // Sprint 317: Entry card extracted — pct() now in DishEntryCard component
+    const src = readFile("components/dish/DishEntryCard.tsx");
     expect(src).toContain("pct(100)");
     expect(src).not.toContain('"100%" as any');
   });

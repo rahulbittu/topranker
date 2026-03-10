@@ -11,30 +11,33 @@ import * as path from "path";
 
 const ROOT = path.resolve(__dirname, "..");
 const pageSrc = fs.readFileSync(path.join(ROOT, "app/dish/[slug].tsx"), "utf-8");
+// Sprint 317: Entry card extracted to DishEntryCard component
+const entryCardSrc = fs.readFileSync(path.join(ROOT, "components/dish/DishEntryCard.tsx"), "utf-8");
 const rateSrc = fs.readFileSync(path.join(ROOT, "app/rate/[id].tsx"), "utf-8");
 
 describe("Sprint 309 — Dish Rating Flow", () => {
   // ─── Entry card Rate button ────────────────────────────────
 
+  // Sprint 317: Entry card extracted to DishEntryCard component
   it("entry card has 'Rate [dish]' button", () => {
-    expect(pageSrc).toContain("Rate {board.dishName}");
+    expect(entryCardSrc).toContain("Rate {dishName}");
   });
 
   it("Rate button navigates to /rate/[id] with dish param", () => {
-    expect(pageSrc).toContain('pathname: "/rate/[id]"');
-    expect(pageSrc).toContain("dish: board.dishName");
+    expect(entryCardSrc).toContain('pathname: "/rate/[id]"');
+    expect(entryCardSrc).toContain("dish: dishName");
   });
 
   it("Rate button uses business slug as route param", () => {
-    expect(pageSrc).toContain("id: entry.businessSlug");
+    expect(entryCardSrc).toContain("id: entry.businessSlug");
   });
 
   it("Rate button has star-outline icon", () => {
-    expect(pageSrc).toContain('"star-outline"');
+    expect(entryCardSrc).toContain('"star-outline"');
   });
 
   it("Rate button has accessibility label with business name", () => {
-    expect(pageSrc).toContain("Rate ${board.dishName} at ${entry.businessName}");
+    expect(entryCardSrc).toContain("Rate ${dishName} at ${entry.businessName}");
   });
 
   // ─── Rate page accepts dish context ────────────────────────
@@ -68,11 +71,11 @@ describe("Sprint 309 — Dish Rating Flow", () => {
   // ─── Styles ────────────────────────────────────────────────
 
   it("has rateEntryButton style", () => {
-    expect(pageSrc).toContain("rateEntryButton");
+    expect(entryCardSrc).toContain("rateEntryButton");
   });
 
   it("has rateEntryText style", () => {
-    expect(pageSrc).toContain("rateEntryText");
+    expect(entryCardSrc).toContain("rateEntryText");
   });
 
   it("has ctaSubtext style", () => {
