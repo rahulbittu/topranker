@@ -10095,6 +10095,66 @@ function sortByRelevance(data, query) {
   );
 }
 
+// server/dashboard-analytics.ts
+function computeWeeklyVolume(ratings5, weeks = 12) {
+  const now = /* @__PURE__ */ new Date();
+  const result = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const weekStart = new Date(now.getTime() - (w + 1) * 7 * 864e5);
+    const weekEnd = new Date(now.getTime() - w * 7 * 864e5);
+    const weekRatings = ratings5.filter((r) => {
+      const d = new Date(r.createdAt).getTime();
+      return d >= weekStart.getTime() && d < weekEnd.getTime();
+    });
+    const scores = weekRatings.map((r) => parseFloat(r.rawScore));
+    result.push({
+      period: weekStart.toISOString().split("T")[0],
+      count: weekRatings.length,
+      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
+    });
+  }
+  return result;
+}
+function computeMonthlyVolume(ratings5, months = 6) {
+  const now = /* @__PURE__ */ new Date();
+  const result = [];
+  for (let m = months - 1; m >= 0; m--) {
+    const monthStart = new Date(now.getFullYear(), now.getMonth() - m, 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() - m + 1, 1);
+    const monthRatings = ratings5.filter((r) => {
+      const d = new Date(r.createdAt).getTime();
+      return d >= monthStart.getTime() && d < monthEnd.getTime();
+    });
+    const scores = monthRatings.map((r) => parseFloat(r.rawScore));
+    result.push({
+      period: monthStart.toISOString().split("T")[0],
+      count: monthRatings.length,
+      avgScore: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 10) / 10 : 0
+    });
+  }
+  return result;
+}
+function computeVelocityChange(weeklyVolume) {
+  if (weeklyVolume.length < 4) return 0;
+  const recent = weeklyVolume.slice(-2).reduce((sum2, w) => sum2 + w.count, 0);
+  const previous = weeklyVolume.slice(-4, -2).reduce((sum2, w) => sum2 + w.count, 0);
+  if (previous === 0) return recent > 0 ? 100 : 0;
+  return Math.round((recent - previous) / previous * 100);
+}
+function extractSparklineScores(ratings5, limit = 20) {
+  return ratings5.slice(0, limit).map((r) => parseFloat(r.rawScore)).reverse();
+}
+function buildDashboardTrend(ratings5) {
+  const weeklyVolume = computeWeeklyVolume(ratings5);
+  const monthlyVolume = computeMonthlyVolume(ratings5);
+  return {
+    weeklyVolume,
+    monthlyVolume,
+    velocityChange: computeVelocityChange(weeklyVolume),
+    sparklineScores: extractSparklineScores(ratings5)
+  };
+}
+
 // server/routes-businesses.ts
 function registerBusinessRoutes(app2) {
   app2.get("/api/businesses/autocomplete", wrapAsync(async (req, res) => {
@@ -10236,10 +10296,12 @@ function registerBusinessRoutes(app2) {
       return res.status(403).json({ error: "Dashboard access requires business ownership" });
     }
     const { getRankHistory: getRankHistory2, getBusinessDishes: getBusinessDishes2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const [{ ratings: ratings5, total }, rankHistory2, dishes2] = await Promise.all([
+    const [{ ratings: ratings5, total }, rankHistory2, dishes2, allRatingsResult] = await Promise.all([
       getBusinessRatings(business.id, 1, 10),
       getRankHistory2(business.id, 49),
-      getBusinessDishes2(business.id, 5)
+      getBusinessDishes2(business.id, 5),
+      getBusinessRatings(business.id, 1, 200)
+      // Sprint 478: all ratings for trend analysis
     ]);
     const totalRatings = business.totalRatings || 0;
     const avgScore = business.rawAvgScore ? parseFloat(business.rawAvgScore) : 0;
@@ -10251,6 +10313,7 @@ function registerBusinessRoutes(app2) {
     const topDish = dishes2.length > 0 ? dishes2[0] : null;
     const ratingTrend = rankHistory2.map((h) => h.score);
     const isPro = business.subscriptionStatus === "active" || business.subscriptionStatus === "trialing" || isAdmin;
+    const trendData = buildDashboardTrend(allRatingsResult.ratings);
     const baseData = {
       totalRatings,
       avgScore,
@@ -10269,6 +10332,11 @@ function registerBusinessRoutes(app2) {
         // Notes are Pro-only
         date: r.createdAt
       })),
+      // Sprint 478: Trend analytics
+      weeklyVolume: isPro ? trendData.weeklyVolume : trendData.weeklyVolume.slice(-4),
+      monthlyVolume: isPro ? trendData.monthlyVolume : trendData.monthlyVolume.slice(-3),
+      velocityChange: trendData.velocityChange,
+      sparklineScores: trendData.sparklineScores,
       subscriptionStatus: business.subscriptionStatus || "none",
       isPro
     };

@@ -24,6 +24,8 @@ import { requireAuth } from "./middleware";
 import { computeOpenStatus } from "./hours-utils";
 // Sprint 476: Extracted search processing to dedicated module
 import { enrichSearchResults, applySearchFilters, sortByRelevance, haversineKm } from "./search-result-processor";
+// Sprint 478: Dashboard analytics
+import { buildDashboardTrend } from "./dashboard-analytics";
 
 export function registerBusinessRoutes(app: Express) {
   // Sprint 184: Autocomplete — lightweight typeahead for search-as-you-type
@@ -197,10 +199,11 @@ export function registerBusinessRoutes(app: Express) {
     }
 
     const { getRankHistory, getBusinessDishes } = await import("./storage");
-    const [{ ratings, total }, rankHistory, dishes] = await Promise.all([
+    const [{ ratings, total }, rankHistory, dishes, allRatingsResult] = await Promise.all([
       getBusinessRatings(business.id, 1, 10),
       getRankHistory(business.id, 49),
       getBusinessDishes(business.id, 5),
+      getBusinessRatings(business.id, 1, 200), // Sprint 478: all ratings for trend analysis
     ]);
 
     const totalRatings = business.totalRatings || 0;
@@ -218,6 +221,9 @@ export function registerBusinessRoutes(app: Express) {
     // Sprint 176: Subscription tier determines data depth
     const isPro = business.subscriptionStatus === "active" || business.subscriptionStatus === "trialing" || isAdmin;
 
+    // Sprint 478: Rating trend analytics (weekly/monthly volume + sparkline)
+    const trendData = buildDashboardTrend(allRatingsResult.ratings as any[]);
+
     const baseData = {
       totalRatings,
       avgScore,
@@ -234,6 +240,11 @@ export function registerBusinessRoutes(app: Express) {
         note: isPro ? r.note : undefined, // Notes are Pro-only
         date: r.createdAt,
       })),
+      // Sprint 478: Trend analytics
+      weeklyVolume: isPro ? trendData.weeklyVolume : trendData.weeklyVolume.slice(-4),
+      monthlyVolume: isPro ? trendData.monthlyVolume : trendData.monthlyVolume.slice(-3),
+      velocityChange: trendData.velocityChange,
+      sparklineScores: trendData.sparklineScores,
       subscriptionStatus: business.subscriptionStatus || "none",
       isPro,
     };
