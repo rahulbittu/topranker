@@ -5,7 +5,7 @@
  * Provides unique meta tags, JSON-LD structured data, and shareable URLs
  * for each dish leaderboard to improve search engine visibility.
  */
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Platform,
@@ -125,7 +125,11 @@ export default function DishLeaderboardPage() {
     );
   }
 
-  const entries = board.entries || [];
+  const PAGE_SIZE = 10;
+  const allEntries = board.entries || [];
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const entries = allEntries.slice(0, visibleCount);
+  const hasMore = allEntries.length > visibleCount;
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -245,6 +249,21 @@ export default function DishLeaderboardPage() {
           </TouchableOpacity>
         ))}
 
+        {/* Show More — Sprint 307 pagination */}
+        {hasMore && (
+          <TouchableOpacity
+            style={styles.showMoreButton}
+            onPress={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+            accessibilityRole="button"
+            accessibilityLabel={`Show more entries. Showing ${visibleCount} of ${allEntries.length}`}
+          >
+            <Text style={styles.showMoreText}>
+              Show more ({allEntries.length - visibleCount} remaining)
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={AMBER} />
+          </TouchableOpacity>
+        )}
+
         {/* CTA */}
         <View style={styles.ctaSection}>
           <Text style={styles.ctaText}>
@@ -352,4 +371,11 @@ const styles = StyleSheet.create({
     backgroundColor: AMBER,
   },
   backButtonText: { color: "#fff", fontWeight: "700" },
+  showMoreButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    marginHorizontal: 16, marginBottom: 12, paddingVertical: 12,
+    borderRadius: 12, backgroundColor: "rgba(196,154,26,0.08)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
+  },
+  showMoreText: { fontSize: 14, fontWeight: "600", color: AMBER },
 });
