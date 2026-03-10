@@ -1,3 +1,47 @@
+/**
+ * TopRanker Database Schema
+ *
+ * Table of Contents (by domain):
+ *
+ * CORE (L18-170)
+ *   members, businesses, ratings
+ *
+ * DISHES (L172-210)
+ *   dishes, dishVotes
+ *
+ * COMPETITION (L212-270)
+ *   challengers, rankHistory
+ *
+ * CLAIMS & MODERATION (L273-425)
+ *   businessClaims, claimEvidence, businessPhotos, qrScans,
+ *   ratingFlags, memberBadges, credibilityPenalties
+ *
+ * CATEGORIES (L428-457)
+ *   categories, categorySuggestions
+ *
+ * COMMERCE (L459-555)
+ *   payments, webhookEvents, featuredPlacements, analyticsEvents
+ *
+ * VALIDATION SCHEMAS (L558-610)
+ *   insertMemberSchema, insertRatingSchema
+ *
+ * DATA MANAGEMENT (L612-633)
+ *   deletionRequests
+ *
+ * DISH LEADERBOARDS (L636-732)
+ *   dishLeaderboards, dishLeaderboardEntries, dishSuggestions,
+ *   dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema
+ *
+ * COMMUNITY & ENGAGEMENT (L735-847)
+ *   notifications, referrals, betaInvites, userActivity, betaFeedback
+ *
+ * PHOTOS (L850-903)
+ *   ratingPhotos, photoSubmissions
+ *
+ * NOTE: Tables cannot be split into separate files without circular
+ * dependencies (Drizzle foreign key references require source table in scope).
+ * Domain markers and this index serve as organizational navigation.
+ */
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -14,6 +58,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// ── CORE ────────────────────────────────────────────────────
 
 export const members = pgTable("members", {
   id: varchar("id")
@@ -169,6 +215,8 @@ export const ratings = pgTable(
   ],
 );
 
+// ── DISHES ──────────────────────────────────────────────────
+
 export const dishes = pgTable(
   "dishes",
   {
@@ -208,6 +256,8 @@ export const dishVotes = pgTable("dish_votes", {
   noNotableDish: boolean("no_notable_dish").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ── COMPETITION ─────────────────────────────────────────────
 
 export const challengers = pgTable(
   "challengers",
@@ -269,6 +319,8 @@ export const rankHistory = pgTable(
     index("idx_rank_hist").on(table.businessId, table.snapshotDate),
   ],
 );
+
+// ── CLAIMS & MODERATION ─────────────────────────────────────
 
 export const businessClaims = pgTable("business_claims", {
   id: varchar("id")
@@ -425,6 +477,8 @@ export const credibilityPenalties = pgTable(
   ],
 );
 
+// ── CATEGORIES ──────────────────────────────────────────────
+
 export const categories = pgTable("categories", {
   id: varchar("id")
     .primaryKey()
@@ -455,6 +509,8 @@ export const categorySuggestions = pgTable("category_suggestions", {
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// ── COMMERCE ────────────────────────────────────────────────
 
 export const payments = pgTable(
   "payments",
@@ -846,7 +902,8 @@ export const betaFeedback = pgTable(
 
 export type BetaFeedback = typeof betaFeedback.$inferSelect;
 
-// Sprint 266: Rating photos for verification boost
+// ── PHOTOS ──────────────────────────────────────────────────
+
 export const ratingPhotos = pgTable(
   "rating_photos",
   {

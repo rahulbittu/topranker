@@ -68,7 +68,7 @@ describe("Dish Leaderboard schema", () => {
   });
 
   it("insertDishSuggestionSchema validates dishName 2-40 chars", () => {
-    const match = schemaSrc.match(/insertDishSuggestionSchema[\s\S]{0,200}/);
+    const match = schemaSrc.match(/export const insertDishSuggestionSchema[\s\S]{0,200}/);
     expect(match).not.toBeNull();
     expect(match![0]).toContain('min(2)');
     expect(match![0]).toContain('max(40)');
