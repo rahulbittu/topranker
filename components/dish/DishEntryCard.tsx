@@ -27,6 +27,7 @@ export interface DishEntryCardProps {
     rankPosition: number;
     dishScore: string;
     dishRatingCount: number;
+    dishPhotoCount?: number; // Sprint 566: dish-specific rating photos
   };
   dishName: string;
   city?: string;
@@ -48,6 +49,13 @@ export function DishEntryCard({ entry, dishName, city }: DishEntryCardProps) {
         <View style={styles.rankBadge}>
           <Text style={styles.rankBadgeText}>{entry.rankPosition}</Text>
         </View>
+        {/* Sprint 566: Dish photo count badge */}
+        {entry.dishPhotoCount != null && entry.dishPhotoCount > 0 && (
+          <View style={styles.photoBadge}>
+            <Ionicons name="camera" size={12} color="#fff" />
+            <Text style={styles.photoBadgeText}>{entry.dishPhotoCount}</Text>
+          </View>
+        )}
       </View>
       <View style={styles.entryInfo}>
         <View style={styles.entryRow}>
@@ -116,6 +124,14 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   rankBadgeText: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  // Sprint 566: Dish photo count badge
+  photoBadge: {
+    position: "absolute", bottom: 8, right: 8,
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 10,
+    paddingHorizontal: 6, paddingVertical: 3,
+  },
+  photoBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   entryInfo: { padding: 12 },
   entryRow: { flexDirection: "row", alignItems: "baseline", gap: 6, marginBottom: 2 },
   entryName: { fontSize: 16, fontWeight: "700", color: "#111", flex: 1 },

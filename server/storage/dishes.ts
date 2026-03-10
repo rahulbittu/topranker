@@ -14,6 +14,7 @@ import {
   type DishLeaderboard,
   type DishLeaderboardEntry,
   type DishSuggestion,
+  ratingPhotos,
 } from "@shared/schema";
 import { db } from "../db";
 import { getVoteWeight } from "@shared/credibility";
@@ -208,13 +209,23 @@ export async function getDishLeaderboardWithEntries(slug: string, city: string, 
       .map((e, i) => ({ ...e, rankPosition: i + 1 }));
   }
 
-  const eligibleCount = filteredEntries.filter((e) => e.dishRatingCount >= 3).length;
+  // Sprint 566: Enrich entries with dish-specific photo counts
+  const enrichedEntries = await Promise.all(filteredEntries.map(async (e) => {
+    const [photoCount] = await db
+      .select({ cnt: count() })
+      .from(ratingPhotos)
+      .innerJoin(dishVotes, eq(ratingPhotos.ratingId, dishVotes.ratingId))
+      .where(eq(dishVotes.businessId, e.businessId));
+    return { ...e, dishPhotoCount: Number(photoCount?.cnt ?? 0) };
+  }));
+
+  const eligibleCount = enrichedEntries.filter((e) => e.dishRatingCount >= 3).length;
   const isProvisional =
     board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000;
 
   return {
     leaderboard: board,
-    entries: filteredEntries,
+    entries: enrichedEntries,
     isProvisional,
     minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount),
     visitTypeBreakdown,
@@ -256,7 +267,7 @@ export async function recalculateDishLeaderboard(leaderboardId: string): Promise
   }
 
   // For each business, compute dish-specific score from dishVotes + ratings
-  const entries: { businessId: string; dishScore: number; dishRatingCount: number; photoUrl: string | null }[] = [];
+  const entries: { businessId: string; dishScore: number; dishRatingCount: number; photoUrl: string | null; dishPhotoCount: number }[] = [];
 
   for (const [businessId, dishIds] of bizDishMap) {
     const votes = await db
@@ -305,19 +316,32 @@ export async function recalculateDishLeaderboard(leaderboardId: string): Promise
 
     const dishScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
 
-    // Get best dish photo
-    const [photo] = await db
-      .select({ photoUrl: businessPhotos.photoUrl })
-      .from(businessPhotos)
-      .where(eq(businessPhotos.businessId, businessId))
-      .orderBy(asc(businessPhotos.sortOrder))
-      .limit(1);
+    // Sprint 566: Prefer dish-specific rating photos over generic business photos
+    const dishRatingPhotos = await db
+      .select({ photoUrl: ratingPhotos.photoUrl })
+      .from(ratingPhotos)
+      .where(sql`${ratingPhotos.ratingId} = ANY(ARRAY[${sql.join(ratingIds.map((id) => sql`${id}`), sql`,`)}]::text[])`)
+      .limit(10);
+
+    let photoUrl: string | null = null;
+    if (dishRatingPhotos.length > 0) {
+      photoUrl = dishRatingPhotos[0].photoUrl;
+    } else {
+      const [bizPhoto] = await db
+        .select({ photoUrl: businessPhotos.photoUrl })
+        .from(businessPhotos)
+        .where(eq(businessPhotos.businessId, businessId))
+        .orderBy(asc(businessPhotos.sortOrder))
+        .limit(1);
+      photoUrl = bizPhoto?.photoUrl ?? null;
+    }
 
     entries.push({
       businessId,
       dishScore: Math.round(dishScore * 100) / 100,
       dishRatingCount: validCount,
-      photoUrl: photo?.photoUrl ?? null,
+      photoUrl,
+      dishPhotoCount: dishRatingPhotos.length,
     });
   }
 
