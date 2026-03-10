@@ -17,6 +17,7 @@ export interface ApiBusiness {
   name: string;
   slug: string;
   category: string;
+  cuisine: string | null;
   city: string;
   neighborhood: string | null;
   address: string | null;
@@ -170,6 +171,7 @@ export function mapApiBusiness(biz: ApiBusiness) {
     neighborhood: biz.neighborhood || "",
     city: biz.city,
     category: biz.category,
+    cuisine: biz.cuisine || null,
     weightedScore: parseFloat(biz.weightedScore) || 0,
     rawAvgScore: parseFloat(biz.rawAvgScore) || 0,
     rank: biz.rankPosition || 0,

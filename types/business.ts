@@ -5,6 +5,7 @@ export interface MappedBusiness {
   neighborhood: string;
   city?: string;
   category: string;
+  cuisine?: string | null;
   weightedScore: number;
   rank: number;
   rankDelta: number;
