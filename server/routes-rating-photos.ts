@@ -92,6 +92,7 @@ export function registerRatingPhotoRoutes(app: Express): void {
         photoUrl,
         cdnKey,
         contentHash: dupResult.hash, // Sprint 587: persist hash for startup preload
+        perceptualHash: pHash, // Sprint 592: persist pHash for startup preload
         isVerifiedReceipt: isReceipt === true,
       }).returning();
 

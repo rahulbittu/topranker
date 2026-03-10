@@ -9,6 +9,9 @@
  */
 
 import { log } from "./logger";
+import { db } from "./db";
+import { ratingPhotos, ratings } from "@shared/schema";
+import { isNotNull, eq } from "drizzle-orm";
 
 const phashLog = log.tag("PHash");
 
@@ -132,4 +135,39 @@ export function clearPHashIndex(): void {
 /** Get the near-duplicate threshold constant */
 export function getNearDuplicateThreshold(): number {
   return NEAR_DUPLICATE_THRESHOLD;
+}
+
+/**
+ * Sprint 592: Preload pHash index from DB on server startup.
+ * Mirrors the contentHash preload pattern from Sprint 587.
+ */
+export async function preloadPHashIndex(): Promise<number> {
+  const rows = await db
+    .select({
+      id: ratingPhotos.id,
+      ratingId: ratingPhotos.ratingId,
+      perceptualHash: ratingPhotos.perceptualHash,
+      memberId: ratings.memberId,
+      businessId: ratings.businessId,
+    })
+    .from(ratingPhotos)
+    .innerJoin(ratings, eq(ratingPhotos.ratingId, ratings.id))
+    .where(isNotNull(ratingPhotos.perceptualHash));
+
+  let loaded = 0;
+  for (const row of rows) {
+    if (row.perceptualHash) {
+      phashIndex.push({
+        pHash: row.perceptualHash,
+        ratingId: row.ratingId,
+        memberId: row.memberId,
+        businessId: row.businessId,
+        photoId: row.id,
+      });
+      loaded++;
+    }
+  }
+
+  phashLog.info(`Preloaded ${loaded} perceptual hashes from DB`);
+  return loaded;
 }

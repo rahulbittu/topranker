@@ -418,6 +418,10 @@ function setupErrorHandler(app: express.Application) {
   const { preloadHashIndex } = await import("./photo-hash");
   preloadHashIndex().catch((err) => logger.error("Photo hash preload failed:", err));
 
+  // Sprint 592: Preload perceptual hash index from DB for near-duplicate detection
+  const { preloadPHashIndex } = await import("./phash");
+  preloadPHashIndex().catch((err) => logger.error("PHash preload failed:", err));
+
   // Sprint 175: Weekly digest push notification scheduler
   const { startWeeklyDigestScheduler, startCityHighlightsScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();
