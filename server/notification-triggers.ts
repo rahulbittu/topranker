@@ -160,6 +160,50 @@ export function startWeeklyDigestScheduler(): NodeJS.Timeout {
   return initialTimeout;
 }
 
+// ── Sprint 488: City Highlights Scheduler ──────────────────────
+
+/**
+ * Start the weekly city highlights push scheduler.
+ * Runs every Monday at 11am UTC (1 hour after weekly digest).
+ * Sends city-level ranking highlight pushes for all active cities.
+ */
+export function startCityHighlightsScheduler(): NodeJS.Timeout {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(11, 0, 0, 0); // 11am UTC, 1hr after digest
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog.info(`City highlights scheduler: first run in ${Math.round(msUntilFirst / 3600000)}h`);
+
+  async function runCityHighlights() {
+    try {
+      const { getActiveCities, getBetaCities } = await import("@shared/city-config");
+      const cities = [...getActiveCities(), ...getBetaCities()];
+      let totalSent = 0;
+      for (const city of cities) {
+        const sent = await sendCityHighlightsPush(city);
+        totalSent += sent;
+      }
+      triggerLog.info(`City highlights completed: ${totalSent} pushes across ${cities.length} cities`);
+    } catch (err) {
+      triggerLog.error("City highlights scheduler error:", err);
+    }
+  }
+
+  const initialTimeout = setTimeout(() => {
+    runCityHighlights();
+    setInterval(runCityHighlights, WEEK_MS);
+  }, msUntilFirst);
+
+  return initialTimeout;
+}
+
 // ── Sprint 481: New Push Notification Triggers ─────────────────
 
 /**

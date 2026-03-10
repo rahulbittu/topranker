@@ -87,13 +87,13 @@ describe("rating route — tier upgrade push trigger", () => {
     expect(routesSrc).toContain("req.user!.pushToken");
   });
 
-  it("imports notifyTierUpgrade from push", () => {
-    expect(routesSrc).toContain("notifyTierUpgrade");
+  it("imports onTierUpgrade from notification-triggers", () => {
+    expect(routesSrc).toContain("onTierUpgrade");
   });
 
   it("sends non-blocking (catch)", () => {
-    // After the tier upgrade block
-    expect(routesSrc).toContain("notifyTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch");
+    // After the tier upgrade block — migrated from push.ts to notification-triggers.ts in Sprint 488
+    expect(routesSrc).toContain("onTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch");
   });
 });
 

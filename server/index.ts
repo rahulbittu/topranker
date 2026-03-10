@@ -415,8 +415,11 @@ function setupErrorHandler(app: express.Application) {
   const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1000);
 
   // Sprint 175: Weekly digest push notification scheduler
-  const { startWeeklyDigestScheduler } = await import("./notification-triggers");
+  const { startWeeklyDigestScheduler, startCityHighlightsScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();
+
+  // Sprint 488: Weekly city highlights push scheduler
+  const cityHighlightsTimeout = startCityHighlightsScheduler();
 
   // Sprint 223: Drip email scheduler — daily at 9am UTC
   const { startDripScheduler } = await import("./drip-scheduler");
@@ -443,6 +446,7 @@ function setupErrorHandler(app: express.Application) {
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
+    clearTimeout(cityHighlightsTimeout);
     clearTimeout(dripSchedulerTimeout);
     clearTimeout(outreachSchedulerTimeout);
 

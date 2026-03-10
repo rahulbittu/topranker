@@ -311,8 +311,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Sprint 175: Push notification on tier upgrade
       if (result.tierUpgraded && req.user!.pushToken) {
-        const { notifyTierUpgrade } = await import("./push");
-        notifyTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch(() => {});
+        const { onTierUpgrade } = await import("./notification-triggers");
+        onTierUpgrade(memberId, req.user!.pushToken, result.newTier).catch(() => {});
+      }
+
+      // Sprint 488: Wire push triggers to rating events
+      {
+        const { onRankingChange, onNewRatingForBusiness } = await import("./notification-triggers");
+        const { getBusinessById } = await import("./storage");
+        const biz = await getBusinessById(parsed.data.businessId);
+        if (biz) {
+          // Ranking change notification to raters
+          if (result.rankChanged && result.prevRank && result.newRank) {
+            onRankingChange(parsed.data.businessId, biz.name, result.prevRank, result.newRank, biz.city).catch(() => {});
+          }
+          // New rating notification to other raters of this business
+          const raterName = req.user!.displayName || "Someone";
+          const score = result.rating.weightedScore ?? result.rating.q1Score ?? 0;
+          onNewRatingForBusiness(parsed.data.businessId, biz.name, memberId, raterName, score).catch(() => {});
+        }
       }
 
       // Sprint 180: Invalidate prerender cache for affected business
