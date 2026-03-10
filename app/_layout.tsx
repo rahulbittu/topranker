@@ -51,6 +51,15 @@ async function savePushToken(token: string) {
   }
 }
 
+// Sprint 501: Report notification open to server for analytics
+async function reportNotificationOpened(notificationId: string, category: string) {
+  try {
+    await apiRequest("POST", `${getApiUrl()}/api/notifications/opened`, { notificationId, category });
+  } catch {
+    // Non-critical — analytics can tolerate missed events
+  }
+}
+
 SplashScreen.preventAutoHideAsync();
 
 const { width: SPLASH_W, height: SPLASH_H } = Dimensions.get("window");
@@ -358,6 +367,11 @@ export default function RootLayout() {
       const screen = data?.screen as string | undefined;
       const slug = data?.slug as string | undefined;
       const id = data?.id as string | undefined;
+      const notifType = data?.type as string | undefined;
+
+      // Sprint 501: Report notification open for analytics
+      const notifId = response.notification.request.identifier;
+      reportNotificationOpened(notifId, notifType || "unknown").catch(() => {});
 
       if (screen === "business" && slug) {
         router.push({ pathname: "/business/[id]", params: { id: slug } });
