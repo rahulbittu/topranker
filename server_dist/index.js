@@ -13716,6 +13716,79 @@ function registerAdminHealthRoutes(app2) {
 init_logger();
 init_photo_moderation();
 init_photo_hash();
+
+// server/phash.ts
+init_logger();
+var phashLog = log.tag("PHash");
+var HASH_BITS = 64;
+var NEAR_DUPLICATE_THRESHOLD = 10;
+function computePerceptualHash(buffer2) {
+  const step = Math.max(1, Math.floor(buffer2.length / HASH_BITS));
+  const samples = [];
+  for (let i = 0; i < HASH_BITS; i++) {
+    const idx = Math.min(i * step, buffer2.length - 1);
+    samples.push(buffer2[idx]);
+  }
+  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+  let hash = "";
+  for (let i = 0; i < HASH_BITS; i += 4) {
+    let nibble = 0;
+    for (let j = 0; j < 4 && i + j < HASH_BITS; j++) {
+      if (samples[i + j] >= mean) {
+        nibble |= 1 << 3 - j;
+      }
+    }
+    hash += nibble.toString(16);
+  }
+  return hash;
+}
+function hammingDistance(a, b) {
+  if (a.length !== b.length) return HASH_BITS;
+  let distance = 0;
+  for (let i = 0; i < a.length; i++) {
+    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    let bits = xor;
+    while (bits) {
+      bits &= bits - 1;
+      distance++;
+    }
+  }
+  return distance;
+}
+var phashIndex = [];
+function registerPHash(pHash, ratingId, memberId, businessId, photoId) {
+  phashIndex.push({ pHash, ratingId, memberId, businessId, photoId });
+}
+function findNearDuplicates(pHash, memberId, threshold = NEAR_DUPLICATE_THRESHOLD) {
+  let bestMatch = null;
+  let bestDistance = threshold + 1;
+  for (const entry of phashIndex) {
+    const dist = hammingDistance(pHash, entry.pHash);
+    if (dist <= threshold && dist < bestDistance) {
+      bestMatch = entry;
+      bestDistance = dist;
+    }
+  }
+  if (!bestMatch) return null;
+  const isCrossMember = bestMatch.memberId !== memberId;
+  if (isCrossMember) {
+    phashLog.warn("Near-duplicate photo detected (cross-member)", {
+      distance: bestDistance,
+      threshold,
+      originalMember: bestMatch.memberId,
+      newMember: memberId
+    });
+  }
+  return { match: bestMatch, distance: bestDistance, isCrossMember };
+}
+function getPHashIndexSize() {
+  return phashIndex.length;
+}
+function clearPHashIndex() {
+  phashIndex.length = 0;
+}
+
+// server/routes-admin-photos.ts
 var adminPhotoLog = log.tag("AdminPhotos");
 function registerAdminPhotoRoutes(app2) {
   app2.get("/api/admin/photos/pending", async (req, res) => {
@@ -13754,12 +13827,13 @@ function registerAdminPhotoRoutes(app2) {
   });
   app2.get("/api/admin/photos/hash-stats", async (_req, res) => {
     adminPhotoLog.info("Fetching photo hash index stats");
-    res.json({ trackedHashes: getHashIndexSize() });
+    res.json({ trackedHashes: getHashIndexSize(), trackedPHashes: getPHashIndexSize() });
   });
   app2.post("/api/admin/photos/hash-reset", async (_req, res) => {
-    adminPhotoLog.info("Clearing photo hash index");
+    adminPhotoLog.info("Clearing photo hash indexes");
     clearHashIndex();
-    res.json({ success: true, trackedHashes: 0 });
+    clearPHashIndex();
+    res.json({ success: true, trackedHashes: 0, trackedPHashes: 0 });
   });
   app2.get("/api/photos/business/:businessId", async (req, res) => {
     const { businessId } = req.params;
@@ -14944,6 +15018,8 @@ function registerRatingPhotoRoutes(app2) {
       return res.status(400).json({ error: "Photo too small \u2014 may be corrupted" });
     }
     const dupResult = detectDuplicate(buffer2, memberId);
+    const pHash = computePerceptualHash(buffer2);
+    const nearDup = !dupResult.isDuplicate ? findNearDuplicates(pHash, memberId) : null;
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
     const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto13.randomUUID().slice(0, 8)}.${ext}`;
     try {
@@ -14960,6 +15036,7 @@ function registerRatingPhotoRoutes(app2) {
         isVerifiedReceipt: isReceipt === true
       }).returning();
       registerPhotoHash(dupResult.hash, ratingId, memberId, rating.businessId, photo.id);
+      registerPHash(pHash, ratingId, memberId, rating.businessId, photo.id);
       if (dupResult.isCrossMember && dupResult.original) {
         const { addToQueue: addToQueue2 } = await Promise.resolve().then(() => (init_moderation_queue(), moderation_queue_exports));
         addToQueue2({
@@ -14975,6 +15052,18 @@ function registerRatingPhotoRoutes(app2) {
           photoId: photo.id,
           ratingId,
           originalPhotoId: dupResult.original.photoId
+        });
+      }
+      if (nearDup && nearDup.isCrossMember) {
+        const { addToQueue: addToQueue2 } = await Promise.resolve().then(() => (init_moderation_queue(), moderation_queue_exports));
+        addToQueue2({
+          type: "near_duplicate_photo",
+          contentId: photo.id,
+          contentType: "rating_photo",
+          memberId,
+          businessId: rating.businessId,
+          reason: `Near-duplicate (distance ${nearDup.distance}) of photo ${nearDup.match.photoId} from member ${nearDup.match.memberId}`,
+          severity: "medium"
         });
       }
       const photoBoost = PHOTO_BOOST;
@@ -15010,7 +15099,8 @@ function registerRatingPhotoRoutes(app2) {
           isReceipt: isReceipt === true,
           verificationBoost: totalBoost,
           isDuplicate: dupResult.isDuplicate,
-          isCrossMemberDuplicate: dupResult.isCrossMember
+          isCrossMemberDuplicate: dupResult.isCrossMember,
+          isNearDuplicate: !!nearDup
         }
       });
     } catch (err) {

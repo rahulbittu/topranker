@@ -16,6 +16,7 @@ import { fileStorage } from "./file-storage";
 import { log } from "./logger";
 import crypto from "crypto";
 import { detectDuplicate, registerPhotoHash } from "./photo-hash";
+import { computePerceptualHash, findNearDuplicates, registerPHash } from "./phash";
 
 const photoLog = log.tag("RatingPhoto");
 
@@ -66,8 +67,12 @@ export function registerRatingPhotoRoutes(app: Express): void {
       return res.status(400).json({ error: "Photo too small — may be corrupted" });
     }
 
-    // Sprint 583: Duplicate detection before upload
+    // Sprint 583: Exact duplicate detection before upload
     const dupResult = detectDuplicate(buffer, memberId);
+
+    // Sprint 588: Perceptual hash for near-duplicate detection
+    const pHash = computePerceptualHash(buffer);
+    const nearDup = !dupResult.isDuplicate ? findNearDuplicates(pHash, memberId) : null;
 
     // Generate CDN key
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
@@ -92,6 +97,8 @@ export function registerRatingPhotoRoutes(app: Express): void {
 
       // Sprint 583: Register hash and flag cross-member duplicates
       registerPhotoHash(dupResult.hash, ratingId, memberId, rating.businessId, photo.id);
+      // Sprint 588: Register perceptual hash
+      registerPHash(pHash, ratingId, memberId, rating.businessId, photo.id);
 
       if (dupResult.isCrossMember && dupResult.original) {
         // Flag for admin moderation — different user submitted same photo
@@ -109,6 +116,20 @@ export function registerRatingPhotoRoutes(app: Express): void {
           photoId: photo.id,
           ratingId,
           originalPhotoId: dupResult.original.photoId,
+        });
+      }
+
+      // Sprint 588: Flag near-duplicate cross-member photos
+      if (nearDup && nearDup.isCrossMember) {
+        const { addToQueue } = await import("./moderation-queue");
+        addToQueue({
+          type: "near_duplicate_photo",
+          contentId: photo.id,
+          contentType: "rating_photo",
+          memberId,
+          businessId: rating.businessId,
+          reason: `Near-duplicate (distance ${nearDup.distance}) of photo ${nearDup.match.photoId} from member ${nearDup.match.memberId}`,
+          severity: "medium",
         });
       }
 
@@ -156,6 +177,7 @@ export function registerRatingPhotoRoutes(app: Express): void {
           verificationBoost: totalBoost,
           isDuplicate: dupResult.isDuplicate,
           isCrossMemberDuplicate: dupResult.isCrossMember,
+          isNearDuplicate: !!nearDup,
         },
       });
     } catch (err: any) {

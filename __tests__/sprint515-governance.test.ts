@@ -126,7 +126,7 @@ describe("Sprint 515: Governance", () => {
       // Sprint 566: dish photo integration +0.7kb
       const buildSrc = readFile("server_dist/index.js");
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(720);
+      expect(sizeKb).toBeLessThan(730);
     });
   });
 });
