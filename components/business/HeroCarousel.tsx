@@ -48,11 +48,17 @@ export function HeroCarousel({
         </LinearGradient>
       )}
 
-      {photoUrls.length > 1 && (
+      {photoUrls.length > 1 && photoUrls.length <= 5 && (
         <View style={s.heroDotContainer}>
           {photoUrls.map((_, i) => (
             <View key={i} style={[s.heroDot, i === heroPhotoIdx ? s.heroDotActive : s.heroDotInactive]} />
           ))}
+        </View>
+      )}
+      {photoUrls.length > 5 && (
+        <View style={s.photoCountBadge}>
+          <Ionicons name="images-outline" size={12} color="#fff" />
+          <Text style={s.photoCountText}>{heroPhotoIdx + 1} / {photoUrls.length}</Text>
         </View>
       )}
 
@@ -90,6 +96,15 @@ const s = StyleSheet.create({
   heroDot: { width: 7, height: 7, borderRadius: 4 },
   heroDotActive: { backgroundColor: BRAND.colors.amber },
   heroDotInactive: { backgroundColor: "rgba(255,255,255,0.6)" },
+  photoCountBadge: {
+    position: "absolute", bottom: 10, right: 14, zIndex: 5,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 12,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  photoCountText: {
+    fontSize: 11, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
+  },
   heroImagePlaceholder: {
     backgroundColor: BRAND.colors.amber, alignItems: "center", justifyContent: "center",
   },
