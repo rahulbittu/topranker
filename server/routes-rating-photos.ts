@@ -107,6 +107,12 @@ export function registerRatingPhotoRoutes(app: Express): void {
       const biz = await getBusinessById(rating.businessId);
       if (biz) await recalculateRanks(biz.city, biz.category);
 
+      // Sprint 542: Queue receipt for analysis pipeline
+      if (isReceipt === true) {
+        const { queueReceiptForAnalysis } = await import("./receipt-analysis");
+        await queueReceiptForAnalysis(photo.id, ratingId, rating.businessId);
+      }
+
       photoLog.info("Rating photo uploaded", {
         ratingId,
         memberId,

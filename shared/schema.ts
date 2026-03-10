@@ -958,3 +958,39 @@ export const photoSubmissions = pgTable(
 );
 
 export type PhotoSubmission = typeof photoSubmissions.$inferSelect;
+
+// ── RECEIPT ANALYSIS (Sprint 542: OCR Prep) ─────────────────
+export const receiptAnalysis = pgTable(
+  "receipt_analysis",
+  {
+    id: varchar("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    ratingPhotoId: varchar("rating_photo_id")
+      .notNull()
+      .references(() => ratingPhotos.id),
+    ratingId: varchar("rating_id")
+      .notNull()
+      .references(() => ratings.id),
+    businessId: varchar("business_id")
+      .notNull()
+      .references(() => businesses.id),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    extractedBusinessName: text("extracted_business_name"),
+    extractedAmount: numeric("extracted_amount"),
+    extractedDate: timestamp("extracted_date"),
+    extractedItems: text("extracted_items"),
+    confidence: numeric("confidence"),
+    matchScore: numeric("match_score"),
+    reviewedBy: varchar("reviewed_by").references(() => members.id),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewNote: text("review_note"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("idx_receipt_analysis_rating").on(table.ratingId),
+    index("idx_receipt_analysis_status").on(table.status),
+  ],
+);
+
+export type ReceiptAnalysis = typeof receiptAnalysis.$inferSelect;

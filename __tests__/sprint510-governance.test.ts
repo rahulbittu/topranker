@@ -126,10 +126,11 @@ describe("Sprint 510: Governance", () => {
       expect(src).toContain("recordPushExperimentOpen");
     });
 
-    it("server build stays under 700kb", () => {
+    it("server build stays under 710kb", () => {
+      // Sprint 542: receipt analysis service + admin routes
       const buildSrc = readFile("server_dist/index.js");
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(700);
+      expect(sizeKb).toBeLessThan(710);
     });
   });
 });

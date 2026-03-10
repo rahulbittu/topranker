@@ -50,7 +50,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(95); // Sprint 521: frequency prefs jsonb access casts
+    expect(total).toBeLessThan(100); // Sprint 542: receipt admin route requireAdmin cast
   });
 
   it("client-side casts under 15", () => {
