@@ -74,8 +74,8 @@ describe("Sprint 493: Enhanced Search Autocomplete", () => {
     });
   });
 
-  describe("storage/businesses.ts dish autocomplete", () => {
-    const src = readFile("server/storage/businesses.ts");
+  describe("storage/dishes.ts dish autocomplete (moved Sprint 498)", () => {
+    const src = readFile("server/storage/dishes.ts");
 
     it("exports getTopDishesForAutocomplete function", () => {
       expect(src).toContain("export async function getTopDishesForAutocomplete");

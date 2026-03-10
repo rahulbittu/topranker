@@ -1395,253 +1395,8 @@ var init_redis = __esm({
   }
 });
 
-// server/storage/businesses.ts
-var businesses_exports = {};
-__export(businesses_exports, {
-  autocompleteBusinesses: () => autocompleteBusinesses,
-  bulkImportBusinesses: () => bulkImportBusinesses,
-  countBusinessSearch: () => countBusinessSearch,
-  deleteBusinessPhotos: () => deleteBusinessPhotos,
-  getAllCategories: () => getAllCategories,
-  getBusinessById: () => getBusinessById,
-  getBusinessBySlug: () => getBusinessBySlug,
-  getBusinessPhotos: () => getBusinessPhotos,
-  getBusinessPhotosMap: () => getBusinessPhotosMap,
-  getBusinessRatings: () => getBusinessRatings,
-  getBusinessesByIds: () => getBusinessesByIds,
-  getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
-  getCuisines: () => getCuisines,
-  getImportStats: () => getImportStats,
-  getLeaderboard: () => getLeaderboard,
-  getPopularCategories: () => getPopularCategories,
-  getRankHistory: () => getRankHistory,
-  getTopDishesForAutocomplete: () => getTopDishesForAutocomplete,
-  getTrendingBusinesses: () => getTrendingBusinesses,
-  insertBusinessPhotos: () => insertBusinessPhotos,
-  recalculateBusinessScore: () => recalculateBusinessScore,
-  recalculateRanks: () => recalculateRanks,
-  searchBusinesses: () => searchBusinesses,
-  updateBusinessSubscription: () => updateBusinessSubscription
-});
-import { eq as eq3, and as and2, desc as desc2, asc, sql as sql3, count as count2, gte as gte2 } from "drizzle-orm";
-async function getLeaderboard(city, category, limit = 50, cuisine) {
-  const key2 = `leaderboard:${city}:${category}:${cuisine || "all"}:${limit}`;
-  return cacheAside(key2, 300, async () => {
-    trackCacheMiss();
-    return db.select().from(businesses).where(
-      and2(
-        eq3(businesses.city, city),
-        eq3(businesses.category, category),
-        eq3(businesses.isActive, true),
-        eq3(businesses.leaderboardEligible, true),
-        ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
-      )
-    ).orderBy(asc(businesses.rankPosition)).limit(limit);
-  });
-}
-async function getTrendingBusinesses(city, limit = 3) {
-  const key2 = `trending:${city}:${limit}`;
-  return cacheAside(key2, 600, async () => {
-    trackCacheMiss();
-    return db.select().from(businesses).where(
-      and2(
-        eq3(businesses.city, city),
-        eq3(businesses.isActive, true),
-        sql3`${businesses.rankDelta} > 0`
-      )
-    ).orderBy(desc2(businesses.rankDelta)).limit(limit);
-  });
-}
-async function getBusinessBySlug(slug) {
-  const [business] = await db.select().from(businesses).where(eq3(businesses.slug, slug));
-  return business;
-}
-async function getBusinessById(id) {
-  const [business] = await db.select().from(businesses).where(eq3(businesses.id, id));
-  return business;
-}
-async function updateBusinessSubscription(businessId, updates) {
-  const setData = {};
-  if (updates.stripeCustomerId !== void 0) setData.stripeCustomerId = updates.stripeCustomerId;
-  if (updates.stripeSubscriptionId !== void 0) setData.stripeSubscriptionId = updates.stripeSubscriptionId;
-  if (updates.subscriptionStatus !== void 0) setData.subscriptionStatus = updates.subscriptionStatus;
-  if (updates.subscriptionPeriodEnd !== void 0) setData.subscriptionPeriodEnd = updates.subscriptionPeriodEnd;
-  if (Object.keys(setData).length === 0) return;
-  await db.update(businesses).set(setData).where(eq3(businesses.id, businessId));
-}
-async function getBusinessesByIds(ids) {
-  if (ids.length === 0) return [];
-  return db.select().from(businesses).where(sql3`${businesses.id} = ANY(ARRAY[${sql3.join(ids.map((id) => sql3`${id}`), sql3`,`)}]::text[])`);
-}
-async function searchBusinesses(query, city, category, limit = 20, cuisine, offset = 0) {
-  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
-  const q = "%" + sanitized.toLowerCase() + "%";
-  return db.select().from(businesses).where(
-    and2(
-      eq3(businesses.city, city),
-      eq3(businesses.isActive, true),
-      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
-      ...category ? [eq3(businesses.category, category)] : [],
-      ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
-    )
-  ).orderBy(desc2(businesses.weightedScore)).limit(limit).offset(offset);
-}
-async function countBusinessSearch(query, city, category, cuisine) {
-  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
-  const q = "%" + sanitized.toLowerCase() + "%";
-  const [result] = await db.select({ total: count2() }).from(businesses).where(
-    and2(
-      eq3(businesses.city, city),
-      eq3(businesses.isActive, true),
-      query ? sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
-      ...category ? [eq3(businesses.category, category)] : [],
-      ...cuisine ? [eq3(businesses.cuisine, cuisine)] : []
-    )
-  );
-  return result?.total ?? 0;
-}
-async function getCuisines(city, category) {
-  const key2 = `cuisines:${city}:${category || "all"}`;
-  return cacheAside(key2, 7200, async () => {
-    trackCacheMiss();
-    const rows = await db.select({ cuisine: businesses.cuisine }).from(businesses).where(
-      and2(
-        eq3(businesses.city, city),
-        eq3(businesses.isActive, true),
-        sql3`${businesses.cuisine} IS NOT NULL`,
-        ...category ? [eq3(businesses.category, category)] : []
-      )
-    ).groupBy(businesses.cuisine);
-    return rows.map((r) => r.cuisine).filter(Boolean);
-  });
-}
-async function getAllCategories(city) {
-  const key2 = `categories:${city}`;
-  return cacheAside(key2, 7200, async () => {
-    trackCacheMiss();
-    const rows = await db.select({
-      category: businesses.category
-    }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category);
-    return rows.map((r) => r.category);
-  });
-}
-async function autocompleteBusinesses(query, city, limit = 6) {
-  if (!query || query.trim().length === 0) return [];
-  const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "");
-  const q = "%" + sanitized.toLowerCase() + "%";
-  return db.select({
-    id: businesses.id,
-    name: businesses.name,
-    slug: businesses.slug,
-    category: businesses.category,
-    cuisine: businesses.cuisine,
-    neighborhood: businesses.neighborhood,
-    weightedScore: businesses.weightedScore
-  }).from(businesses).where(
-    and2(
-      eq3(businesses.city, city),
-      eq3(businesses.isActive, true),
-      sql3`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`
-    )
-  ).orderBy(desc2(businesses.weightedScore)).limit(limit);
-}
-async function getPopularCategories(city, limit = 8) {
-  const key2 = `popular_categories:${city}:${limit}`;
-  return cacheAside(key2, 3600, async () => {
-    trackCacheMiss();
-    const rows = await db.select({
-      category: businesses.category,
-      count: count2(businesses.id)
-    }).from(businesses).where(and2(eq3(businesses.city, city), eq3(businesses.isActive, true))).groupBy(businesses.category).orderBy(desc2(count2(businesses.id))).limit(limit);
-    return rows.map((r) => ({ category: r.category, count: Number(r.count) }));
-  });
-}
-async function recalculateBusinessScore(businessId) {
-  const allRatings = await db.select({
-    rawScore: ratings.rawScore,
-    weight: ratings.weight,
-    compositeScore: ratings.compositeScore,
-    effectiveWeight: ratings.effectiveWeight,
-    visitType: ratings.visitType,
-    createdAt: ratings.createdAt,
-    isFlagged: ratings.isFlagged,
-    autoFlagged: ratings.autoFlagged
-  }).from(ratings).where(
-    and2(
-      eq3(ratings.businessId, businessId),
-      eq3(ratings.isFlagged, false),
-      eq3(ratings.autoFlagged, false)
-    )
-  );
-  if (allRatings.length === 0) {
-    await db.update(businesses).set({
-      weightedScore: "0",
-      rawAvgScore: "0",
-      totalRatings: 0,
-      dineInCount: 0,
-      credibilityWeightedSum: "0",
-      leaderboardEligible: false,
-      updatedAt: /* @__PURE__ */ new Date()
-    }).where(eq3(businesses.id, businessId));
-    return 0;
-  }
-  let totalWeightedScore = 0;
-  let totalEffectiveWeight = 0;
-  let rawSum = 0;
-  let dineInCount = 0;
-  let credibilityWeightedSum = 0;
-  for (const r of allRatings) {
-    const ageDays = Math.floor(
-      (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
-    );
-    const decay = computeDecayFactor(ageDays);
-    const score2 = r.compositeScore ? parseFloat(r.compositeScore) : parseFloat(r.rawScore);
-    const weight = r.effectiveWeight ? parseFloat(r.effectiveWeight) : parseFloat(r.weight);
-    const decayedWeight = weight * decay;
-    totalWeightedScore += score2 * decayedWeight;
-    totalEffectiveWeight += decayedWeight;
-    rawSum += parseFloat(r.rawScore);
-    if (r.visitType === "dine_in") dineInCount++;
-    credibilityWeightedSum += weight;
-  }
-  const rawWeightedAvg = totalEffectiveWeight > 0 ? totalWeightedScore / totalEffectiveWeight : 0;
-  const score = Math.round(
-    applyBayesianPrior(rawWeightedAvg, totalEffectiveWeight) * 1e3
-  ) / 1e3;
-  const rawAvg = rawSum / allRatings.length;
-  const eligible = allRatings.length >= 3 && dineInCount >= 1 && credibilityWeightedSum >= 0.5;
-  await db.update(businesses).set({
-    weightedScore: score.toFixed(3),
-    rawAvgScore: rawAvg.toFixed(2),
-    totalRatings: allRatings.length,
-    dineInCount,
-    credibilityWeightedSum: credibilityWeightedSum.toFixed(4),
-    leaderboardEligible: eligible,
-    updatedAt: /* @__PURE__ */ new Date()
-  }).where(eq3(businesses.id, businessId));
-  return score;
-}
-async function recalculateRanks(city, category) {
-  await db.execute(sql3`
-    UPDATE ${businesses} b
-    SET
-      rank_position = sub.new_rank,
-      rank_delta = COALESCE(b.rank_position, sub.new_rank) - sub.new_rank,
-      prev_rank_position = b.rank_position
-    FROM (
-      SELECT id,
-        ROW_NUMBER() OVER (ORDER BY weighted_score DESC) AS new_rank
-      FROM ${businesses}
-      WHERE city = ${city}
-        AND category = ${category}
-        AND is_active = true
-        AND leaderboard_eligible = true
-    ) sub
-    WHERE b.id = sub.id
-  `);
-  await cacheDelPattern(`leaderboard:${city}:*`);
-  await cacheDelPattern(`trending:${city}:*`);
-}
+// server/storage/photos.ts
+import { eq as eq3, and as and2, asc, sql as sql3 } from "drizzle-orm";
 async function getBusinessPhotos(businessId) {
   const rows = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq3(businessPhotos.businessId, businessId)).orderBy(asc(businessPhotos.sortOrder)).limit(3);
   return rows.map((r) => r.photoUrl);
@@ -1697,6 +1452,260 @@ async function getBusinessesWithoutPhotos(city, limit = 50) {
 async function deleteBusinessPhotos(businessId) {
   await db.delete(businessPhotos).where(eq3(businessPhotos.businessId, businessId));
 }
+var init_photos = __esm({
+  "server/storage/photos.ts"() {
+    "use strict";
+    init_schema();
+    init_db();
+  }
+});
+
+// server/storage/businesses.ts
+var businesses_exports = {};
+__export(businesses_exports, {
+  autocompleteBusinesses: () => autocompleteBusinesses,
+  bulkImportBusinesses: () => bulkImportBusinesses,
+  countBusinessSearch: () => countBusinessSearch,
+  deleteBusinessPhotos: () => deleteBusinessPhotos,
+  getAllCategories: () => getAllCategories,
+  getBusinessById: () => getBusinessById,
+  getBusinessBySlug: () => getBusinessBySlug,
+  getBusinessPhotos: () => getBusinessPhotos,
+  getBusinessPhotosMap: () => getBusinessPhotosMap,
+  getBusinessRatings: () => getBusinessRatings,
+  getBusinessesByIds: () => getBusinessesByIds,
+  getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
+  getCuisines: () => getCuisines,
+  getImportStats: () => getImportStats,
+  getLeaderboard: () => getLeaderboard,
+  getPopularCategories: () => getPopularCategories,
+  getRankHistory: () => getRankHistory,
+  getTrendingBusinesses: () => getTrendingBusinesses,
+  insertBusinessPhotos: () => insertBusinessPhotos,
+  recalculateBusinessScore: () => recalculateBusinessScore,
+  recalculateRanks: () => recalculateRanks,
+  searchBusinesses: () => searchBusinesses,
+  updateBusinessSubscription: () => updateBusinessSubscription
+});
+import { eq as eq4, and as and3, desc as desc2, asc as asc2, sql as sql4, count as count2, gte as gte2 } from "drizzle-orm";
+async function getLeaderboard(city, category, limit = 50, cuisine) {
+  const key2 = `leaderboard:${city}:${category}:${cuisine || "all"}:${limit}`;
+  return cacheAside(key2, 300, async () => {
+    trackCacheMiss();
+    return db.select().from(businesses).where(
+      and3(
+        eq4(businesses.city, city),
+        eq4(businesses.category, category),
+        eq4(businesses.isActive, true),
+        eq4(businesses.leaderboardEligible, true),
+        ...cuisine ? [eq4(businesses.cuisine, cuisine)] : []
+      )
+    ).orderBy(asc2(businesses.rankPosition)).limit(limit);
+  });
+}
+async function getTrendingBusinesses(city, limit = 3) {
+  const key2 = `trending:${city}:${limit}`;
+  return cacheAside(key2, 600, async () => {
+    trackCacheMiss();
+    return db.select().from(businesses).where(
+      and3(
+        eq4(businesses.city, city),
+        eq4(businesses.isActive, true),
+        sql4`${businesses.rankDelta} > 0`
+      )
+    ).orderBy(desc2(businesses.rankDelta)).limit(limit);
+  });
+}
+async function getBusinessBySlug(slug) {
+  const [business] = await db.select().from(businesses).where(eq4(businesses.slug, slug));
+  return business;
+}
+async function getBusinessById(id) {
+  const [business] = await db.select().from(businesses).where(eq4(businesses.id, id));
+  return business;
+}
+async function updateBusinessSubscription(businessId, updates) {
+  const setData = {};
+  if (updates.stripeCustomerId !== void 0) setData.stripeCustomerId = updates.stripeCustomerId;
+  if (updates.stripeSubscriptionId !== void 0) setData.stripeSubscriptionId = updates.stripeSubscriptionId;
+  if (updates.subscriptionStatus !== void 0) setData.subscriptionStatus = updates.subscriptionStatus;
+  if (updates.subscriptionPeriodEnd !== void 0) setData.subscriptionPeriodEnd = updates.subscriptionPeriodEnd;
+  if (Object.keys(setData).length === 0) return;
+  await db.update(businesses).set(setData).where(eq4(businesses.id, businessId));
+}
+async function getBusinessesByIds(ids) {
+  if (ids.length === 0) return [];
+  return db.select().from(businesses).where(sql4`${businesses.id} = ANY(ARRAY[${sql4.join(ids.map((id) => sql4`${id}`), sql4`,`)}]::text[])`);
+}
+async function searchBusinesses(query, city, category, limit = 20, cuisine, offset = 0) {
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  return db.select().from(businesses).where(
+    and3(
+      eq4(businesses.city, city),
+      eq4(businesses.isActive, true),
+      query ? sql4`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
+      ...category ? [eq4(businesses.category, category)] : [],
+      ...cuisine ? [eq4(businesses.cuisine, cuisine)] : []
+    )
+  ).orderBy(desc2(businesses.weightedScore)).limit(limit).offset(offset);
+}
+async function countBusinessSearch(query, city, category, cuisine) {
+  const sanitized = query.slice(0, 100).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  const [result] = await db.select({ total: count2() }).from(businesses).where(
+    and3(
+      eq4(businesses.city, city),
+      eq4(businesses.isActive, true),
+      query ? sql4`(lower(${businesses.name}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})` : void 0,
+      ...category ? [eq4(businesses.category, category)] : [],
+      ...cuisine ? [eq4(businesses.cuisine, cuisine)] : []
+    )
+  );
+  return result?.total ?? 0;
+}
+async function getCuisines(city, category) {
+  const key2 = `cuisines:${city}:${category || "all"}`;
+  return cacheAside(key2, 7200, async () => {
+    trackCacheMiss();
+    const rows = await db.select({ cuisine: businesses.cuisine }).from(businesses).where(
+      and3(
+        eq4(businesses.city, city),
+        eq4(businesses.isActive, true),
+        sql4`${businesses.cuisine} IS NOT NULL`,
+        ...category ? [eq4(businesses.category, category)] : []
+      )
+    ).groupBy(businesses.cuisine);
+    return rows.map((r) => r.cuisine).filter(Boolean);
+  });
+}
+async function getAllCategories(city) {
+  const key2 = `categories:${city}`;
+  return cacheAside(key2, 7200, async () => {
+    trackCacheMiss();
+    const rows = await db.select({
+      category: businesses.category
+    }).from(businesses).where(and3(eq4(businesses.city, city), eq4(businesses.isActive, true))).groupBy(businesses.category);
+    return rows.map((r) => r.category);
+  });
+}
+async function autocompleteBusinesses(query, city, limit = 6) {
+  if (!query || query.trim().length === 0) return [];
+  const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "");
+  const q = "%" + sanitized.toLowerCase() + "%";
+  return db.select({
+    id: businesses.id,
+    name: businesses.name,
+    slug: businesses.slug,
+    category: businesses.category,
+    cuisine: businesses.cuisine,
+    neighborhood: businesses.neighborhood,
+    weightedScore: businesses.weightedScore
+  }).from(businesses).where(
+    and3(
+      eq4(businesses.city, city),
+      eq4(businesses.isActive, true),
+      sql4`(lower(${businesses.name}) like ${q} OR lower(${businesses.category}) like ${q} OR lower(${businesses.neighborhood}) like ${q} OR lower(COALESCE(${businesses.cuisine}, '')) like ${q})`
+    )
+  ).orderBy(desc2(businesses.weightedScore)).limit(limit);
+}
+async function getPopularCategories(city, limit = 8) {
+  const key2 = `popular_categories:${city}:${limit}`;
+  return cacheAside(key2, 3600, async () => {
+    trackCacheMiss();
+    const rows = await db.select({
+      category: businesses.category,
+      count: count2(businesses.id)
+    }).from(businesses).where(and3(eq4(businesses.city, city), eq4(businesses.isActive, true))).groupBy(businesses.category).orderBy(desc2(count2(businesses.id))).limit(limit);
+    return rows.map((r) => ({ category: r.category, count: Number(r.count) }));
+  });
+}
+async function recalculateBusinessScore(businessId) {
+  const allRatings = await db.select({
+    rawScore: ratings.rawScore,
+    weight: ratings.weight,
+    compositeScore: ratings.compositeScore,
+    effectiveWeight: ratings.effectiveWeight,
+    visitType: ratings.visitType,
+    createdAt: ratings.createdAt,
+    isFlagged: ratings.isFlagged,
+    autoFlagged: ratings.autoFlagged
+  }).from(ratings).where(
+    and3(
+      eq4(ratings.businessId, businessId),
+      eq4(ratings.isFlagged, false),
+      eq4(ratings.autoFlagged, false)
+    )
+  );
+  if (allRatings.length === 0) {
+    await db.update(businesses).set({
+      weightedScore: "0",
+      rawAvgScore: "0",
+      totalRatings: 0,
+      dineInCount: 0,
+      credibilityWeightedSum: "0",
+      leaderboardEligible: false,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq4(businesses.id, businessId));
+    return 0;
+  }
+  let totalWeightedScore = 0;
+  let totalEffectiveWeight = 0;
+  let rawSum = 0;
+  let dineInCount = 0;
+  let credibilityWeightedSum = 0;
+  for (const r of allRatings) {
+    const ageDays = Math.floor(
+      (Date.now() - new Date(r.createdAt).getTime()) / (1e3 * 60 * 60 * 24)
+    );
+    const decay = computeDecayFactor(ageDays);
+    const score2 = r.compositeScore ? parseFloat(r.compositeScore) : parseFloat(r.rawScore);
+    const weight = r.effectiveWeight ? parseFloat(r.effectiveWeight) : parseFloat(r.weight);
+    const decayedWeight = weight * decay;
+    totalWeightedScore += score2 * decayedWeight;
+    totalEffectiveWeight += decayedWeight;
+    rawSum += parseFloat(r.rawScore);
+    if (r.visitType === "dine_in") dineInCount++;
+    credibilityWeightedSum += weight;
+  }
+  const rawWeightedAvg = totalEffectiveWeight > 0 ? totalWeightedScore / totalEffectiveWeight : 0;
+  const score = Math.round(
+    applyBayesianPrior(rawWeightedAvg, totalEffectiveWeight) * 1e3
+  ) / 1e3;
+  const rawAvg = rawSum / allRatings.length;
+  const eligible = allRatings.length >= 3 && dineInCount >= 1 && credibilityWeightedSum >= 0.5;
+  await db.update(businesses).set({
+    weightedScore: score.toFixed(3),
+    rawAvgScore: rawAvg.toFixed(2),
+    totalRatings: allRatings.length,
+    dineInCount,
+    credibilityWeightedSum: credibilityWeightedSum.toFixed(4),
+    leaderboardEligible: eligible,
+    updatedAt: /* @__PURE__ */ new Date()
+  }).where(eq4(businesses.id, businessId));
+  return score;
+}
+async function recalculateRanks(city, category) {
+  await db.execute(sql4`
+    UPDATE ${businesses} b
+    SET
+      rank_position = sub.new_rank,
+      rank_delta = COALESCE(b.rank_position, sub.new_rank) - sub.new_rank,
+      prev_rank_position = b.rank_position
+    FROM (
+      SELECT id,
+        ROW_NUMBER() OVER (ORDER BY weighted_score DESC) AS new_rank
+      FROM ${businesses}
+      WHERE city = ${city}
+        AND category = ${category}
+        AND is_active = true
+        AND leaderboard_eligible = true
+    ) sub
+    WHERE b.id = sub.id
+  `);
+  await cacheDelPattern(`leaderboard:${city}:*`);
+  await cacheDelPattern(`trending:${city}:*`);
+}
 async function getRankHistory(businessId, days = 30) {
   const cutoff = /* @__PURE__ */ new Date();
   cutoff.setDate(cutoff.getDate() - days);
@@ -1705,11 +1714,11 @@ async function getRankHistory(businessId, days = 30) {
     rank: rankHistory.rankPosition,
     score: rankHistory.weightedScore
   }).from(rankHistory).where(
-    and2(
-      eq3(rankHistory.businessId, businessId),
+    and3(
+      eq4(rankHistory.businessId, businessId),
       gte2(rankHistory.snapshotDate, cutoff.toISOString().split("T")[0])
     )
-  ).orderBy(asc(rankHistory.snapshotDate));
+  ).orderBy(asc2(rankHistory.snapshotDate));
   return rows.map((r) => ({
     date: r.date,
     rank: r.rank,
@@ -1740,8 +1749,8 @@ async function getBusinessRatings(businessId, page = 1, perPage = 20) {
     memberName: members4.displayName,
     memberTier: members4.credibilityTier,
     memberAvatarUrl: members4.avatarUrl
-  }).from(ratings).innerJoin(members4, eq3(ratings.memberId, members4.id)).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false))).orderBy(sql3`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and2(eq3(ratings.businessId, businessId), eq3(ratings.isFlagged, false)));
+  }).from(ratings).innerJoin(members4, eq4(ratings.memberId, members4.id)).where(and3(eq4(ratings.businessId, businessId), eq4(ratings.isFlagged, false))).orderBy(sql4`${ratings.createdAt} DESC`).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count2() }).from(ratings).where(and3(eq4(ratings.businessId, businessId), eq4(ratings.isFlagged, false)));
   return { ratings: ratingsResult, total: totalResult.count };
 }
 function generateSlug(name, city) {
@@ -1753,14 +1762,14 @@ async function bulkImportBusinesses(places) {
   let skipped = 0;
   const results = [];
   for (const place of places) {
-    const [existing] = await db.select({ id: businesses.id }).from(businesses).where(eq3(businesses.googlePlaceId, place.placeId));
+    const [existing] = await db.select({ id: businesses.id }).from(businesses).where(eq4(businesses.googlePlaceId, place.placeId));
     if (existing) {
       skipped++;
       results.push({ name: place.name, status: "skipped_duplicate" });
       continue;
     }
     let slug = generateSlug(place.name, place.city);
-    const [slugExists] = await db.select({ id: businesses.id }).from(businesses).where(eq3(businesses.slug, slug));
+    const [slugExists] = await db.select({ id: businesses.id }).from(businesses).where(eq4(businesses.slug, slug));
     if (slugExists) {
       slug = `${slug}-${Date.now().toString(36).slice(-4)}`;
     }
@@ -1800,25 +1809,8 @@ async function getImportStats() {
     city: businesses.city,
     dataSource: businesses.dataSource,
     count: count2(businesses.id)
-  }).from(businesses).where(eq3(businesses.isActive, true)).groupBy(businesses.city, businesses.dataSource).orderBy(businesses.city);
+  }).from(businesses).where(eq4(businesses.isActive, true)).groupBy(businesses.city, businesses.dataSource).orderBy(businesses.city);
   return rows.map((r) => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
-}
-async function getTopDishesForAutocomplete(city, limit = 50) {
-  const { dishes: dishes2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-  const rows = await db.select({
-    name: dishes2.name,
-    businessName: businesses.name,
-    businessSlug: businesses.slug,
-    businessId: dishes2.businessId,
-    voteCount: dishes2.voteCount
-  }).from(dishes2).innerJoin(businesses, eq3(dishes2.businessId, businesses.id)).where(and2(eq3(businesses.city, city), eq3(dishes2.isActive, true), eq3(businesses.isActive, true))).orderBy(desc2(dishes2.voteCount)).limit(limit);
-  return rows.map((r) => ({
-    name: r.name,
-    businessName: r.businessName,
-    businessSlug: r.businessSlug,
-    businessId: r.businessId,
-    voteCount: r.voteCount
-  }));
 }
 var init_businesses = __esm({
   "server/storage/businesses.ts"() {
@@ -1827,6 +1819,7 @@ var init_businesses = __esm({
     init_db();
     init_score_engine();
     init_redis();
+    init_photos();
   }
 });
 
@@ -1839,7 +1832,7 @@ __export(notifications_exports, {
   markAllNotificationsRead: () => markAllNotificationsRead,
   markNotificationRead: () => markNotificationRead
 });
-import { eq as eq4, and as and3, desc as desc3, count as count3 } from "drizzle-orm";
+import { eq as eq5, and as and4, desc as desc3, count as count3 } from "drizzle-orm";
 async function createNotification(data) {
   const [notif] = await db.insert(notifications).values({
     memberId: data.memberId,
@@ -1853,9 +1846,9 @@ async function createNotification(data) {
 async function getMemberNotifications(memberId, page = 1, perPage = 20) {
   const offset = (page - 1) * perPage;
   const [results, totalResult, unreadResult] = await Promise.all([
-    db.select().from(notifications).where(eq4(notifications.memberId, memberId)).orderBy(desc3(notifications.createdAt)).limit(perPage).offset(offset),
-    db.select({ count: count3() }).from(notifications).where(eq4(notifications.memberId, memberId)),
-    db.select({ count: count3() }).from(notifications).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)))
+    db.select().from(notifications).where(eq5(notifications.memberId, memberId)).orderBy(desc3(notifications.createdAt)).limit(perPage).offset(offset),
+    db.select({ count: count3() }).from(notifications).where(eq5(notifications.memberId, memberId)),
+    db.select({ count: count3() }).from(notifications).where(and4(eq5(notifications.memberId, memberId), eq5(notifications.read, false)))
   ]);
   return {
     notifications: results,
@@ -1864,15 +1857,15 @@ async function getMemberNotifications(memberId, page = 1, perPage = 20) {
   };
 }
 async function markNotificationRead(notificationId, memberId) {
-  const result = await db.update(notifications).set({ read: true }).where(and3(eq4(notifications.id, notificationId), eq4(notifications.memberId, memberId)));
+  const result = await db.update(notifications).set({ read: true }).where(and4(eq5(notifications.id, notificationId), eq5(notifications.memberId, memberId)));
   return result.rowCount > 0;
 }
 async function markAllNotificationsRead(memberId) {
-  const result = await db.update(notifications).set({ read: true }).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)));
+  const result = await db.update(notifications).set({ read: true }).where(and4(eq5(notifications.memberId, memberId), eq5(notifications.read, false)));
   return result.rowCount ?? 0;
 }
 async function getUnreadNotificationCount(memberId) {
-  const [result] = await db.select({ count: count3() }).from(notifications).where(and3(eq4(notifications.memberId, memberId), eq4(notifications.read, false)));
+  const [result] = await db.select({ count: count3() }).from(notifications).where(and4(eq5(notifications.memberId, memberId), eq5(notifications.read, false)));
   return result?.count ?? 0;
 }
 var init_notifications = __esm({
@@ -1995,7 +1988,7 @@ __export(challengers_exports, {
   getActiveChallenges: () => getActiveChallenges,
   updateChallengerVotes: () => updateChallengerVotes
 });
-import { eq as eq5, and as and4, sql as sql5, lte } from "drizzle-orm";
+import { eq as eq6, and as and5, sql as sql6, lte } from "drizzle-orm";
 async function createChallenge(data) {
   const endDate = /* @__PURE__ */ new Date();
   endDate.setDate(endDate.getDate() + 30);
@@ -2012,8 +2005,8 @@ async function createChallenge(data) {
   log.info(`Challenge created: ${challenge.id} (${data.challengerId} vs ${data.defenderId})`);
   try {
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db.select().from(businesses).where(eq5(businesses.id, data.challengerId)).then((r) => r[0]),
-      db.select().from(businesses).where(eq5(businesses.id, data.defenderId)).then((r) => r[0])
+      db.select().from(businesses).where(eq6(businesses.id, data.challengerId)).then((r) => r[0]),
+      db.select().from(businesses).where(eq6(businesses.id, data.defenderId)).then((r) => r[0])
     ]);
     if (challengerBiz && defenderBiz) {
       const { getMembersWithPushTokenByCity: getMembersWithPushTokenByCity2 } = await Promise.resolve().then(() => (init_members(), members_exports));
@@ -2037,10 +2030,10 @@ async function createChallenge(data) {
 }
 async function getActiveChallenges(city, category) {
   const challengerRows = await db.select().from(challengers).where(
-    and4(
-      eq5(challengers.status, "active"),
-      eq5(challengers.city, city),
-      ...category ? [eq5(challengers.category, category)] : []
+    and5(
+      eq6(challengers.status, "active"),
+      eq6(challengers.city, city),
+      ...category ? [eq6(challengers.category, category)] : []
     )
   );
   if (challengerRows.length === 0) return [];
@@ -2050,7 +2043,7 @@ async function getActiveChallenges(city, category) {
     bizIds.add(c.defenderId);
   }
   const bizIdArr = Array.from(bizIds);
-  const bizRows = await db.select().from(businesses).where(sql5`${businesses.id} = ANY(ARRAY[${sql5.join(bizIdArr.map((id) => sql5`${id}`), sql5`,`)}]::text[])`);
+  const bizRows = await db.select().from(businesses).where(sql6`${businesses.id} = ANY(ARRAY[${sql6.join(bizIdArr.map((id) => sql6`${id}`), sql6`,`)}]::text[])`);
   const bizMap = new Map(bizRows.map((b) => [b.id, b]));
   return challengerRows.map((c) => ({
     ...c,
@@ -2060,31 +2053,31 @@ async function getActiveChallenges(city, category) {
 }
 async function updateChallengerVotes(businessId, weightedScore) {
   const asChallenger = await db.select().from(challengers).where(
-    and4(eq5(challengers.challengerId, businessId), eq5(challengers.status, "active"))
+    and5(eq6(challengers.challengerId, businessId), eq6(challengers.status, "active"))
   );
   for (const c of asChallenger) {
     const newVotes = parseFloat(c.challengerWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       challengerWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql5`${challengers.totalVotes} + 1`
-    }).where(eq5(challengers.id, c.id));
+      totalVotes: sql6`${challengers.totalVotes} + 1`
+    }).where(eq6(challengers.id, c.id));
   }
   const asDefender = await db.select().from(challengers).where(
-    and4(eq5(challengers.defenderId, businessId), eq5(challengers.status, "active"))
+    and5(eq6(challengers.defenderId, businessId), eq6(challengers.status, "active"))
   );
   for (const c of asDefender) {
     const newVotes = parseFloat(c.defenderWeightedVotes) + weightedScore;
     await db.update(challengers).set({
       defenderWeightedVotes: newVotes.toFixed(3),
-      totalVotes: sql5`${challengers.totalVotes} + 1`
-    }).where(eq5(challengers.id, c.id));
+      totalVotes: sql6`${challengers.totalVotes} + 1`
+    }).where(eq6(challengers.id, c.id));
   }
 }
 async function closeExpiredChallenges() {
   const now = /* @__PURE__ */ new Date();
   const expired = await db.select().from(challengers).where(
-    and4(
-      eq5(challengers.status, "active"),
+    and5(
+      eq6(challengers.status, "active"),
       lte(challengers.endDate, now)
     )
   );
@@ -2101,11 +2094,11 @@ async function closeExpiredChallenges() {
     await db.update(challengers).set({
       status: "completed",
       winnerId
-    }).where(eq5(challengers.id, c.id));
+    }).where(eq6(challengers.id, c.id));
     closed++;
     log.info(`Challenge ${c.id} closed: winner=${winnerId || "draw"} (${challengerVotes} vs ${defenderVotes})`);
     try {
-      const winnerBiz = winnerId ? await db.select().from(businesses).where(eq5(businesses.id, winnerId)).then((r) => r[0]) : null;
+      const winnerBiz = winnerId ? await db.select().from(businesses).where(eq6(businesses.id, winnerId)).then((r) => r[0]) : null;
       const winnerName = winnerBiz?.name || "It's a draw";
       const { getMembersWithPushTokenByCity: getMembersWithPushTokenByCity2 } = await Promise.resolve().then(() => (init_members(), members_exports));
       const cityMembers = await getMembersWithPushTokenByCity2(c.city);
@@ -2146,7 +2139,7 @@ __export(referrals_exports, {
   getReferrerForMember: () => getReferrerForMember,
   resolveReferralCode: () => resolveReferralCode
 });
-import { eq as eq6, and as and5, desc as desc4 } from "drizzle-orm";
+import { eq as eq7, and as and6, desc as desc4 } from "drizzle-orm";
 async function createReferral(referrerId, referredId, referralCode) {
   const [referral] = await db.insert(referrals).values({
     referrerId,
@@ -2159,7 +2152,7 @@ async function createReferral(referrerId, referredId, referralCode) {
 async function resolveReferralCode(code) {
   if (!code || code.trim().length === 0) return null;
   const username = code.trim().toLowerCase();
-  const [member] = await db.select({ id: members.id }).from(members).where(eq6(members.username, username));
+  const [member] = await db.select({ id: members.id }).from(members).where(eq7(members.username, username));
   return member?.id || null;
 }
 async function getReferralStats(memberId) {
@@ -2169,16 +2162,16 @@ async function getReferralStats(memberId) {
     referredUsername: members.username,
     status: referrals.status,
     createdAt: referrals.createdAt
-  }).from(referrals).innerJoin(members, eq6(referrals.referredId, members.id)).where(eq6(referrals.referrerId, memberId)).orderBy(desc4(referrals.createdAt));
+  }).from(referrals).innerJoin(members, eq7(referrals.referredId, members.id)).where(eq7(referrals.referrerId, memberId)).orderBy(desc4(referrals.createdAt));
   const totalReferred = rows.length;
   const activated = rows.filter((r) => r.status === "activated").length;
   return { totalReferred, activated, referrals: rows };
 }
 async function activateReferral(referredId) {
-  await db.update(referrals).set({ status: "activated", activatedAt: /* @__PURE__ */ new Date() }).where(and5(eq6(referrals.referredId, referredId), eq6(referrals.status, "signed_up")));
+  await db.update(referrals).set({ status: "activated", activatedAt: /* @__PURE__ */ new Date() }).where(and6(eq7(referrals.referredId, referredId), eq7(referrals.status, "signed_up")));
 }
 async function getReferrerForMember(memberId) {
-  const [ref] = await db.select({ referrerId: referrals.referrerId }).from(referrals).where(eq6(referrals.referredId, memberId));
+  const [ref] = await db.select({ referrerId: referrals.referrerId }).from(referrals).where(eq7(referrals.referredId, memberId));
   return ref?.referrerId || null;
 }
 var init_referrals = __esm({
@@ -2200,17 +2193,17 @@ __export(ratings_exports, {
   submitRating: () => submitRating,
   submitRatingFlag: () => submitRatingFlag
 });
-import { eq as eq7, and as and6, sql as sql6, count as count5, gte as gte3, desc as desc5 } from "drizzle-orm";
+import { eq as eq8, and as and7, sql as sql7, count as count5, gte as gte3, desc as desc5 } from "drizzle-orm";
 async function getRatingById(id) {
-  const [rating] = await db.select().from(ratings).where(eq7(ratings.id, id));
+  const [rating] = await db.select().from(ratings).where(eq8(ratings.id, id));
   return rating;
 }
 async function detectAnomalies(member, business, rawScore) {
   const flags = [];
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1e3);
   const [recentCount] = await db.select({ count: count5() }).from(ratings).where(
-    and6(
-      eq7(ratings.memberId, member.id),
+    and7(
+      eq8(ratings.memberId, member.id),
       gte3(ratings.createdAt, oneHourAgo)
     )
   );
@@ -2219,9 +2212,9 @@ async function detectAnomalies(member, business, rawScore) {
   if (needsPatternCheck) {
     const [patternStats] = await db.select({
       total: count5(),
-      highCount: sql6`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric >= 4.8)`,
-      lowCount: sql6`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric <= 1.5)`
-    }).from(ratings).where(eq7(ratings.memberId, member.id));
+      highCount: sql7`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric >= 4.8)`,
+      lowCount: sql7`COUNT(*) FILTER (WHERE ${ratings.rawScore}::numeric <= 1.5)`
+    }).from(ratings).where(eq8(ratings.memberId, member.id));
     const total = Number(patternStats.total);
     if (total >= 10 && Number(patternStats.highCount) / total > 0.9) {
       flags.push("perfect_score_pattern");
@@ -2241,9 +2234,9 @@ async function detectAnomalies(member, business, rawScore) {
   }
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1e3);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3);
-  const [newAcctRatings] = await db.select({ count: count5() }).from(ratings).innerJoin(members, eq7(ratings.memberId, members.id)).where(
-    and6(
-      eq7(ratings.businessId, business.id),
+  const [newAcctRatings] = await db.select({ count: count5() }).from(ratings).innerJoin(members, eq8(ratings.memberId, members.id)).where(
+    and7(
+      eq8(ratings.businessId, business.id),
       gte3(ratings.createdAt, oneDayAgo),
       gte3(members.joinedAt, thirtyDaysAgo)
     )
@@ -2266,9 +2259,9 @@ async function submitRating(memberId, data, integrity) {
   const today = /* @__PURE__ */ new Date();
   today.setHours(0, 0, 0, 0);
   const [existingToday] = await db.select({ count: count5() }).from(ratings).where(
-    and6(
-      eq7(ratings.memberId, memberId),
-      eq7(ratings.businessId, data.businessId),
+    and7(
+      eq8(ratings.memberId, memberId),
+      eq8(ratings.businessId, data.businessId),
       gte3(ratings.createdAt, today)
     )
   );
@@ -2348,21 +2341,21 @@ async function submitRating(memberId, data, integrity) {
       memberId,
       businessId: data.businessId
     });
-    await db.update(dishes).set({ voteCount: sql6`${dishes.voteCount} + 1` }).where(eq7(dishes.id, data.dishId));
+    await db.update(dishes).set({ voteCount: sql7`${dishes.voteCount} + 1` }).where(eq8(dishes.id, data.dishId));
   } else if (data.newDishName) {
     const normalized = data.newDishName.toLowerCase().trim();
     const words = normalized.split(/\s+/);
     if (words.length >= 1 && words.length <= 5 && !normalized.includes("http")) {
       const existing = await db.select().from(dishes).where(
-        and6(
-          eq7(dishes.businessId, data.businessId),
-          eq7(dishes.nameNormalized, normalized)
+        and7(
+          eq8(dishes.businessId, data.businessId),
+          eq8(dishes.nameNormalized, normalized)
         )
       );
       let dishId;
       if (existing.length > 0) {
         dishId = existing[0].id;
-        await db.update(dishes).set({ voteCount: sql6`${dishes.voteCount} + 1` }).where(eq7(dishes.id, dishId));
+        await db.update(dishes).set({ voteCount: sql7`${dishes.voteCount} + 1` }).where(eq8(dishes.id, dishId));
       } else {
         const [newDish] = await db.insert(dishes).values({
           businessId: data.businessId,
@@ -2405,7 +2398,7 @@ async function submitRating(memberId, data, integrity) {
   await updateChallengerVotes(data.businessId, weighted);
   if (data.qrScanId) {
     const { qrScans: qrScans2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    await db.update(qrScans2).set({ converted: true }).where(eq7(qrScans2.id, data.qrScanId));
+    await db.update(qrScans2).set({ converted: true }).where(eq8(qrScans2.id, data.qrScanId));
   }
   const updatedBusiness = await getBusinessById(data.businessId);
   const newRank = updatedBusiness?.rankPosition ?? null;
@@ -2446,7 +2439,7 @@ async function editRating(ratingId, memberId, updates) {
     note: updates.note !== void 0 ? updates.note : existing.note,
     rawScore,
     weightedScore
-  }).where(eq7(ratings.id, ratingId)).returning();
+  }).where(eq8(ratings.id, ratingId)).returning();
   await recalculateBusinessScore(existing.businessId);
   await recalculateRanks(
     (await getBusinessById(existing.businessId))?.city || "dallas",
@@ -2462,7 +2455,7 @@ async function deleteRating(ratingId, memberId) {
   await db.update(ratings).set({
     isFlagged: true,
     flagReason: "user_deleted"
-  }).where(eq7(ratings.id, ratingId));
+  }).where(eq8(ratings.id, ratingId));
   await recalculateBusinessScore(existing.businessId);
   await recalculateRanks(
     (await getBusinessById(existing.businessId))?.city || "dallas",
@@ -2505,13 +2498,13 @@ async function getAutoFlaggedRatings(page = 1, perPage = 20) {
     createdAt: ratings.createdAt,
     businessName: businesses2.name,
     businessSlug: businesses2.slug
-  }).from(ratings).innerJoin(businesses2, eq7(ratings.businessId, businesses2.id)).where(and6(eq7(ratings.autoFlagged, true), eq7(ratings.isFlagged, false))).orderBy(desc5(ratings.createdAt)).limit(perPage).offset(offset);
-  const [totalResult] = await db.select({ count: count5() }).from(ratings).where(and6(eq7(ratings.autoFlagged, true), eq7(ratings.isFlagged, false)));
+  }).from(ratings).innerJoin(businesses2, eq8(ratings.businessId, businesses2.id)).where(and7(eq8(ratings.autoFlagged, true), eq8(ratings.isFlagged, false))).orderBy(desc5(ratings.createdAt)).limit(perPage).offset(offset);
+  const [totalResult] = await db.select({ count: count5() }).from(ratings).where(and7(eq8(ratings.autoFlagged, true), eq8(ratings.isFlagged, false)));
   return { ratings: results, total: totalResult?.count ?? 0 };
 }
 async function reviewAutoFlaggedRating(ratingId, action, reviewedBy) {
   if (action === "confirm") {
-    await db.update(ratings).set({ isFlagged: true }).where(eq7(ratings.id, ratingId));
+    await db.update(ratings).set({ isFlagged: true }).where(eq8(ratings.id, ratingId));
     const rating = await getRatingById(ratingId);
     if (rating) {
       await recalculateBusinessScore(rating.businessId);
@@ -2520,7 +2513,7 @@ async function reviewAutoFlaggedRating(ratingId, action, reviewedBy) {
       await updateMemberStats(rating.memberId);
     }
   } else {
-    await db.update(ratings).set({ autoFlagged: false }).where(eq7(ratings.id, ratingId));
+    await db.update(ratings).set({ autoFlagged: false }).where(eq8(ratings.id, ratingId));
   }
 }
 var init_ratings = __esm({
@@ -2546,14 +2539,15 @@ __export(dishes_exports, {
   getDishLeaderboardWithEntries: () => getDishLeaderboardWithEntries,
   getDishLeaderboards: () => getDishLeaderboards,
   getDishSuggestions: () => getDishSuggestions,
+  getTopDishesForAutocomplete: () => getTopDishesForAutocomplete,
   recalculateDishLeaderboard: () => recalculateDishLeaderboard,
   searchDishes: () => searchDishes,
   submitDishSuggestion: () => submitDishSuggestion,
   voteDishSuggestion: () => voteDishSuggestion
 });
-import { eq as eq8, and as and7, desc as desc6, asc as asc2, sql as sql7, count as count6 } from "drizzle-orm";
+import { eq as eq9, and as and8, desc as desc6, asc as asc3, sql as sql8, count as count6 } from "drizzle-orm";
 async function getBusinessDishes(businessId, limit = 5) {
-  return db.select().from(dishes).where(and7(eq8(dishes.businessId, businessId), eq8(dishes.isActive, true))).orderBy(desc6(dishes.voteCount)).limit(limit);
+  return db.select().from(dishes).where(and8(eq9(dishes.businessId, businessId), eq9(dishes.isActive, true))).orderBy(desc6(dishes.voteCount)).limit(limit);
 }
 async function searchDishes(businessId, query) {
   const normalized = query.slice(0, 100).replace(/[%_\\]/g, "").toLowerCase().trim();
@@ -2561,18 +2555,18 @@ async function searchDishes(businessId, query) {
     return getBusinessDishes(businessId, 5);
   }
   let results = await db.select().from(dishes).where(
-    and7(
-      eq8(dishes.businessId, businessId),
-      eq8(dishes.isActive, true),
-      sql7`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
+    and8(
+      eq9(dishes.businessId, businessId),
+      eq9(dishes.isActive, true),
+      sql8`${dishes.nameNormalized} ILIKE ${normalized + "%"}`
     )
   ).orderBy(desc6(dishes.voteCount)).limit(5);
   if (results.length < 3) {
     const containsResults = await db.select().from(dishes).where(
-      and7(
-        eq8(dishes.businessId, businessId),
-        eq8(dishes.isActive, true),
-        sql7`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
+      and8(
+        eq9(dishes.businessId, businessId),
+        eq9(dishes.isActive, true),
+        sql8`${dishes.nameNormalized} ILIKE ${"%" + normalized + "%"}`
       )
     ).orderBy(desc6(dishes.voteCount)).limit(5);
     const existingIds = new Set(results.map((r) => r.id));
@@ -2585,16 +2579,16 @@ async function searchDishes(businessId, query) {
   return results.slice(0, 5);
 }
 async function getDishLeaderboards(city) {
-  const boards = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.city, city.toLowerCase()), eq8(dishLeaderboards.status, "active"))).orderBy(asc2(dishLeaderboards.displayOrder));
+  const boards = await db.select().from(dishLeaderboards).where(and8(eq9(dishLeaderboards.city, city.toLowerCase()), eq9(dishLeaderboards.status, "active"))).orderBy(asc3(dishLeaderboards.displayOrder));
   const result = [];
   for (const board of boards) {
-    const [entryResult] = await db.select({ cnt: count6() }).from(dishLeaderboardEntries).where(eq8(dishLeaderboardEntries.leaderboardId, board.id));
+    const [entryResult] = await db.select({ cnt: count6() }).from(dishLeaderboardEntries).where(eq9(dishLeaderboardEntries.leaderboardId, board.id));
     result.push({ ...board, entryCount: Number(entryResult?.cnt ?? 0) });
   }
   return result;
 }
 async function getDishLeaderboardWithEntries(slug, city) {
-  const [board] = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.dishSlug, slug), eq8(dishLeaderboards.city, city.toLowerCase())));
+  const [board] = await db.select().from(dishLeaderboards).where(and8(eq9(dishLeaderboards.dishSlug, slug), eq9(dishLeaderboards.city, city.toLowerCase())));
   if (!board) return null;
   const entries = await db.select({
     id: dishLeaderboardEntries.id,
@@ -2609,7 +2603,7 @@ async function getDishLeaderboardWithEntries(slug, city) {
     businessName: businesses.name,
     businessSlug: businesses.slug,
     neighborhood: businesses.neighborhood
-  }).from(dishLeaderboardEntries).innerJoin(businesses, eq8(dishLeaderboardEntries.businessId, businesses.id)).where(eq8(dishLeaderboardEntries.leaderboardId, board.id)).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  }).from(dishLeaderboardEntries).innerJoin(businesses, eq9(dishLeaderboardEntries.businessId, businesses.id)).where(eq9(dishLeaderboardEntries.leaderboardId, board.id)).orderBy(asc3(dishLeaderboardEntries.rankPosition));
   const eligibleCount = entries.filter((e) => e.dishRatingCount >= 3).length;
   const isProvisional = board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1e3;
   return {
@@ -2620,17 +2614,17 @@ async function getDishLeaderboardWithEntries(slug, city) {
   };
 }
 async function recalculateDishLeaderboard(leaderboardId) {
-  const [board] = await db.select().from(dishLeaderboards).where(eq8(dishLeaderboards.id, leaderboardId));
+  const [board] = await db.select().from(dishLeaderboards).where(eq9(dishLeaderboards.id, leaderboardId));
   if (!board) return 0;
   const dishSlug = board.dishSlug;
   const matchingDishes = await db.select({
     businessId: dishes.businessId,
     dishId: dishes.id
-  }).from(dishes).innerJoin(businesses, eq8(dishes.businessId, businesses.id)).where(
-    and7(
-      eq8(businesses.city, board.city),
-      sql7`${dishes.nameNormalized} ILIKE ${"%" + dishSlug + "%"}`,
-      eq8(dishes.isActive, true)
+  }).from(dishes).innerJoin(businesses, eq9(dishes.businessId, businesses.id)).where(
+    and8(
+      eq9(businesses.city, board.city),
+      sql8`${dishes.nameNormalized} ILIKE ${"%" + dishSlug + "%"}`,
+      eq9(dishes.isActive, true)
     )
   );
   if (matchingDishes.length === 0) return 0;
@@ -2645,9 +2639,9 @@ async function recalculateDishLeaderboard(leaderboardId) {
       ratingId: dishVotes.ratingId,
       memberId: dishVotes.memberId
     }).from(dishVotes).where(
-      and7(
-        eq8(dishVotes.businessId, businessId),
-        sql7`${dishVotes.dishId} = ANY(ARRAY[${sql7.join(dishIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`
+      and8(
+        eq9(dishVotes.businessId, businessId),
+        sql8`${dishVotes.dishId} = ANY(ARRAY[${sql8.join(dishIds.map((id) => sql8`${id}`), sql8`,`)}]::text[])`
       )
     );
     if (votes.length === 0) continue;
@@ -2659,7 +2653,7 @@ async function recalculateDishLeaderboard(leaderboardId) {
       q3Score: ratings.q3Score,
       weight: ratings.weight,
       isFlagged: ratings.isFlagged
-    }).from(ratings).where(sql7`${ratings.id} = ANY(ARRAY[${sql7.join(ratingIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`);
+    }).from(ratings).where(sql8`${ratings.id} = ANY(ARRAY[${sql8.join(ratingIds.map((id) => sql8`${id}`), sql8`,`)}]::text[])`);
     let totalWeight = 0;
     let weightedSum = 0;
     let validCount = 0;
@@ -2673,7 +2667,7 @@ async function recalculateDishLeaderboard(leaderboardId) {
     }
     if (validCount < 1) continue;
     const dishScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
-    const [photo] = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq8(businessPhotos.businessId, businessId)).orderBy(asc2(businessPhotos.sortOrder)).limit(1);
+    const [photo] = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq9(businessPhotos.businessId, businessId)).orderBy(asc3(businessPhotos.sortOrder)).limit(1);
     entries.push({
       businessId,
       dishScore: Math.round(dishScore * 100) / 100,
@@ -2682,7 +2676,7 @@ async function recalculateDishLeaderboard(leaderboardId) {
     });
   }
   entries.sort((a, b) => b.dishScore - a.dishScore);
-  await db.delete(dishLeaderboardEntries).where(eq8(dishLeaderboardEntries.leaderboardId, leaderboardId));
+  await db.delete(dishLeaderboardEntries).where(eq9(dishLeaderboardEntries.leaderboardId, leaderboardId));
   for (let i = 0; i < entries.length; i++) {
     const e = entries[i];
     await db.insert(dishLeaderboardEntries).values({
@@ -2697,14 +2691,14 @@ async function recalculateDishLeaderboard(leaderboardId) {
   return entries.length;
 }
 async function getDishSuggestions(city) {
-  return db.select().from(dishSuggestions).where(and7(eq8(dishSuggestions.city, city.toLowerCase()), eq8(dishSuggestions.status, "proposed"))).orderBy(desc6(dishSuggestions.voteCount)).limit(20);
+  return db.select().from(dishSuggestions).where(and8(eq9(dishSuggestions.city, city.toLowerCase()), eq9(dishSuggestions.status, "proposed"))).orderBy(desc6(dishSuggestions.voteCount)).limit(20);
 }
 async function submitDishSuggestion(memberId, city, dishName) {
   const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1e3);
   const [recentCount] = await db.select({ cnt: count6() }).from(dishSuggestions).where(
-    and7(
-      eq8(dishSuggestions.suggestedBy, memberId),
-      sql7`${dishSuggestions.createdAt} >= ${oneWeekAgo}`
+    and8(
+      eq9(dishSuggestions.suggestedBy, memberId),
+      sql8`${dishSuggestions.createdAt} >= ${oneWeekAgo}`
     )
   );
   if (Number(recentCount.cnt) >= 3) {
@@ -2719,21 +2713,21 @@ async function submitDishSuggestion(memberId, city, dishName) {
 }
 async function voteDishSuggestion(memberId, suggestionId) {
   const [existingVote] = await db.select().from(dishSuggestionVotes).where(
-    and7(
-      eq8(dishSuggestionVotes.suggestionId, suggestionId),
-      eq8(dishSuggestionVotes.memberId, memberId)
+    and8(
+      eq9(dishSuggestionVotes.suggestionId, suggestionId),
+      eq9(dishSuggestionVotes.memberId, memberId)
     )
   );
   if (existingVote) {
     throw new Error("Already voted for this suggestion");
   }
   await db.insert(dishSuggestionVotes).values({ suggestionId, memberId });
-  const [updated] = await db.update(dishSuggestions).set({ voteCount: sql7`${dishSuggestions.voteCount} + 1` }).where(eq8(dishSuggestions.id, suggestionId)).returning();
+  const [updated] = await db.update(dishSuggestions).set({ voteCount: sql8`${dishSuggestions.voteCount} + 1` }).where(eq9(dishSuggestions.id, suggestionId)).returning();
   if (!updated) throw new Error("Suggestion not found");
   if (updated.voteCount >= updated.activationThreshold) {
-    await db.update(dishSuggestions).set({ status: "active" }).where(eq8(dishSuggestions.id, suggestionId));
+    await db.update(dishSuggestions).set({ status: "active" }).where(eq9(dishSuggestions.id, suggestionId));
     const slug = updated.dishName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-    const [existing] = await db.select().from(dishLeaderboards).where(and7(eq8(dishLeaderboards.city, updated.city), eq8(dishLeaderboards.dishSlug, slug)));
+    const [existing] = await db.select().from(dishLeaderboards).where(and8(eq9(dishLeaderboards.city, updated.city), eq9(dishLeaderboards.dishSlug, slug)));
     if (!existing) {
       await db.insert(dishLeaderboards).values({
         city: updated.city,
@@ -2752,10 +2746,10 @@ async function getBusinessDishRankings(businessId) {
     dishEmoji: dishLeaderboards.dishEmoji,
     rankPosition: dishLeaderboardEntries.rankPosition,
     dishScore: dishLeaderboardEntries.dishScore
-  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq8(dishLeaderboardEntries.businessId, businessId)).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq9(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq9(dishLeaderboardEntries.businessId, businessId)).orderBy(asc3(dishLeaderboardEntries.rankPosition));
   const result = [];
   for (const entry of entries) {
-    const [countResult] = await db.select({ count: count6() }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq8(dishLeaderboards.dishSlug, entry.dishSlug));
+    const [countResult] = await db.select({ count: count6() }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq9(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(eq9(dishLeaderboards.dishSlug, entry.dishSlug));
     result.push({
       ...entry,
       entryCount: countResult?.count || 0
@@ -2771,7 +2765,7 @@ async function getBatchDishRankings(businessIds) {
     dishName: dishLeaderboards.dishName,
     dishEmoji: dishLeaderboards.dishEmoji,
     rankPosition: dishLeaderboardEntries.rankPosition
-  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq8(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(sql7`${dishLeaderboardEntries.businessId} = ANY(ARRAY[${sql7.join(businessIds.map((id) => sql7`${id}`), sql7`,`)}]::text[])`).orderBy(asc2(dishLeaderboardEntries.rankPosition));
+  }).from(dishLeaderboardEntries).innerJoin(dishLeaderboards, eq9(dishLeaderboardEntries.leaderboardId, dishLeaderboards.id)).where(sql8`${dishLeaderboardEntries.businessId} = ANY(ARRAY[${sql8.join(businessIds.map((id) => sql8`${id}`), sql8`,`)}]::text[])`).orderBy(asc3(dishLeaderboardEntries.rankPosition));
   const result = {};
   for (const entry of entries) {
     if (!result[entry.businessId]) result[entry.businessId] = [];
@@ -2786,6 +2780,22 @@ async function getBatchDishRankings(businessIds) {
   }
   return result;
 }
+async function getTopDishesForAutocomplete(city, limit = 50) {
+  const rows = await db.select({
+    name: dishes.name,
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    businessId: dishes.businessId,
+    voteCount: dishes.voteCount
+  }).from(dishes).innerJoin(businesses, eq9(dishes.businessId, businesses.id)).where(and8(eq9(businesses.city, city), eq9(dishes.isActive, true), eq9(businesses.isActive, true))).orderBy(desc6(dishes.voteCount)).limit(limit);
+  return rows.map((r) => ({
+    name: r.name,
+    businessName: r.businessName,
+    businessSlug: r.businessSlug,
+    businessId: r.businessId,
+    voteCount: r.voteCount
+  }));
+}
 var init_dishes = __esm({
   "server/storage/dishes.ts"() {
     "use strict";
@@ -2795,10 +2805,10 @@ var init_dishes = __esm({
 });
 
 // server/storage/categories.ts
-import { eq as eq9, desc as desc7 } from "drizzle-orm";
+import { eq as eq10, desc as desc7 } from "drizzle-orm";
 async function getDbCategories(activeOnly = true) {
   if (activeOnly) {
-    return db.select().from(categories).where(eq9(categories.isActive, true));
+    return db.select().from(categories).where(eq10(categories.isActive, true));
   }
   return db.select().from(categories);
 }
@@ -2812,10 +2822,10 @@ async function createCategorySuggestion(data) {
   return suggestion;
 }
 async function getPendingSuggestions() {
-  return db.select().from(categorySuggestions).where(eq9(categorySuggestions.status, "pending")).orderBy(desc7(categorySuggestions.voteCount));
+  return db.select().from(categorySuggestions).where(eq10(categorySuggestions.status, "pending")).orderBy(desc7(categorySuggestions.voteCount));
 }
 async function reviewSuggestion(id, status, reviewedBy) {
-  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq9(categorySuggestions.id, id)).returning();
+  const [updated] = await db.update(categorySuggestions).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq10(categorySuggestions.id, id)).returning();
   return updated;
 }
 var init_categories = __esm({
@@ -2827,12 +2837,12 @@ var init_categories = __esm({
 });
 
 // server/storage/badges.ts
-import { eq as eq10, and as and8, count as count7, desc as desc8 } from "drizzle-orm";
+import { eq as eq11, and as and9, count as count7, desc as desc8 } from "drizzle-orm";
 async function getMemberBadges(memberId) {
-  return db.select().from(memberBadges).where(eq10(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
+  return db.select().from(memberBadges).where(eq11(memberBadges.memberId, memberId)).orderBy(memberBadges.earnedAt);
 }
 async function getMemberBadgeCount(memberId) {
-  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(eq10(memberBadges.memberId, memberId));
+  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(eq11(memberBadges.memberId, memberId));
   return Number(result?.cnt ?? 0);
 }
 async function awardBadge(memberId, badgeId, badgeFamily) {
@@ -2844,11 +2854,11 @@ async function awardBadge(memberId, badgeId, badgeFamily) {
   }
 }
 async function hasBadge(memberId, badgeId) {
-  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(and8(eq10(memberBadges.memberId, memberId), eq10(memberBadges.badgeId, badgeId)));
+  const [result] = await db.select({ cnt: count7() }).from(memberBadges).where(and9(eq11(memberBadges.memberId, memberId), eq11(memberBadges.badgeId, badgeId)));
   return Number(result?.cnt ?? 0) > 0;
 }
 async function getEarnedBadgeIds(memberId) {
-  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq10(memberBadges.memberId, memberId));
+  const rows = await db.select({ badgeId: memberBadges.badgeId }).from(memberBadges).where(eq11(memberBadges.memberId, memberId));
   return rows.map((r) => r.badgeId);
 }
 async function getBadgeLeaderboard(limit = 20) {
@@ -2859,7 +2869,7 @@ async function getBadgeLeaderboard(limit = 20) {
     avatarUrl: members.avatarUrl,
     credibilityTier: members.credibilityTier,
     badgeCount: count7(memberBadges.id)
-  }).from(memberBadges).innerJoin(members, eq10(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc8(count7(memberBadges.id))).limit(limit);
+  }).from(memberBadges).innerJoin(members, eq11(memberBadges.memberId, members.id)).groupBy(memberBadges.memberId, members.displayName, members.username, members.avatarUrl, members.credibilityTier).orderBy(desc8(count7(memberBadges.id))).limit(limit);
 }
 var init_badges = __esm({
   "server/storage/badges.ts"() {
@@ -2870,7 +2880,7 @@ var init_badges = __esm({
 });
 
 // server/storage/payments.ts
-import { eq as eq11, and as and9, desc as desc9, sql as sql8, count as count8, sum } from "drizzle-orm";
+import { eq as eq12, and as and10, desc as desc9, sql as sql9, count as count8, sum } from "drizzle-orm";
 async function createPaymentRecord(params) {
   const [payment] = await db.insert(payments).values({
     memberId: params.memberId,
@@ -2885,35 +2895,35 @@ async function createPaymentRecord(params) {
   return payment;
 }
 async function getPaymentById(id) {
-  const [payment] = await db.select().from(payments).where(eq11(payments.id, id)).limit(1);
+  const [payment] = await db.select().from(payments).where(eq12(payments.id, id)).limit(1);
   return payment ?? null;
 }
 async function updatePaymentStatus(id, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq11(payments.id, id)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq12(payments.id, id)).returning();
   return updated ?? null;
 }
 async function updatePaymentStatusByStripeId(stripePaymentIntentId, status) {
-  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq11(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
+  const [updated] = await db.update(payments).set({ status, updatedAt: /* @__PURE__ */ new Date() }).where(eq12(payments.stripePaymentIntentId, stripePaymentIntentId)).returning();
   return updated ?? null;
 }
 async function getMemberPayments(memberId, limit = 20) {
-  return db.select().from(payments).where(eq11(payments.memberId, memberId)).orderBy(desc9(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq12(payments.memberId, memberId)).orderBy(desc9(payments.createdAt)).limit(limit);
 }
 async function getBusinessPayments(businessId, limit = 20) {
-  return db.select().from(payments).where(eq11(payments.businessId, businessId)).orderBy(desc9(payments.createdAt)).limit(limit);
+  return db.select().from(payments).where(eq12(payments.businessId, businessId)).orderBy(desc9(payments.createdAt)).limit(limit);
 }
 async function getRevenueMetrics() {
   const byTypeRows = await db.select({
     type: payments.type,
     count: count8(),
     revenue: sum(payments.amount)
-  }).from(payments).where(eq11(payments.status, "succeeded")).groupBy(payments.type);
+  }).from(payments).where(eq12(payments.status, "succeeded")).groupBy(payments.type);
   const [activeRow] = await db.select({ count: count8() }).from(payments).where(
-    and9(
-      eq11(payments.status, "succeeded")
+    and10(
+      eq12(payments.status, "succeeded")
     )
   );
-  const [cancelledRow] = await db.select({ count: count8() }).from(payments).where(eq11(payments.status, "cancelled"));
+  const [cancelledRow] = await db.select({ count: count8() }).from(payments).where(eq12(payments.status, "cancelled"));
   const typeMap = {
     challenger_entry: { count: 0, revenue: 0 },
     dashboard_pro: { count: 0, revenue: 0 },
@@ -2935,10 +2945,10 @@ async function getRevenueMetrics() {
 }
 async function getRevenueByMonth(months = 6) {
   const results = await db.select({
-    month: sql8`strftime('%Y-%m', ${payments.createdAt})`,
-    revenue: sql8`COALESCE(SUM(${payments.amount}), 0)`,
-    count: sql8`COUNT(*)`
-  }).from(payments).where(eq11(payments.status, "succeeded")).groupBy(sql8`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql8`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
+    month: sql9`strftime('%Y-%m', ${payments.createdAt})`,
+    revenue: sql9`COALESCE(SUM(${payments.amount}), 0)`,
+    count: sql9`COUNT(*)`
+  }).from(payments).where(eq12(payments.status, "succeeded")).groupBy(sql9`strftime('%Y-%m', ${payments.createdAt})`).orderBy(sql9`strftime('%Y-%m', ${payments.createdAt}) DESC`).limit(months);
   return results.map((r) => ({
     month: String(r.month),
     revenue: Number(r.revenue),
@@ -2954,7 +2964,7 @@ var init_payments = __esm({
 });
 
 // server/storage/webhook-events.ts
-import { eq as eq12, desc as desc10 } from "drizzle-orm";
+import { eq as eq13, desc as desc10 } from "drizzle-orm";
 async function logWebhookEvent(params) {
   const [event] = await db.insert(webhookEvents).values({
     source: params.source,
@@ -2967,14 +2977,14 @@ async function logWebhookEvent(params) {
   return event;
 }
 async function markWebhookProcessed(id, error) {
-  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq12(webhookEvents.id, id));
+  await db.update(webhookEvents).set({ processed: true, error: error || null }).where(eq13(webhookEvents.id, id));
 }
 async function getWebhookEventById(id) {
-  const [event] = await db.select().from(webhookEvents).where(eq12(webhookEvents.id, id)).limit(1);
+  const [event] = await db.select().from(webhookEvents).where(eq13(webhookEvents.id, id)).limit(1);
   return event ?? null;
 }
 async function getRecentWebhookEvents(source, limit = 50) {
-  return db.select().from(webhookEvents).where(eq12(webhookEvents.source, source)).orderBy(desc10(webhookEvents.createdAt)).limit(limit);
+  return db.select().from(webhookEvents).where(eq13(webhookEvents.source, source)).orderBy(desc10(webhookEvents.createdAt)).limit(limit);
 }
 var init_webhook_events = __esm({
   "server/storage/webhook-events.ts"() {
@@ -2985,7 +2995,7 @@ var init_webhook_events = __esm({
 });
 
 // server/storage/featured-placements.ts
-import { eq as eq13, and as and10, gt, lte as lte2, desc as desc11 } from "drizzle-orm";
+import { eq as eq14, and as and11, gt, lte as lte2, desc as desc11 } from "drizzle-orm";
 async function createFeaturedPlacement(params) {
   const startsAt = /* @__PURE__ */ new Date();
   const expiresAt = new Date(startsAt.getTime() + FEATURED_DURATION_DAYS * 24 * 60 * 60 * 1e3);
@@ -3002,9 +3012,9 @@ async function createFeaturedPlacement(params) {
 async function getActiveFeaturedInCity(city) {
   const now = /* @__PURE__ */ new Date();
   return db.select().from(featuredPlacements).where(
-    and10(
-      eq13(featuredPlacements.city, city),
-      eq13(featuredPlacements.status, "active"),
+    and11(
+      eq14(featuredPlacements.city, city),
+      eq14(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
   ).orderBy(desc11(featuredPlacements.createdAt));
@@ -3012,9 +3022,9 @@ async function getActiveFeaturedInCity(city) {
 async function getBusinessFeaturedStatus(businessId) {
   const now = /* @__PURE__ */ new Date();
   const [placement] = await db.select().from(featuredPlacements).where(
-    and10(
-      eq13(featuredPlacements.businessId, businessId),
-      eq13(featuredPlacements.status, "active"),
+    and11(
+      eq14(featuredPlacements.businessId, businessId),
+      eq14(featuredPlacements.status, "active"),
       gt(featuredPlacements.expiresAt, now)
     )
   ).orderBy(desc11(featuredPlacements.createdAt)).limit(1);
@@ -3022,9 +3032,9 @@ async function getBusinessFeaturedStatus(businessId) {
 }
 async function expireFeaturedByPayment(paymentId) {
   const [updated] = await db.update(featuredPlacements).set({ status: "cancelled" }).where(
-    and10(
-      eq13(featuredPlacements.paymentId, paymentId),
-      eq13(featuredPlacements.status, "active")
+    and11(
+      eq14(featuredPlacements.paymentId, paymentId),
+      eq14(featuredPlacements.status, "active")
     )
   ).returning();
   return updated ?? null;
@@ -3032,8 +3042,8 @@ async function expireFeaturedByPayment(paymentId) {
 async function expireOldPlacements() {
   const now = /* @__PURE__ */ new Date();
   const result = await db.update(featuredPlacements).set({ status: "expired" }).where(
-    and10(
-      eq13(featuredPlacements.status, "active"),
+    and11(
+      eq14(featuredPlacements.status, "active"),
       lte2(featuredPlacements.expiresAt, now)
     )
   ).returning();
@@ -3050,16 +3060,16 @@ var init_featured_placements = __esm({
 });
 
 // server/storage/claims.ts
-import { eq as eq14, and as and11, count as count9, desc as desc12 } from "drizzle-orm";
+import { eq as eq15, and as and12, count as count9, desc as desc12 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
   return claim;
 }
 async function getClaimByMemberAndBusiness(memberId, businessId) {
   const [claim] = await db.select().from(businessClaims).where(
-    and11(
-      eq14(businessClaims.memberId, memberId),
-      eq14(businessClaims.businessId, businessId)
+    and12(
+      eq15(businessClaims.memberId, memberId),
+      eq15(businessClaims.businessId, businessId)
     )
   );
   return claim;
@@ -3074,22 +3084,22 @@ async function getPendingClaims() {
     verificationMethod: businessClaims.verificationMethod,
     status: businessClaims.status,
     submittedAt: businessClaims.submittedAt
-  }).from(businessClaims).leftJoin(businesses, eq14(businessClaims.businessId, businesses.id)).leftJoin(members, eq14(businessClaims.memberId, members.id)).where(eq14(businessClaims.status, "pending")).orderBy(desc12(businessClaims.submittedAt));
+  }).from(businessClaims).leftJoin(businesses, eq15(businessClaims.businessId, businesses.id)).leftJoin(members, eq15(businessClaims.memberId, members.id)).where(eq15(businessClaims.status, "pending")).orderBy(desc12(businessClaims.submittedAt));
 }
 async function reviewClaim(id, status, reviewedBy) {
-  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq14(businessClaims.id, id)).returning();
+  const [updated] = await db.update(businessClaims).set({ status, reviewedAt: /* @__PURE__ */ new Date() }).where(eq15(businessClaims.id, id)).returning();
   if (!updated) return null;
   if (status === "approved" && updated.businessId && updated.memberId) {
     await db.update(businesses).set({
       ownerId: updated.memberId,
       isClaimed: true,
       claimedAt: /* @__PURE__ */ new Date()
-    }).where(eq14(businesses.id, updated.businessId));
+    }).where(eq15(businesses.id, updated.businessId));
   }
   return updated;
 }
 async function getClaimCount() {
-  const [result] = await db.select({ cnt: count9() }).from(businessClaims).where(eq14(businessClaims.status, "pending"));
+  const [result] = await db.select({ cnt: count9() }).from(businessClaims).where(eq15(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 async function getPendingFlags() {
@@ -3101,14 +3111,14 @@ async function getPendingFlags() {
     aiFraudProbability: ratingFlags.aiFraudProbability,
     status: ratingFlags.status,
     createdAt: ratingFlags.createdAt
-  }).from(ratingFlags).leftJoin(members, eq14(ratingFlags.flaggerId, members.id)).where(eq14(ratingFlags.status, "pending")).orderBy(desc12(ratingFlags.createdAt));
+  }).from(ratingFlags).leftJoin(members, eq15(ratingFlags.flaggerId, members.id)).where(eq15(ratingFlags.status, "pending")).orderBy(desc12(ratingFlags.createdAt));
 }
 async function reviewFlag(id, status, reviewedBy) {
-  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq14(ratingFlags.id, id)).returning();
+  const [updated] = await db.update(ratingFlags).set({ status, reviewedBy, reviewedAt: /* @__PURE__ */ new Date() }).where(eq15(ratingFlags.id, id)).returning();
   return updated ?? null;
 }
 async function getFlagCount() {
-  const [result] = await db.select({ cnt: count9() }).from(ratingFlags).where(eq14(ratingFlags.status, "pending"));
+  const [result] = await db.select({ cnt: count9() }).from(ratingFlags).where(eq15(ratingFlags.status, "pending"));
   return Number(result?.cnt ?? 0);
 }
 var init_claims = __esm({
@@ -3120,7 +3130,7 @@ var init_claims = __esm({
 });
 
 // server/storage/qr.ts
-import { eq as eq15, count as count10, and as and12, gte as gte4, sql as sql9 } from "drizzle-orm";
+import { eq as eq16, count as count10, and as and13, gte as gte4, sql as sql10 } from "drizzle-orm";
 async function recordQrScan(businessId, memberId) {
   const [scan] = await db.insert(qrScans).values({
     businessId,
@@ -3132,21 +3142,21 @@ async function getQrScanStats(businessId) {
   const now = /* @__PURE__ */ new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1e3);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1e3);
-  const [totalResult] = await db.select({ cnt: count10() }).from(qrScans).where(eq15(qrScans.businessId, businessId));
+  const [totalResult] = await db.select({ cnt: count10() }).from(qrScans).where(eq16(qrScans.businessId, businessId));
   const totalScans = Number(totalResult?.cnt ?? 0);
-  const [uniqueResult] = await db.select({ cnt: sql9`count(distinct ${qrScans.memberId})` }).from(qrScans).where(eq15(qrScans.businessId, businessId));
+  const [uniqueResult] = await db.select({ cnt: sql10`count(distinct ${qrScans.memberId})` }).from(qrScans).where(eq16(qrScans.businessId, businessId));
   const uniqueMembers = Number(uniqueResult?.cnt ?? 0);
-  const [conversionResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), eq15(qrScans.converted, true)));
+  const [conversionResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), eq16(qrScans.converted, true)));
   const conversions = Number(conversionResult?.cnt ?? 0);
-  const [weekResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), gte4(qrScans.scannedAt, sevenDaysAgo)));
+  const [weekResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, sevenDaysAgo)));
   const last7Days = Number(weekResult?.cnt ?? 0);
-  const [monthResult] = await db.select({ cnt: count10() }).from(qrScans).where(and12(eq15(qrScans.businessId, businessId), gte4(qrScans.scannedAt, thirtyDaysAgo)));
+  const [monthResult] = await db.select({ cnt: count10() }).from(qrScans).where(and13(eq16(qrScans.businessId, businessId), gte4(qrScans.scannedAt, thirtyDaysAgo)));
   const last30Days = Number(monthResult?.cnt ?? 0);
   const conversionRate = totalScans > 0 ? Math.round(conversions / totalScans * 100) : 0;
   return { totalScans, uniqueMembers, conversions, conversionRate, last7Days, last30Days };
 }
 async function markQrScanConverted(scanId) {
-  await db.update(qrScans).set({ converted: true }).where(eq15(qrScans.id, scanId));
+  await db.update(qrScans).set({ converted: true }).where(eq16(qrScans.id, scanId));
 }
 var init_qr = __esm({
   "server/storage/qr.ts"() {
@@ -3157,7 +3167,7 @@ var init_qr = __esm({
 });
 
 // server/storage/beta-invites.ts
-import { eq as eq16 } from "drizzle-orm";
+import { eq as eq17 } from "drizzle-orm";
 async function createBetaInvite(params) {
   const [invite] = await db.insert(betaInvites).values({
     email: params.email,
@@ -3168,11 +3178,11 @@ async function createBetaInvite(params) {
   return invite;
 }
 async function getBetaInviteByEmail(email) {
-  const [invite] = await db.select().from(betaInvites).where(eq16(betaInvites.email, email));
+  const [invite] = await db.select().from(betaInvites).where(eq17(betaInvites.email, email));
   return invite;
 }
 async function markBetaInviteJoined(email, memberId) {
-  await db.update(betaInvites).set({ status: "joined", joinedAt: /* @__PURE__ */ new Date(), memberId }).where(eq16(betaInvites.email, email));
+  await db.update(betaInvites).set({ status: "joined", joinedAt: /* @__PURE__ */ new Date(), memberId }).where(eq17(betaInvites.email, email));
 }
 async function getBetaInviteStats() {
   const invites = await db.select().from(betaInvites);
@@ -3203,7 +3213,7 @@ __export(analytics_exports, {
   persistAnalyticsEvents: () => persistAnalyticsEvents,
   purgeOldAnalyticsEvents: () => purgeOldAnalyticsEvents
 });
-import { gte as gte5, lt, sql as sql10, count as count11 } from "drizzle-orm";
+import { gte as gte5, lt, sql as sql11, count as count11 } from "drizzle-orm";
 async function persistAnalyticsEvents(entries) {
   if (entries.length === 0) return;
   const values = entries.map((e) => ({
@@ -3232,18 +3242,18 @@ async function getPersistedEventCounts(since) {
 async function getPersistedDailyStats(days) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
   const rows = await db.select({
-    date: sql10`DATE(${analyticsEvents.createdAt})`,
+    date: sql11`DATE(${analyticsEvents.createdAt})`,
     count: count11()
-  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql10`DATE(${analyticsEvents.createdAt})`).orderBy(sql10`DATE(${analyticsEvents.createdAt})`);
+  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql11`DATE(${analyticsEvents.createdAt})`).orderBy(sql11`DATE(${analyticsEvents.createdAt})`);
   return rows.map((r) => ({ date: r.date, events: r.count }));
 }
 async function getPersistedDailyStatsExtended(days) {
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1e3);
   const rows = await db.select({
-    date: sql10`DATE(${analyticsEvents.createdAt})`,
+    date: sql11`DATE(${analyticsEvents.createdAt})`,
     event: analyticsEvents.event,
     count: count11()
-  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql10`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event).orderBy(sql10`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event);
+  }).from(analyticsEvents).where(gte5(analyticsEvents.createdAt, since)).groupBy(sql11`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event).orderBy(sql11`DATE(${analyticsEvents.createdAt})`, analyticsEvents.event);
   return rows.map((r) => ({ date: r.date, event: r.event, count: r.count }));
 }
 async function getPersistedEventTotal() {
@@ -5592,7 +5602,7 @@ __export(photo_moderation_exports, {
   rejectPhoto: () => rejectPhoto,
   submitPhoto: () => submitPhoto
 });
-import { eq as eq21, desc as desc16, and as and14 } from "drizzle-orm";
+import { eq as eq22, desc as desc16, and as and15 } from "drizzle-orm";
 import crypto6 from "crypto";
 async function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
@@ -5617,7 +5627,7 @@ async function approvePhoto(photoId, moderatorId, note) {
     moderatorId,
     moderatorNote: note || null,
     reviewedAt: /* @__PURE__ */ new Date()
-  }).where(and14(eq21(photoSubmissions.id, photoId), eq21(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  }).where(and15(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
   if (result.length === 0) return false;
   photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
   return true;
@@ -5629,17 +5639,17 @@ async function rejectPhoto(photoId, moderatorId, reason, note) {
     moderatorId,
     moderatorNote: note || null,
     reviewedAt: /* @__PURE__ */ new Date()
-  }).where(and14(eq21(photoSubmissions.id, photoId), eq21(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  }).where(and15(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
   if (result.length === 0) return false;
   photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
   return true;
 }
 async function getPendingPhotos(limit) {
-  const rows = await db.select().from(photoSubmissions).where(eq21(photoSubmissions.status, "pending")).orderBy(desc16(photoSubmissions.submittedAt)).limit(limit || 50);
+  const rows = await db.select().from(photoSubmissions).where(eq22(photoSubmissions.status, "pending")).orderBy(desc16(photoSubmissions.submittedAt)).limit(limit || 50);
   return rows;
 }
 async function getPhotosByBusiness(businessId) {
-  const rows = await db.select().from(photoSubmissions).where(and14(eq21(photoSubmissions.businessId, businessId), eq21(photoSubmissions.status, "approved"))).orderBy(desc16(photoSubmissions.submittedAt));
+  const rows = await db.select().from(photoSubmissions).where(and15(eq22(photoSubmissions.businessId, businessId), eq22(photoSubmissions.status, "approved"))).orderBy(desc16(photoSubmissions.submittedAt));
   return rows;
 }
 async function getPhotoStats() {
@@ -5888,12 +5898,12 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19 } = await import("drizzle-orm");
+    const { eq: eq30, isNotNull: isNotNull5, and: and20 } = await import("drizzle-orm");
     const raters = await db2.selectDistinct({
       memberId: ratings5.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs
-    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(eq29(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
+    }).from(ratings5).innerJoin(members4, eq30(ratings5.memberId, members4.id)).where(and20(eq30(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
     let sent = 0;
     for (const rater of raters) {
       if (!rater.pushToken) continue;
@@ -5920,13 +5930,13 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19, ne: ne2 } = await import("drizzle-orm");
+    const { eq: eq30, isNotNull: isNotNull5, and: and20, ne: ne2 } = await import("drizzle-orm");
     const otherRaters = await db2.selectDistinct({
       memberId: ratings5.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs
-    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(
-      eq29(ratings5.businessId, businessId),
+    }).from(ratings5).innerJoin(members4, eq30(ratings5.memberId, members4.id)).where(and20(
+      eq30(ratings5.businessId, businessId),
       ne2(ratings5.memberId, ratingMemberId),
       isNotNull5(members4.pushToken)
     ));
@@ -5955,14 +5965,14 @@ async function sendCityHighlightsPush(city) {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19, gte: gte9, desc: desc17 } = await import("drizzle-orm");
+    const { eq: eq30, isNotNull: isNotNull5, and: and20, gte: gte9, desc: desc17 } = await import("drizzle-orm");
     const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
     const recentChanges = await db2.select({
       businessId: rankHistory2.businessId,
       businessName: businesses2.name,
       oldRank: rankHistory2.previousRank,
       newRank: rankHistory2.rank
-    }).from(rankHistory2).innerJoin(businesses2, eq29(rankHistory2.businessId, businesses2.id)).where(and19(eq29(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc17(rankHistory2.createdAt)).limit(50);
+    }).from(rankHistory2).innerJoin(businesses2, eq30(rankHistory2.businessId, businesses2.id)).where(and20(eq30(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc17(rankHistory2.createdAt)).limit(50);
     if (recentChanges.length === 0) return 0;
     let biggestMover = recentChanges[0];
     let biggestDelta = 0;
@@ -5978,7 +5988,7 @@ async function sendCityHighlightsPush(city) {
       id: members4.id,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs
-    }).from(members4).where(and19(eq29(members4.city, city), isNotNull5(members4.pushToken)));
+    }).from(members4).where(and20(eq30(members4.city, city), isNotNull5(members4.pushToken)));
     let sent = 0;
     for (const user of cityUsers) {
       if (!user.pushToken) continue;
@@ -6017,7 +6027,7 @@ var seed_exports = {};
 __export(seed_exports, {
   seedDatabase: () => seedDatabase
 });
-import { sql as sql16, eq as eq27, and as and17 } from "drizzle-orm";
+import { sql as sql17, eq as eq28, and as and18 } from "drizzle-orm";
 import bcrypt2 from "bcrypt";
 function getHoursForCategory(category) {
   switch (category) {
@@ -6153,9 +6163,9 @@ async function seedDatabase() {
     }).returning();
     const slugPattern = "%" + board.dishSlug + "%";
     const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq27(dishes.businessId, businesses.id)).where(and17(
-      eq27(businesses.city, "Dallas"),
-      sql16`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
+    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq28(dishes.businessId, businesses.id)).where(and18(
+      eq28(businesses.city, "Dallas"),
+      sql17`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
     ));
     const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
     for (let i = 0; i < uniqueBizIds.length; i++) {
@@ -6211,7 +6221,7 @@ async function seedDatabase() {
       totalVotes: 142,
       status: "active"
     });
-    await db.update(businesses).set({ inChallenger: true }).where(sql16`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
+    await db.update(businesses).set({ inChallenger: true }).where(sql17`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
     console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
   }
   if (cultivar && luckyCat) {
@@ -7005,7 +7015,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq28, isNotNull as isNotNull4, and as and18 } from "drizzle-orm";
+import { eq as eq29, isNotNull as isNotNull4, and as and19 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -7018,8 +7028,8 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
-      and18(
-        eq28(businesses.isClaimed, false),
+      and19(
+        eq29(businesses.isClaimed, false),
         isNotNull4(businesses.rankPosition)
       )
     );
@@ -7037,10 +7047,10 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
-      and18(
-        eq28(businesses.isClaimed, true),
+      and19(
+        eq29(businesses.isClaimed, true),
         isNotNull4(businesses.ownerId),
-        eq28(businesses.subscriptionStatus, "none")
+        eq29(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -7050,7 +7060,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq28(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq29(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -7304,8 +7314,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq29(members4.id, member.id));
+    const { eq: eq30 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq30(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -8411,15 +8421,15 @@ init_logger();
 init_db();
 init_schema();
 init_city_config();
-import { sql as sql12, eq as eq19, count as count14 } from "drizzle-orm";
+import { sql as sql13, eq as eq20, count as count14 } from "drizzle-orm";
 var engLog = log.tag("CityEngagement");
 async function getCityEngagement(city) {
   engLog.debug(`Fetching engagement for city: ${city}`);
-  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq19(members.city, city));
+  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
   const totalMembers = memberResult?.total ?? 0;
-  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq19(businesses.city, city));
+  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq20(businesses.city, city));
   const totalBusinesses = bizResult?.total ?? 0;
-  const ratingsResult = await db.execute(sql12`
+  const ratingsResult = await db.execute(sql13`
     SELECT COUNT(r.id)::int AS total
     FROM ratings r
     JOIN businesses b ON r.business_id = b.id
@@ -8427,7 +8437,7 @@ async function getCityEngagement(city) {
   `);
   const totalRatings = ratingsResult.rows[0]?.total ?? 0;
   const avgRatingsPerMember = totalMembers > 0 ? Math.round(totalRatings / totalMembers * 100) / 100 : 0;
-  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq19(businesses.city, city)).groupBy(businesses.category).orderBy(sql12`count(*) DESC`).limit(1);
+  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq20(businesses.city, city)).groupBy(businesses.category).orderBy(sql13`count(*) DESC`).limit(1);
   const topCategory = categoryResult[0]?.category ?? "N/A";
   engLog.info(`City engagement for ${city}: ${totalMembers} members, ${totalBusinesses} businesses, ${totalRatings} ratings`);
   return {
@@ -8876,7 +8886,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq30, asc: asc4 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -8887,7 +8897,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq29(businesses2.isActive, true)).orderBy(asc3(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq30(businesses2.isActive, true)).orderBy(asc4(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -9614,11 +9624,11 @@ init_tier_staleness();
 // server/gdpr.ts
 init_db();
 init_schema();
-import { eq as eq20, and as and13, lte as lte3 } from "drizzle-orm";
+import { eq as eq21, and as and14, lte as lte3 } from "drizzle-orm";
 async function scheduleDeletion(userId, gracePeriodDays) {
   const now = /* @__PURE__ */ new Date();
   const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1e3);
-  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and13(eq20(deletionRequests.memberId, userId), eq20(deletionRequests.status, "pending")));
+  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending")));
   const [row] = await db.insert(deletionRequests).values({
     memberId: userId,
     requestedAt: now,
@@ -9634,11 +9644,11 @@ async function scheduleDeletion(userId, gracePeriodDays) {
 }
 async function cancelDeletion(userId) {
   const now = /* @__PURE__ */ new Date();
-  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and13(eq20(deletionRequests.memberId, userId), eq20(deletionRequests.status, "pending"))).returning();
+  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending"))).returning();
   return result.length > 0;
 }
 async function getDeletionStatus(userId) {
-  const rows = await db.select().from(deletionRequests).where(eq20(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
+  const rows = await db.select().from(deletionRequests).where(eq21(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
   if (rows.length === 0) return null;
   const row = rows[0];
   return {
@@ -10448,7 +10458,7 @@ function registerBusinessRoutes(app2) {
     }
     const [bizSuggestions, dishData] = await Promise.all([
       autocompleteBusinesses(query, city),
-      Promise.resolve().then(() => (init_businesses(), businesses_exports)).then((m) => m.getTopDishesForAutocomplete(city, 50))
+      Promise.resolve().then(() => (init_dishes(), dishes_exports)).then((m) => m.getTopDishesForAutocomplete(city, 50))
     ]);
     const { buildDishSuggestions: buildDishSuggestions2, mergeSuggestions: mergeSuggestions2, scoreSuggestion: scoreSuggestion2 } = await Promise.resolve().then(() => (init_search_autocomplete(), search_autocomplete_exports));
     const bizMapped = bizSuggestions.map((b) => ({
@@ -10989,15 +10999,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29 } = await import("drizzle-orm");
+    const { eq: eq30 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq29(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq30(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq29(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq29(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq30(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq30(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -11231,7 +11241,7 @@ function registerReferralRoutes(app2) {
 init_db();
 init_schema();
 init_logger();
-import { eq as eq22 } from "drizzle-orm";
+import { eq as eq23 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
 import crypto7 from "crypto";
@@ -11292,13 +11302,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq23(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, false) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq23(members.id, memberId));
     log.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
@@ -11322,13 +11332,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq22(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq23(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, true) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq22(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq23(members.id, memberId));
     log.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
@@ -12489,7 +12499,7 @@ function registerAdminPhotoRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
-import { eq as eq23, and as and15, isNotNull } from "drizzle-orm";
+import { eq as eq24, and as and16, isNotNull } from "drizzle-orm";
 var dietaryLog = log.tag("AdminDietary");
 var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
 var CUISINE_TAG_SUGGESTIONS = {
@@ -12510,7 +12520,7 @@ function registerAdminDietaryRoutes(app2) {
       name: businesses.name,
       cuisine: businesses.cuisine,
       dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq23(businesses.isActive, true));
+    }).from(businesses).where(eq24(businesses.isActive, true));
     const tagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
     const untagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
     const tagCounts = {};
@@ -12538,7 +12548,7 @@ function registerAdminDietaryRoutes(app2) {
     if (invalidTags.length > 0) {
       return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}. Valid: ${VALID_TAGS.join(", ")}` });
     }
-    const result = await db.update(businesses).set({ dietaryTags: tags }).where(eq23(businesses.id, businessId)).returning({ id: businesses.id, name: businesses.name });
+    const result = await db.update(businesses).set({ dietaryTags: tags }).where(eq24(businesses.id, businessId)).returning({ id: businesses.id, name: businesses.name });
     if (result.length === 0) {
       return res.status(404).json({ error: "Business not found" });
     }
@@ -12554,8 +12564,8 @@ function registerAdminDietaryRoutes(app2) {
       cuisine: businesses.cuisine,
       dietaryTags: businesses.dietaryTags
     }).from(businesses).where(
-      and15(
-        eq23(businesses.isActive, true),
+      and16(
+        eq24(businesses.isActive, true),
         isNotNull(businesses.cuisine)
       )
     );
@@ -12574,7 +12584,7 @@ function registerAdminDietaryRoutes(app2) {
           suggestedTags: newTags
         });
         if (!dryRun) {
-          await db.update(businesses).set({ dietaryTags: merged }).where(eq23(businesses.id, biz.id));
+          await db.update(businesses).set({ dietaryTags: merged }).where(eq24(businesses.id, biz.id));
         }
       }
     }
@@ -12594,7 +12604,7 @@ function registerAdminDietaryRoutes(app2) {
       cuisine: businesses.cuisine,
       city: businesses.city,
       dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq23(businesses.isActive, true));
+    }).from(businesses).where(eq24(businesses.isActive, true));
     let filtered = allBiz;
     if (filter === "tagged") {
       filtered = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
@@ -12609,7 +12619,7 @@ function registerAdminDietaryRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
-import { eq as eq24 } from "drizzle-orm";
+import { eq as eq25 } from "drizzle-orm";
 init_admin();
 var enrichLog = log.tag("AdminEnrichment");
 function requireAdmin4(req, res, next) {
@@ -12628,7 +12638,7 @@ function registerAdminEnrichmentRoutes(app2) {
       cuisine: businesses.cuisine,
       dietaryTags: businesses.dietaryTags,
       openingHours: businesses.openingHours
-    }).from(businesses).where(eq24(businesses.isActive, true));
+    }).from(businesses).where(eq25(businesses.isActive, true));
     const dietaryTagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
     const dietaryUntagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
     const tagCounts = {};
@@ -12715,7 +12725,7 @@ function registerAdminEnrichmentRoutes(app2) {
       city: businesses.city,
       cuisine: businesses.cuisine,
       openingHours: businesses.openingHours
-    }).from(businesses).where(eq24(businesses.isActive, true));
+    }).from(businesses).where(eq25(businesses.isActive, true));
     if (city) {
       allBiz = allBiz.filter((b) => b.city === city);
     }
@@ -12744,7 +12754,7 @@ function registerAdminEnrichmentRoutes(app2) {
       city: businesses.city,
       cuisine: businesses.cuisine,
       dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq24(businesses.isActive, true));
+    }).from(businesses).where(eq25(businesses.isActive, true));
     if (city) {
       allBiz = allBiz.filter((b) => b.city === city);
     }
@@ -12768,7 +12778,7 @@ function registerAdminEnrichmentRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
-import { eq as eq25 } from "drizzle-orm";
+import { eq as eq26 } from "drizzle-orm";
 init_admin();
 var bulkLog = log.tag("AdminEnrichmentBulk");
 function requireAdmin5(req, res, next) {
@@ -12801,11 +12811,11 @@ function registerAdminEnrichmentBulkRoutes(app2) {
         id: businesses.id,
         name: businesses.name,
         dietaryTags: businesses.dietaryTags
-      }).from(businesses).where(eq25(businesses.id, bizId));
+      }).from(businesses).where(eq26(businesses.id, bizId));
       if (!biz) continue;
       const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
       const newTags = mode === "replace" ? [...tags] : [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
-      await db.update(businesses).set({ dietaryTags: newTags }).where(eq25(businesses.id, bizId));
+      await db.update(businesses).set({ dietaryTags: newTags }).where(eq26(businesses.id, bizId));
       results.push({ id: biz.id, name: biz.name, previousTags, newTags });
     }
     bulkLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
@@ -12830,7 +12840,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
       cuisine: businesses.cuisine,
       city: businesses.city,
       dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq25(businesses.isActive, true));
+    }).from(businesses).where(eq26(businesses.isActive, true));
     allBiz = allBiz.filter((b) => b.cuisine?.toLowerCase() === cuisine.toLowerCase());
     if (city) {
       allBiz = allBiz.filter((b) => b.city === city);
@@ -12843,7 +12853,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
         continue;
       }
       if (!dryRun) {
-        await db.update(businesses).set({ dietaryTags: newTags }).where(eq25(businesses.id, biz.id));
+        await db.update(businesses).set({ dietaryTags: newTags }).where(eq26(businesses.id, biz.id));
       }
       updates.push({ id: biz.id, name: biz.name, previousTags, newTags });
     }
@@ -12891,12 +12901,12 @@ function registerAdminEnrichmentBulkRoutes(app2) {
         id: businesses.id,
         name: businesses.name,
         openingHours: businesses.openingHours
-      }).from(businesses).where(eq25(businesses.id, bizId));
+      }).from(businesses).where(eq26(businesses.id, bizId));
       if (!biz) continue;
       const prevHours = biz.openingHours;
       const hadHours = !!(prevHours && prevHours.periods && prevHours.periods.length > 0);
       if (!dryRun) {
-        await db.update(businesses).set({ openingHours: hoursData }).where(eq25(businesses.id, bizId));
+        await db.update(businesses).set({ openingHours: hoursData }).where(eq26(businesses.id, bizId));
       }
       results.push({
         id: biz.id,
@@ -12920,7 +12930,7 @@ function registerAdminEnrichmentBulkRoutes(app2) {
 init_logger();
 init_db();
 init_schema();
-import { eq as eq26, and as and16, gte as gte8 } from "drizzle-orm";
+import { eq as eq27, and as and17, gte as gte8 } from "drizzle-orm";
 var cityLog = log.tag("CityStats");
 function registerCityStatsRoutes(app2) {
   app2.get("/api/city-stats/:city", async (req, res) => {
@@ -12931,7 +12941,7 @@ function registerCityStatsRoutes(app2) {
       weightedScore: businesses.weightedScore,
       totalRatings: businesses.totalRatings
     }).from(businesses).where(
-      and16(eq26(businesses.city, city), eq26(businesses.isActive, true))
+      and17(eq27(businesses.city, city), eq27(businesses.isActive, true))
     );
     if (activeBiz.length === 0) {
       return res.json({
@@ -13490,7 +13500,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq29 } = await import("drizzle-orm");
+      const { eq: eq30 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -13506,7 +13516,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq29(ratings5.id, ratingId));
+      }).where(eq30(ratings5.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -13536,8 +13546,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq29(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq30 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq30(ratingPhotos2.ratingId, ratingId));
     return res.json({ data: photos });
   }));
 }
@@ -13551,7 +13561,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings5 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, and: and19, sql: sql18, count: count15 } = await import("drizzle-orm");
+    const { eq: eq30, and: and20, sql: sql19, count: count15 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings5.visitType,
       foodScore: ratings5.foodScore,
@@ -13570,9 +13580,9 @@ function registerScoreBreakdownRoutes(app2) {
       hasReceipt: ratings5.hasReceipt,
       wouldReturn: ratings5.wouldReturn,
       createdAt: ratings5.createdAt
-    }).from(ratings5).where(and19(
-      eq29(ratings5.businessId, businessId),
-      eq29(ratings5.isFlagged, false)
+    }).from(ratings5).where(and20(
+      eq30(ratings5.businessId, businessId),
+      eq30(ratings5.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -13647,11 +13657,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, asc: asc3 } = await import("drizzle-orm");
+    const { eq: eq30, asc: asc4 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq29(rankHistory2.businessId, businessId)).orderBy(asc3(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq30(rankHistory2.businessId, businessId)).orderBy(asc4(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)

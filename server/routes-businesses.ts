@@ -38,7 +38,7 @@ export function registerBusinessRoutes(app: Express) {
     }
     const [bizSuggestions, dishData] = await Promise.all([
       autocompleteBusinesses(query, city),
-      import("./storage/businesses").then(m => m.getTopDishesForAutocomplete(city, 50)),
+      import("./storage/dishes").then(m => m.getTopDishesForAutocomplete(city, 50)),
     ]);
     const { buildDishSuggestions, mergeSuggestions, scoreSuggestion } = await import("./search-autocomplete");
     const bizMapped = bizSuggestions.map(b => ({

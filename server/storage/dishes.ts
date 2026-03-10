@@ -441,3 +441,34 @@ export async function getBatchDishRankings(businessIds: string[]): Promise<
   }
   return result;
 }
+
+/**
+ * Sprint 493→498: Get top dishes for autocomplete matching.
+ * Moved from storage/businesses.ts during Sprint 498 extraction.
+ * Returns dish names with their business info for search suggestions.
+ */
+export async function getTopDishesForAutocomplete(
+  city: string,
+  limit: number = 50,
+): Promise<{ name: string; businessName: string; businessSlug: string; businessId: string; voteCount: number }[]> {
+  const rows = await db
+    .select({
+      name: dishes.name,
+      businessName: businesses.name,
+      businessSlug: businesses.slug,
+      businessId: dishes.businessId,
+      voteCount: dishes.voteCount,
+    })
+    .from(dishes)
+    .innerJoin(businesses, eq(dishes.businessId, businesses.id))
+    .where(and(eq(businesses.city, city), eq(dishes.isActive, true), eq(businesses.isActive, true)))
+    .orderBy(desc(dishes.voteCount))
+    .limit(limit);
+  return rows.map(r => ({
+    name: r.name,
+    businessName: r.businessName,
+    businessSlug: r.businessSlug,
+    businessId: r.businessId,
+    voteCount: r.voteCount,
+  }));
+}
