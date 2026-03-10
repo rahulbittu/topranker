@@ -131,3 +131,92 @@ export function computePushAnalytics(daysBack: number = 7): PushAnalyticsSummary
 export function getPushRecordCount(): number {
   return deliveryRecords.length;
 }
+
+// ── Sprint 499: Notification Open Tracking ──────────────────
+
+export interface NotificationOpenRecord {
+  notificationId: string;
+  category: string;
+  memberId: string;
+  openedAt: number;
+}
+
+const openRecords: NotificationOpenRecord[] = [];
+const MAX_OPEN_RECORDS = 10000;
+
+/**
+ * Record when a user opens/taps a push notification.
+ * Called from the client via POST /api/notifications/opened.
+ */
+export function recordNotificationOpen(
+  notificationId: string,
+  category: string,
+  memberId: string,
+): void {
+  const record: NotificationOpenRecord = {
+    notificationId,
+    category,
+    memberId,
+    openedAt: Date.now(),
+  };
+
+  openRecords.push(record);
+
+  if (openRecords.length > MAX_OPEN_RECORDS) {
+    openRecords.splice(0, openRecords.length - MAX_OPEN_RECORDS);
+  }
+
+  analyticsLog.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
+}
+
+/**
+ * Compute notification open analytics.
+ * Returns open counts by category and recent opens.
+ */
+export function computeOpenAnalytics(daysBack: number = 7): {
+  totalOpens: number;
+  byCategory: Record<string, number>;
+  uniqueMembers: number;
+  recentOpens: NotificationOpenRecord[];
+} {
+  const cutoff = Date.now() - daysBack * 86400000;
+  const filtered = openRecords.filter(r => r.openedAt >= cutoff);
+
+  const byCategory: Record<string, number> = {};
+  const memberSet = new Set<string>();
+
+  for (const r of filtered) {
+    byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+    memberSet.add(r.memberId);
+  }
+
+  return {
+    totalOpens: filtered.length,
+    byCategory,
+    uniqueMembers: memberSet.size,
+    recentOpens: filtered.slice(-20).reverse(),
+  };
+}
+
+/**
+ * Get combined delivery + open analytics for admin dashboard.
+ */
+export function getNotificationInsights(daysBack: number = 7): {
+  delivery: PushAnalyticsSummary;
+  opens: ReturnType<typeof computeOpenAnalytics>;
+  openRate: number;
+} {
+  const delivery = computePushAnalytics(daysBack);
+  const opens = computeOpenAnalytics(daysBack);
+  const openRate = delivery.totalSent > 0
+    ? Math.round((opens.totalOpens / delivery.totalSent) * 1000) / 10
+    : 0;
+  return { delivery, opens, openRate };
+}
+
+/**
+ * Get open record count (for health checks).
+ */
+export function getOpenRecordCount(): number {
+  return openRecords.length;
+}

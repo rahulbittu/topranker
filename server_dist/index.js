@@ -5745,7 +5745,42 @@ function computePushAnalytics(daysBack = 7) {
 function getPushRecordCount() {
   return deliveryRecords.length;
 }
-var analyticsLog2, deliveryRecords, MAX_RECORDS;
+function recordNotificationOpen(notificationId, category, memberId) {
+  const record = {
+    notificationId,
+    category,
+    memberId,
+    openedAt: Date.now()
+  };
+  openRecords.push(record);
+  if (openRecords.length > MAX_OPEN_RECORDS) {
+    openRecords.splice(0, openRecords.length - MAX_OPEN_RECORDS);
+  }
+  analyticsLog2.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
+}
+function computeOpenAnalytics(daysBack = 7) {
+  const cutoff = Date.now() - daysBack * 864e5;
+  const filtered = openRecords.filter((r) => r.openedAt >= cutoff);
+  const byCategory = {};
+  const memberSet = /* @__PURE__ */ new Set();
+  for (const r of filtered) {
+    byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+    memberSet.add(r.memberId);
+  }
+  return {
+    totalOpens: filtered.length,
+    byCategory,
+    uniqueMembers: memberSet.size,
+    recentOpens: filtered.slice(-20).reverse()
+  };
+}
+function getNotificationInsights(daysBack = 7) {
+  const delivery = computePushAnalytics(daysBack);
+  const opens = computeOpenAnalytics(daysBack);
+  const openRate = delivery.totalSent > 0 ? Math.round(opens.totalOpens / delivery.totalSent * 1e3) / 10 : 0;
+  return { delivery, opens, openRate };
+}
+var analyticsLog2, deliveryRecords, MAX_RECORDS, openRecords, MAX_OPEN_RECORDS;
 var init_push_analytics = __esm({
   "server/push-analytics.ts"() {
     "use strict";
@@ -5753,6 +5788,8 @@ var init_push_analytics = __esm({
     analyticsLog2 = log.tag("PushAnalytics");
     deliveryRecords = [];
     MAX_RECORDS = 1e4;
+    openRecords = [];
+    MAX_OPEN_RECORDS = 1e4;
   }
 });
 
@@ -11175,6 +11212,7 @@ function deleteNotification(notificationId) {
 }
 
 // server/routes-notifications.ts
+init_push_analytics();
 var notifRouteLog = log.tag("NotifRoutes");
 function registerNotificationRoutes(app2) {
   app2.get("/api/notifications", requireAuth, (req, res) => {
@@ -11205,6 +11243,24 @@ function registerNotificationRoutes(app2) {
     const result = deleteNotification(req.params.id);
     if (!result) return res.status(404).json({ error: "Notification not found" });
     res.json({ success: true });
+  });
+  app2.post("/api/notifications/opened", requireAuth, (req, res) => {
+    const memberId = req.memberId || "anonymous";
+    const { notificationId, category } = req.body;
+    if (!notificationId || !category) {
+      return res.status(400).json({ error: "notificationId and category required" });
+    }
+    recordNotificationOpen(
+      String(notificationId).slice(0, 100),
+      String(category).slice(0, 50),
+      memberId
+    );
+    res.json({ success: true });
+  });
+  app2.get("/api/notifications/insights", (req, res) => {
+    const daysBack = parseInt(req.query.daysBack) || 7;
+    const insights = getNotificationInsights(Math.min(daysBack, 90));
+    res.json({ data: insights });
   });
 }
 
