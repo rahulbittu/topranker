@@ -408,7 +408,7 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Photo Gallery — extracted component (Sprint 366) */}
-          <PhotoGallery photoUrls={photoUrls} category={business.category} />
+          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => router.push({ pathname: "/rate/[id]", params: { id: business.slug } }) : undefined} />
 
         </View>
       </ScrollView>

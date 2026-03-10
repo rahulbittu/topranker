@@ -53,13 +53,13 @@ describe("Sprint 362: Business photo gallery improvements", () => {
       expect(gallerySrc).toContain("photoUrls.length <= 1");
     });
 
-    it("should have header with title and count", () => {
+    it("should have header with title and photo badge", () => {
       expect(gallerySrc).toContain("header");
-      expect(gallerySrc).toContain("count");
+      expect(gallerySrc).toContain("photoBadge");
     });
 
-    it("should display photo count text", () => {
-      expect(gallerySrc).toContain("{photoUrls.length} photos");
+    it("should display photo count in badge", () => {
+      expect(gallerySrc).toContain("photoUrls.length");
     });
 
     it("should have featured first photo (full width)", () => {
@@ -71,14 +71,14 @@ describe("Sprint 362: Business photo gallery improvements", () => {
       expect(gallerySrc).toContain("aspectRatio: 16 / 9");
     });
 
-    it("should show remaining photos in 2-column grid", () => {
+    it("should show remaining photos in grid", () => {
       expect(gallerySrc).toContain("row");
-      expect(gallerySrc).toContain("photoUrls.slice(1, 5)");
+      expect(gallerySrc).toContain("gridPhotos");
     });
 
-    it("should show overflow message for 6+ photos", () => {
-      expect(gallerySrc).toContain("photoUrls.length > 5");
-      expect(gallerySrc).toContain("more in carousel above");
+    it("should show see-all overlay when overflow", () => {
+      expect(gallerySrc).toContain("seeAllOverlay");
+      expect(gallerySrc).toContain("See all");
     });
 
     it("should use rounded corners on grid container", () => {
@@ -93,8 +93,8 @@ describe("Sprint 362: Business photo gallery improvements", () => {
       expect(gallerySrc).toContain("header:");
     });
 
-    it("should define count style", () => {
-      expect(gallerySrc).toContain("count:");
+    it("should define photoBadge style", () => {
+      expect(gallerySrc).toContain("photoBadge:");
     });
 
     it("should define featured style", () => {
@@ -105,12 +105,12 @@ describe("Sprint 362: Business photo gallery improvements", () => {
       expect(gallerySrc).toContain("row:");
     });
 
-    it("should define more style", () => {
-      expect(gallerySrc).toContain("more:");
+    it("should define seeAllOverlay style", () => {
+      expect(gallerySrc).toContain("seeAllOverlay:");
     });
 
     it("should use 48.5% width for grid images (2-column)", () => {
-      expect(gallerySrc).toContain('"48.5%"');
+      expect(gallerySrc).toContain("pct(48.5)");
     });
   });
 
