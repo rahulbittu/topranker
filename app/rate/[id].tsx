@@ -24,7 +24,7 @@ import {
   CircleScorePicker, ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
 } from "@/components/rate/SubComponents";
 import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
-import { VisitTypeStep, getDimensionLabels, type VisitType } from "@/components/rate/VisitTypeStep";
+import { VisitTypeStep, getDimensionLabels, getDimensionTooltips, DimensionTooltip, type VisitType } from "@/components/rate/VisitTypeStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
@@ -229,6 +229,9 @@ export default function RateScreen() {
 
   // Sprint 411: Extracted to VisitTypeStep (Rating Integrity Phase 1a)
   const { q1Label, q2Label, q3Label } = getDimensionLabels(visitType);
+  // Sprint 439: Dimension tooltips
+  const dimensionTooltips = getDimensionTooltips(visitType);
+  const [activeTooltip, setActiveTooltip] = useState<number | null>(null);
 
   const prevRank = business.rank ?? 1;
   const newRank = Math.max(1, prevRank - (rawScore > 4 ? 1 : 0));
@@ -334,15 +337,24 @@ export default function RateScreen() {
             )}
             {/* Sprint 334/342: Auto-advance focus with animated highlight */}
             <Animated.View style={[styles.compactQuestion, dim0Style]} onLayout={(e) => { dimensionYPositions.current[0] = e.nativeEvent.layout.y; }}>
-              <Text style={styles.compactLabel}>{q1Label}</Text>
+              <View style={styles.labelWithTooltip}>
+                <Text style={styles.compactLabel}>{q1Label}</Text>
+                <DimensionTooltip tooltip={dimensionTooltips[0]} visible={activeTooltip === 0} onToggle={() => setActiveTooltip(activeTooltip === 0 ? null : 0)} />
+              </View>
               <CircleScorePicker value={q1Score} onChange={handleQ1} circleSize={circleSize} />
             </Animated.View>
             <Animated.View style={[styles.compactQuestion, dim1Style]} onLayout={(e) => { dimensionYPositions.current[1] = e.nativeEvent.layout.y; }}>
-              <Text style={styles.compactLabel}>{q2Label}</Text>
+              <View style={styles.labelWithTooltip}>
+                <Text style={styles.compactLabel}>{q2Label}</Text>
+                <DimensionTooltip tooltip={dimensionTooltips[1]} visible={activeTooltip === 1} onToggle={() => setActiveTooltip(activeTooltip === 1 ? null : 1)} />
+              </View>
               <CircleScorePicker value={q2Score} onChange={handleQ2} circleSize={circleSize} />
             </Animated.View>
             <Animated.View style={[styles.compactQuestion, dim2Style]} onLayout={(e) => { dimensionYPositions.current[2] = e.nativeEvent.layout.y; }}>
-              <Text style={styles.compactLabel}>{q3Label}</Text>
+              <View style={styles.labelWithTooltip}>
+                <Text style={styles.compactLabel}>{q3Label}</Text>
+                <DimensionTooltip tooltip={dimensionTooltips[2]} visible={activeTooltip === 2} onToggle={() => setActiveTooltip(activeTooltip === 2 ? null : 2)} />
+              </View>
               <CircleScorePicker value={q3Score} onChange={handleQ3} circleSize={circleSize} />
             </Animated.View>
             <Animated.View style={[styles.compactQuestion, dim3Style]} onLayout={(e) => { dimensionYPositions.current[3] = e.nativeEvent.layout.y; }}>
@@ -470,6 +482,7 @@ const styles = StyleSheet.create({
   stepAreaContent: { paddingVertical: 8 },
   stepContent: { gap: 20 },
   compactQuestion: { gap: 8 },
+  labelWithTooltip: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6 },
   compactLabel: {
     fontSize: 15, fontWeight: "600" as const, color: Colors.text,
     fontFamily: "DMSans_600SemiBold",

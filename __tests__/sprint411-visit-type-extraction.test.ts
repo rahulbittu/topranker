@@ -72,7 +72,10 @@ describe("Sprint 411 — Visit Type Step Extraction", () => {
 
   describe("rate/[id].tsx after extraction", () => {
     it("imports VisitTypeStep and getDimensionLabels", () => {
-      expect(rateSrc).toContain('import { VisitTypeStep, getDimensionLabels, type VisitType }');
+      // Sprint 439: Import expanded with getDimensionTooltips and DimensionTooltip
+      expect(rateSrc).toContain("VisitTypeStep");
+      expect(rateSrc).toContain("getDimensionLabels");
+      expect(rateSrc).toContain("type VisitType");
     });
 
     it("renders VisitTypeStep with correct props", () => {
