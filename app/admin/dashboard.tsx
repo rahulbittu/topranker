@@ -13,6 +13,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "../../constants/colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
@@ -244,6 +246,33 @@ export default function AdminDashboard() {
         <Text style={styles.refreshButtonText}>Refresh</Text>
       </TouchableOpacity>
 
+      {/* Quick Links — Sprint 374 */}
+      <View style={styles.quickLinksSection}>
+        <Text style={styles.sectionTitle}>Quick Links</Text>
+        <View style={styles.quickLinksGrid}>
+          <TouchableOpacity
+            style={styles.quickLinkCard}
+            onPress={() => router.push("/admin/moderation")}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Moderation Queue"
+          >
+            <Ionicons name="shield-outline" size={20} color={BRAND.colors.amber} />
+            <Text style={styles.quickLinkLabel}>Moderation Queue</Text>
+            <Text style={styles.quickLinkDesc}>Review flagged content</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickLinkCard}
+            onPress={() => router.push("/admin")}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Admin Home"
+          >
+            <Ionicons name="settings-outline" size={20} color={BRAND.colors.amber} />
+            <Text style={styles.quickLinkLabel}>Admin Home</Text>
+            <Text style={styles.quickLinkDesc}>All admin tools</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Conversion Funnel — Sprint 123 */}
       <View style={styles.funnelSection}>
         <Text style={styles.funnelSectionHeader}>CONVERSION FUNNEL</Text>
@@ -441,6 +470,23 @@ const styles = StyleSheet.create({
     fontSize: TYPOGRAPHY.ui.button.fontSize,
     fontWeight: "700",
     color: "#FFFFFF",
+  },
+  quickLinksSection: {
+    padding: 16,
+  },
+  quickLinksGrid: {
+    flexDirection: "row", gap: 10,
+  },
+  quickLinkCard: {
+    flex: 1, backgroundColor: Colors.surface, borderRadius: 12,
+    padding: 14, gap: 4, borderWidth: 1, borderColor: Colors.border,
+  },
+  quickLinkLabel: {
+    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+    marginTop: 4,
+  },
+  quickLinkDesc: {
+    fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
   },
   activitySection: {
     padding: 16,
