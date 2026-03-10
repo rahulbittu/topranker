@@ -40,7 +40,15 @@ export default function LeaderboardScreen() {
   const [showSuggest, setShowSuggest] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
   const [selectedBestIn, setSelectedBestIn] = useState<string | null>(null);
-  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+  const [selectedCuisine, setSelectedCuisineRaw] = useState<string | null>(null);
+  const setSelectedCuisine = useCallback((cuisine: string | null) => {
+    setSelectedCuisineRaw(cuisine);
+    if (cuisine) {
+      AsyncStorage.setItem("rankings_cuisine", cuisine);
+    } else {
+      AsyncStorage.removeItem("rankings_cuisine");
+    }
+  }, []);
   const availableCuisines = useMemo(() => getAvailableCuisines(), []);
   const bestInCategories = useMemo(() =>
     selectedCuisine ? getCategoriesByCuisine(selectedCuisine) : getActiveCategories(),
@@ -50,6 +58,12 @@ export default function LeaderboardScreen() {
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
       if (val !== "true") setShowBanner(true);
+    });
+    // Sprint 308: Restore persisted cuisine filter
+    AsyncStorage.getItem("rankings_cuisine").then((val) => {
+      if (val && availableCuisines.includes(val)) {
+        setSelectedCuisineRaw(val);
+      }
     });
   }, []);
 

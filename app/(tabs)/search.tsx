@@ -55,12 +55,24 @@ export default function SearchScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteSuggestion[]>([]);
-  const [selectedCuisine, setSelectedCuisine] = useState<string | null>(null);
+  const [selectedCuisine, setSelectedCuisineRaw] = useState<string | null>(null);
+  const setSelectedCuisine = useCallback((cuisine: string | null) => {
+    setSelectedCuisineRaw(cuisine);
+    if (cuisine) {
+      AsyncStorage.setItem("discover_cuisine", cuisine);
+    } else {
+      AsyncStorage.removeItem("discover_cuisine");
+    }
+  }, []);
 
-  // Load recent searches from storage
+  // Load recent searches and persisted cuisine from storage
   useEffect(() => {
     AsyncStorage.getItem("recent_searches").then((val) => {
       if (val) try { setRecentSearches(JSON.parse(val)); } catch {}
+    });
+    // Sprint 308: Restore persisted cuisine filter
+    AsyncStorage.getItem("discover_cuisine").then((val) => {
+      if (val) setSelectedCuisineRaw(val);
     });
   }, []);
 
