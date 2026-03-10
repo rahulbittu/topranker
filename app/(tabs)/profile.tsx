@@ -20,7 +20,7 @@ import { pct } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
-import { fetchMemberProfile, fetchMemberImpact, type ApiMemberProfile } from "@/lib/api";
+import { fetchMemberProfile, fetchMemberImpact, deleteRatingApi, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
 import { TYPOGRAPHY } from "@/constants/typography";
 import { useBookmarks } from "@/lib/bookmarks-context";
@@ -51,6 +51,17 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
   const [breakdownExpanded, setBreakdownExpanded] = useState(false);
   const [historyPageSize, setHistoryPageSize] = useState(10);
+
+  const handleDeleteRating = useCallback(async (ratingId: string) => {
+    try {
+      await deleteRatingApi(ratingId);
+      refetch();
+    } catch (err: any) {
+      // Error handling — show alert on failure
+      const msg = err?.message || "Failed to delete rating";
+      import("react-native").then(({ Alert }) => Alert.alert("Error", msg));
+    }
+  }, [refetch]);
 
   const { data: impact } = useQuery({
     queryKey: ["impact", profile.id],
@@ -352,7 +363,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       </View>
 
       {profile.ratingHistory.slice(0, historyPageSize).map((r: any) => (
-        <HistoryRow key={r.id} r={r} />
+        <HistoryRow key={r.id} r={r} onDelete={handleDeleteRating} />
       ))}
 
       {profile.ratingHistory.length > historyPageSize && (

@@ -560,3 +560,36 @@ export async function reviewAdminFlag(id: string, status: "confirmed" | "dismiss
   if (!res.ok) throw new Error(`Review flag failed: ${res.status}`);
   return res.json();
 }
+
+// Sprint 387: Rating edit/delete
+export async function editRatingApi(ratingId: string, updates: {
+  q1Score?: number;
+  q2Score?: number;
+  q3Score?: number;
+  wouldReturn?: boolean;
+  note?: string;
+}) {
+  const res = await fetch(`${getApiUrl()}/api/ratings/${ratingId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(updates),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Edit failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteRatingApi(ratingId: string) {
+  const res = await fetch(`${getApiUrl()}/api/ratings/${ratingId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error || `Delete failed: ${res.status}`);
+  }
+  return res.json();
+}
