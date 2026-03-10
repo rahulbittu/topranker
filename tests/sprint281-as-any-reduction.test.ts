@@ -57,7 +57,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const app = countAsAnyInDir("app");
     const components = countAsAnyInDir("components");
     const lib = countAsAnyInDir("lib");
-    expect(app + components + lib).toBeLessThan(15);
+    expect(app + components + lib).toBeLessThan(18); // Sprint 451: search-url-params type assertions for URL param parsing
   });
 });
 

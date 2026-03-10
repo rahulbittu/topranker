@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Analytics } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   TextInput, ScrollView, Platform, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
@@ -33,6 +33,7 @@ import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { TrendingSection } from "@/components/search/TrendingSection";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { decodeSearchParams, encodeSearchParams, type SearchFilterState } from "@/lib/search-url-params";
 
 const AMBER = BRAND.colors.amber;
 
@@ -62,6 +63,23 @@ export default function SearchScreen() {
   const [distanceFilter, setDistanceFilter] = useState<DistanceOption>(null);
   // Sprint 447: Hours-based filters
   const [hoursFilters, setHoursFilters] = useState<HoursFilter[]>([]);
+
+  // Sprint 451: Read URL params on mount to restore filter state
+  const urlParams = useLocalSearchParams();
+  const urlParamsRead = useRef(false);
+  useEffect(() => {
+    if (urlParamsRead.current) return;
+    urlParamsRead.current = true;
+    const decoded = decodeSearchParams(urlParams);
+    if (decoded.query) setQuery(decoded.query);
+    if (decoded.cuisine) setSelectedCuisine(decoded.cuisine);
+    if (decoded.dietary?.length) setDietaryTags(decoded.dietary);
+    if (decoded.distance) setDistanceFilter(decoded.distance);
+    if (decoded.hours?.length) setHoursFilters(decoded.hours);
+    if (decoded.price) setPriceFilter(decoded.price);
+    if (decoded.sort) setSortBy(decoded.sort);
+    if (decoded.filter) setActiveFilter(decoded.filter as any);
+  }, []);
 
   // Autocomplete: fast 150ms debounce for typeahead
   useEffect(() => {
