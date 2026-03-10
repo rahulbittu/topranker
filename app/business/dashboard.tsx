@@ -17,6 +17,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { SparklineChart } from "@/components/dashboard/SparklineChart";
 import { VolumeBarChart } from "@/components/dashboard/VolumeBarChart";
 import { VelocityIndicator } from "@/components/dashboard/VelocityIndicator";
+import { DimensionBreakdownCard } from "@/components/dashboard/DimensionBreakdownCard";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -167,6 +168,25 @@ export default function BusinessDashboardScreen() {
     enabled: !!slug,
   });
 
+  // Sprint 532: Dimension breakdown for insights tab
+  const { data: dimensionData } = useQuery<{
+    dimensions: { food: number; service: number; vibe: number; packaging: number; waitTime: number; value: number };
+    visitTypeDistribution: { dineIn: number; delivery: number; takeaway: number };
+    totalRatings: number;
+    primaryVisitType: "dineIn" | "delivery" | "takeaway";
+  }>({
+    queryKey: ["dimension-breakdown", slug],
+    queryFn: async () => {
+      const res = await fetch(`${getApiUrl()}/api/businesses/${slug}/dimension-breakdown`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load dimensions");
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!slug && activeTab === "insights",
+  });
+
   const a = dashData || {
     totalRatings: 0,
     avgScore: 0,
@@ -281,6 +301,17 @@ export default function BusinessDashboardScreen() {
 
         {activeTab === "insights" && (
           <>
+            {/* Sprint 532: Dimension breakdown card */}
+            {dimensionData && dimensionData.totalRatings > 0 && (
+              <DimensionBreakdownCard
+                dimensions={dimensionData.dimensions}
+                visitTypeDistribution={dimensionData.visitTypeDistribution}
+                totalRatings={dimensionData.totalRatings}
+                primaryVisitType={dimensionData.primaryVisitType}
+                delay={50}
+              />
+            )}
+
             {a.rankDelta > 0 && (
               <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.insightCard}>
                 <Ionicons name="trending-up" size={20} color={Colors.green} />

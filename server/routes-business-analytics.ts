@@ -95,7 +95,14 @@ export function registerBusinessAnalyticsRoutes(app: Express) {
 
   // ── Sprint 484: Dimension Score Breakdown ────────────────────
   app.get("/api/businesses/:id/dimension-breakdown", wrapAsync(async (req: Request, res: Response) => {
-    const { ratings } = await getBusinessRatings(req.params.id as string, 1, 200);
+    // Sprint 532: Support both numeric ID and slug
+    let businessId = req.params.id;
+    if (isNaN(Number(businessId))) {
+      const business = await getBusinessBySlug(businessId);
+      if (!business) return res.status(404).json({ error: "Business not found" });
+      businessId = String(business.id);
+    }
+    const { ratings } = await getBusinessRatings(businessId as string, 1, 200);
     const data = computeDimensionBreakdown(ratings as any[]);
     return res.json({ data });
   }));
