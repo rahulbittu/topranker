@@ -1,47 +1,6 @@
-/**
- * TopRanker Database Schema
- *
- * Table of Contents (by domain):
- *
- * CORE (L18-170)
- *   members, businesses, ratings
- *
- * DISHES (L172-210)
- *   dishes, dishVotes
- *
- * COMPETITION (L212-270)
- *   challengers, rankHistory
- *
- * CLAIMS & MODERATION (L273-425)
- *   businessClaims, claimEvidence, businessPhotos, qrScans,
- *   ratingFlags, memberBadges, credibilityPenalties
- *
- * CATEGORIES (L428-457)
- *   categories, categorySuggestions
- *
- * COMMERCE (L459-555)
- *   payments, webhookEvents, featuredPlacements, analyticsEvents
- *
- * VALIDATION SCHEMAS (L558-610)
- *   insertMemberSchema, insertRatingSchema
- *
- * DATA MANAGEMENT (L612-633)
- *   deletionRequests
- *
- * DISH LEADERBOARDS (L636-732)
- *   dishLeaderboards, dishLeaderboardEntries, dishSuggestions,
- *   dishSuggestionVotes, insertDishSuggestionSchema, insertCategorySuggestionSchema
- *
- * COMMUNITY & ENGAGEMENT (L735-847)
- *   notifications, referrals, betaInvites, userActivity, betaFeedback
- *
- * PHOTOS (L850-903)
- *   ratingPhotos, photoSubmissions
- *
- * NOTE: Tables cannot be split into separate files without circular
- * dependencies (Drizzle foreign key references require source table in scope).
- * Domain markers and this index serve as organizational navigation.
- */
+// TopRanker Database Schema — 33 tables
+// Sprint 551: Compressed TOC + blank lines to free LOC capacity
+// Domains: CORE | DISHES | COMPETITION | CLAIMS | CATEGORIES | COMMERCE | VALIDATION | DATA MGMT | DISH LB | COMMUNITY | PHOTOS | RECEIPTS
 import { sql } from "drizzle-orm";
 import {
   pgTable,
@@ -58,9 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-
-// ── CORE ────────────────────────────────────────────────────
-
+// ── CORE ──
 export const members = pgTable("members", {
   id: varchar("id")
     .primaryKey()
@@ -214,9 +171,7 @@ export const ratings = pgTable(
     index("idx_rat_member").on(table.memberId, table.createdAt),
   ],
 );
-
-// ── DISHES ──────────────────────────────────────────────────
-
+// ── DISHES ──
 export const dishes = pgTable(
   "dishes",
   {
@@ -256,9 +211,7 @@ export const dishVotes = pgTable("dish_votes", {
   noNotableDish: boolean("no_notable_dish").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
-
-// ── COMPETITION ─────────────────────────────────────────────
-
+// ── COMPETITION ──
 export const challengers = pgTable(
   "challengers",
   {
@@ -319,9 +272,7 @@ export const rankHistory = pgTable(
     index("idx_rank_hist").on(table.businessId, table.snapshotDate),
   ],
 );
-
-// ── CLAIMS & MODERATION ─────────────────────────────────────
-
+// ── CLAIMS & MODERATION ──
 export const businessClaims = pgTable("business_claims", {
   id: varchar("id")
     .primaryKey()
@@ -476,9 +427,7 @@ export const credibilityPenalties = pgTable(
     index("idx_penalties_member").on(table.memberId),
   ],
 );
-
-// ── CATEGORIES ──────────────────────────────────────────────
-
+// ── CATEGORIES ──
 export const categories = pgTable("categories", {
   id: varchar("id")
     .primaryKey()
@@ -509,9 +458,7 @@ export const categorySuggestions = pgTable("category_suggestions", {
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
-
-// ── COMMERCE ────────────────────────────────────────────────
-
+// ── COMMERCE ──
 export const payments = pgTable(
   "payments",
   {
@@ -540,8 +487,7 @@ export const payments = pgTable(
 );
 
 export type Payment = typeof payments.$inferSelect;
-
-// ── Webhook Events (audit log for all incoming webhooks) ─────────────
+// ── Webhook Events (audit log for all incoming webhooks) ──
 export const webhookEvents = pgTable(
   "webhook_events",
   {
@@ -563,8 +509,7 @@ export const webhookEvents = pgTable(
 );
 
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
-
-// ── Featured Placements (active featured business placements) ────────
+// ── Featured Placements (active featured business placements) ──
 export const featuredPlacements = pgTable(
   "featured_placements",
   {
@@ -663,8 +608,7 @@ export type CredibilityPenalty = typeof credibilityPenalties.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type CategorySuggestionRow = typeof categorySuggestions.$inferSelect;
 export type InsertRating = z.infer<typeof insertRatingSchema>;
-
-// ── GDPR Deletion Requests (persistent grace period tracking) ────────
+// ── GDPR Deletion Requests (persistent grace period tracking) ──
 export const deletionRequests = pgTable(
   "deletion_requests",
   {
@@ -687,8 +631,7 @@ export const deletionRequests = pgTable(
 );
 
 export type DeletionRequestRow = typeof deletionRequests.$inferSelect;
-
-// ── Dish Leaderboards — Sprint 166 ─────────────────────────
+// ── Dish Leaderboards — Sprint 166 ──
 export const dishLeaderboards = pgTable(
   "dish_leaderboards",
   {
@@ -786,8 +729,7 @@ export const insertCategorySuggestionSchema = z.object({
   description: z.string().min(10).max(200),
   vertical: z.enum(["food", "services", "wellness", "entertainment", "retail"]),
 });
-
-// ── In-App Notifications — Sprint 182 ─────────────────────────
+// ── In-App Notifications — Sprint 182 ──
 export const notifications = pgTable(
   "notifications",
   {
@@ -901,9 +843,7 @@ export const betaFeedback = pgTable(
 );
 
 export type BetaFeedback = typeof betaFeedback.$inferSelect;
-
-// ── PHOTOS ──────────────────────────────────────────────────
-
+// ── PHOTOS ──
 export const ratingPhotos = pgTable(
   "rating_photos",
   {
@@ -958,8 +898,7 @@ export const photoSubmissions = pgTable(
 );
 
 export type PhotoSubmission = typeof photoSubmissions.$inferSelect;
-
-// ── RECEIPT ANALYSIS (Sprint 542: OCR Prep) ─────────────────
+// ── RECEIPT ANALYSIS (Sprint 542: OCR Prep) ──
 export const receiptAnalysis = pgTable(
   "receipt_analysis",
   {

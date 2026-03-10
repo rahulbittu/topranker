@@ -13,23 +13,25 @@ describe("Sprint 529: Schema Table Grouping", () => {
 
   describe("table of contents", () => {
     it("has a table of contents comment", () => {
-      expect(src).toContain("Table of Contents (by domain)");
+      // Sprint 551: TOC compressed to single Domains line
+      expect(src).toContain("Domains: CORE");
     });
 
     it("lists all domain groups", () => {
       expect(src).toContain("CORE");
       expect(src).toContain("DISHES");
       expect(src).toContain("COMPETITION");
-      expect(src).toContain("CLAIMS & MODERATION");
+      expect(src).toContain("CLAIMS");
       expect(src).toContain("CATEGORIES");
       expect(src).toContain("COMMERCE");
-      expect(src).toContain("COMMUNITY & ENGAGEMENT");
+      expect(src).toContain("COMMUNITY");
       expect(src).toContain("PHOTOS");
     });
 
-    it("documents circular dependency constraint", () => {
-      expect(src).toContain("circular");
-      expect(src).toContain("Drizzle foreign key");
+    it("documents compressed TOC with domain list", () => {
+      // Sprint 551: Circular dep note removed during compression; domains inline
+      expect(src).toContain("Domains:");
+      expect(src).toContain("CORE | DISHES");
     });
   });
 
