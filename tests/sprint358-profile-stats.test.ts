@@ -3,8 +3,9 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("Sprint 358: Profile stats card improvements", () => {
+  // Sprint 536: enhanced stats extracted to ProfileCredibilitySection
   const profileSrc = fs.readFileSync(
-    path.resolve("app/(tabs)/profile.tsx"), "utf-8"
+    path.resolve("components/profile/ProfileCredibilitySection.tsx"), "utf-8"
   );
 
   // ── Enhanced stats row ────────────────────────────────────────
@@ -32,11 +33,11 @@ describe("Sprint 358: Profile stats card improvements", () => {
 
   describe("Current streak display", () => {
     it("should show streak when > 0", () => {
-      expect(profileSrc).toContain("currentStreak ?? 0) > 0");
+      expect(profileSrc).toContain("currentStreak > 0");
     });
 
     it("should display streak count", () => {
-      expect(profileSrc).toContain("profile.currentStreak}");
+      expect(profileSrc).toContain("currentStreak}");
     });
 
     it("should show Streak label", () => {
@@ -55,7 +56,7 @@ describe("Sprint 358: Profile stats card improvements", () => {
 
   describe("Average score given", () => {
     it("should compute average from ratingHistory", () => {
-      expect(profileSrc).toContain("ratingHistory.reduce((s, r) => s + r.rawScore, 0)");
+      expect(profileSrc).toContain("ratingHistory.reduce((sum, r) => sum + r.rawScore, 0)");
     });
 
     it("should show one decimal place", () => {
@@ -63,7 +64,7 @@ describe("Sprint 358: Profile stats card improvements", () => {
     });
 
     it("should only show when ratingHistory has entries", () => {
-      expect(profileSrc).toContain("profile.ratingHistory.length > 0");
+      expect(profileSrc).toContain("ratingHistory.length > 0");
     });
 
     it("should show Avg Given label", () => {
@@ -83,12 +84,8 @@ describe("Sprint 358: Profile stats card improvements", () => {
     });
 
     it("should only show when joinedAt exists", () => {
-      // The enhanced stats check for profile.joinedAt
-      const enhancedSection = profileSrc.slice(
-        profileSrc.indexOf("enhancedStatsRow"),
-        profileSrc.indexOf("enhancedStatsRow") + 1000
-      );
-      expect(enhancedSection).toContain("profile.joinedAt");
+      // Sprint 536: extracted to ProfileCredibilitySection, uses joinedAt prop
+      expect(profileSrc).toContain("joinedAt");
     });
   });
 
@@ -96,19 +93,19 @@ describe("Sprint 358: Profile stats card improvements", () => {
 
   describe("Original stats row unchanged", () => {
     it("should still show Ratings count", () => {
-      expect(profileSrc).toContain("profile.totalRatings.toLocaleString()");
+      expect(profileSrc).toContain("totalRatings.toLocaleString()");
     });
 
     it("should still show Places count", () => {
-      expect(profileSrc).toContain("profile.distinctBusinesses.toLocaleString()");
+      expect(profileSrc).toContain("distinctBusinesses.toLocaleString()");
     });
 
     it("should still show Categories count", () => {
-      expect(profileSrc).toContain("profile.totalCategories.toLocaleString()");
+      expect(profileSrc).toContain("totalCategories.toLocaleString()");
     });
 
     it("should still show Days count", () => {
-      expect(profileSrc).toContain("profile.daysActive.toLocaleString()");
+      expect(profileSrc).toContain("daysActive.toLocaleString()");
     });
 
     it("should still show Badges with link", () => {

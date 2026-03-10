@@ -154,9 +154,10 @@ describe("Typography Migration Completeness", () => {
     expect(src).toMatch(/import\s*\{[^}]*TYPOGRAPHY[^}]*\}\s*from/);
   });
 
-  it("profile.tsx imports TYPOGRAPHY", () => {
+  it("profile credibility section imports TYPOGRAPHY", () => {
+    // Sprint 536: TYPOGRAPHY moved to ProfileCredibilitySection
     const src = fs.readFileSync(
-      path.join(ROOT, "app", "(tabs)", "profile.tsx"),
+      path.join(ROOT, "components", "profile", "ProfileCredibilitySection.tsx"),
       "utf-8",
     );
     expect(src).toMatch(/import\s*\{[^}]*TYPOGRAPHY[^}]*\}\s*from/);

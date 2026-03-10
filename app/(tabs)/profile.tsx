@@ -11,23 +11,20 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { isAdminEmail } from "@/shared/admin";
 import {
-  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_WEIGHTS,
-  TIER_SCORE_RANGES, TIER_INFLUENCE_LABELS,
+  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_INFLUENCE_LABELS,
   type CredibilityTier,
 } from "@/lib/data";
 import { LinearGradient } from "expo-linear-gradient";
-import { pct } from "@/lib/style-helpers";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, deleteRatingApi, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
-import { TYPOGRAPHY } from "@/constants/typography";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import ScoreCountUp from "@/components/animations/ScoreCountUp";
 import { FadeInView } from "@/components/animations/FadeInView";
+import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
 import {
   TierBadge, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
@@ -85,16 +82,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   const tier = profile.credibilityTier as CredibilityTier;
   const tierColor = TIER_COLORS[tier];
-  const scoreRange = TIER_SCORE_RANGES[tier];
-
-  const nextTierMap: Record<string, CredibilityTier | null> = {
-    community: "city", city: "trusted", trusted: "top", top: null,
-  };
-  const nextTier = nextTierMap[tier];
-  const nextRange = nextTier ? TIER_SCORE_RANGES[nextTier] : null;
-  const progressToNext = nextRange
-    ? Math.min(((profile.credibilityScore - scoreRange.min) / (nextRange.min - scoreRange.min)) * 100, 100)
-    : 100;
 
   const breakdown = profile.credibilityBreakdown;
   const totalScore = profile.credibilityScore;
@@ -163,124 +150,20 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       {/* Sprint 185: Onboarding checklist for new users */}
       <OnboardingChecklist />
 
-      <View style={styles.credibilityCard}>
-        <View style={styles.credScoreRow}>
-          <View>
-            <Text style={styles.credScoreLabel}>Credibility</Text>
-            <ScoreCountUp
-              targetValue={profile.credibilityScore}
-              duration={1000}
-              decimalPlaces={0}
-              style={[styles.credScore, { color: tierColor }]}
-              highlightThreshold={999}
-            />
-          </View>
-          <View style={styles.credWeightBox}>
-            <Text style={styles.credWeightLabel}>{TIER_INFLUENCE_LABELS[tier]}</Text>
-            <Text style={[styles.credWeight, { color: tierColor }]}>{TIER_DISPLAY_NAMES[tier]}</Text>
-          </View>
-        </View>
-
-        {nextTier && nextRange && (
-          <View style={styles.credProgress}>
-            <View style={styles.credProgressHeader}>
-              <Text style={styles.credProgressLabel}>
-                Progress to {TIER_DISPLAY_NAMES[nextTier]}
-              </Text>
-              <Text style={styles.credProgressPct}>{Math.round(progressToNext)}%</Text>
-            </View>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: pct(progressToNext), backgroundColor: tierColor }]} />
-            </View>
-            <Text style={styles.credProgressHint}>
-              {Math.max(nextRange.min - profile.credibilityScore, 0)} points to {TIER_DISPLAY_NAMES[nextTier]}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* New User Getting Started */}
-      {profile.totalRatings === 0 && (
-        <TouchableOpacity
-          style={styles.gettingStartedCard}
-          onPress={() => router.push("/(tabs)/search")}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Find a place to rate"
-        >
-          <View style={styles.gettingStartedIcon}>
-            <Ionicons name="restaurant" size={24} color={AMBER} />
-          </View>
-          <View style={{ flex: 1, gap: 4 }}>
-            <Text style={styles.gettingStartedTitle}>Rate Your First Place</Text>
-            <Text style={styles.gettingStartedDesc}>
-              Your influence grows with every honest rating. Find a restaurant you know well and share your experience.
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={AMBER} />
-        </TouchableOpacity>
-      )}
-
-      {/* Credibility Growth Prompt */}
-      {nextTier && profile.totalRatings > 0 && (
-        <View style={styles.growthPrompt}>
-          <Ionicons name="trending-up" size={18} color={AMBER} />
-          <Text style={styles.growthPromptText}>Keep rating to unlock your next tier</Text>
-        </View>
-      )}
-
-      <View style={styles.statsRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statNum}>{profile.totalRatings.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Ratings</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{profile.distinctBusinesses.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Places</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{profile.totalCategories.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Categories</Text>
-        </View>
-        <View style={[styles.statBox, styles.statBoxMiddle]}>
-          <Text style={styles.statNum}>{profile.daysActive.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Days</Text>
-        </View>
-        <TouchableOpacity style={styles.statBox} onPress={() => router.push("/badge-leaderboard")} activeOpacity={0.7}>
-          <Text style={[styles.statNum, { color: AMBER }]}>{earnedBadgeCount}</Text>
-          <Text style={styles.statLabel}>Badges</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Sprint 358: Enhanced stats row — weight, streak, avg score */}
-      <View style={styles.enhancedStatsRow}>
-        <View style={styles.enhancedStatBox}>
-          <Text style={[styles.enhancedStatNum, { color: tierColor }]}>{TIER_WEIGHTS[tier]}x</Text>
-          <Text style={styles.enhancedStatLabel}>Weight</Text>
-        </View>
-        {(profile.currentStreak ?? 0) > 0 && (
-          <View style={styles.enhancedStatBox}>
-            <Text style={[styles.enhancedStatNum, { color: AMBER }]}>{profile.currentStreak}</Text>
-            <Text style={styles.enhancedStatLabel}>Streak</Text>
-          </View>
-        )}
-        {profile.ratingHistory.length > 0 && (
-          <View style={styles.enhancedStatBox}>
-            <Text style={styles.enhancedStatNum}>
-              {(profile.ratingHistory.reduce((s, r) => s + r.rawScore, 0) / profile.ratingHistory.length).toFixed(1)}
-            </Text>
-            <Text style={styles.enhancedStatLabel}>Avg Given</Text>
-          </View>
-        )}
-        {profile.joinedAt && (
-          <View style={styles.enhancedStatBox}>
-            <Text style={styles.enhancedStatNum}>
-              {new Date(profile.joinedAt).toLocaleDateString("en-US", { month: "short", year: "2-digit" })}
-            </Text>
-            <Text style={styles.enhancedStatLabel}>Joined</Text>
-          </View>
-        )}
-      </View>
+      {/* Sprint 536: Extracted credibility card, stats, getting started, growth prompt */}
+      <ProfileCredibilitySection
+        tier={tier}
+        credibilityScore={profile.credibilityScore}
+        credibilityBreakdown={breakdown}
+        totalRatings={profile.totalRatings}
+        distinctBusinesses={profile.distinctBusinesses}
+        totalCategories={profile.totalCategories}
+        daysActive={profile.daysActive}
+        earnedBadgeCount={earnedBadgeCount}
+        ratingHistory={profile.ratingHistory}
+        currentStreak={profile.currentStreak ?? 0}
+        joinedAt={profile.joinedAt}
+      />
 
       {/* Sprint 393: Achievements & Milestones */}
       <AchievementsSection
@@ -540,52 +423,7 @@ const styles = StyleSheet.create({
   username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   usernameLight: { color: "rgba(255,255,255,0.5)" },
 
-  // Credibility card
-  credibilityCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    gap: 14, ...Colors.cardShadow,
-  },
-  credScoreRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-  },
-  credScoreLabel: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, letterSpacing: 0.5, textTransform: "uppercase" as const },
-  credScore: { fontSize: 48, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -2 },
-  credWeightBox: { alignItems: "center", gap: 2 },
-  credWeightLabel: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textTransform: "uppercase" as const, letterSpacing: 0.5 },
-  credWeight: { fontSize: 24, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
-  credProgress: { gap: 6 },
-  credProgressHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  credProgressLabel: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
-  credProgressPct: { fontSize: 12, fontWeight: "700", color: Colors.gold, fontFamily: "DMSans_700Bold" },
-  progressBarBg: { height: 4, backgroundColor: Colors.surfaceRaised, borderRadius: 2, overflow: "hidden" },
-  progressBarFill: { height: "100%", borderRadius: 2 },
-  credProgressHint: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, marginTop: 4 },
-
-  // Stats row
-  statsRow: {
-    flexDirection: "row", backgroundColor: "rgba(13,27,42,0.9)", borderRadius: 14,
-    overflow: "hidden",
-  },
-  statBox: { flex: 1, alignItems: "center", paddingVertical: 16, gap: 4 },
-  statBoxMiddle: { borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,255,255,0.1)" },
-  statNum: { fontSize: 24, fontWeight: "700", color: AMBER, fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5 },
-  statLabel: { fontSize: 10, color: "rgba(255,255,255,0.5)", fontFamily: "DMSans_400Regular" },
-
-  joinedText: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, textAlign: "center" },
-
-  // Sprint 358: Enhanced stats
-  enhancedStatsRow: {
-    flexDirection: "row", justifyContent: "space-evenly",
-    paddingVertical: 8, paddingHorizontal: 12, marginTop: 4,
-  },
-  enhancedStatBox: { alignItems: "center", gap: 2, minWidth: 60 },
-  enhancedStatNum: {
-    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold",
-  },
-  enhancedStatLabel: {
-    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-    textTransform: "uppercase" as const, letterSpacing: 0.5,
-  },
+  // Sprint 536: credibility card, stats row, enhanced stats — moved to ProfileCredibilitySection
 
   // Last rating
   lastRatingCard: {
@@ -604,25 +442,5 @@ const styles = StyleSheet.create({
 
   // Sprint 443: emptyHistory, showMore/Less, emptyText styles moved to RatingHistorySection
 
-  // Getting started / growth prompt
-  gettingStartedCard: {
-    flexDirection: "row", alignItems: "center", gap: 14,
-    backgroundColor: `${BRAND.colors.amber}10`, borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: `${BRAND.colors.amber}25`,
-    marginHorizontal: 16, marginTop: 16,
-  },
-  gettingStartedIcon: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: `${BRAND.colors.amber}15`,
-    alignItems: "center", justifyContent: "center",
-  },
-  gettingStartedTitle: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
-  gettingStartedDesc: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 17 },
-  growthPrompt: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "rgba(196,154,26,0.08)",
-    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
-    borderRadius: 10, padding: 14,
-    marginHorizontal: 16, marginTop: 12,
-  },
-  growthPromptText: { fontSize: 13, color: Colors.text, fontFamily: "DMSans_500Medium" },
+  // Sprint 536: getting started + growth prompt — moved to ProfileCredibilitySection
 });
