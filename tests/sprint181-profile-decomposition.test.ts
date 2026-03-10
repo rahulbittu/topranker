@@ -198,7 +198,7 @@ describe("Profile.tsx — import compatibility", () => {
   it("imports all 11 components (SavedRow via SavedPlacesSection)", () => {
     expect(profileSrc).toContain("TierBadge");
     expect(profileSrc).toContain("HistoryRow");
-    expect(profileSrc).toContain("BreakdownRow");
+    expect(profileSrc).toContain("ScoreBreakdownCard");
     expect(profileSrc).toContain("SavedPlacesSection");
     expect(profileSrc).toContain("ImpactCard");
     expect(profileSrc).toContain("PaymentHistoryRow");

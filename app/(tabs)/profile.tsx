@@ -30,7 +30,7 @@ import ScoreCountUp from "@/components/animations/ScoreCountUp";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { SlideUpView } from "@/components/animations/SlideUpView";
 import {
-  TierBadge, HistoryRow, BreakdownRow, LoggedOutView,
+  TierBadge, HistoryRow, LoggedOutView,
   ImpactCard, PaymentHistoryRow, CredibilityJourney,
   TierRewardsSection, NotificationSettingsLink, LegalLinksSection,
 } from "@/components/profile/SubComponents";
@@ -39,6 +39,7 @@ import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
+import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
 
@@ -51,7 +52,6 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
   const { savedList, bookmarkCount } = useBookmarks();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const [selectedBadge, setSelectedBadge] = useState<EarnedBadge | null>(null);
-  const [breakdownExpanded, setBreakdownExpanded] = useState(false);
   const [historyPageSize, setHistoryPageSize] = useState(10);
 
   const handleDeleteRating = useCallback(async (ratingId: string) => {
@@ -323,57 +323,13 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         <ImpactCard impact={impact} city={profile.city} />
       )}
 
-      <View style={styles.breakdownCard}>
-        {profile.totalRatings < 5 ? (
-          <>
-            <TouchableOpacity
-              style={styles.breakdownTitleRow}
-              onPress={() => setBreakdownExpanded(!breakdownExpanded)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.breakdownTitle}>Score Breakdown</Text>
-              <Ionicons name={breakdownExpanded ? "chevron-up" : "chevron-down"} size={16} color={Colors.textTertiary} />
-            </TouchableOpacity>
-            {!breakdownExpanded && (
-              <Text style={styles.breakdownHint}>
-                Rate {5 - profile.totalRatings} more place{5 - profile.totalRatings !== 1 ? "s" : ""} to see meaningful score details
-              </Text>
-            )}
-            {breakdownExpanded && (
-              <>
-                <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
-                <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
-                <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
-                <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
-                <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
-                {(breakdown.penalties || 0) > 0 && (
-                  <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
-                )}
-                <View style={styles.breakdownTotal}>
-                  <Text style={styles.breakdownTotalLabel}>Total</Text>
-                  <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>{totalScore}</Text>
-                </View>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <Text style={styles.breakdownTitle}>Score Breakdown</Text>
-            <BreakdownRow label="Base points" value={`+${breakdown.base || 0}`} icon="person-outline" />
-            <BreakdownRow label="Rating volume" value={`+${breakdown.volume || 0}`} icon="star-outline" />
-            <BreakdownRow label="Category diversity" value={`+${breakdown.diversity || 0}`} icon="grid-outline" />
-            <BreakdownRow label="Account age" value={`+${Math.round(breakdown.age || 0)}`} icon="time-outline" />
-            <BreakdownRow label="Rating variance" value={`+${Math.round(breakdown.variance || 0)}`} icon="analytics-outline" />
-            {(breakdown.penalties || 0) > 0 && (
-              <BreakdownRow label="Flag penalties" value={`-${breakdown.penalties}`} icon="flag-outline" />
-            )}
-            <View style={styles.breakdownTotal}>
-              <Text style={styles.breakdownTotalLabel}>Total</Text>
-              <Text style={[styles.breakdownTotalValue, { color: tierColor }]}>{totalScore}</Text>
-            </View>
-          </>
-        )}
-      </View>
+      {/* Sprint 406: Extracted breakdown card */}
+      <ScoreBreakdownCard
+        totalRatings={profile.totalRatings}
+        breakdown={breakdown}
+        totalScore={totalScore}
+        tierColor={tierColor}
+      />
 
       <SlideUpView delay={200} distance={24}>
       <View style={styles.sectionHeader}>
@@ -676,21 +632,6 @@ const styles = StyleSheet.create({
   lastRatingTitle: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   lastRatingBizName: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
   lastRatingDetail: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
-
-  // Breakdown
-  breakdownCard: {
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 16,
-    gap: 10, ...Colors.cardShadow,
-  },
-  breakdownTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", marginBottom: 2 },
-  breakdownTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 },
-  breakdownHint: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 4 },
-  breakdownTotal: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingTop: 6, marginTop: 2,
-  },
-  breakdownTotalLabel: { ...TYPOGRAPHY.ui.bodyBold, fontWeight: "700", color: Colors.text },
-  breakdownTotalValue: { fontSize: 20, fontWeight: "700", fontFamily: "PlayfairDisplay_700Bold" },
 
   // Section headers
   sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
