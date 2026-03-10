@@ -334,6 +334,8 @@ Document and learn.
 - Retro in `/docs/retros/RETRO-N-*.md` with What Went Well, What Could Improve, Action Items, Team Morale.
 - Critique request written to `docs/critique/inbox/SPRINT-N-REQUEST.md`.
 - Memory files updated. PRD gaps updated. Changelog updated.
+- **All docs must be committed and pushed with the sprint code.** Untracked docs are bugs. Every commit must leave git status clean for tracked documentation.
+- **Update MEMORY.md current state every commit** — test count, sprint number, file counts, key metrics. Stale metrics are stale docs.
 - Commit, push, and wait for external critique before planning the next sprint.
 
 ---
