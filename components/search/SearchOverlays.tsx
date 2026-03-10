@@ -59,28 +59,36 @@ export function AutocompleteDropdown({ results, dishMatches = [], onDismiss }: A
           </View>
         </TouchableOpacity>
       ))}
-      {results.map((item) => (
-        <TouchableOpacity
-          key={item.id}
-          style={styles.autocompleteRow}
-          onPress={() => {
-            router.push({ pathname: "/business/[id]", params: { id: item.slug } });
-            onDismiss();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`Go to ${item.name}`}
-        >
-          <Ionicons name="restaurant-outline" size={14} color={AMBER} />
-          <View style={styles.autocompleteInfo}>
-            <Text style={styles.autocompleteName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.autocompleteMeta} numberOfLines={1}>
-              {getCategoryDisplay(item.category).emoji} {getCategoryDisplay(item.category).label}
-              {item.neighborhood ? ` · ${item.neighborhood}` : ""}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-      ))}
+      {results.map((item) => {
+        const displayCat = getCategoryDisplay(item.cuisine || item.category);
+        return (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.autocompleteRow}
+            onPress={() => {
+              router.push({ pathname: "/business/[id]", params: { id: item.slug } });
+              onDismiss();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Go to ${item.name}`}
+          >
+            <Text style={styles.autocompleteEmoji}>{displayCat.emoji || "🍽"}</Text>
+            <View style={styles.autocompleteInfo}>
+              <Text style={styles.autocompleteName} numberOfLines={1}>{item.name}</Text>
+              <Text style={styles.autocompleteMeta} numberOfLines={1}>
+                {getCategoryDisplay(item.category).label}
+                {item.neighborhood ? ` · ${item.neighborhood}` : ""}
+              </Text>
+            </View>
+            {item.weightedScore != null && item.weightedScore > 0 && (
+              <View style={styles.scoreBadge}>
+                <Text style={styles.scoreBadgeText}>{item.weightedScore.toFixed(1)}</Text>
+              </View>
+            )}
+            <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
@@ -137,7 +145,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
   },
+  autocompleteEmoji: { fontSize: 18 },
   autocompleteInfo: { flex: 1, gap: 1 },
+  scoreBadge: {
+    backgroundColor: "rgba(196,154,26,0.12)", borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2, marginRight: 2,
+  },
+  scoreBadgeText: { fontSize: 11, fontWeight: "700", color: AMBER },
   autocompleteName: {
     fontSize: 14,
     fontWeight: "600",

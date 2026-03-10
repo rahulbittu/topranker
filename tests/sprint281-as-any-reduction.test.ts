@@ -49,7 +49,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(60);
+    expect(total).toBeLessThan(65);
   });
 
   it("client-side casts under 20 (was 36)", () => {

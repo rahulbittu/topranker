@@ -469,23 +469,34 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               )}
               {!selectedCuisine && (
-                <View style={styles.suggestionsRow}>
-                  {(popularCategories.length > 0
-                    ? popularCategories.slice(0, 6).map(c => c.category)
-                    : ["Tacos", "Italian", "Brunch", "Sushi"]
-                  ).map(s => (
-                    <TouchableOpacity
-                      key={s}
-                      style={styles.suggestionChip}
-                      onPress={() => { setQuery(s); setActiveFilter("All"); }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Search for ${s}`}
-                    >
-                      <Text style={styles.suggestionChipText}>
-                        {getCategoryDisplay(s).emoji} {getCategoryDisplay(s).label || s}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={styles.suggestionsSection}>
+                  <Text style={styles.suggestionsLabel}>Popular in {city.replace(/_/g, " ")}</Text>
+                  <View style={styles.suggestionsRow}>
+                    {(popularCategories.length > 0
+                      ? popularCategories.slice(0, 6)
+                      : [{ category: "Tacos", count: 0 }, { category: "Italian", count: 0 }, { category: "Brunch", count: 0 }, { category: "Sushi", count: 0 }]
+                    ).map(c => (
+                      <TouchableOpacity
+                        key={c.category}
+                        style={styles.suggestionChip}
+                        onPress={() => { setQuery(c.category); setActiveFilter("All"); }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Search for ${c.category}`}
+                      >
+                        <Text style={styles.suggestionChipEmoji}>
+                          {getCategoryDisplay(c.category).emoji}
+                        </Text>
+                        <View style={styles.suggestionChipInfo}>
+                          <Text style={styles.suggestionChipText}>
+                            {getCategoryDisplay(c.category).label || c.category}
+                          </Text>
+                          {c.count > 0 && (
+                            <Text style={styles.suggestionChipCount}>{c.count} places</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               )}
             </View>
@@ -744,17 +755,36 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  suggestionsSection: {
+    marginTop: 20, paddingHorizontal: 24, gap: 10,
+  },
+  suggestionsLabel: {
+    fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
+    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as any,
+    letterSpacing: 0.8,
+  },
   suggestionsRow: {
     flexDirection: "row", flexWrap: "wrap", justifyContent: "center",
-    gap: 8, marginTop: 16, paddingHorizontal: 32,
+    gap: 8,
   },
   suggestionChip: {
-    paddingHorizontal: 14, paddingVertical: 7,
-    backgroundColor: Colors.surface, borderRadius: 16,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    paddingHorizontal: 14, paddingVertical: 9,
+    backgroundColor: Colors.surface, borderRadius: 12,
     borderWidth: 1, borderColor: Colors.border,
+    borderLeftWidth: 3, borderLeftColor: AMBER,
+  },
+  suggestionChipEmoji: {
+    fontSize: 16,
+  },
+  suggestionChipInfo: {
+    gap: 1,
   },
   suggestionChipText: {
-    fontSize: 13, color: AMBER, fontFamily: "DMSans_600SemiBold",
+    fontSize: 13, color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  suggestionChipCount: {
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
   },
 
   retryButton: {

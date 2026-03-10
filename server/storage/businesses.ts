@@ -173,7 +173,7 @@ export async function autocompleteBusinesses(
   query: string,
   city: string,
   limit: number = 6,
-): Promise<{ id: string; name: string; slug: string; category: string; neighborhood: string | null }[]> {
+): Promise<{ id: string; name: string; slug: string; category: string; cuisine?: string; neighborhood: string | null; weightedScore?: number }[]> {
   if (!query || query.trim().length === 0) return [];
   const sanitized = query.slice(0, 50).replace(/[%_\\]/g, "");
   const q = "%" + sanitized.toLowerCase() + "%";
@@ -183,7 +183,9 @@ export async function autocompleteBusinesses(
       name: businesses.name,
       slug: businesses.slug,
       category: businesses.category,
+      cuisine: businesses.cuisine,
       neighborhood: businesses.neighborhood,
+      weightedScore: businesses.weightedScore,
     })
     .from(businesses)
     .where(

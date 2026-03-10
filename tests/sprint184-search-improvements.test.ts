@@ -254,8 +254,8 @@ describe("Client — dynamic category suggestions", () => {
   });
 
   it("displays category emoji and label", () => {
-    expect(src).toContain("getCategoryDisplay(s).emoji");
-    expect(src).toContain("getCategoryDisplay(s).label");
+    expect(src).toContain("getCategoryDisplay(c.category).emoji");
+    expect(src).toContain("getCategoryDisplay(c.category).label");
   });
 });
 

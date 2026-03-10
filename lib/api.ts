@@ -323,7 +323,9 @@ export type AutocompleteSuggestion = {
   name: string;
   slug: string;
   category: string;
+  cuisine?: string;
   neighborhood: string | null;
+  weightedScore?: number;
 };
 
 export async function fetchAutocomplete(query: string, city: string): Promise<AutocompleteSuggestion[]> {

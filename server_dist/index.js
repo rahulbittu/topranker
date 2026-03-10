@@ -1489,7 +1489,9 @@ async function autocompleteBusinesses(query, city, limit = 6) {
     name: businesses.name,
     slug: businesses.slug,
     category: businesses.category,
-    neighborhood: businesses.neighborhood
+    cuisine: businesses.cuisine,
+    neighborhood: businesses.neighborhood,
+    weightedScore: businesses.weightedScore
   }).from(businesses).where(
     and2(
       eq3(businesses.city, city),
