@@ -17,6 +17,8 @@ import { TIER_INFLUENCE_LABELS, type CredibilityTier } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
 import { DishPill } from "@/components/rate/SubComponents";
 
+const MAX_PHOTOS = 3;
+
 interface RatingExtrasStepProps {
   existingDishes: ApiDish[];
   selectedDish: string;
@@ -30,6 +32,8 @@ interface RatingExtrasStepProps {
   setNote: (n: string) => void;
   photoUri: string | null;
   setPhotoUri: (uri: string | null) => void;
+  photoUris?: string[];
+  setPhotoUris?: (uris: string[]) => void;
   q1Score: number;
   q2Score: number;
   q3Score: number;
@@ -43,9 +47,58 @@ export function RatingExtrasStep({
   existingDishes, selectedDish, setSelectedDish,
   dishInput, handleDishSearch, dishSearching, dishSearchResults, setDishSearchResults,
   note, setNote, photoUri, setPhotoUri,
+  photoUris = [], setPhotoUris,
   q1Score, q2Score, q3Score, wouldReturn,
   userTier, tierColor, weightedScore,
 }: RatingExtrasStepProps) {
+  // Multi-photo support: use photoUris array if available, fall back to single photoUri
+  const photos = setPhotoUris ? photoUris : (photoUri ? [photoUri] : []);
+  const canAddMore = photos.length < MAX_PHOTOS;
+
+  const addPhotoFromGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const uri = result.assets[0].uri;
+      if (setPhotoUris) {
+        setPhotoUris([...photoUris, uri]);
+      } else {
+        setPhotoUri(uri);
+      }
+    }
+  };
+
+  const addPhotoFromCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const uri = result.assets[0].uri;
+      if (setPhotoUris) {
+        setPhotoUris([...photoUris, uri]);
+      } else {
+        setPhotoUri(uri);
+      }
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    if (setPhotoUris) {
+      setPhotoUris(photoUris.filter((_, i) => i !== index));
+    } else {
+      setPhotoUri(null);
+    }
+  };
   return (
     <Animated.View entering={FadeIn.duration(300)} style={s.stepContent} key="step2" accessibilityRole="summary">
       <View style={s.stepHeader}>
@@ -137,44 +190,58 @@ export function RatingExtrasStep({
         </Text>
       </View>
 
-      {/* Photo Upload */}
+      {/* Photo Upload — Sprint 379: multi-photo + camera */}
       <View style={s.photoSection}>
-        {photoUri ? (
-          <View style={s.photoPreview}>
-            <Image source={{ uri: photoUri }} style={s.photoImage} contentFit="cover" />
-            <View style={s.photoVerifiedBadge}>
-              <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
-              <Text style={s.photoVerifiedText}>+15% boost</Text>
-            </View>
+        {photos.length > 0 && (
+          <View style={s.photoStrip}>
+            {photos.map((uri, idx) => (
+              <View key={uri} style={s.photoThumb}>
+                <Image source={{ uri }} style={s.photoThumbImage} contentFit="cover" />
+                <TouchableOpacity
+                  style={s.photoThumbRemove}
+                  onPress={() => removePhoto(idx)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove photo ${idx + 1}`}
+                >
+                  <Ionicons name="close-circle" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+        {photos.length > 0 && (
+          <View style={s.photoVerifiedBadge}>
+            <Ionicons name="checkmark-circle" size={14} color="#FFFFFF" />
+            <Text style={s.photoVerifiedText}>+15% boost • {photos.length}/{MAX_PHOTOS} photos</Text>
+          </View>
+        )}
+        {canAddMore && (
+          <View style={s.photoActionRow}>
             <TouchableOpacity
-              style={s.photoRemove}
-              onPress={() => setPhotoUri(null)}
-              hitSlop={8}
+              style={s.photoAddBtn}
+              onPress={addPhotoFromGallery}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Add photo from gallery"
             >
-              <Ionicons name="close-circle" size={24} color="#FFFFFF" />
+              <Ionicons name="images-outline" size={18} color={Colors.textTertiary} />
+              <Text style={s.photoAddText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.photoAddBtn}
+              onPress={addPhotoFromCamera}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Take a photo with camera"
+            >
+              <Ionicons name="camera-outline" size={18} color={Colors.textTertiary} />
+              <Text style={s.photoAddText}>Camera</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <TouchableOpacity
-            style={s.photoAddBtn}
-            onPress={async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: true,
-                aspect: [4, 3],
-                quality: 0.8,
-              });
-              if (!result.canceled && result.assets[0]) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setPhotoUri(result.assets[0].uri);
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="camera-outline" size={20} color={Colors.textTertiary} />
-            <Text style={s.photoAddText}>Add photo</Text>
-            <Text style={s.photoBoostHint}>+15% verification boost</Text>
-          </TouchableOpacity>
+        )}
+        {photos.length === 0 && (
+          <Text style={s.photoBoostHint}>+15% verification boost per photo</Text>
         )}
       </View>
 
@@ -268,21 +335,26 @@ const s = StyleSheet.create({
   },
   noteCounterWarn: { color: Colors.gold },
   noteCounterMax: { color: Colors.red },
-  photoSection: { marginTop: 4 },
+  photoSection: { marginTop: 4, gap: 8 },
+  photoStrip: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  photoThumb: { width: 80, height: 80, borderRadius: 10, overflow: "hidden", position: "relative" as const },
+  photoThumbImage: { width: 80, height: 80, borderRadius: 10 },
+  photoThumbRemove: {
+    position: "absolute" as const, top: 2, right: 2,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.3, shadowRadius: 2,
+  },
+  photoActionRow: { flexDirection: "row", gap: 10 },
   photoAddBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
-    backgroundColor: Colors.surfaceRaised, borderRadius: 12, paddingVertical: 16,
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 12, paddingVertical: 14,
     borderWidth: 1, borderColor: Colors.border, borderStyle: "dashed",
   },
   photoAddText: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  photoBoostHint: { fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium" },
-  photoPreview: { borderRadius: 12, overflow: "hidden", position: "relative" },
-  photoImage: { width: "100%", height: 160, borderRadius: 12 },
+  photoBoostHint: { fontSize: 11, color: Colors.gold, fontFamily: "DMSans_500Medium", textAlign: "center" as const },
   photoVerifiedBadge: {
-    position: "absolute", bottom: 8, left: 8,
     flexDirection: "row", alignItems: "center", gap: 4,
     backgroundColor: "rgba(34, 139, 34, 0.85)", borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 4,
+    paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start" as const,
   },
   photoVerifiedText: {
     fontSize: 11, color: "#FFFFFF", fontWeight: "600",
