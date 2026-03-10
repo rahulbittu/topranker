@@ -2,7 +2,7 @@
  * Sprint 413: Fullscreen photo lightbox for business detail page.
  * Swipeable gallery with pinch-to-zoom feel, photo counter, close button.
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   ScrollView, NativeSyntheticEvent, NativeScrollEvent,
@@ -11,26 +11,34 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeImage } from "@/components/SafeImage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { PhotoMetadataBar, type PhotoMeta } from "./PhotoMetadataBar";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 export interface PhotoLightboxProps {
   visible: boolean;
   photoUrls: string[];
+  photoMeta?: PhotoMeta[];
   initialIndex: number;
   category: string;
   onClose: () => void;
 }
 
 export function PhotoLightbox({
-  visible, photoUrls, initialIndex, category, onClose,
+  visible, photoUrls, photoMeta, initialIndex, category, onClose,
 }: PhotoLightboxProps) {
   const insets = useSafeAreaInsets();
   const [currentIdx, setCurrentIdx] = useState(initialIndex);
+  const scrollRef = useRef<ScrollView>(null);
 
   const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_W);
     setCurrentIdx(idx);
+  }, []);
+
+  const handleThumbnailPress = useCallback((index: number) => {
+    setCurrentIdx(index);
+    scrollRef.current?.scrollTo({ x: index * SCREEN_W, animated: true });
   }, []);
 
   if (!visible || photoUrls.length === 0) return null;
@@ -65,6 +73,7 @@ export function PhotoLightbox({
 
         {/* Swipeable photos */}
         <ScrollView
+          ref={scrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -85,8 +94,16 @@ export function PhotoLightbox({
           ))}
         </ScrollView>
 
-        {/* Bottom hint */}
+        {/* Sprint 432: Photo metadata + thumbnail strip */}
         <View style={[s.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
+          {photoMeta && photoMeta.length > 0 && (
+            <PhotoMetadataBar
+              photos={photoMeta}
+              currentIndex={currentIdx}
+              onThumbnailPress={handleThumbnailPress}
+              category={category}
+            />
+          )}
           <Text style={s.hintText}>Swipe to browse</Text>
         </View>
       </View>
