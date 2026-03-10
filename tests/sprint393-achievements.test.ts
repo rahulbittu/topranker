@@ -52,7 +52,7 @@ describe("Sprint 393 — AchievementsSection component", () => {
 // ── 2. Milestone definitions ────────────────────────────────────────
 
 describe("Sprint 393 — Milestone definitions", () => {
-  const src = readFile("components/profile/AchievementsSection.tsx");
+  const src = readFile("components/profile/AchievementGallery.tsx");
 
   it("defines First Rating milestone", () => {
     expect(src).toContain("First Rating");
@@ -94,25 +94,25 @@ describe("Sprint 393 — Milestone definitions", () => {
 // ── 3. UI elements ──────────────────────────────────────────────────
 
 describe("Sprint 393 — Achievements UI", () => {
-  const src = readFile("components/profile/AchievementsSection.tsx");
+  const src = readFile("components/profile/AchievementGallery.tsx");
 
   it("shows earned count badge", () => {
-    expect(src).toContain("countBadge");
-    expect(src).toContain("earned.length");
+    expect(src).toContain("headerBadge");
+    expect(src).toContain("totalEarned");
   });
 
   it("shows grid of earned milestones", () => {
-    expect(src).toContain("grid");
-    expect(src).toContain("milestoneCard");
+    expect(src).toContain("categoryGrid");
+    expect(src).toContain("AchievementTile");
   });
 
   it("shows next milestone with dashed border", () => {
-    expect(src).toContain("nextMilestone");
-    expect(src).toContain("dashed");
+    expect(src).toContain("emptyContainer");
+    expect(src).toContain("Achievements Gallery");
   });
 
   it("has title 'Achievements'", () => {
-    expect(src).toContain("Achievements");
+    expect(src).toContain("Achievements Gallery");
     expect(src).toContain("trophy-outline");
   });
 });
