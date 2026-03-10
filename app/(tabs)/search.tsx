@@ -52,6 +52,7 @@ export default function SearchScreen() {
   const { recentSearches, saveRecentSearch, clearRecentSearches } = useRecentSearches();
   const { showDiscoverTip, dismissDiscoverTip } = useDiscoverTip();
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
+  const [mapSearchCenter, setMapSearchCenter] = useState<{ lat: number; lng: number } | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -181,12 +182,19 @@ export default function SearchScreen() {
       return list;
     }
     if (priceFilter) list = list.filter((b: MappedBusiness) => b.priceRange === priceFilter);
+    // Sprint 421: Filter by map search area (5km radius from center)
+    if (mapSearchCenter && viewMode === "map") {
+      list = list.filter((b: MappedBusiness) =>
+        b.lat != null && b.lng != null &&
+        haversineKm(mapSearchCenter.lat, mapSearchCenter.lng, b.lat!, b.lng!) <= 5
+      );
+    }
     if (sortBy === "relevant") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.relevanceScore || 0) - (a.relevanceScore || 0) || b.weightedScore - a.weightedScore);
     if (sortBy === "ranked") return list.sort((a: MappedBusiness, b: MappedBusiness) => (a.rank || 999) - (b.rank || 999));
     if (sortBy === "rated") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.ratingCount || 0) - (a.ratingCount || 0));
     if (sortBy === "trending") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.rankDelta || 0) - (a.rankDelta || 0));
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
-  }, [allBusinesses, activeFilter, priceFilter, sortBy, userLocation]);
+  }, [allBusinesses, activeFilter, priceFilter, sortBy, userLocation, mapSearchCenter, viewMode]);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
@@ -291,7 +299,7 @@ export default function SearchScreen() {
         <View style={styles.splitContainer}>
           {/* Map takes top half */}
           <View style={styles.splitMapSection}>
-            <MapView businesses={filtered} city={city} onSelectBiz={setSelectedMapBiz} />
+            <MapView businesses={filtered} city={city} onSelectBiz={setSelectedMapBiz} onSearchArea={(lat, lng) => setMapSearchCenter({ lat, lng })} />
             {/* Selected business card overlay */}
             {selectedMapBiz && (
               <TouchableOpacity
