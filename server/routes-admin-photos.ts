@@ -14,6 +14,7 @@ import {
   rejectPhoto,
   getPhotosByBusiness,
 } from "./photo-moderation";
+import { getHashIndexSize, clearHashIndex } from "./photo-hash";
 
 const adminPhotoLog = log.tag("AdminPhotos");
 
@@ -58,6 +59,19 @@ export function registerAdminPhotoRoutes(app: Router): void {
       return res.status(404).json({ error: "Photo not found or already reviewed" });
     }
     res.json({ success: true });
+  });
+
+  // Sprint 583: Photo hash index stats
+  app.get("/api/admin/photos/hash-stats", async (_req, res) => {
+    adminPhotoLog.info("Fetching photo hash index stats");
+    res.json({ trackedHashes: getHashIndexSize() });
+  });
+
+  // Sprint 583: Clear photo hash index (admin reset)
+  app.post("/api/admin/photos/hash-reset", async (_req, res) => {
+    adminPhotoLog.info("Clearing photo hash index");
+    clearHashIndex();
+    res.json({ success: true, trackedHashes: 0 });
   });
 
   // Public: Get approved photos for a business

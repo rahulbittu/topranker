@@ -15,6 +15,7 @@ import { sanitizeString } from "./sanitize";
 import { fileStorage } from "./file-storage";
 import { log } from "./logger";
 import crypto from "crypto";
+import { detectDuplicate, registerPhotoHash } from "./photo-hash";
 
 const photoLog = log.tag("RatingPhoto");
 
@@ -65,6 +66,9 @@ export function registerRatingPhotoRoutes(app: Express): void {
       return res.status(400).json({ error: "Photo too small — may be corrupted" });
     }
 
+    // Sprint 583: Duplicate detection before upload
+    const dupResult = detectDuplicate(buffer, memberId);
+
     // Generate CDN key
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
     const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
@@ -84,6 +88,28 @@ export function registerRatingPhotoRoutes(app: Express): void {
         cdnKey,
         isVerifiedReceipt: isReceipt === true,
       }).returning();
+
+      // Sprint 583: Register hash and flag cross-member duplicates
+      registerPhotoHash(dupResult.hash, ratingId, memberId, rating.businessId, photo.id);
+
+      if (dupResult.isCrossMember && dupResult.original) {
+        // Flag for admin moderation — different user submitted same photo
+        const { addToQueue } = await import("./moderation-queue");
+        addToQueue({
+          type: "duplicate_photo",
+          contentId: photo.id,
+          contentType: "rating_photo",
+          memberId,
+          businessId: rating.businessId,
+          reason: `Exact duplicate of photo ${dupResult.original.photoId} from member ${dupResult.original.memberId} on rating ${dupResult.original.ratingId}`,
+          severity: "high",
+        });
+        photoLog.warn("Cross-member duplicate flagged for moderation", {
+          photoId: photo.id,
+          ratingId,
+          originalPhotoId: dupResult.original.photoId,
+        });
+      }
 
       // Compute verification boost
       // Photo = +15%, Receipt = +25% (if flagged as receipt), capped at 50%
@@ -127,6 +153,8 @@ export function registerRatingPhotoRoutes(app: Express): void {
           photoUrl,
           isReceipt: isReceipt === true,
           verificationBoost: totalBoost,
+          isDuplicate: dupResult.isDuplicate,
+          isCrossMemberDuplicate: dupResult.isCrossMember,
         },
       });
     } catch (err: any) {

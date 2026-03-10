@@ -27,11 +27,11 @@
     "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 160, "current": 152, "notes": "Sprint 574: dish vote streak tracking" }
   },
   "build": {
-    "maxSizeKb": 720,
-    "currentSizeKb": 717.2
+    "maxSizeKb": 725,
+    "currentSizeKb": 721.2
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11044
+    "currentCount": 11070
   }
 }
