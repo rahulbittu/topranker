@@ -13,7 +13,7 @@ const fileExists = (relPath: string) =>
   fs.existsSync(path.join(ROOT, relPath));
 
 describe("Sprint 289: Leaderboard cards show cuisine", () => {
-  const src = readFile("components/leaderboard/SubComponents.tsx");
+  const src = readFile("components/leaderboard/RankedCard.tsx");
 
   it("imports CUISINE_DISPLAY", () => {
     expect(src).toContain("CUISINE_DISPLAY");
@@ -26,10 +26,10 @@ describe("Sprint 289: Leaderboard cards show cuisine", () => {
   });
 
   it("HeroCard displays cuisine in strip", () => {
-    // heroStripCategory should include cuisine
-    const heroSection = src.substring(
-      src.indexOf("heroStripCategory"),
-      src.indexOf("heroStripCategory") + 300
+    const heroSrc = readFile("components/leaderboard/SubComponents.tsx");
+    const heroSection = heroSrc.substring(
+      heroSrc.indexOf("heroStripCategory"),
+      heroSrc.indexOf("heroStripCategory") + 300
     );
     expect(heroSection).toContain("CUISINE_DISPLAY");
   });

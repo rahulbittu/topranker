@@ -72,7 +72,7 @@ describe("Sprint 337 — business detail copy link", () => {
 // ── 3. Ranked card — long-press copy link ──────────────────────────────
 
 describe("Sprint 337 — ranked card copy link", () => {
-  const subSrc = readFile("components/leaderboard/SubComponents.tsx");
+  const subSrc = readFile("components/leaderboard/RankedCard.tsx");
 
   it("imports copyShareLink", () => {
     expect(subSrc).toContain("copyShareLink");

@@ -68,7 +68,7 @@ describe("TopRankHighlight component", () => {
 // 2. RankDeltaBadge component
 // ---------------------------------------------------------------------------
 describe("RankDeltaBadge — animated rank change", () => {
-  const src = readFile("components/leaderboard/SubComponents.tsx");
+  const src = readFile("components/leaderboard/RankedCard.tsx");
 
   it("defines RankDeltaBadge function", () => {
     expect(src).toContain("function RankDeltaBadge");

@@ -60,7 +60,7 @@ describe("Sprint 324 — MappedBusiness type", () => {
 });
 
 describe("Sprint 324 — RankedCard dish badges", () => {
-  const subSrc = readFile("components/leaderboard/SubComponents.tsx");
+  const subSrc = readFile("components/leaderboard/RankedCard.tsx");
 
   it("renders dish badge row when dishRankings exist", () => {
     expect(subSrc).toContain("item.dishRankings");

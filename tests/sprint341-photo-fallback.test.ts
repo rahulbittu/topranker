@@ -75,7 +75,8 @@ describe("Leaderboard PhotoStrip cuisine prop", () => {
   });
 
   it("should pass cuisine prop from RankedCard to PhotoStrip", () => {
-    expect(leaderboardSubSrc).toMatch(/cuisine=\{item\.cuisine/);
+    const rankedCardSrc = fs.readFileSync(path.resolve("components/leaderboard/RankedCard.tsx"), "utf-8");
+    expect(rankedCardSrc).toMatch(/cuisine=\{item\.cuisine/);
   });
 
   it("should use cuisine-specific emoji in fallback", () => {

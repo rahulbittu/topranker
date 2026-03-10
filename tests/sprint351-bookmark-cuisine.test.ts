@@ -13,7 +13,7 @@ describe("Sprint 351: Wire cuisine into bookmark creation sites", () => {
     path.resolve("components/search/SubComponents.tsx"), "utf-8"
   );
   const leaderboardSubSrc = fs.readFileSync(
-    path.resolve("components/leaderboard/SubComponents.tsx"), "utf-8"
+    path.resolve("components/leaderboard/RankedCard.tsx"), "utf-8"
   );
 
   // ── BookmarksContext ──────────────────────────────────────────

@@ -21,7 +21,7 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 269: Low-Data Honesty", () => {
   const breakdownSrc = readFile("components/business/ScoreBreakdown.tsx");
-  const leaderboardSrc = readFile("components/leaderboard/SubComponents.tsx");
+  const leaderboardSrc = readFile("components/leaderboard/RankedCard.tsx");
   const searchSrc = readFile("components/search/SubComponents.tsx");
   const bizPageSrc = readFile("app/business/[id].tsx");
 

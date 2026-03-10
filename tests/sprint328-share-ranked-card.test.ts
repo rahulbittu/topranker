@@ -9,7 +9,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-const subPath = path.resolve(__dirname, "../components/leaderboard/SubComponents.tsx");
+const subPath = path.resolve(__dirname, "../components/leaderboard/RankedCard.tsx");
 const subCode = fs.readFileSync(subPath, "utf-8");
 
 describe("Sprint 328 — Share Button on Ranked Cards", () => {
@@ -71,7 +71,7 @@ describe("Sprint 328 — Share Button on Ranked Cards", () => {
 
   it("should stop propagation on share press", () => {
     const shareSection = subCode.slice(
-      subCode.indexOf("Sprint 328"),
+      subCode.indexOf("cardShareBtn"),
       subCode.indexOf("cardBookmarkBtn")
     );
     expect(shareSection).toContain("stopPropagation");
