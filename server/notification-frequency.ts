@@ -30,6 +30,12 @@ export const DEFAULT_FREQUENCY_PREFS: FrequencyPrefs = {
 export const FREQUENCY_CATEGORIES = ["rankingChanges", "newRatings", "cityAlerts"] as const;
 
 // ─── In-Memory Queue ─────────────────────────────────────────
+// PERSISTENCE-AUDIT: Sprint 528 — RISK for daily/weekly batches.
+// Migration path: notification_queue table (member_id, push_token, title, body, data jsonb, category, queued_at).
+// Priority: HIGH when batch frequency is activated — a server restart loses
+// all queued notifications. Currently acceptable because all users default to
+// "realtime" and the queue is effectively empty.
+// Trigger for migration: when ANY user sets a non-realtime frequency preference.
 
 export interface QueuedNotification {
   memberId: string;

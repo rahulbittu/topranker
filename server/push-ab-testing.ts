@@ -38,6 +38,10 @@ export interface VariantAssignment {
 }
 
 // ─── In-Memory Store ─────────────────────────────────────────
+// PERSISTENCE-AUDIT: Sprint 528 — acceptable for 500-user target.
+// Migration path: push_experiments table with jsonb variants column.
+// Priority: LOW — experiments are admin-seeded, few in number (<10), and
+// re-seeding after restart is a one-time admin action.
 
 const experiments = new Map<string, PushNotificationExperiment>();
 

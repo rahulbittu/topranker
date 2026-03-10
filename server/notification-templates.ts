@@ -35,6 +35,10 @@ export interface CreateTemplateInput {
 }
 
 // ─── In-Memory Store ─────────────────────────────────────────
+// PERSISTENCE-AUDIT: Sprint 528 — acceptable for 500-user target.
+// Migration path: notification_templates table (id, name, category, title, body, variables jsonb, active, timestamps).
+// Priority: MEDIUM — templates are admin-created content; losing them on restart
+// requires re-creation. Consider migration when template count exceeds 20.
 
 const templates = new Map<string, NotificationTemplate>();
 
