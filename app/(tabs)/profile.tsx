@@ -3,18 +3,15 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, RefreshControl,
 } from "react-native";
-import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
-import { isAdminEmail } from "@/shared/admin";
 import {
-  TIER_COLORS, TIER_DISPLAY_NAMES, TIER_INFLUENCE_LABELS,
+  TIER_COLORS, TIER_INFLUENCE_LABELS,
   type CredibilityTier,
 } from "@/lib/data";
-import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "@/lib/auth-context";
 import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
@@ -26,14 +23,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
 import {
-  TierBadge, LoggedOutView,
-  ImpactCard, PaymentHistoryRow, CredibilityJourney,
-  TierRewardsSection, LegalLinksSection,
+  LoggedOutView,
+  ImpactCard,
 } from "@/components/profile/SubComponents";
-import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 import { SavedPlacesSection } from "@/components/profile/SavedPlacesSection";
-import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { OnboardingChecklist } from "@/components/profile/OnboardingChecklist";
+import { ProfileIdentityCard } from "@/components/profile/ProfileIdentityCard";
+import { ProfileBottomSection } from "@/components/profile/ProfileBottomSection";
 import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { TierProgressNotification } from "@/components/profile/TierProgressNotification";
 import { DishVoteStreakCard } from "@/components/profile/DishVoteStreakCard";
@@ -122,32 +118,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         </View>
       </View>
 
-      <FadeInView delay={100} duration={500}>
-      <LinearGradient
-        colors={[BRAND.colors.navy, BRAND.colors.navyDark]}
-        style={styles.profileCard}
-      >
-        <View style={styles.avatarCircle}>
-          {profile.avatarUrl ? (
-            <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} contentFit="cover" />
-          ) : (
-            <Text style={styles.avatarInitial}>{profile.displayName.charAt(0)}</Text>
-          )}
-        </View>
-        <View style={styles.profileInfo}>
-          <Text style={[styles.profileName, styles.profileNameLight]}>{profile.displayName}</Text>
-          <Text style={[styles.username, styles.usernameLight]}>@{profile.username}</Text>
-          <View style={styles.badgeRow}>
-            <TierBadge tier={tier} />
-            {profile.isFoundingMember && (
-              <View style={styles.foundingBadge}>
-                <Text style={styles.foundingBadgeText}>FOUNDING MEMBER</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </LinearGradient>
-      </FadeInView>
+      {/* Sprint 584: Extracted identity card */}
+      <ProfileIdentityCard
+        displayName={profile.displayName}
+        username={profile.username}
+        avatarUrl={profile.avatarUrl}
+        tier={tier}
+        isFoundingMember={profile.isFoundingMember}
+      />
 
       {/* Sprint 185: Onboarding checklist for new users */}
       <OnboardingChecklist />
@@ -255,62 +233,17 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       {/* Saved Places — extracted component (Sprint 377) */}
       <SavedPlacesSection savedList={savedList} bookmarkCount={bookmarkCount} />
 
-      {/* Payment History */}
-      {paymentHistory && paymentHistory.length > 0 && (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Payment History</Text>
-            <Text style={styles.sectionCount}>{paymentHistory.length}</Text>
-          </View>
-          {paymentHistory.map((p: any) => (
-            <PaymentHistoryRow key={p.id} p={p} />
-          ))}
-        </>
-      )}
-
-      <CredibilityJourney currentTier={tier} credibilityScore={profile.credibilityScore} totalRatings={profile.totalRatings} />
-
-      {/* Achievement Badges */}
-      <BadgeGridFull
+      {/* Sprint 584: Extracted bottom section */}
+      <ProfileBottomSection
+        tier={tier}
+        credibilityScore={profile.credibilityScore}
+        totalRatings={profile.totalRatings}
+        email={profile.email}
+        paymentHistory={paymentHistory || []}
         badges={badges}
         totalPossible={totalPossible}
-        title="Achievement Badges"
         onBadgePress={setSelectedBadge}
       />
-
-      <TierRewardsSection tier={tier} />
-
-      {/* Invite Friends */}
-      <TouchableOpacity
-        style={styles.adminLink}
-        onPress={() => router.push("/referral")}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Invite friends"
-      >
-        <Ionicons name="people-outline" size={14} color={BRAND.colors.amber} />
-        <Text style={styles.adminLinkText}>Invite Friends</Text>
-        <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-      </TouchableOpacity>
-
-      {/* Admin Panel */}
-      {profile && isAdminEmail(profile.email) && (
-        <TouchableOpacity
-          style={styles.adminLink}
-          onPress={() => router.push("/admin")}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Open admin panel"
-        >
-          <Ionicons name="shield-checkmark" size={14} color={BRAND.colors.amber} />
-          <Text style={styles.adminLinkText}>Admin Panel</Text>
-          <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} />
-        </TouchableOpacity>
-      )}
-
-      <NotificationPreferencesCard />
-
-      <LegalLinksSection />
     </ScrollView>
 
     <BadgeDetailModal
@@ -401,48 +334,8 @@ const styles = StyleSheet.create({
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
-  adminLink: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
-    paddingHorizontal: 16, paddingVertical: 14, marginHorizontal: 20, marginBottom: 12,
-  },
-  adminLinkText: {
-    flex: 1, fontSize: 14, fontWeight: "600", color: BRAND.colors.amber,
-    fontFamily: "DMSans_600SemiBold",
-  },
-
-  // Profile card
-  profileCard: {
-    backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
-    flexDirection: "row", alignItems: "center", gap: 14,
-    ...Colors.cardShadow,
-  },
-  avatarCircle: {
-    width: 60, height: 60, borderRadius: 30,
-    backgroundColor: AMBER,
-    alignItems: "center", justifyContent: "center",
-  },
-  avatarImage: { width: "100%", height: "100%", borderRadius: 28 },
-  avatarInitial: { fontSize: 24, fontWeight: "700", color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
-  foundingBadge: {
-    backgroundColor: `${Colors.gold}20`, borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: `${Colors.gold}40`,
-  },
-  foundingBadgeText: {
-    fontSize: 8, fontWeight: "700", color: Colors.gold,
-    fontFamily: "DMSans_700Bold", letterSpacing: 0.5,
-  },
-  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  profileInfo: { gap: 4 },
-  profileName: {
-    fontSize: 20, fontWeight: "700", color: Colors.text,
-    fontFamily: "DMSans_700Bold", letterSpacing: -0.3,
-  },
-  profileNameLight: { color: "#fff", fontFamily: "PlayfairDisplay_700Bold" },
-  username: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  usernameLight: { color: "rgba(255,255,255,0.5)" },
-
-  // Sprint 536: credibility card, stats row, enhanced stats — moved to ProfileCredibilitySection
+  // Sprint 584: profileCard, avatar, badge styles moved to ProfileIdentityCard
+  // Sprint 584: adminLink, sectionHeader styles moved to ProfileBottomSection
 
   // Last rating
   lastRatingCard: {
@@ -454,12 +347,6 @@ const styles = StyleSheet.create({
   lastRatingBizName: { fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
   lastRatingDetail: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
 
-  // Section headers
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  sectionCount: { fontSize: 13, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-
   // Sprint 443: emptyHistory, showMore/Less, emptyText styles moved to RatingHistorySection
-
   // Sprint 536: getting started + growth prompt — moved to ProfileCredibilitySection
 });

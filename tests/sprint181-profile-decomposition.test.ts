@@ -195,18 +195,15 @@ describe("Profile.tsx — import compatibility", () => {
     expect(profileSrc).toContain('@/components/profile/SubComponents');
   });
 
-  it("imports all 11 components (SavedRow via SavedPlacesSection)", () => {
-    expect(profileSrc).toContain("TierBadge");
-    expect(profileSrc).toContain("HistoryRow");
+  it("imports key components (Sprint 584: some moved to ProfileBottomSection/ProfileIdentityCard)", () => {
+    // Direct imports still in profile.tsx
     expect(profileSrc).toContain("ScoreBreakdownCard");
     expect(profileSrc).toContain("SavedPlacesSection");
     expect(profileSrc).toContain("ImpactCard");
-    expect(profileSrc).toContain("PaymentHistoryRow");
-    expect(profileSrc).toContain("CredibilityJourney");
-    expect(profileSrc).toContain("TierRewardsSection");
-    expect(profileSrc).toContain("NotificationPreferencesCard");
-    expect(profileSrc).toContain("LegalLinksSection");
     expect(profileSrc).toContain("LoggedOutView");
+    // Sprint 584: extracted sections
+    expect(profileSrc).toContain("ProfileIdentityCard");
+    expect(profileSrc).toContain("ProfileBottomSection");
   });
 });
 

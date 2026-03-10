@@ -85,21 +85,30 @@ describe("Sprint 479: Notification Preferences UI", () => {
   });
 
   describe("Profile tab integration", () => {
-    const src = fs.readFileSync(
+    // Sprint 584: NotificationPreferencesCard moved from profile.tsx into ProfileBottomSection
+    const profileSrc = fs.readFileSync(
       path.resolve(__dirname, '../app/(tabs)/profile.tsx'),
+      "utf-8"
+    );
+    const bottomSrc = fs.readFileSync(
+      path.resolve(__dirname, '../components/profile/ProfileBottomSection.tsx'),
       "utf-8"
     );
 
     it("imports NotificationPreferencesCard instead of link", () => {
-      expect(src).toContain('import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard"');
+      expect(bottomSrc).toContain('import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard"');
     });
 
     it("renders NotificationPreferencesCard component", () => {
-      expect(src).toContain("<NotificationPreferencesCard />");
+      expect(bottomSrc).toContain("<NotificationPreferencesCard />");
     });
 
     it("no longer imports NotificationSettingsLink", () => {
-      expect(src).not.toContain("NotificationSettingsLink");
+      expect(profileSrc).not.toContain("NotificationSettingsLink");
+    });
+
+    it("profile.tsx renders ProfileBottomSection which contains NotificationPreferencesCard", () => {
+      expect(profileSrc).toContain("ProfileBottomSection");
     });
   });
 
