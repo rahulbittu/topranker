@@ -276,11 +276,16 @@ describe("Component Extraction Integrity", () => {
     }
 
     const searchSrc = readFile("app/(tabs)/search.tsx");
+    const mapSplitSrc = readFile("components/search/SearchMapSplitView.tsx");
     const searchSubSrc = readFile("components/search/SubComponents.tsx");
-    // These are imported directly by search.tsx
-    const searchDirectImports = ["BusinessCard", "MapBusinessCard", "haversineKm", "MapView"];
+    // Sprint 527: search.tsx imports BusinessCard+haversineKm; SearchMapSplitView imports MapBusinessCard+MapView
+    const searchDirectImports = ["BusinessCard", "haversineKm"];
     for (const exp of searchDirectImports) {
       expect(searchSrc).toContain(exp);
+    }
+    const mapViewImports = ["MapBusinessCard", "MapView"];
+    for (const exp of mapViewImports) {
+      expect(mapSplitSrc).toContain(exp);
     }
     // DiscoverPhotoStrip is used internally by BusinessCard within SubComponents
     // so it's not orphaned — verify it's used within SubComponents itself
@@ -295,11 +300,12 @@ describe("Search Page Regression", () => {
   const searchSrc = readFile("app/(tabs)/search.tsx");
   const searchSubSrc = readFile("components/search/SubComponents.tsx");
 
-  it("search.tsx imports MapView from SubComponents", () => {
-    // MapView was extracted to SubComponents; search.tsx imports it
-    expect(searchSrc).toContain("MapView");
-    expect(searchSrc).toContain(
-      'from "@/components/search/SubComponents"'
+  it("SearchMapSplitView imports MapView from SubComponents", () => {
+    // Sprint 527: MapView now imported by SearchMapSplitView
+    const mapSplitSrc = readFile("components/search/SearchMapSplitView.tsx");
+    expect(mapSplitSrc).toContain("MapView");
+    expect(mapSplitSrc).toContain(
+      'from "./SubComponents"'
     );
   });
 

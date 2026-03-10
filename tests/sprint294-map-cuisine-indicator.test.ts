@@ -41,15 +41,19 @@ describe("Sprint 294 — Map view cuisine indicator", () => {
   });
 });
 
+// Sprint 527: Map card extracted to SearchMapSplitView
 describe("Sprint 294 — Map selected card cuisine display", () => {
+  const mapSrc = fs.readFileSync(
+    path.resolve("components/search/SearchMapSplitView.tsx"), "utf-8",
+  );
+
   it("shows cuisine in selected map business card", () => {
-    // The mapSelectedCategory text should include cuisine lookup
-    expect(src).toMatch(/selectedMapBiz\.cuisine\s*&&\s*CUISINE_DISPLAY\[selectedMapBiz\.cuisine\]/);
+    expect(mapSrc).toMatch(/selectedMapBiz\.cuisine\s*&&\s*CUISINE_DISPLAY\[selectedMapBiz\.cuisine\]/);
   });
 
   it("displays cuisine emoji and label after category in card", () => {
-    expect(src).toContain("CUISINE_DISPLAY[selectedMapBiz.cuisine].emoji");
-    expect(src).toContain("CUISINE_DISPLAY[selectedMapBiz.cuisine].label");
+    expect(mapSrc).toContain("CUISINE_DISPLAY[selectedMapBiz.cuisine].emoji");
+    expect(mapSrc).toContain("CUISINE_DISPLAY[selectedMapBiz.cuisine].label");
   });
 });
 

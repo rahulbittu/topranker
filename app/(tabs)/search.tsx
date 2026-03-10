@@ -8,9 +8,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import { LinearGradient } from "expo-linear-gradient";
 import Colors from "@/constants/colors";
-import { getCategoryDisplay, getRankDisplay, BRAND } from "@/constants/brand";
+import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, type AutocompleteSuggestion } from "@/lib/api";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
@@ -19,8 +18,6 @@ import { DiscoverSkeleton } from "@/components/Skeleton";
 import { SearchResultsSkeleton } from "@/components/search/SearchResultsSkeleton";
 
 import * as Location from "expo-location";
-import { SafeImage } from "@/components/SafeImage";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { usePersistedSort, usePersistedCuisine, usePersistedFilter, usePersistedPrice, usePersistedViewMode, useRecentSearches, useDiscoverTip } from "@/lib/hooks/useSearchPersistence";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { TYPOGRAPHY } from "@/constants/typography";
@@ -28,7 +25,8 @@ import { MappedBusiness } from "@/types/business";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
 import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { getApiUrl } from "@/lib/query-client";
-import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
+import { BusinessCard, haversineKm } from "@/components/search/SubComponents";
+import { SearchMapSplitView } from "@/components/search/SearchMapSplitView";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
@@ -374,95 +372,23 @@ export default function SearchScreen() {
           </TouchableOpacity>
         </View>
       ) : viewMode === "map" ? (
-        <View style={styles.splitContainer}>
-          {/* Map takes top half */}
-          <View style={styles.splitMapSection}>
-            <MapView businesses={filtered} city={city} onSelectBiz={setSelectedMapBiz} onSearchArea={(lat, lng) => setMapSearchCenter({ lat, lng })} />
-            {/* Selected business card overlay */}
-            {selectedMapBiz && (
-              <TouchableOpacity
-                style={styles.mapSelectedCard}
-                onPress={() => router.push({ pathname: "/business/[id]", params: { id: selectedMapBiz.slug } })}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel={`View ${selectedMapBiz.name}`}
-              >
-                {selectedMapBiz.photoUrls && selectedMapBiz.photoUrls.length > 0 ? (
-                  <SafeImage uri={selectedMapBiz.photoUrls[0]} style={styles.mapSelectedPhoto} contentFit="cover" category={selectedMapBiz.category} />
-                ) : (
-                  <LinearGradient colors={[AMBER, BRAND.colors.amberDark]} style={[styles.mapSelectedPhoto, styles.mapSelectedPhotoFallback]}>
-                    <Text style={styles.mapSelectedInitial}>{selectedMapBiz.name.charAt(0)}</Text>
-                  </LinearGradient>
-                )}
-                <View style={styles.mapSelectedInfo}>
-                  <Text style={styles.mapSelectedName} numberOfLines={1}>{selectedMapBiz.name}</Text>
-                  <View style={styles.mapSelectedMetaRow}>
-                    <Text style={styles.mapSelectedScore}>{"\u2B50"} {selectedMapBiz.weightedScore.toFixed(1)}</Text>
-                    <Text style={styles.mapSelectedMeta}>{getRankDisplay(selectedMapBiz.rank)}</Text>
-                    {selectedMapBiz.isOpenNow !== undefined && (
-                      <View style={[styles.mapSelectedStatusPill, selectedMapBiz.isOpenNow ? styles.statusPillOpen : styles.statusPillClosed]}>
-                        <Text style={styles.mapSelectedStatusText}>{selectedMapBiz.isOpenNow ? "OPEN" : "CLOSED"}</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text style={styles.mapSelectedCategory} numberOfLines={1}>
-                    {getCategoryDisplay(selectedMapBiz.category).emoji} {getCategoryDisplay(selectedMapBiz.category).label}
-                    {selectedMapBiz.cuisine && CUISINE_DISPLAY[selectedMapBiz.cuisine] ? ` · ${CUISINE_DISPLAY[selectedMapBiz.cuisine].emoji} ${CUISINE_DISPLAY[selectedMapBiz.cuisine].label}` : ""}
-                    {selectedMapBiz.neighborhood ? ` \u00B7 ${selectedMapBiz.neighborhood}` : ""}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
-          {/* List takes bottom half */}
-          <View style={styles.splitListSection}>
-            {/* Sprint 294: Cuisine indicator in map view */}
-            {selectedCuisine && (
-              <View style={[styles.activeCuisineRow, { paddingHorizontal: 12 }]}>
-                <View style={styles.activeCuisineChip}>
-                  <Text style={styles.activeCuisineText}>
-                    {CUISINE_DISPLAY[selectedCuisine]?.emoji || ""} {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); }}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Clear ${selectedCuisine} filter`}
-                  >
-                    <Ionicons name="close-circle" size={14} color={Colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            <View style={styles.splitListHeader}>
-              <Ionicons name="list" size={14} color={AMBER} />
-              <Text style={styles.splitListHeaderText}>{filtered.length} result{filtered.length !== 1 ? "s" : ""} nearby</Text>
-            </View>
-            <FlatList
-              data={filtered}
-              keyExtractor={(item: MappedBusiness) => item.id}
-              renderItem={({ item }: { item: MappedBusiness }) => <MapBusinessCard item={item} />}
-              contentContainerStyle={[styles.splitListContent, { paddingBottom: Platform.OS === "web" ? 34 + 84 : insets.bottom + 90 }]}
-              showsVerticalScrollIndicator={false}
-              initialNumToRender={10}
-              ListEmptyComponent={
-                <DiscoverEmptyState
-                  variant="map"
-                  query={query}
-                  selectedCuisine={selectedCuisine}
-                  city={city}
-                  activeFilter={activeFilter}
-                  popularCategories={popularCategories}
-                  onClearCuisine={() => setSelectedCuisine(null)}
-                  onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
-                  onCityChange={setCity}
-                  onClearFilter={() => setActiveFilter("All")}
-                />
-              }
-            />
-          </View>
-        </View>
+        /* Sprint 527: Map split view extracted */
+        <SearchMapSplitView
+          filtered={filtered}
+          city={city}
+          selectedMapBiz={selectedMapBiz}
+          onSelectMapBiz={setSelectedMapBiz}
+          onSearchArea={(lat, lng) => setMapSearchCenter({ lat, lng })}
+          selectedCuisine={selectedCuisine}
+          onClearCuisine={() => setSelectedCuisine(null)}
+          query={query}
+          activeFilter={activeFilter}
+          popularCategories={popularCategories}
+          onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
+          onCityChange={setCity}
+          onClearFilter={() => setActiveFilter("All")}
+          bottomInset={insets.bottom}
+        />
       ) : (
         <FlatList
           data={filtered}
@@ -699,15 +625,7 @@ const styles = StyleSheet.create({
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
 
-  statusPillOpen: {
-    backgroundColor: Colors.green,
-    shadowColor: Colors.green,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statusPillClosed: { backgroundColor: Colors.red },
+  // Sprint 527: statusPillOpen/Closed moved to SearchMapSplitView
 
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
@@ -723,72 +641,7 @@ const styles = StyleSheet.create({
 
   errorIcon: { marginBottom: 12 },
 
-  // Map styles — split view (Yelp-like)
-  splitContainer: { flex: 1 },
-  splitMapSection: {
-    height: "45%", position: "relative" as const,
-  },
-  splitListSection: {
-    flex: 1, backgroundColor: Colors.background,
-    borderTopLeftRadius: 16, borderTopRightRadius: 16,
-    marginTop: -12,
-    ...Colors.cardShadow,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  splitListHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8,
-  },
-  splitListHeaderText: {
-    fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  splitListContent: { paddingHorizontal: 12, gap: 6 },
-
-  // Selected business card overlay on map
-  mapSelectedCard: {
-    position: "absolute" as const, bottom: 20, left: 12, right: 12,
-    flexDirection: "row", alignItems: "center",
-    backgroundColor: Colors.surface, borderRadius: 14, padding: 10, gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  mapSelectedPhoto: {
-    width: 52, height: 52, borderRadius: 10,
-  },
-  mapSelectedPhotoFallback: {
-    alignItems: "center", justifyContent: "center",
-  },
-  mapSelectedInitial: {
-    color: "#fff", fontWeight: "700", fontSize: 18, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  mapSelectedInfo: { flex: 1, gap: 2 },
-  mapSelectedName: {
-    fontSize: 15, fontWeight: "700", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold",
-  },
-  mapSelectedMetaRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-  },
-  mapSelectedScore: {
-    fontSize: 13, fontWeight: "800", color: AMBER, fontFamily: "PlayfairDisplay_900Black",
-  },
-  mapSelectedMeta: {
-    ...TYPOGRAPHY.ui.caption, color: Colors.textSecondary,
-  },
-  mapSelectedStatusPill: {
-    paddingHorizontal: 5, paddingVertical: 1, borderRadius: 99,
-  },
-  mapSelectedStatusText: {
-    fontSize: 8, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold",
-  },
-  mapSelectedCategory: {
-    ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary,
-  },
+  // Sprint 527: Map split view styles moved to SearchMapSplitView component
 
   // Sprint 332: priceRow/sortRow styles moved to DiscoverFilters component
 

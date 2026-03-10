@@ -107,7 +107,9 @@ describe("Sprint 383 — search.tsx integration", () => {
   });
 
   it("uses DiscoverEmptyState for map variant", () => {
-    expect(searchSrc).toContain('variant="map"');
+    // Sprint 527: Map variant moved to SearchMapSplitView
+    const mapSplitSrc = readFile("components/search/SearchMapSplitView.tsx");
+    expect(mapSplitSrc).toContain('variant="map"');
   });
 
   it("passes query prop to empty state", () => {
