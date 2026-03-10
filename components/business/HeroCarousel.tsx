@@ -22,11 +22,12 @@ export interface HeroCarouselProps {
   onBack: () => void;
   onToggleBookmark: () => void;
   onShare: () => void;
+  onPhotoPress?: (index: number) => void;
 }
 
 export function HeroCarousel({
   photoUrls, heroPhotoIdx, screenWidth, businessName, category,
-  saved, topPad, onHeroScroll, onBack, onToggleBookmark, onShare,
+  saved, topPad, onHeroScroll, onBack, onToggleBookmark, onShare, onPhotoPress,
 }: HeroCarouselProps) {
   return (
     <View style={s.heroImageContainer}>
@@ -36,9 +37,14 @@ export function HeroCarousel({
           onScroll={onHeroScroll} scrollEventThrottle={16}
         >
           {photoUrls.map((url, i) => (
-            <SafeImage key={i} uri={url} style={[s.heroImage, { width: screenWidth }]}
-              contentFit="cover" category={category}
-              fallbackText={businessName.charAt(0).toUpperCase()} />
+            <TouchableOpacity key={i} activeOpacity={0.9}
+              onPress={() => onPhotoPress?.(i)}
+              accessibilityRole="button"
+              accessibilityLabel={`View photo ${i + 1} of ${photoUrls.length} fullscreen`}>
+              <SafeImage uri={url} style={[s.heroImage, { width: screenWidth }]}
+                contentFit="cover" category={category}
+                fallbackText={businessName.charAt(0).toUpperCase()} />
+            </TouchableOpacity>
           ))}
         </ScrollView>
       ) : (

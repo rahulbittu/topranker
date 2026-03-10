@@ -13,9 +13,10 @@ export interface PhotoGalleryProps {
   category: string;
   communityPhotoCount?: number;
   onAddPhoto?: () => void;
+  onPhotoPress?: (index: number) => void;
 }
 
-export function PhotoGallery({ photoUrls, category, communityPhotoCount = 0, onAddPhoto }: PhotoGalleryProps) {
+export function PhotoGallery({ photoUrls, category, communityPhotoCount = 0, onAddPhoto, onPhotoPress }: PhotoGalleryProps) {
   if (photoUrls.length <= 1) return null;
 
   const maxGrid = 6;
@@ -38,7 +39,10 @@ export function PhotoGallery({ photoUrls, category, communityPhotoCount = 0, onA
       </View>
       <View style={s.grid}>
         {/* Featured first photo — full width with label */}
-        <View style={s.featuredWrap}>
+        <TouchableOpacity style={s.featuredWrap} activeOpacity={0.9}
+          onPress={() => onPhotoPress?.(0)}
+          accessibilityRole="button"
+          accessibilityLabel={`View photo 1 of ${photoUrls.length} fullscreen`}>
           <SafeImage
             uri={photoUrls[0]}
             style={s.featured}
@@ -48,13 +52,16 @@ export function PhotoGallery({ photoUrls, category, communityPhotoCount = 0, onA
           <View style={s.photoIndexBadge}>
             <Text style={s.photoIndexText}>1 of {photoUrls.length}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         {/* Remaining photos — 2-column grid */}
         <View style={s.row}>
           {gridPhotos.map((url, i) => {
             const isLast = i === gridPhotos.length - 1 && overflowCount > 0;
             return (
-              <View key={i} style={s.gridImageWrap}>
+              <TouchableOpacity key={i} style={s.gridImageWrap} activeOpacity={0.9}
+                onPress={() => onPhotoPress?.(i + 1)}
+                accessibilityRole="button"
+                accessibilityLabel={`View photo ${i + 2} of ${photoUrls.length} fullscreen`}>
                 <SafeImage
                   uri={url}
                   style={s.gridImage}
@@ -68,7 +75,7 @@ export function PhotoGallery({ photoUrls, category, communityPhotoCount = 0, onA
                     <Text style={s.seeAllLabel}>See all</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>

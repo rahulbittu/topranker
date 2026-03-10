@@ -38,6 +38,7 @@ import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
 import { PhotoGallery } from "@/components/business/PhotoGallery";
+import { PhotoLightbox } from "@/components/business/PhotoLightbox";
 import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
@@ -84,6 +85,8 @@ export default function BusinessProfileScreen() {
   });
   const photoUrls: string[] = business?.photoUrls || (business?.photoUrl ? [business.photoUrl] : []);
   const [heroPhotoIdx, setHeroPhotoIdx] = useState(0);
+  const [lightboxVisible, setLightboxVisible] = useState(false);
+  const [lightboxIdx, setLightboxIdx] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [ratingImpact, setRatingImpactState] = useState<{ prevRank: number; newRank: number } | null>(null);
 
@@ -109,6 +112,11 @@ export default function BusinessProfileScreen() {
   const onHeroScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
     setHeroPhotoIdx(idx);
+  }, []);
+
+  const openLightbox = useCallback((index: number) => {
+    setLightboxIdx(index);
+    setLightboxVisible(true);
   }, []);
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
@@ -216,6 +224,7 @@ export default function BusinessProfileScreen() {
           onBack={() => router.back()}
           onToggleBookmark={handleToggleBookmark}
           onShare={handleShare}
+          onPhotoPress={openLightbox}
         />
 
         {/* Breadcrumb Navigation */}
@@ -408,10 +417,19 @@ export default function BusinessProfileScreen() {
           )}
 
           {/* Photo Gallery — extracted component (Sprint 366) */}
-          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => router.push({ pathname: "/rate/[id]", params: { id: business.slug } }) : undefined} />
+          <PhotoGallery photoUrls={photoUrls} category={business.category} onAddPhoto={user ? () => router.push({ pathname: "/rate/[id]", params: { id: business.slug } }) : undefined} onPhotoPress={openLightbox} />
 
         </View>
       </ScrollView>
+
+      {/* Sprint 413: Photo lightbox */}
+      <PhotoLightbox
+        visible={lightboxVisible}
+        photoUrls={photoUrls}
+        initialIndex={lightboxIdx}
+        category={business.category}
+        onClose={() => setLightboxVisible(false)}
+      />
     </View>
   );
 }
