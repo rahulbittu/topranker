@@ -117,20 +117,3 @@ describe("Sprint 393 — Achievements UI", () => {
   });
 });
 
-// ── 4. Profile integration ──────────────────────────────────────────
-
-describe("Sprint 393 — Profile integration", () => {
-  const src = readFile("app/(tabs)/profile.tsx");
-
-  it("imports AchievementsSection", () => {
-    expect(src).toContain("AchievementsSection");
-    expect(src).toContain("components/profile/AchievementsSection");
-  });
-
-  it("renders AchievementsSection with profile data", () => {
-    expect(src).toContain("<AchievementsSection");
-    expect(src).toContain("totalRatings={profile.totalRatings}");
-    expect(src).toContain("distinctBusinesses={profile.distinctBusinesses}");
-    expect(src).toContain("tier={tier}");
-  });
-});

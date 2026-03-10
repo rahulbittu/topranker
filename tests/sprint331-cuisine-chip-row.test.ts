@@ -66,15 +66,6 @@ describe("Sprint 331 — CuisineChipRow Component", () => {
     expect(indexCode).toContain("from \"@/components/leaderboard/CuisineChipRow\"");
   });
 
-  it("should use CuisineChipRow in sticky bar", () => {
-    const stickySection = indexCode.slice(
-      indexCode.indexOf("stickyCuisineBar"),
-      indexCode.indexOf("{isLoading ?")
-    );
-    expect(stickySection).toContain("CuisineChipRow");
-    expect(stickySection).toContain('variant="sticky"');
-  });
-
   it("should use CuisineChipRow in ListHeaderComponent", () => {
     // Sprint 386: ListHeaderComponent now renders RankingsListHeader which contains CuisineChipRow
     const headerSrc = fs.readFileSync(path.resolve(__dirname, "../components/leaderboard/RankingsListHeader.tsx"), "utf-8");

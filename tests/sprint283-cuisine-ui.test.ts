@@ -43,13 +43,14 @@ describe("Sprint 283: Rankings Cuisine Picker UI", () => {
     expect(indexSrc).toContain("setSelectedCuisine");
   });
 
-  it("uses CuisineChipRow component for cuisine chips", () => {
+  it("uses CuisineChipRow component for cuisine chips via RankingsListHeader", () => {
     expect(indexSrc).toContain("CuisineChipRow");
-    expect(indexSrc).toContain("onSelect={setSelectedCuisine}");
+    const headerSrc = readFile("components/leaderboard/RankingsListHeader.tsx");
+    expect(headerSrc).toContain("CuisineChipRow");
   });
 
-  it("cuisine picker calls setSelectedCuisine via onSelect", () => {
-    expect(indexSrc).toContain("onSelect={setSelectedCuisine}");
+  it("cuisine picker calls setSelectedCuisine via onCuisineChange", () => {
+    expect(indexSrc).toContain("onCuisineChange={setSelectedCuisine}");
   });
 
   it("has cuisineChip style in CuisineChipRow", () => {

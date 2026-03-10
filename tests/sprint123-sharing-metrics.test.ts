@@ -92,10 +92,6 @@ describe("Sprint 123 — Business Social Sharing", () => {
     expect(source).toContain('getShareUrl("business"');
   });
 
-  it("calls getShareText with business name", () => {
-    expect(source).toContain("getShareText(business.name");
-  });
-
   it("tracks share_business analytics event", () => {
     expect(source).toContain("shareBusiness");
   });

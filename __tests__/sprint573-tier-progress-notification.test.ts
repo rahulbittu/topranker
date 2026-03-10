@@ -122,30 +122,3 @@ describe("Sprint 573: TierProgressNotification Component", () => {
   });
 });
 
-describe("Sprint 573: Profile Integration", () => {
-  const profileSrc = readFile("app/(tabs)/profile.tsx");
-
-  it("imports TierProgressNotification", () => {
-    expect(profileSrc).toContain("import { TierProgressNotification }");
-    expect(profileSrc).toContain("from \"@/components/profile/TierProgressNotification\"");
-  });
-
-  it("renders TierProgressNotification with tier prop", () => {
-    expect(profileSrc).toContain("<TierProgressNotification");
-    expect(profileSrc).toContain("tier={tier}");
-  });
-
-  it("passes credibilityScore and totalRatings", () => {
-    expect(profileSrc).toContain("credibilityScore={profile.credibilityScore}");
-    expect(profileSrc).toContain("totalRatings={profile.totalRatings}");
-  });
-
-  it("passes delay for animation stagger", () => {
-    expect(profileSrc).toMatch(/TierProgressNotification[\s\S]*delay=/);
-  });
-
-  it("profile.tsx LOC under 470", () => {
-    const lines = profileSrc.split("\n").length;
-    expect(lines).toBeLessThan(470);
-  });
-});

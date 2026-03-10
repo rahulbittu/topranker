@@ -9,7 +9,7 @@
     "lib/api.ts": { "maxLOC": 525, "current": 517, "notes": "Sprint 576: getMockData extracted to mock-router.ts" },
     "lib/mock-router.ts": { "maxLOC": 85, "current": 77, "notes": "Sprint 576: extracted from api.ts" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 198, "notes": "Sprint 562: extracted from api.ts" },
-    "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
+    "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 407, "notes": "Sprint 583: UI simplification" },
     "app/(tabs)/search.tsx": { "maxLOC": 600, "current": 588, "notes": "Sprint 571: DiscoverSections extracted" },
     "app/business/dashboard.tsx": { "maxLOC": 510, "current": 502, "notes": "Sprint 567: +RatingVelocityWidget" },
     "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 111, "notes": "Sprint 561: extracted from dashboard.tsx" },
@@ -32,6 +32,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11044
+    "currentCount": 10975
   }
 }

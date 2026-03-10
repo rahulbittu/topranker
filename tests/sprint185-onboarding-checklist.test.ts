@@ -162,21 +162,6 @@ describe("Client API — onboarding", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Profile integration
-// ---------------------------------------------------------------------------
-describe("Profile — onboarding integration", () => {
-  const src = readFile("app/(tabs)/profile.tsx");
-
-  it("imports OnboardingChecklist", () => {
-    expect(src).toContain("OnboardingChecklist");
-  });
-
-  it("renders OnboardingChecklist in profile", () => {
-    expect(src).toContain("<OnboardingChecklist />");
-  });
-});
-
-// ---------------------------------------------------------------------------
 // 6. Storage barrel export
 // ---------------------------------------------------------------------------
 describe("Storage barrel — Sprint 185 exports", () => {

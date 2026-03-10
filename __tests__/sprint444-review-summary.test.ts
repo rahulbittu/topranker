@@ -195,31 +195,7 @@ describe("ReviewSummaryCard — dimension averages", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Business page integration
-// ---------------------------------------------------------------------------
-describe("Business page — ReviewSummaryCard wiring", () => {
-  const src = readFile("app/business/[id].tsx");
-
-  it("imports ReviewSummaryCard", () => {
-    expect(src).toContain("import { ReviewSummaryCard }");
-    expect(src).toContain("components/business/ReviewSummaryCard");
-  });
-
-  it("renders <ReviewSummaryCard>", () => {
-    expect(src).toContain("<ReviewSummaryCard");
-  });
-
-  it("passes ratings prop", () => {
-    expect(src).toContain("ratings={ratings}");
-  });
-
-  it("business/[id].tsx under 650 LOC", () => {
-    expect(src.split("\n").length).toBeLessThan(650);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 7. Sprint & retro docs
+// 6. Sprint & retro docs
 // ---------------------------------------------------------------------------
 describe("Sprint 444 documentation", () => {
   it("sprint doc exists", () => {

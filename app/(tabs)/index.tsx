@@ -28,7 +28,6 @@ import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { LeaderboardFilterChips } from "@/components/leaderboard/LeaderboardFilterChips";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FadeInView } from "@/components/animations/FadeInView";
-import { TopRankHighlight } from "@/components/animations/TopRankHighlight";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
 
 const AMBER = BRAND.colors.amber;
@@ -56,9 +55,6 @@ export default function LeaderboardScreen() {
   const availableCuisines = useMemo(() => getAvailableCuisines(), []);
   // Sprint 312: Dynamic dish shortcuts with real entry counts
   const dishShortcuts = useDishShortcuts(city, selectedCuisine);
-  // Sprint 327: Sticky cuisine chips on scroll
-  const [showStickyCuisine, setShowStickyCuisine] = useState(false);
-  const CUISINE_STICKY_THRESHOLD = 80;
 
   useEffect(() => {
     AsyncStorage.getItem("banner_dismissed").then((val) => {
@@ -200,19 +196,6 @@ export default function LeaderboardScreen() {
         </View>
       </Modal>
 
-      {/* Sprint 327/331: Sticky cuisine bar — extracted to CuisineChipRow */}
-      {showStickyCuisine && (
-        <View style={styles.stickyCuisineBar}>
-          <CuisineChipRow
-            cuisines={availableCuisines}
-            selectedCuisine={selectedCuisine}
-            onSelect={setSelectedCuisine}
-            analyticsSource="rankings"
-            variant="sticky"
-          />
-        </View>
-      )}
-
       {/* Sprint 553: Extracted to LeaderboardFilterChips */}
       <LeaderboardFilterChips
         neighborhoods={neighborhoods}
@@ -237,9 +220,7 @@ export default function LeaderboardScreen() {
           data={restBiz}
           keyExtractor={item => item.id}
           renderItem={({ item, index }) => (
-            <TopRankHighlight active={item.rank === 1}>
-              <RankedCard item={item} index={index} />
-            </TopRankHighlight>
+            <RankedCard item={item} index={index} />
           )}
           contentContainerStyle={[
             styles.list,
@@ -251,11 +232,6 @@ export default function LeaderboardScreen() {
           maxToRenderPerBatch={5}
           windowSize={5}
           removeClippedSubviews={Platform.OS !== "web"}
-          onScroll={(e) => {
-            const y = e.nativeEvent.contentOffset.y;
-            const shouldShow = y > CUISINE_STICKY_THRESHOLD;
-            if (shouldShow !== showStickyCuisine) setShowStickyCuisine(shouldShow);
-          }}
           scrollEventThrottle={16}
           refreshControl={
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
@@ -428,16 +404,4 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  // Sprint 327/331: Sticky cuisine bar — chip styles moved to CuisineChipRow
-  stickyCuisineBar: {
-    backgroundColor: Colors.background,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 10,
-  },
 });

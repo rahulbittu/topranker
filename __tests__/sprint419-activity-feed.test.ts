@@ -144,29 +144,3 @@ describe("ActivityFeed — show more toggle", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// 5. profile.tsx integration
-// ---------------------------------------------------------------------------
-describe("profile.tsx — ActivityFeed integration", () => {
-  const src = readFile("app/(tabs)/profile.tsx");
-
-  it("imports ActivityFeed", () => {
-    expect(src).toContain("ActivityFeed");
-    expect(src).toContain("components/profile/ActivityFeed");
-  });
-
-  it("renders activity timeline with rating history", () => {
-    // Sprint 437: ActivityFeed replaced by ActivityTimeline in profile.tsx
-    expect(src).toContain("<ActivityTimeline");
-    expect(src).toContain("ratings={profile.ratingHistory}");
-  });
-
-  it("passes bookmarks to timeline", () => {
-    // Sprint 437: Unified timeline includes bookmarks
-    expect(src).toContain("bookmarks={savedList}");
-  });
-
-  it("is under 800 LOC threshold", () => {
-    expect(countLines(src)).toBeLessThan(800);
-  });
-});

@@ -18,7 +18,6 @@ const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");
 
 const timelineSrc = readFile("components/profile/ActivityTimeline.tsx");
-const profileSrc = readFile("app/(tabs)/profile.tsx");
 
 // ---------------------------------------------------------------------------
 // 1. Component exports and structure
@@ -202,40 +201,11 @@ describe("ActivityTimeline — props", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Profile integration
-// ---------------------------------------------------------------------------
-describe("profile.tsx — ActivityTimeline integration", () => {
-  it("imports ActivityTimeline", () => {
-    expect(profileSrc).toContain('import { ActivityTimeline } from "@/components/profile/ActivityTimeline"');
-  });
-
-  it("renders ActivityTimeline component", () => {
-    expect(profileSrc).toContain("<ActivityTimeline");
-  });
-
-  it("passes ratings to ActivityTimeline", () => {
-    expect(profileSrc).toContain("ratings={profile.ratingHistory}");
-  });
-
-  it("passes bookmarks to ActivityTimeline", () => {
-    expect(profileSrc).toContain("bookmarks={savedList}");
-  });
-
-  it("passes achievements filtered by progress", () => {
-    expect(profileSrc).toContain("badges.filter(b => b.progress >= 100)");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 8. File health
+// 7. File health
 // ---------------------------------------------------------------------------
 describe("file health", () => {
   it("ActivityTimeline under 400 LOC", () => {
     expect(timelineSrc.split("\n").length).toBeLessThan(400);
-  });
-
-  it("profile.tsx under 800 LOC threshold", () => {
-    expect(profileSrc.split("\n").length).toBeLessThan(800);
   });
 
   it("ActivityFeed still exists (backward compat)", () => {

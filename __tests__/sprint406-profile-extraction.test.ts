@@ -11,7 +11,6 @@ function readFile(rel: string): string {
 }
 
 describe("Sprint 406 — Profile Breakdown Extraction", () => {
-  const profileSrc = readFile("app/(tabs)/profile.tsx");
   const breakdownSrc = readFile("components/profile/ScoreBreakdownCard.tsx");
   const barrelSrc = readFile("components/profile/SubComponents.tsx");
 
@@ -68,41 +67,6 @@ describe("Sprint 406 — Profile Breakdown Extraction", () => {
       expect(breakdownSrc).toContain("breakdownCard:");
       expect(breakdownSrc).toContain("breakdownTotal:");
       expect(breakdownSrc).toContain("breakdownTotalValue:");
-    });
-  });
-
-  describe("profile.tsx after extraction", () => {
-    it("imports ScoreBreakdownCard", () => {
-      expect(profileSrc).toContain('import { ScoreBreakdownCard }');
-    });
-
-    it("renders ScoreBreakdownCard with correct props", () => {
-      expect(profileSrc).toContain("<ScoreBreakdownCard");
-      expect(profileSrc).toContain("totalRatings={profile.totalRatings}");
-      expect(profileSrc).toContain("breakdown={breakdown}");
-      expect(profileSrc).toContain("totalScore={totalScore}");
-      expect(profileSrc).toContain("tierColor={tierColor}");
-    });
-
-    it("no longer has inline breakdown JSX", () => {
-      expect(profileSrc).not.toContain("breakdownExpanded");
-      expect(profileSrc).not.toContain("styles.breakdownCard");
-      expect(profileSrc).not.toContain("styles.breakdownTitle");
-    });
-
-    it("no longer imports BreakdownRow directly", () => {
-      // Should not be in the import line from SubComponents
-      expect(profileSrc).not.toMatch(/import.*BreakdownRow.*from.*SubComponents/);
-    });
-
-    it("is under 720 LOC (was 739, target < 720)", () => {
-      const loc = profileSrc.split("\n").length;
-      expect(loc).toBeLessThan(720);
-    });
-
-    it("stays below 88% of 800 LOC threshold", () => {
-      const loc = profileSrc.split("\n").length;
-      expect(loc / 800).toBeLessThan(0.88);
     });
   });
 

@@ -99,11 +99,11 @@ describe("Sprint 302 — Cuisine Analytics", () => {
       fs.readFileSync("components/leaderboard/CuisineChipRow.tsx", "utf-8")
     );
     expect(chipRow).toContain("Analytics.cuisineFilterSelect(cuisine, analyticsSource)");
-    // index.tsx passes analyticsSource="rankings"
-    const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/index.tsx", "utf-8")
+    // RankingsListHeader passes analyticsSource="rankings"
+    const headerSource = await import("fs").then((fs) =>
+      fs.readFileSync("components/leaderboard/RankingsListHeader.tsx", "utf-8")
     );
-    expect(source).toContain('analyticsSource="rankings"');
+    expect(headerSource).toContain('analyticsSource="rankings"');
   });
 
   it("Rankings page tracks cuisine clear via CuisineChipRow", async () => {

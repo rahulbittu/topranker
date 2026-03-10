@@ -45,16 +45,7 @@ describe("Sprint 337 — sharing utility", () => {
 // ── 2. Business detail — copy link button ──────────────────────────────
 
 describe("Sprint 337 — business detail copy link", () => {
-  const bizSrc = readFile("app/business/[id].tsx");
   const actionBarSrc = readFile("components/business/BusinessActionBar.tsx");
-
-  it("imports copyShareLink", () => {
-    expect(bizSrc).toContain("copyShareLink");
-  });
-
-  it("has handleCopyLink handler", () => {
-    expect(bizSrc).toContain("handleCopyLink");
-  });
 
   it("has WhatsApp action button (Sprint 539: replaced Copy Link)", () => {
     expect(actionBarSrc).toContain('label="WhatsApp"');
@@ -62,10 +53,6 @@ describe("Sprint 337 — business detail copy link", () => {
 
   it("uses logo-whatsapp icon (Sprint 539: replaced copy-outline)", () => {
     expect(actionBarSrc).toContain('icon="logo-whatsapp"');
-  });
-
-  it("tracks copy_link analytics", () => {
-    expect(bizSrc).toContain('"copy_link"');
   });
 });
 

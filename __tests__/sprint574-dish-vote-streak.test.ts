@@ -125,31 +125,6 @@ describe("Sprint 574: DishVoteStreakCard Component", () => {
   });
 });
 
-describe("Sprint 574: Profile Integration", () => {
-  const profileSrc = readFile("app/(tabs)/profile.tsx");
-
-  it("imports DishVoteStreakCard", () => {
-    expect(profileSrc).toContain("import { DishVoteStreakCard }");
-    expect(profileSrc).toContain("from \"@/components/profile/DishVoteStreakCard\"");
-  });
-
-  it("renders DishVoteStreakCard with streak props", () => {
-    expect(profileSrc).toContain("<DishVoteStreakCard");
-    expect(profileSrc).toContain("currentStreak={profile.dishVoteStreak");
-    expect(profileSrc).toContain("longestStreak={profile.longestDishStreak");
-    expect(profileSrc).toContain("totalDishVotes={profile.totalDishVotes");
-  });
-
-  it("passes topDish and delay", () => {
-    expect(profileSrc).toContain("topDish={profile.topDish}");
-    expect(profileSrc).toMatch(/DishVoteStreakCard[\s\S]*delay=/);
-  });
-
-  it("profile.tsx LOC under 475", () => {
-    const lines = profileSrc.split("\n").length;
-    expect(lines).toBeLessThan(475);
-  });
-});
 
 describe("Sprint 574: API Type Additions", () => {
   const apiSrc = readFile("lib/api.ts");

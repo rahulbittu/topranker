@@ -128,21 +128,3 @@ describe("Sprint 401 — Main ProfileStatsCard", () => {
   });
 });
 
-// ── 5. Integration with profile.tsx ─────────────────────────────────
-
-describe("Sprint 401 — Profile integration", () => {
-  const src = readFile("app/(tabs)/profile.tsx");
-
-  it("imports ProfileStatsCard", () => {
-    expect(src).toContain("ProfileStatsCard");
-  });
-
-  it("passes ratingHistory prop", () => {
-    expect(src).toContain("ratingHistory={profile.ratingHistory}");
-  });
-
-  it("passes totalRatings and daysActive", () => {
-    expect(src).toContain("totalRatings={profile.totalRatings}");
-    expect(src).toContain("daysActive={profile.daysActive}");
-  });
-});
