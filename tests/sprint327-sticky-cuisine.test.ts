@@ -41,37 +41,30 @@ describe("Sprint 327 — Sticky Cuisine Chips", () => {
     expect(styleSection).toContain("borderBottomWidth");
   });
 
-  it("should have stickyCuisineChip and stickyCuisineChipActive styles", () => {
-    expect(indexCode).toContain("stickyCuisineChip:");
-    expect(indexCode).toContain("stickyCuisineChipActive:");
-  });
-
-  it("should render All cuisine option in sticky bar", () => {
-    // The sticky bar has an "All" option
+  it("should use CuisineChipRow with sticky variant in sticky bar", () => {
     const stickySection = indexCode.slice(
       indexCode.indexOf("stickyCuisineBar"),
       indexCode.indexOf("{isLoading ?")
     );
-    expect(stickySection).toContain("setSelectedCuisine(null)");
-    expect(stickySection).toContain(">All<");
+    expect(stickySection).toContain("CuisineChipRow");
+    expect(stickySection).toContain('variant="sticky"');
   });
 
-  it("should render available cuisines in sticky bar", () => {
+  it("should pass cuisines and onSelect to sticky CuisineChipRow", () => {
     const stickySection = indexCode.slice(
       indexCode.indexOf("stickyCuisineBar"),
       indexCode.indexOf("{isLoading ?")
     );
-    expect(stickySection).toContain('availableCuisines.filter');
-    expect(stickySection).toContain("CUISINE_DISPLAY");
+    expect(stickySection).toContain("cuisines={availableCuisines}");
+    expect(stickySection).toContain("onSelect={setSelectedCuisine}");
   });
 
-  it("should fire Analytics on cuisine selection in sticky bar", () => {
+  it("should pass analytics source to sticky CuisineChipRow", () => {
     const stickySection = indexCode.slice(
       indexCode.indexOf("stickyCuisineBar"),
       indexCode.indexOf("{isLoading ?")
     );
-    expect(stickySection).toContain("Analytics.cuisineFilterSelect");
-    expect(stickySection).toContain("Analytics.cuisineFilterClear");
+    expect(stickySection).toContain('analyticsSource="rankings"');
   });
 
   it("should keep index.tsx under 650 LOC threshold", () => {
@@ -80,11 +73,10 @@ describe("Sprint 327 — Sticky Cuisine Chips", () => {
   });
 
   // Existing functionality preserved
-  it("should preserve in-scroll cuisine chips in ListHeaderComponent", () => {
+  it("should preserve in-scroll CuisineChipRow in ListHeaderComponent", () => {
     const lhcStart = indexCode.indexOf("ListHeaderComponent={");
     const afterLhc = indexCode.slice(lhcStart, lhcStart + 5000);
-    expect(afterLhc).toContain("cuisineChipsRow");
-    expect(afterLhc).toContain("cuisineChip");
+    expect(afterLhc).toContain("CuisineChipRow");
   });
 
   it("should preserve category chips in ListHeaderComponent", () => {

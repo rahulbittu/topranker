@@ -22,6 +22,7 @@ import { LeaderboardSkeleton } from "@/components/Skeleton";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { MappedBusiness } from "@/types/business";
 import { HeroCard, RankedCard } from "@/components/leaderboard/SubComponents";
+import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Analytics } from "@/lib/analytics";
 import { FadeInView } from "@/components/animations/FadeInView";
@@ -186,36 +187,16 @@ export default function LeaderboardScreen() {
         </View>
       </Modal>
 
-      {/* Sprint 327: Sticky cuisine bar — appears when user scrolls past cuisine chips */}
+      {/* Sprint 327/331: Sticky cuisine bar — extracted to CuisineChipRow */}
       {showStickyCuisine && (
         <View style={styles.stickyCuisineBar}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.stickyCuisineContainer}
-          >
-            <TouchableOpacity
-              onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
-              style={[styles.stickyCuisineChip, selectedCuisine === null && styles.stickyCuisineChipActive]}
-            >
-              <Text style={[styles.stickyCuisineText, selectedCuisine === null && styles.stickyCuisineTextActive]}>All</Text>
-            </TouchableOpacity>
-            {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
-              const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
-              const isSelected = selectedCuisine === cuisine;
-              return (
-                <TouchableOpacity
-                  key={cuisine}
-                  onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
-                  style={[styles.stickyCuisineChip, isSelected && styles.stickyCuisineChipActive]}
-                >
-                  <Text style={[styles.stickyCuisineText, isSelected && styles.stickyCuisineTextActive]}>
-                    {display.emoji} {display.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <CuisineChipRow
+            cuisines={availableCuisines}
+            selectedCuisine={selectedCuisine}
+            onSelect={setSelectedCuisine}
+            analyticsSource="rankings"
+            variant="sticky"
+          />
         </View>
       )}
 
@@ -297,40 +278,13 @@ export default function LeaderboardScreen() {
               <View style={styles.bestInHeader}>
                 <Text style={styles.bestInTitle}>Best In {city}</Text>
               </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.cuisineChipsContainer}
-                style={styles.cuisineChipsRow}
-              >
-                <TouchableOpacity
-                  onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(null); Analytics.cuisineFilterClear("rankings"); }}
-                  style={[styles.cuisineChip, selectedCuisine === null && styles.cuisineChipActive]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`All cuisines${selectedCuisine === null ? ", selected" : ""}`}
-                  accessibilityState={{ selected: selectedCuisine === null }}
-                >
-                  <Text style={[styles.cuisineChipText, selectedCuisine === null && styles.cuisineChipTextActive]}>All</Text>
-                </TouchableOpacity>
-                {availableCuisines.filter(c => c !== "universal").map((cuisine) => {
-                  const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
-                  const isSelected = selectedCuisine === cuisine;
-                  return (
-                    <TouchableOpacity
-                      key={cuisine}
-                      onPress={() => { Haptics.selectionAsync(); setSelectedCuisine(cuisine); Analytics.cuisineFilterSelect(cuisine, "rankings"); }}
-                      style={[styles.cuisineChip, isSelected && styles.cuisineChipActive]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${display.label} cuisine${isSelected ? ", selected" : ""}`}
-                      accessibilityState={{ selected: isSelected }}
-                    >
-                      <Text style={[styles.cuisineChipText, isSelected && styles.cuisineChipTextActive]}>
-                        {display.emoji} {display.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              {/* Sprint 331: Extracted to CuisineChipRow */}
+              <CuisineChipRow
+                cuisines={availableCuisines}
+                selectedCuisine={selectedCuisine}
+                onSelect={setSelectedCuisine}
+                analyticsSource="rankings"
+              />
               {dishShortcuts.length > 0 && (
                 <ScrollView
                   horizontal
@@ -544,22 +498,7 @@ const styles = StyleSheet.create({
   bestInTitle: {
     fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text,
   },
-  cuisineChipsRow: { flexGrow: 0, minHeight: 44, marginBottom: 4 },
-  cuisineChipsContainer: { paddingHorizontal: 16, flexDirection: "row", paddingVertical: 4 },
-  cuisineChip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-    marginRight: 6, backgroundColor: "rgba(13, 27, 42, 0.06)",
-    borderWidth: 1, borderColor: "transparent",
-  },
-  cuisineChipActive: {
-    backgroundColor: "rgba(13, 27, 42, 0.12)", borderColor: BRAND.colors.navy,
-  },
-  cuisineChipText: {
-    fontSize: 12, fontFamily: "DMSans_500Medium", color: Colors.textSecondary,
-  },
-  cuisineChipTextActive: {
-    color: BRAND.colors.navy, fontFamily: "DMSans_700Bold",
-  },
+  // Sprint 331: cuisineChip styles moved to CuisineChipRow component
 
   suggestChip: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -618,7 +557,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border,
   },
   emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
-  // Sprint 327: Sticky cuisine bar styles
+  // Sprint 327/331: Sticky cuisine bar — chip styles moved to CuisineChipRow
   stickyCuisineBar: {
     backgroundColor: Colors.background,
     borderBottomWidth: 1,
@@ -629,22 +568,5 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     zIndex: 10,
-  },
-  stickyCuisineContainer: {
-    paddingHorizontal: 16, flexDirection: "row", paddingVertical: 6, gap: 6,
-  },
-  stickyCuisineChip: {
-    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16,
-    backgroundColor: "rgba(13, 27, 42, 0.06)",
-    borderWidth: 1, borderColor: "transparent",
-  },
-  stickyCuisineChipActive: {
-    backgroundColor: "rgba(13, 27, 42, 0.12)", borderColor: BRAND.colors.navy,
-  },
-  stickyCuisineText: {
-    fontSize: 12, fontFamily: "DMSans_500Medium", color: Colors.textSecondary,
-  },
-  stickyCuisineTextActive: {
-    color: BRAND.colors.navy, fontFamily: "DMSans_700Bold",
   },
 });

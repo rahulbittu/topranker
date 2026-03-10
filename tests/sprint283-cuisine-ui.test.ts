@@ -3,10 +3,10 @@
  *
  * Validates:
  * 1. Rankings page imports cuisine picker functions
- * 2. Cuisine picker chips render above Best In chips
- * 3. Selected cuisine filters Best In subcategories
- * 4. Cuisine chip styles exist
- * 5. CUISINE_DISPLAY is imported for cuisine labels
+ * 2. Cuisine picker chips render via CuisineChipRow component
+ * 3. Selected cuisine filters rankings
+ * 4. CuisineChipRow has chip styles
+ * 5. CUISINE_DISPLAY is used for cuisine labels
  */
 
 import { describe, it, expect } from "vitest";
@@ -19,6 +19,7 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 283: Rankings Cuisine Picker UI", () => {
   const indexSrc = readFile("app/(tabs)/index.tsx");
+  const chipRowSrc = readFile("components/leaderboard/CuisineChipRow.tsx");
 
   it("imports cuisine functions from best-in-categories", () => {
     expect(indexSrc).toContain("getAvailableCuisines");
@@ -42,33 +43,33 @@ describe("Sprint 283: Rankings Cuisine Picker UI", () => {
     expect(indexSrc).toContain("setSelectedCuisine");
   });
 
-  it("has cuisine picker chips that filter by cuisine", () => {
-    expect(indexSrc).toContain("cuisineChip");
-    expect(indexSrc).toContain("setSelectedCuisine");
+  it("uses CuisineChipRow component for cuisine chips", () => {
+    expect(indexSrc).toContain("CuisineChipRow");
+    expect(indexSrc).toContain("onSelect={setSelectedCuisine}");
   });
 
-  it("cuisine picker calls setSelectedCuisine on tap", () => {
-    expect(indexSrc).toContain("setSelectedCuisine(cuisine)");
+  it("cuisine picker calls setSelectedCuisine via onSelect", () => {
+    expect(indexSrc).toContain("onSelect={setSelectedCuisine}");
   });
 
-  it("has cuisineChip style", () => {
-    expect(indexSrc).toContain("cuisineChip:");
+  it("has cuisineChip style in CuisineChipRow", () => {
+    expect(chipRowSrc).toContain("chip:");
   });
 
-  it("has cuisineChipActive style", () => {
-    expect(indexSrc).toContain("cuisineChipActive:");
+  it("has cuisineChipActive style in CuisineChipRow", () => {
+    expect(chipRowSrc).toContain("chipActive:");
   });
 
-  it("has cuisineChipText style", () => {
-    expect(indexSrc).toContain("cuisineChipText:");
+  it("has cuisineChipText style in CuisineChipRow", () => {
+    expect(chipRowSrc).toContain("text:");
   });
 
-  it("has cuisineChipTextActive style", () => {
-    expect(indexSrc).toContain("cuisineChipTextActive:");
+  it("has cuisineChipTextActive style in CuisineChipRow", () => {
+    expect(chipRowSrc).toContain("textActive:");
   });
 
-  it("renders cuisine display emoji and label", () => {
-    expect(indexSrc).toContain("display.emoji");
-    expect(indexSrc).toContain("display.label");
+  it("renders cuisine display emoji and label in CuisineChipRow", () => {
+    expect(chipRowSrc).toContain("display.emoji");
+    expect(chipRowSrc).toContain("display.label");
   });
 });

@@ -55,8 +55,8 @@ describe("Sprint 323 — Rankings page cleanup", () => {
     expect(src).toContain("bestInTitle");
   });
 
-  it("has cuisineChipsRow style (renamed from bestInChipsRow)", () => {
-    expect(src).toContain("cuisineChipsRow");
+  it("uses CuisineChipRow component (extracted Sprint 331)", () => {
+    expect(src).toContain("CuisineChipRow");
   });
 
   it("page is under 660 LOC after sticky cuisine addition", () => {

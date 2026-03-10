@@ -24,10 +24,10 @@ describe("Sprint 325 — Navigation redesign", () => {
     expect(chipsIdx).toBeGreaterThan(listHeaderIdx);
   });
 
-  it("cuisine chips are inside ListHeaderComponent", () => {
+  it("CuisineChipRow is inside ListHeaderComponent", () => {
     const listHeaderIdx = src.indexOf("ListHeaderComponent=");
-    const cuisineIdx = src.indexOf("cuisineChip, selectedCuisine === null");
-    expect(cuisineIdx).toBeGreaterThan(listHeaderIdx);
+    const afterLhc = src.slice(listHeaderIdx, listHeaderIdx + 5000);
+    expect(afterLhc).toContain("CuisineChipRow");
   });
 
   it("dish shortcuts are inside ListHeaderComponent", () => {

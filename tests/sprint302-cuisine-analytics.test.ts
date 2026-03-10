@@ -94,18 +94,23 @@ describe("Sprint 302 — Cuisine Analytics", () => {
     expect(source).toContain('import { Analytics }');
   });
 
-  it("Rankings page tracks cuisine select on chip tap", async () => {
+  it("Rankings page tracks cuisine select via CuisineChipRow", async () => {
+    const chipRow = await import("fs").then((fs) =>
+      fs.readFileSync("components/leaderboard/CuisineChipRow.tsx", "utf-8")
+    );
+    expect(chipRow).toContain("Analytics.cuisineFilterSelect(cuisine, analyticsSource)");
+    // index.tsx passes analyticsSource="rankings"
     const source = await import("fs").then((fs) =>
       fs.readFileSync("app/(tabs)/index.tsx", "utf-8")
     );
-    expect(source).toContain('Analytics.cuisineFilterSelect(cuisine, "rankings")');
+    expect(source).toContain('analyticsSource="rankings"');
   });
 
-  it("Rankings page tracks cuisine clear on All chip", async () => {
-    const source = await import("fs").then((fs) =>
-      fs.readFileSync("app/(tabs)/index.tsx", "utf-8")
+  it("Rankings page tracks cuisine clear via CuisineChipRow", async () => {
+    const chipRow = await import("fs").then((fs) =>
+      fs.readFileSync("components/leaderboard/CuisineChipRow.tsx", "utf-8")
     );
-    expect(source).toContain('Analytics.cuisineFilterClear("rankings")');
+    expect(chipRow).toContain("Analytics.cuisineFilterClear(analyticsSource)");
   });
 
   // ─── Discover Page Integration ────────────────────────────
