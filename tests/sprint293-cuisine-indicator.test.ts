@@ -19,7 +19,8 @@ const searchSrc = fs.readFileSync(
 
 describe("Sprint 293 — Active cuisine indicator import", () => {
   it("imports CUISINE_DISPLAY from shared/best-in-categories", () => {
-    expect(searchSrc).toContain('import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories"');
+    // Sprint 383: CUISINE_DISH_MAP moved to DiscoverEmptyState; search.tsx only imports CUISINE_DISPLAY
+    expect(searchSrc).toContain('import { CUISINE_DISPLAY } from "@/shared/best-in-categories"');
   });
 });
 

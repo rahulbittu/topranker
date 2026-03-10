@@ -235,6 +235,8 @@ describe("Client — recent searches", () => {
 // 8. Client — dynamic category suggestions
 // ---------------------------------------------------------------------------
 describe("Client — dynamic category suggestions", () => {
+  // Sprint 383: Suggestion chips extracted to DiscoverEmptyState
+  const emptySrc = readFile("components/search/DiscoverEmptyState.tsx");
   const src = readFile("app/(tabs)/search.tsx");
 
   it("fetches popular categories from API", () => {
@@ -243,20 +245,20 @@ describe("Client — dynamic category suggestions", () => {
   });
 
   it("uses popular categories for suggestion chips when available", () => {
-    expect(src).toContain("popularCategories.length > 0");
-    expect(src).toContain("popularCategories.slice(0, 6)");
+    expect(emptySrc).toContain("popularCategories.length > 0");
+    expect(emptySrc).toContain("popularCategories.slice(0, 6)");
   });
 
   it("falls back to hardcoded suggestions when no API data", () => {
-    expect(src).toContain('"Tacos"');
-    expect(src).toContain('"Italian"');
-    expect(src).toContain('"Brunch"');
-    expect(src).toContain('"Sushi"');
+    expect(emptySrc).toContain('"Tacos"');
+    expect(emptySrc).toContain('"Italian"');
+    expect(emptySrc).toContain('"Brunch"');
+    expect(emptySrc).toContain('"Sushi"');
   });
 
   it("displays category emoji and label", () => {
-    expect(src).toContain("getCategoryDisplay(c.category).emoji");
-    expect(src).toContain("getCategoryDisplay(c.category).label");
+    expect(emptySrc).toContain("getCategoryDisplay(c.category).emoji");
+    expect(emptySrc).toContain("getCategoryDisplay(c.category).label");
   });
 });
 

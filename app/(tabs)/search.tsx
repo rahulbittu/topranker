@@ -29,7 +29,8 @@ import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/component
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { FilterChips, PriceChips, SortChips } from "@/components/search/DiscoverFilters";
 import { BestInSection } from "@/components/search/BestInSection";
-import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
+import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
+import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
@@ -358,10 +359,17 @@ export default function SearchScreen() {
               showsVerticalScrollIndicator={false}
               initialNumToRender={10}
               ListEmptyComponent={
-                <View style={styles.emptyState}>
-                  <Ionicons name="location-outline" size={32} color={Colors.textTertiary} />
-                  <Text style={styles.emptyText}>No places found</Text>
-                </View>
+                <DiscoverEmptyState
+                  variant="map"
+                  query={query}
+                  selectedCuisine={selectedCuisine}
+                  city={city}
+                  activeFilter={activeFilter}
+                  popularCategories={popularCategories}
+                  onClearCuisine={() => setSelectedCuisine(null)}
+                  onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
+                  onCityChange={setCity}
+                />
               }
             />
           </View>
@@ -391,74 +399,17 @@ export default function SearchScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
           }
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
-              <Text style={styles.emptyText}>
-                {selectedCuisine && CUISINE_DISPLAY[selectedCuisine]
-                  ? `No ${CUISINE_DISPLAY[selectedCuisine].label.toLowerCase()} places found`
-                  : "No results"}
-              </Text>
-              <Text style={styles.emptySubtext}>Try a different search or filter</Text>
-              {/* Sprint 321: Cuisine-aware dish suggestions in empty state */}
-              {selectedCuisine && CUISINE_DISH_MAP[selectedCuisine] && !query.trim() && (
-                <View style={styles.emptyDishSuggestions}>
-                  <Text style={styles.emptyDishTitle}>
-                    Explore {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine} dish rankings:
-                  </Text>
-                  {CUISINE_DISH_MAP[selectedCuisine].map((dish) => (
-                    <TouchableOpacity
-                      key={dish.slug}
-                      style={styles.emptyDishChip}
-                      onPress={() => router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } })}
-                    >
-                      <Text style={styles.emptyDishChipText}>
-                        {dish.emoji} Best {dish.name}
-                      </Text>
-                      <Ionicons name="chevron-forward" size={14} color={AMBER} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              {selectedCuisine && !query.trim() && (
-                <TouchableOpacity
-                  style={styles.emptyClearFilter}
-                  onPress={() => setSelectedCuisine(null)}
-                >
-                  <Text style={styles.emptyClearFilterText}>Show all cuisines</Text>
-                </TouchableOpacity>
-              )}
-              {!selectedCuisine && (
-                <View style={styles.suggestionsSection}>
-                  <Text style={styles.suggestionsLabel}>Popular in {city.replace(/_/g, " ")}</Text>
-                  <View style={styles.suggestionsRow}>
-                    {(popularCategories.length > 0
-                      ? popularCategories.slice(0, 6)
-                      : [{ category: "Tacos", count: 0 }, { category: "Italian", count: 0 }, { category: "Brunch", count: 0 }, { category: "Sushi", count: 0 }]
-                    ).map(c => (
-                      <TouchableOpacity
-                        key={c.category}
-                        style={styles.suggestionChip}
-                        onPress={() => { setQuery(c.category); setActiveFilter("All"); }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Search for ${c.category}`}
-                      >
-                        <Text style={styles.suggestionChipEmoji}>
-                          {getCategoryDisplay(c.category).emoji}
-                        </Text>
-                        <View style={styles.suggestionChipInfo}>
-                          <Text style={styles.suggestionChipText}>
-                            {getCategoryDisplay(c.category).label || c.category}
-                          </Text>
-                          {c.count > 0 && (
-                            <Text style={styles.suggestionChipCount}>{c.count} places</Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              )}
-            </View>
+            <DiscoverEmptyState
+              variant="list"
+              query={query}
+              selectedCuisine={selectedCuisine}
+              city={city}
+              activeFilter={activeFilter}
+              popularCategories={popularCategories}
+              onClearCuisine={() => setSelectedCuisine(null)}
+              onSearchCategory={(cat) => { setQuery(cat); setActiveFilter("All"); }}
+              onCityChange={setCity}
+            />
           }
           ListHeaderComponent={
             <>
@@ -714,37 +665,6 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  suggestionsSection: {
-    marginTop: 20, paddingHorizontal: 24, gap: 10,
-  },
-  suggestionsLabel: {
-    fontSize: 12, fontWeight: "600", color: Colors.textTertiary,
-    fontFamily: "DMSans_600SemiBold", textTransform: "uppercase" as any,
-    letterSpacing: 0.8,
-  },
-  suggestionsRow: {
-    flexDirection: "row", flexWrap: "wrap", justifyContent: "center",
-    gap: 8,
-  },
-  suggestionChip: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    paddingHorizontal: 14, paddingVertical: 9,
-    backgroundColor: Colors.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border,
-    borderLeftWidth: 3, borderLeftColor: AMBER,
-  },
-  suggestionChipEmoji: {
-    fontSize: 16,
-  },
-  suggestionChipInfo: {
-    gap: 1,
-  },
-  suggestionChipText: {
-    fontSize: 13, color: Colors.text, fontFamily: "DMSans_600SemiBold",
-  },
-  suggestionChipCount: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
 
   retryButton: {
     marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
@@ -827,25 +747,5 @@ const styles = StyleSheet.create({
 
   // Sprint 193: Autocomplete + recent search styles moved to SearchOverlays.tsx
 
-  // Sprint 321: Cuisine-aware empty state styles
-  emptyDishSuggestions: {
-    marginTop: 16, width: "100%" as any, paddingHorizontal: 32,
-  },
-  emptyDishTitle: {
-    fontSize: 13, fontWeight: "600" as const, color: Colors.textSecondary,
-    fontFamily: "DMSans_600SemiBold", marginBottom: 8, textAlign: "center" as const,
-  },
-  emptyDishChip: {
-    flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
-    paddingVertical: 10, paddingHorizontal: 14,
-    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
-    borderWidth: 1, borderColor: "rgba(196,154,26,0.15)", marginBottom: 6,
-  },
-  emptyDishChipText: { flex: 1, fontSize: 14, fontWeight: "600" as const, color: AMBER },
-  emptyClearFilter: {
-    marginTop: 12, paddingHorizontal: 16, paddingVertical: 8,
-    borderRadius: 20, backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
-  },
-  emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
+  // Sprint 383: Empty state styles moved to DiscoverEmptyState component
 });

@@ -13,7 +13,9 @@ const ROOT = path.resolve(__dirname, "..");
 const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), "utf-8");
 
 describe("Sprint 321 — Discover Cuisine-Aware Empty States", () => {
-  const src = readFile("app/(tabs)/search.tsx");
+  // Sprint 383: Empty state extracted to DiscoverEmptyState component
+  const src = readFile("components/search/DiscoverEmptyState.tsx");
+  const searchSrc = readFile("app/(tabs)/search.tsx");
 
   it("imports CUISINE_DISH_MAP", () => {
     expect(src).toContain("CUISINE_DISH_MAP");
@@ -25,7 +27,7 @@ describe("Sprint 321 — Discover Cuisine-Aware Empty States", () => {
   });
 
   it("shows dish suggestions when cuisine selected", () => {
-    expect(src).toContain("emptyDishSuggestions");
+    expect(src).toContain("dishSuggestions");
     expect(src).toContain("CUISINE_DISH_MAP[selectedCuisine]");
   });
 
@@ -35,17 +37,18 @@ describe("Sprint 321 — Discover Cuisine-Aware Empty States", () => {
   });
 
   it("dish chips navigate to /dish/[slug]", () => {
-    // Multiple /dish/[slug] navigations exist, just verify the empty state pattern
-    expect(src).toContain("emptyDishChip");
+    // Sprint 383: style renamed from emptyDishChip to dishChip
+    expect(src).toContain("dishChip");
   });
 
   it("shows clear filter button", () => {
-    expect(src).toContain("emptyClearFilter");
+    expect(src).toContain("clearFilter");
     expect(src).toContain("Show all cuisines");
   });
 
   it("clear filter resets selectedCuisine", () => {
-    expect(src).toContain("setSelectedCuisine(null)");
+    // search.tsx passes onClearCuisine which calls setSelectedCuisine(null)
+    expect(searchSrc).toContain("setSelectedCuisine(null)");
   });
 
   it("hides suggestion chips when cuisine is selected", () => {
@@ -53,12 +56,12 @@ describe("Sprint 321 — Discover Cuisine-Aware Empty States", () => {
     expect(src).toContain("suggestionsRow");
   });
 
-  it("has emptyDishChip style", () => {
-    expect(src).toContain("emptyDishChip:");
+  it("has dishChip style", () => {
+    expect(src).toContain("dishChip:");
   });
 
-  it("has emptyClearFilter style", () => {
-    expect(src).toContain("emptyClearFilter:");
+  it("has clearFilter style", () => {
+    expect(src).toContain("clearFilter:");
   });
 
   // Sprint docs

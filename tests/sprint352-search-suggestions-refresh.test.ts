@@ -6,6 +6,10 @@ describe("Sprint 352: Search suggestions UI refresh", () => {
   const searchSrc = fs.readFileSync(
     path.resolve("app/(tabs)/search.tsx"), "utf-8"
   );
+  // Sprint 383: Suggestion chips extracted to DiscoverEmptyState
+  const emptySrc = fs.readFileSync(
+    path.resolve("components/search/DiscoverEmptyState.tsx"), "utf-8"
+  );
   const overlaysSrc = fs.readFileSync(
     path.resolve("components/search/SearchOverlays.tsx"), "utf-8"
   );
@@ -20,43 +24,43 @@ describe("Sprint 352: Search suggestions UI refresh", () => {
 
   describe("Suggestion chips UI refresh", () => {
     it("should have a suggestionsSection wrapper", () => {
-      expect(searchSrc).toContain("suggestionsSection");
+      expect(emptySrc).toContain("suggestionsSection");
     });
 
     it("should display city name in suggestions label", () => {
-      expect(searchSrc).toContain('Popular in {city.replace(/_/g, " ")}');
+      expect(emptySrc).toContain('Popular in {cityDisplay}');
     });
 
     it("should have uppercase label style", () => {
-      expect(searchSrc).toContain("textTransform");
+      expect(emptySrc).toContain("textTransform");
     });
 
     it("should show result count when available", () => {
-      expect(searchSrc).toContain("c.count > 0");
-      expect(searchSrc).toContain("suggestionChipCount");
+      expect(emptySrc).toContain("c.count > 0");
+      expect(emptySrc).toContain("chipCount");
     });
 
     it("should have amber left border accent on chips", () => {
-      expect(searchSrc).toContain("borderLeftWidth: 3");
-      expect(searchSrc).toContain("borderLeftColor: AMBER");
+      expect(emptySrc).toContain("borderLeftWidth: 3");
+      expect(emptySrc).toContain("borderLeftColor: AMBER");
     });
 
     it("should have separate emoji and info sections in chip", () => {
-      expect(searchSrc).toContain("suggestionChipEmoji");
-      expect(searchSrc).toContain("suggestionChipInfo");
+      expect(emptySrc).toContain("chipEmoji");
+      expect(emptySrc).toContain("chipInfo");
     });
 
     it("should use popularCategories objects with count", () => {
-      expect(searchSrc).toContain("popularCategories.slice(0, 6)");
-      expect(searchSrc).toContain("c.category");
+      expect(emptySrc).toContain("popularCategories.slice(0, 6)");
+      expect(emptySrc).toContain("c.category");
     });
 
     it("should have fallback categories with count: 0", () => {
-      expect(searchSrc).toContain('category: "Tacos", count: 0');
+      expect(emptySrc).toContain('category: "Tacos", count: 0');
     });
 
     it("should have letter spacing on label", () => {
-      expect(searchSrc).toContain("letterSpacing: 0.8");
+      expect(emptySrc).toContain("letterSpacing: 0.8");
     });
   });
 
