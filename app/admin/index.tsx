@@ -15,12 +15,14 @@ import { isAdminEmail } from "@/shared/admin";
 import {
   fetchCategorySuggestions, reviewCategorySuggestion,
   fetchPendingClaims, fetchPendingFlags,
+  fetchAllClaimEvidence,
   reviewAdminClaim, reviewAdminFlag,
   fetchAdminMembers,
   type CategorySuggestionItem,
   type AdminClaim, type AdminFlag, type AdminMember,
 } from "@/lib/api";
 import { NotificationInsightsCard, type NotificationInsightsData } from "@/components/admin/NotificationInsightsCard";
+import { ClaimEvidenceCard, type ClaimEvidence } from "@/components/admin/ClaimEvidenceCard";
 import { getApiUrl } from "@/lib/query-client";
 
 type AdminTab = "overview" | "claims" | "flags" | "challengers" | "users" | "suggestions";
@@ -136,6 +138,14 @@ export default function AdminScreen() {
     queryKey: ["admin-claims"],
     queryFn: fetchPendingClaims,
     enabled: !!isAdmin,
+  });
+
+  // Sprint 509: Claim V2 evidence for dashboard
+  const { data: claimEvidence = [] } = useQuery({
+    queryKey: ["admin-claim-evidence"],
+    queryFn: fetchAllClaimEvidence,
+    enabled: !!isAdmin,
+    staleTime: 60000,
   });
 
   const { data: flags = [], isLoading: flagsLoading } = useQuery({
@@ -325,16 +335,21 @@ export default function AdminScreen() {
                 <Text style={styles.emptySub}>All business claims have been reviewed</Text>
               </View>
             )}
-            {claims.map(claim => (
-              <QueueItem
-                key={claim.id}
-                title={claim.businessName || "Unknown Business"}
-                subtitle={`Claim by ${claim.memberName || "Unknown"} via ${claim.verificationMethod}`}
-                type="claim"
-                onApprove={() => handleClaimAction(claim.id, "approved")}
-                onReject={() => handleClaimAction(claim.id, "rejected")}
-              />
-            ))}
+            {claims.map(claim => {
+              const evidence = claimEvidence.find(e => e.claimId === claim.id);
+              return (
+                <View key={claim.id}>
+                  <QueueItem
+                    title={claim.businessName || "Unknown Business"}
+                    subtitle={`Claim by ${claim.memberName || "Unknown"} via ${claim.verificationMethod}`}
+                    type="claim"
+                    onApprove={() => handleClaimAction(claim.id, "approved")}
+                    onReject={() => handleClaimAction(claim.id, "rejected")}
+                  />
+                  {evidence && <ClaimEvidenceCard evidence={evidence} />}
+                </View>
+              );
+            })}
           </>
         )}
 

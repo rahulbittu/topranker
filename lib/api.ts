@@ -587,8 +587,37 @@ export interface AdminFlag {
   createdAt: string;
 }
 
+// Sprint 509: Claim V2 evidence types
+export interface ClaimDocumentMetadata {
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  uploadedAt: string;
+  documentType: "business_license" | "utility_bill" | "tax_document" | "lease_agreement" | "other";
+}
+
+export interface ClaimEvidence {
+  claimId: string;
+  documents: ClaimDocumentMetadata[];
+  businessNameMatch: boolean;
+  addressMatch: boolean;
+  phoneMatch: boolean;
+  verificationScore: number;
+  autoApproved: boolean;
+  reviewNotes: string[];
+  scoredAt: string;
+}
+
 export async function fetchPendingClaims() {
   return apiFetch<AdminClaim[]>("/api/admin/claims");
+}
+
+export async function fetchClaimEvidence(claimId: string) {
+  return apiFetch<ClaimEvidence>(`/api/admin/claims/${claimId}/evidence`);
+}
+
+export async function fetchAllClaimEvidence() {
+  return apiFetch<ClaimEvidence[]>("/api/admin/claims/evidence/all");
 }
 
 export async function fetchPendingFlags() {
