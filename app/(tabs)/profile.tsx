@@ -41,6 +41,7 @@ import { AchievementsSection } from "@/components/profile/AchievementsSection";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
 import { ActivityFeed } from "@/components/profile/ActivityFeed";
+import { ActivityTimeline } from "@/components/profile/ActivityTimeline";
 import { RatingExportButton } from "@/components/profile/RatingExport";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
@@ -300,8 +301,16 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         daysActive={profile.daysActive}
       />
 
-      {/* Sprint 419: Activity Feed Timeline */}
-      <ActivityFeed ratings={profile.ratingHistory} tier={tier} />
+      {/* Sprint 437: Unified Activity Timeline (replaces Sprint 419 ActivityFeed) */}
+      <ActivityTimeline
+        ratings={profile.ratingHistory}
+        bookmarks={savedList}
+        achievements={badges.filter(b => b.progress >= 100).map(b => ({
+          id: b.badge.id,
+          label: b.badge.name,
+          earnedAt: b.earnedAt,
+        }))}
+      />
 
       {/* Last Rating Consequence */}
       {impact?.lastRating && (

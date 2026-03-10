@@ -155,13 +155,15 @@ describe("profile.tsx — ActivityFeed integration", () => {
     expect(src).toContain("components/profile/ActivityFeed");
   });
 
-  it("renders ActivityFeed with rating history", () => {
-    expect(src).toContain("<ActivityFeed");
+  it("renders activity timeline with rating history", () => {
+    // Sprint 437: ActivityFeed replaced by ActivityTimeline in profile.tsx
+    expect(src).toContain("<ActivityTimeline");
     expect(src).toContain("ratings={profile.ratingHistory}");
   });
 
-  it("passes tier prop", () => {
-    expect(src).toContain("tier={tier}");
+  it("passes bookmarks to timeline", () => {
+    // Sprint 437: Unified timeline includes bookmarks
+    expect(src).toContain("bookmarks={savedList}");
   });
 
   it("is under 800 LOC threshold", () => {
