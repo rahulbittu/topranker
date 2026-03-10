@@ -113,6 +113,9 @@ export function AutocompleteDropdown({ results, dishMatches = [], query = "", on
       ))}
       {results.map((item) => {
         const displayCat = getCategoryDisplay(item.cuisine || item.category);
+        // Sprint 497: Icon differentiation by suggestion type
+        const isDish = item.type === "dish";
+        const iconName = isDish ? "restaurant-outline" : "storefront-outline";
         return (
           <TouchableOpacity
             key={item.id}
@@ -124,14 +127,21 @@ export function AutocompleteDropdown({ results, dishMatches = [], query = "", on
             accessibilityRole="button"
             accessibilityLabel={`Go to ${item.name}`}
           >
-            <Text style={styles.autocompleteEmoji}>{displayCat.emoji || "🍽"}</Text>
+            <View style={[styles.typeIconWrap, isDish && styles.typeIconDish]}>
+              <Ionicons name={iconName} size={14} color={isDish ? AMBER : Colors.textSecondary} />
+            </View>
             <View style={styles.autocompleteInfo}>
               <HighlightedName name={item.name} query={query} />
               <Text style={styles.autocompleteMeta} numberOfLines={1}>
-                {getCategoryDisplay(item.category).label}
-                {item.neighborhood ? ` · ${item.neighborhood}` : ""}
+                {isDish ? (item.neighborhood || "Dish match") : getCategoryDisplay(item.category).label}
+                {!isDish && item.neighborhood ? ` · ${item.neighborhood}` : ""}
               </Text>
             </View>
+            {isDish && (
+              <View style={styles.dishTypeBadge}>
+                <Text style={styles.dishTypeBadgeText}>Dish</Text>
+              </View>
+            )}
             {item.weightedScore != null && item.weightedScore > 0 && (
               <View style={styles.scoreBadge}>
                 <Text style={styles.scoreBadgeText}>{item.weightedScore.toFixed(1)}</Text>
@@ -225,6 +235,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 2,
   },
   dishBadgeText: { fontSize: 10, fontWeight: "700", color: AMBER },
+  // Sprint 497: Type-differentiated icons
+  typeIconWrap: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: "rgba(128,128,128,0.08)",
+    alignItems: "center" as const, justifyContent: "center" as const,
+  },
+  typeIconDish: {
+    backgroundColor: "rgba(196,154,26,0.10)",
+  },
+  dishTypeBadge: {
+    backgroundColor: "rgba(196,154,26,0.12)", borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  dishTypeBadgeText: { fontSize: 10, fontWeight: "600" as const, color: AMBER },
   // Sprint 399: Highlight matching text
   highlightMatch: {
     fontWeight: "700" as const,

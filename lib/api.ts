@@ -383,6 +383,8 @@ export type AutocompleteSuggestion = {
   cuisine?: string;
   neighborhood: string | null;
   weightedScore?: number;
+  /** Sprint 497: Suggestion type for icon differentiation */
+  type?: "business" | "dish" | "cuisine" | "category";
 };
 
 export async function fetchAutocomplete(query: string, city: string): Promise<AutocompleteSuggestion[]> {
