@@ -39,7 +39,8 @@ auth/login.tsx      -> Login/Signup
 ### Key Client Libraries
 | Library | Purpose |
 |---------|---------|
-| `lib/data.ts` | Credibility scoring, tier logic, vote weights, temporal decay |
+| `shared/credibility.ts` | Single source of truth: tier thresholds, vote weights, temporal decay |
+| `lib/data.ts` | UI display constants (tier names, colors, category maps); re-exports from shared/credibility.ts |
 | `lib/tier-perks.ts` | 15 gamification perks across 4 tiers |
 | `lib/auth-context.tsx` | Auth state, login/logout/signup methods |
 | `constants/brand.ts` | Brand colors, fonts, categories, tier display names |
@@ -166,11 +167,16 @@ members 1--* credibility_penalties
 
 ### Score Calculation
 ```
-credibilityScore = (ratingsGiven * 3) + (daysActive * 0.5) + (dishVotes * 1)
-                   + (challengeVotes * 2) + (photoUploads * 2)
-                   - (flagCount * 15)
-                   [capped at 500, floored at 0]
+credibilityScore = basePoints(10)
+                   + min(totalRatings * 2, 200)      // rating volume
+                   + min(totalCategories * 15, 100)   // diversity bonus
+                   + min(daysActive * 0.5, 100)       // age bonus
+                   + min(ratingVariance * 60, 150)    // variance bonus (5+ ratings)
+                   + round(pioneerRate * 100)         // helpfulness
+                   - totalPenalties                   // flag penalty
+                   [clamped 10-1000]
 ```
+Source: `lib/data.ts:calculateCredibilityScore()`, tier logic in `shared/credibility.ts`.
 
 ### Temporal Decay
 Ratings lose influence over time:
@@ -208,9 +214,9 @@ User opens app -> GET /api/leaderboard?city=Dallas&category=restaurant
 
 ## Testing Strategy
 
-### Current Coverage (2117 tests across 92 files, <2s execution)
+### Current Coverage (10,827 tests across 462 files, ~2.7s execution)
 
-The test suite covers credibility scoring, auth validation, tier perks, admin logic, env config, API endpoint integration, A/B experiment pipelines, tier freshness contracts (FRESH vs SNAPSHOT), GDPR deletion flows, payment processing, badge awards, and SSE real-time updates.
+The test suite covers credibility scoring, auth validation, tier perks, admin logic, env config, API endpoint integration, A/B experiment pipelines, tier freshness contracts (FRESH vs SNAPSHOT), GDPR deletion flows, payment processing, badge awards, SSE real-time updates, file health thresholds, and 570+ sprint-specific feature tests.
 
 ### Testing Principles (CEO Mandate)
 - No code ships without testing
@@ -259,7 +265,7 @@ Deletion requests enter a 30-day grace period stored in the `deletion_requests` 
 - **Every 5 sprints**: Full architectural audit
 - **Output**: `docs/audits/ARCH-AUDIT-N.md`
 - **Pipeline**: CRITICAL -> P0 next sprint, HIGH -> P1 within 2 sprints
-- **Last audit**: Arch Audit #33 at Sprint 255, 10+ consecutive A-range grades
+- **Last audit**: Arch Audit #72 at Sprint 570, 72 consecutive A-range grades
 - **Automated checks**: `scripts/arch-health-check.sh` covers file sizes, type casts, @types, test count, duplications
 
 ## Governing Documents

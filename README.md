@@ -15,12 +15,12 @@ export SESSION_SECRET="your-secure-secret"
 # Run database migrations
 npm run db:push
 
-# Seed initial data
-npm run seed
-npm run seed:cities  # Seeds Austin, Houston, San Antonio, Fort Worth
+# Seed city data (Dallas + Austin, Houston, San Antonio, Fort Worth)
+npm run seed:cities
 
-# Start development server
-npm run dev
+# Start development
+npm run server:dev   # Express API (port 5000)
+npm run expo:dev     # Expo client (separate terminal)
 
 # Run tests
 npm test
@@ -32,10 +32,10 @@ npm test
 |-------|-----------|---------|
 | Mobile App | Expo Router (React Native) | File-based routing, TypeScript |
 | Backend API | Express.js | REST API on port 5000 |
-| Database | PostgreSQL | 13 tables via Drizzle ORM |
+| Database | PostgreSQL | 34 tables via Drizzle ORM |
 | Auth | Passport.js | Local + Google OAuth strategies |
 | State | React Query | Server state management |
-| Testing | Vitest | 2117 tests across 92 files, <2s execution |
+| Testing | Vitest | 10,827 tests across 462 files, ~2.7s execution |
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed system design.
 
@@ -59,13 +59,16 @@ server/                 # Express.js backend
   config.ts             # Centralized env config
   schema (shared/)      # Drizzle schema + shared types
 shared/                 # Shared between client/server
-  schema.ts             # Database schema (Drizzle)
+  schema.ts             # Database schema (34 tables, Drizzle)
+  credibility.ts        # Single source of truth: tier thresholds, vote weights, temporal decay
   admin.ts              # Admin email whitelist
+  city-config.ts        # City registry (active, beta, planned)
+  thresholds.json       # File health thresholds (LOC, build size, test count)
 constants/              # App constants
   brand.ts              # Brand system (colors, fonts)
   colors.ts             # Color palette
 lib/                    # Client-side utilities
-  data.ts               # Credibility scoring, tiers
+  data.ts               # UI display constants, re-exports from shared/credibility.ts
   tier-perks.ts         # Gamification perks engine
   auth-context.tsx      # Auth state provider
 tests/                  # Test suite (Vitest)
@@ -78,7 +81,7 @@ docs/                   # Sprint docs, retros, audits
 ## Core Systems
 
 ### Credibility Scoring
-Members earn credibility through consistent, high-quality ratings. Score determines tier (New Member -> Regular -> Trusted -> Top Judge) which determines vote weight (0.10x to 1.00x). See `lib/data.ts`.
+Members earn credibility through consistent, high-quality ratings. Score determines tier (New Member -> Regular -> Trusted -> Top Judge) which determines vote weight (0.10x to 1.00x). Source of truth: `shared/credibility.ts` (tier logic, vote weights, temporal decay). UI display constants in `lib/data.ts`.
 
 ### Rating Flow
 2-screen flow: Screen 1 captures 3 scores (food, service, vibe) + would-return. Screen 2 captures optional dish vote, note, and photo. Ratings include temporal decay — recent ratings weight more.
@@ -155,13 +158,7 @@ npm test              # Run all tests
 npm run test:watch    # Watch mode
 ```
 
-2117 tests across 92 files, including:
-- `credibility.test.ts` — Credibility scoring, tiers, vote weights, temporal decay (24 tests)
-- `tier-perks.test.ts` — Gamification perks engine (15 tests)
-- `admin.test.ts` — Admin email whitelist (8 tests)
-- `config.test.ts` — Environment config validation (7 tests)
-- `auth-validation.test.ts` — Auth input validation, rate gating (16 tests)
-- ...and 87 more test files covering security, analytics, GDPR, notifications, API versioning, and more
+10,827 tests across 462 files, covering credibility scoring, tier semantics, auth validation, GDPR, security, analytics, notifications, A/B experiments, file health thresholds, and 570+ sprint-specific feature tests.
 
 ## Brand System
 
@@ -179,14 +176,15 @@ npm run test:watch    # Watch mode
 - [API Reference](docs/API.md) — Endpoint specifications
 - [Contributing](CONTRIBUTING.md) — Development workflow, coding standards
 - [Changelog](CHANGELOG.md) — Version history
-- Sprint docs: `docs/sprints/SPRINT-N-*.md` (154 sprints)
+- Sprint docs: `docs/sprints/SPRINT-N-*.md` (569 sprints)
 - Retrospectives: `docs/retros/RETRO-N-*.md`
 - Audits: `docs/audits/ARCH-AUDIT-N.md` (every 5 sprints)
 - Process: `docs/process/BACKLOG-REFINEMENT.md`
 
 ## Cities
 
-Currently seeded: Dallas, Austin, Houston, San Antonio, Fort Worth (Texas)
+**Active (5):** Dallas, Austin, Houston, San Antonio, Fort Worth (Texas)
+**Beta (6):** Oklahoma City, New Orleans, Memphis, Nashville, Charlotte, Raleigh
 
 ## License
 

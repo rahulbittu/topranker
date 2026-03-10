@@ -1,9 +1,9 @@
 # Technical Debt Registry
 
 **Owner**: Marcus Chen (CTO)
-**Last Updated**: 2026-03-08 (Sprint 129)
+**Last Updated**: 2026-03-10 (Sprint 572)
 
-This document tracks known technical debt. Items are prioritized and assigned to future sprints.
+> **Note**: This document was last comprehensively maintained through Sprint 129. Active debt items below may be resolved. Current debt tracking is primarily handled through sprint retros (`docs/retros/`), arch audits (`docs/audits/`), and SLT meetings (`docs/meetings/`). Items marked with target sprints before Sprint 200 should be considered historical.
 
 ---
 
@@ -58,7 +58,7 @@ This document tracks known technical debt. Items are prioritized and assigned to
 ## Process
 
 - New debt items added during sprint retros or arch audits
-- Reviewed by SLT every 5 sprints (next: Sprint 115)
+- Reviewed by SLT every 5 sprints (see `docs/meetings/SLT-BACKLOG-*.md` for current reviews)
 - HIGH items must be scheduled within 5 sprints
 - MEDIUM items within 10 sprints
 - LOW items at team discretion
