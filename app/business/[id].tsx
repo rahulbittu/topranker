@@ -38,6 +38,7 @@ import { ScoreTrendSparkline } from "@/components/business/ScoreTrendSparkline";
 import { TopDishes } from "@/components/business/TopDishes";
 import { DishRankings } from "@/components/business/DishRankings";
 import { PhotoGallery } from "@/components/business/PhotoGallery";
+import { SharePreviewCard } from "@/components/business/SharePreviewCard";
 
 export default function BusinessProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -346,6 +347,20 @@ export default function BusinessProfileScreen() {
             <ActionButton icon="share-outline" label="Share" onPress={handleShare} />
             <ActionButton icon="copy-outline" label="Copy Link" onPress={handleCopyLink} />
           </View>
+
+          {/* Share Preview Card — Sprint 378 */}
+          <SharePreviewCard
+            businessName={business.name}
+            slug={business.slug}
+            weightedScore={business.weightedScore}
+            category={business.category}
+            neighborhood={business.neighborhood}
+            city={business.city}
+            photoUrl={photoUrls[0]}
+            rank={business.rank}
+            onShare={handleShare}
+            onCopyLink={handleCopyLink}
+          />
 
           <View style={styles.sectionDivider} />
 

@@ -44,3 +44,6 @@ export type { YourRatingCardProps } from "./YourRatingCard";
 
 export { PhotoGallery } from "./PhotoGallery";
 export type { PhotoGalleryProps } from "./PhotoGallery";
+
+export { SharePreviewCard } from "./SharePreviewCard";
+export type { SharePreviewCardProps } from "./SharePreviewCard";
