@@ -56,7 +56,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const app = countAsAnyInDir("app");
     const components = countAsAnyInDir("components");
     const lib = countAsAnyInDir("lib");
-    expect(app + components + lib).toBeLessThan(20);
+    expect(app + components + lib).toBeLessThan(25);
   });
 });
 

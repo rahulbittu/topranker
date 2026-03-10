@@ -27,7 +27,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { BestInSection } from "@/components/search/BestInSection";
-import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
+import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const AMBER = BRAND.colors.amber;
@@ -488,26 +488,60 @@ export default function SearchScreen() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons name="search-outline" size={32} color={Colors.textTertiary} />
-              <Text style={styles.emptyText}>No results</Text>
+              <Text style={styles.emptyText}>
+                {selectedCuisine && CUISINE_DISPLAY[selectedCuisine]
+                  ? `No ${CUISINE_DISPLAY[selectedCuisine].label.toLowerCase()} places found`
+                  : "No results"}
+              </Text>
               <Text style={styles.emptySubtext}>Try a different search or filter</Text>
-              <View style={styles.suggestionsRow}>
-                {(popularCategories.length > 0
-                  ? popularCategories.slice(0, 6).map(c => c.category)
-                  : ["Tacos", "Italian", "Brunch", "Sushi"]
-                ).map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    style={styles.suggestionChip}
-                    onPress={() => { setQuery(s); setActiveFilter("All"); }}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Search for ${s}`}
-                  >
-                    <Text style={styles.suggestionChipText}>
-                      {getCategoryDisplay(s).emoji} {getCategoryDisplay(s).label || s}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Sprint 321: Cuisine-aware dish suggestions in empty state */}
+              {selectedCuisine && CUISINE_DISH_MAP[selectedCuisine] && !query.trim() && (
+                <View style={styles.emptyDishSuggestions}>
+                  <Text style={styles.emptyDishTitle}>
+                    Explore {CUISINE_DISPLAY[selectedCuisine]?.label || selectedCuisine} dish rankings:
+                  </Text>
+                  {CUISINE_DISH_MAP[selectedCuisine].map((dish) => (
+                    <TouchableOpacity
+                      key={dish.slug}
+                      style={styles.emptyDishChip}
+                      onPress={() => router.push({ pathname: "/dish/[slug]", params: { slug: dish.slug } })}
+                    >
+                      <Text style={styles.emptyDishChipText}>
+                        {dish.emoji} Best {dish.name}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={14} color={AMBER} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {selectedCuisine && !query.trim() && (
+                <TouchableOpacity
+                  style={styles.emptyClearFilter}
+                  onPress={() => setSelectedCuisine(null)}
+                >
+                  <Text style={styles.emptyClearFilterText}>Show all cuisines</Text>
+                </TouchableOpacity>
+              )}
+              {!selectedCuisine && (
+                <View style={styles.suggestionsRow}>
+                  {(popularCategories.length > 0
+                    ? popularCategories.slice(0, 6).map(c => c.category)
+                    : ["Tacos", "Italian", "Brunch", "Sushi"]
+                  ).map(s => (
+                    <TouchableOpacity
+                      key={s}
+                      style={styles.suggestionChip}
+                      onPress={() => { setQuery(s); setActiveFilter("All"); }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Search for ${s}`}
+                    >
+                      <Text style={styles.suggestionChipText}>
+                        {getCategoryDisplay(s).emoji} {getCategoryDisplay(s).label || s}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           }
           ListHeaderComponent={
@@ -902,4 +936,26 @@ const styles = StyleSheet.create({
   },
 
   // Sprint 193: Autocomplete + recent search styles moved to SearchOverlays.tsx
+
+  // Sprint 321: Cuisine-aware empty state styles
+  emptyDishSuggestions: {
+    marginTop: 16, width: "100%" as any, paddingHorizontal: 32,
+  },
+  emptyDishTitle: {
+    fontSize: 13, fontWeight: "600" as const, color: Colors.textSecondary,
+    fontFamily: "DMSans_600SemiBold", marginBottom: 8, textAlign: "center" as const,
+  },
+  emptyDishChip: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 8,
+    paddingVertical: 10, paddingHorizontal: 14,
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 12,
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.15)", marginBottom: 6,
+  },
+  emptyDishChipText: { flex: 1, fontSize: 14, fontWeight: "600" as const, color: AMBER },
+  emptyClearFilter: {
+    marginTop: 12, paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  emptyClearFilterText: { fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 });
