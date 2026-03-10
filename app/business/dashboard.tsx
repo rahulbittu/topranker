@@ -19,6 +19,7 @@ import { VolumeBarChart } from "@/components/dashboard/VolumeBarChart";
 import { VelocityIndicator } from "@/components/dashboard/VelocityIndicator";
 import { DimensionBreakdownCard } from "@/components/dashboard/DimensionBreakdownCard";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
+import { RatingVelocityWidget } from "@/components/dashboard/RatingVelocityWidget";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -267,6 +268,15 @@ export default function BusinessDashboardScreen() {
             <Animated.View entering={FadeInDown.delay(580).duration(400)}>
               <VelocityIndicator velocityChange={a.velocityChange} />
             </Animated.View>
+
+            {/* Sprint 567: Rating velocity widget with weekly breakdown */}
+            {a.weeklyVolume.length > 0 && (
+              <RatingVelocityWidget
+                weeklyData={a.weeklyVolume.map((w, i) => ({ week: `W${i + 1}`, count: w.count, avgScore: w.avgScore }))}
+                velocityChange={a.velocityChange}
+                delay={600}
+              />
+            )}
 
             {a.topDish && (
               <Animated.View entering={FadeInDown.delay(600).duration(400)} style={styles.highlightRow}>

@@ -2753,11 +2753,15 @@ async function getDishLeaderboardWithEntries(slug, city, visitType) {
       return { ...e, dishScore: vtData.score.toFixed(2), dishRatingCount: vtData.count };
     }).sort((a, b) => parseFloat(b.dishScore) - parseFloat(a.dishScore)).map((e, i) => ({ ...e, rankPosition: i + 1 }));
   }
-  const eligibleCount = filteredEntries.filter((e) => e.dishRatingCount >= 3).length;
+  const enrichedEntries = await Promise.all(filteredEntries.map(async (e) => {
+    const [photoCount] = await db.select({ cnt: count6() }).from(ratingPhotos).innerJoin(dishVotes, eq9(ratingPhotos.ratingId, dishVotes.ratingId)).where(eq9(dishVotes.businessId, e.businessId));
+    return { ...e, dishPhotoCount: Number(photoCount?.cnt ?? 0) };
+  }));
+  const eligibleCount = enrichedEntries.filter((e) => e.dishRatingCount >= 3).length;
   const isProvisional = board.createdAt.getTime() > Date.now() - 14 * 24 * 60 * 60 * 1e3;
   return {
     leaderboard: board,
-    entries: filteredEntries,
+    entries: enrichedEntries,
     isProvisional,
     minRatingsNeeded: Math.max(0, board.minRatingCount - eligibleCount),
     visitTypeBreakdown
@@ -2817,12 +2821,20 @@ async function recalculateDishLeaderboard(leaderboardId) {
     }
     if (validCount < 1) continue;
     const dishScore = totalWeight > 0 ? weightedSum / totalWeight : 0;
-    const [photo] = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq9(businessPhotos.businessId, businessId)).orderBy(asc3(businessPhotos.sortOrder)).limit(1);
+    const dishRatingPhotos = await db.select({ photoUrl: ratingPhotos.photoUrl }).from(ratingPhotos).where(sql8`${ratingPhotos.ratingId} = ANY(ARRAY[${sql8.join(ratingIds.map((id) => sql8`${id}`), sql8`,`)}]::text[])`).limit(10);
+    let photoUrl = null;
+    if (dishRatingPhotos.length > 0) {
+      photoUrl = dishRatingPhotos[0].photoUrl;
+    } else {
+      const [bizPhoto] = await db.select({ photoUrl: businessPhotos.photoUrl }).from(businessPhotos).where(eq9(businessPhotos.businessId, businessId)).orderBy(asc3(businessPhotos.sortOrder)).limit(1);
+      photoUrl = bizPhoto?.photoUrl ?? null;
+    }
     entries.push({
       businessId,
       dishScore: Math.round(dishScore * 100) / 100,
       dishRatingCount: validCount,
-      photoUrl: photo?.photoUrl ?? null
+      photoUrl,
+      dishPhotoCount: dishRatingPhotos.length
     });
   }
   entries.sort((a, b) => b.dishScore - a.dishScore);
