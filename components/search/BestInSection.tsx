@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, type BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, CUISINE_DISH_MAP, type BestInCategory } from "@/shared/best-in-categories";
 
 const AMBER = BRAND.colors.amber;
 
@@ -66,6 +66,27 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
           );
         })}
       </ScrollView>
+      {/* Sprint 311: Dish shortcut chips when cuisine has mapped dishes */}
+      {bestInCuisine && CUISINE_DISH_MAP[bestInCuisine] && CUISINE_DISH_MAP[bestInCuisine].length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dishShortcutsScroll}
+        >
+          {CUISINE_DISH_MAP[bestInCuisine].map((dish) => (
+            <TouchableOpacity
+              key={dish.slug}
+              onPress={() => { Haptics.selectionAsync(); onSelectDish?.(dish.slug); }}
+              style={styles.dishShortcutChip}
+              accessibilityRole="link"
+              accessibilityLabel={`Best ${dish.name} leaderboard`}
+            >
+              <Text style={styles.dishShortcutText}>{dish.emoji} Best {dish.name}</Text>
+              <Ionicons name="chevron-forward" size={12} color={AMBER} />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -125,6 +146,16 @@ const styles = StyleSheet.create({
   cuisineTabTextActive: {
     color: "#0D1B2A", fontFamily: "DMSans_700Bold",
   },
+  dishShortcutsScroll: {
+    flexDirection: "row", gap: 6, paddingBottom: 8,
+  },
+  dishShortcutChip: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+    backgroundColor: "rgba(196,154,26,0.08)",
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
+  },
+  dishShortcutText: { fontSize: 11, fontWeight: "600", color: AMBER },
   bestInScroll: {
     gap: 10, paddingRight: 4,
   },
