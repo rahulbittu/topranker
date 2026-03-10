@@ -9,13 +9,14 @@ export interface BookmarkEntry {
   name: string;
   slug: string;
   category: string;
+  cuisine?: string; // Sprint 349: Optional cuisine for specific emoji
   savedAt: number;
 }
 
 interface BookmarksContextValue {
   bookmarks: Map<string, BookmarkEntry>;
   isBookmarked: (businessId: string) => boolean;
-  toggleBookmark: (businessId: string, meta?: { name: string; slug: string; category: string }) => void;
+  toggleBookmark: (businessId: string, meta?: { name: string; slug: string; category: string; cuisine?: string }) => void;
   bookmarkCount: number;
   savedList: BookmarkEntry[];
 }
