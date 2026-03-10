@@ -1415,6 +1415,7 @@ __export(businesses_exports, {
   getLeaderboard: () => getLeaderboard,
   getPopularCategories: () => getPopularCategories,
   getRankHistory: () => getRankHistory,
+  getTopDishesForAutocomplete: () => getTopDishesForAutocomplete,
   getTrendingBusinesses: () => getTrendingBusinesses,
   insertBusinessPhotos: () => insertBusinessPhotos,
   recalculateBusinessScore: () => recalculateBusinessScore,
@@ -1801,6 +1802,23 @@ async function getImportStats() {
     count: count2(businesses.id)
   }).from(businesses).where(eq3(businesses.isActive, true)).groupBy(businesses.city, businesses.dataSource).orderBy(businesses.city);
   return rows.map((r) => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
+}
+async function getTopDishesForAutocomplete(city, limit = 50) {
+  const { dishes: dishes2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const rows = await db.select({
+    name: dishes2.name,
+    businessName: businesses.name,
+    businessSlug: businesses.slug,
+    businessId: dishes2.businessId,
+    voteCount: dishes2.voteCount
+  }).from(dishes2).innerJoin(businesses, eq3(dishes2.businessId, businesses.id)).where(and2(eq3(businesses.city, city), eq3(dishes2.isActive, true), eq3(businesses.isActive, true))).orderBy(desc2(dishes2.voteCount)).limit(limit);
+  return rows.map((r) => ({
+    name: r.name,
+    businessName: r.businessName,
+    businessSlug: r.businessSlug,
+    businessId: r.businessId,
+    voteCount: r.voteCount
+  }));
 }
 var init_businesses = __esm({
   "server/storage/businesses.ts"() {
@@ -5476,6 +5494,92 @@ var init_file_storage = __esm({
   }
 });
 
+// server/search-autocomplete.ts
+var search_autocomplete_exports = {};
+__export(search_autocomplete_exports, {
+  buildDishSuggestions: () => buildDishSuggestions,
+  editDistance: () => editDistance,
+  isFuzzyMatch: () => isFuzzyMatch,
+  mergeSuggestions: () => mergeSuggestions,
+  scoreSuggestion: () => scoreSuggestion
+});
+function editDistance(a, b) {
+  const la = a.length;
+  const lb = b.length;
+  if (la === 0) return lb;
+  if (lb === 0) return la;
+  const dp = Array.from({ length: la + 1 }, () => Array(lb + 1).fill(0));
+  for (let i = 0; i <= la; i++) dp[i][0] = i;
+  for (let j = 0; j <= lb; j++) dp[0][j] = j;
+  for (let i = 1; i <= la; i++) {
+    for (let j = 1; j <= lb; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return dp[la][lb];
+}
+function isFuzzyMatch(query, target) {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  if (t.startsWith(q)) return true;
+  if (t.includes(q)) return true;
+  const threshold = q.length >= 4 ? 2 : 1;
+  const dist = editDistance(q, t.slice(0, q.length + threshold));
+  return dist <= threshold;
+}
+function scoreSuggestion(query, text2, type) {
+  const q = query.toLowerCase();
+  const t = text2.toLowerCase();
+  let score = 0;
+  if (type === "business") score += 0;
+  else if (type === "dish") score += 10;
+  else if (type === "cuisine") score += 20;
+  else score += 30;
+  if (t.startsWith(q)) score += 0;
+  else if (t.includes(q)) score += 5;
+  else score += 10 + editDistance(q, t.slice(0, q.length + 2));
+  return score;
+}
+function mergeSuggestions(suggestions, limit = 8) {
+  const seen = /* @__PURE__ */ new Set();
+  const unique2 = [];
+  for (const s of suggestions) {
+    const key2 = `${s.type}:${s.id}`;
+    if (!seen.has(key2)) {
+      seen.add(key2);
+      unique2.push(s);
+    }
+  }
+  return unique2.sort((a, b) => (a.score ?? 50) - (b.score ?? 50)).slice(0, limit);
+}
+function buildDishSuggestions(query, dishes2) {
+  const q = query.toLowerCase();
+  const results = [];
+  for (const dish of dishes2) {
+    if (isFuzzyMatch(q, dish.name)) {
+      results.push({
+        id: `dish-${dish.businessId}-${dish.name}`,
+        text: dish.name,
+        subtext: `at ${dish.businessName} (${dish.voteCount} votes)`,
+        type: "dish",
+        slug: dish.businessSlug,
+        score: scoreSuggestion(q, dish.name, "dish")
+      });
+    }
+  }
+  return results;
+}
+var init_search_autocomplete = __esm({
+  "server/search-autocomplete.ts"() {
+    "use strict";
+  }
+});
+
 // server/photo-moderation.ts
 var photo_moderation_exports = {};
 __export(photo_moderation_exports, {
@@ -5569,6 +5673,342 @@ var init_photo_moderation = __esm({
     ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
     MAX_FILE_SIZE = 10 * 1024 * 1024;
     MAX_CAPTION_LENGTH = 500;
+  }
+});
+
+// server/push-analytics.ts
+function recordPushDelivery(category, city, tokenCount, successCount, errorCount) {
+  const record = {
+    category,
+    city,
+    tokenCount,
+    successCount,
+    errorCount,
+    timestamp: Date.now()
+  };
+  deliveryRecords.push(record);
+  if (deliveryRecords.length > MAX_RECORDS) {
+    deliveryRecords.splice(0, deliveryRecords.length - MAX_RECORDS);
+  }
+  analyticsLog2.info(
+    `Push delivery: ${category}/${city} \u2014 ${successCount}/${tokenCount} success, ${errorCount} errors`
+  );
+}
+function computePushAnalytics(daysBack = 7) {
+  const cutoff = Date.now() - daysBack * 864e5;
+  const filtered = deliveryRecords.filter((r) => r.timestamp >= cutoff);
+  let totalSent = 0;
+  let totalSuccess = 0;
+  let totalError = 0;
+  const byCategory = {};
+  const byCity = {};
+  const hourBuckets = {};
+  for (const r of filtered) {
+    totalSent += r.tokenCount;
+    totalSuccess += r.successCount;
+    totalError += r.errorCount;
+    if (!byCategory[r.category]) byCategory[r.category] = { sent: 0, success: 0, error: 0 };
+    byCategory[r.category].sent += r.tokenCount;
+    byCategory[r.category].success += r.successCount;
+    byCategory[r.category].error += r.errorCount;
+    if (!byCity[r.city]) byCity[r.city] = { sent: 0, success: 0, error: 0 };
+    byCity[r.city].sent += r.tokenCount;
+    byCity[r.city].success += r.successCount;
+    byCity[r.city].error += r.errorCount;
+    const hourKey = new Date(r.timestamp).toISOString().slice(0, 13);
+    hourBuckets[hourKey] = (hourBuckets[hourKey] || 0) + r.tokenCount;
+  }
+  const hourlyVolume = Object.entries(hourBuckets).sort(([a], [b]) => a.localeCompare(b)).map(([hour, count15]) => ({ hour, count: count15 }));
+  const recentDeliveries = filtered.slice(-20).reverse();
+  const successRate = totalSent > 0 ? Math.round(totalSuccess / totalSent * 1e3) / 10 : 0;
+  return {
+    totalSent,
+    totalSuccess,
+    totalError,
+    successRate,
+    byCategory,
+    byCity,
+    hourlyVolume,
+    recentDeliveries
+  };
+}
+function getPushRecordCount() {
+  return deliveryRecords.length;
+}
+var analyticsLog2, deliveryRecords, MAX_RECORDS;
+var init_push_analytics = __esm({
+  "server/push-analytics.ts"() {
+    "use strict";
+    init_logger();
+    analyticsLog2 = log.tag("PushAnalytics");
+    deliveryRecords = [];
+    MAX_RECORDS = 1e4;
+  }
+});
+
+// server/notification-triggers.ts
+var notification_triggers_exports = {};
+__export(notification_triggers_exports, {
+  onClaimDecision: () => onClaimDecision,
+  onNewRatingForBusiness: () => onNewRatingForBusiness,
+  onRankingChange: () => onRankingChange,
+  onTierUpgrade: () => onTierUpgrade,
+  sendCityHighlightsPush: () => sendCityHighlightsPush,
+  sendWeeklyDigestPush: () => sendWeeklyDigestPush,
+  startCityHighlightsScheduler: () => startCityHighlightsScheduler,
+  startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
+});
+async function onTierUpgrade(memberId, pushToken, newTier) {
+  if (!pushToken) return;
+  try {
+    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+    const member = await getMemberById2(memberId);
+    const prefs = member?.notificationPrefs || {};
+    if (prefs.tierUpgrades === false) return;
+    await sendPushNotification(
+      [pushToken],
+      "You've been promoted!",
+      `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
+      { screen: "profile" }
+    );
+    triggerLog.info(`Tier upgrade push sent: ${memberId} \u2192 ${newTier}`);
+  } catch (err) {
+    triggerLog.error(`Tier upgrade push failed: ${memberId}`, err);
+  }
+}
+async function onClaimDecision(memberId, pushToken, businessName, approved) {
+  if (!pushToken) return;
+  try {
+    if (approved) {
+      await sendPushNotification(
+        [pushToken],
+        `Claim approved: ${businessName}`,
+        "You're now the verified owner. Access your dashboard to see analytics.",
+        { screen: "business" }
+      );
+    } else {
+      await sendPushNotification(
+        [pushToken],
+        `Claim update: ${businessName}`,
+        "Your claim could not be verified. Contact support for next steps.",
+        { screen: "profile" }
+      );
+    }
+    triggerLog.info(`Claim decision push sent: ${memberId}, approved=${approved}`);
+  } catch (err) {
+    triggerLog.error(`Claim decision push failed: ${memberId}`, err);
+  }
+}
+async function sendWeeklyDigestPush() {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { isNotNull: isNotNull5 } = await import("drizzle-orm");
+    const usersWithTokens = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      displayName: members4.displayName,
+      notificationPrefs: members4.notificationPrefs
+    }).from(members4).where(isNotNull5(members4.pushToken));
+    let sent = 0;
+    for (const user of usersWithTokens) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.weeklyDigest === false) continue;
+      const firstName = (user.displayName || "").split(" ")[0] || "there";
+      await sendPushNotification(
+        [user.pushToken],
+        "Your weekly rankings update",
+        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
+        { screen: "search" }
+      );
+      sent++;
+    }
+    triggerLog.info(`Weekly digest push sent to ${sent} users`);
+    recordPushDelivery("weeklyDigest", "all", usersWithTokens.length, sent, usersWithTokens.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog.error("Weekly digest push failed:", err);
+    return 0;
+  }
+}
+function startWeeklyDigestScheduler() {
+  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(10, 0, 0, 0);
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog.info(`Weekly digest scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  const initialTimeout = setTimeout(() => {
+    sendWeeklyDigestPush();
+    setInterval(sendWeeklyDigestPush, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+function startCityHighlightsScheduler() {
+  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(11, 0, 0, 0);
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog.info(`City highlights scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  async function runCityHighlights() {
+    try {
+      const { getActiveCities: getActiveCities2, getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
+      const cities = [...getActiveCities2(), ...getBetaCities2()];
+      let totalSent = 0;
+      for (const city of cities) {
+        const sent = await sendCityHighlightsPush(city);
+        totalSent += sent;
+      }
+      triggerLog.info(`City highlights completed: ${totalSent} pushes across ${cities.length} cities`);
+    } catch (err) {
+      triggerLog.error("City highlights scheduler error:", err);
+    }
+  }
+  const initialTimeout = setTimeout(() => {
+    runCityHighlights();
+    setInterval(runCityHighlights, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
+  if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
+  const direction = newRank < oldRank ? "up" : "down";
+  const delta = Math.abs(newRank - oldRank);
+  if (delta < 2) return 0;
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19 } = await import("drizzle-orm");
+    const raters = await db2.selectDistinct({
+      memberId: ratings5.memberId,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(eq29(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
+    let sent = 0;
+    for (const rater of raters) {
+      if (!rater.pushToken) continue;
+      const prefs = rater.notificationPrefs || {};
+      if (prefs.rankingChanges === false) continue;
+      const emoji = direction === "up" ? "\u{1F4C8}" : "\u{1F4C9}";
+      await sendPushNotification(
+        [rater.pushToken],
+        `${emoji} ${businessName} moved ${direction}`,
+        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
+        { screen: "business", businessId }
+      );
+      sent++;
+    }
+    triggerLog.info(`Ranking change push: ${businessName} #${oldRank}\u2192#${newRank}, sent to ${sent} raters`);
+    recordPushDelivery("rankingChange", city, raters.length, sent, raters.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`Ranking change push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, raterName, score) {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19, ne: ne2 } = await import("drizzle-orm");
+    const otherRaters = await db2.selectDistinct({
+      memberId: ratings5.memberId,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(
+      eq29(ratings5.businessId, businessId),
+      ne2(ratings5.memberId, ratingMemberId),
+      isNotNull5(members4.pushToken)
+    ));
+    let sent = 0;
+    for (const rater of otherRaters) {
+      if (!rater.pushToken) continue;
+      const prefs = rater.notificationPrefs || {};
+      if (prefs.savedBusinessAlerts === false) continue;
+      await sendPushNotification(
+        [rater.pushToken],
+        `New rating for ${businessName}`,
+        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
+        { screen: "business", businessId }
+      );
+      sent++;
+    }
+    triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
+    recordPushDelivery("newRating", "all", otherRaters.length, sent, otherRaters.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`New rating push failed: ${businessId}`, err);
+    return 0;
+  }
+}
+async function sendCityHighlightsPush(city) {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq29, isNotNull: isNotNull5, and: and19, gte: gte9, desc: desc17 } = await import("drizzle-orm");
+    const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+    const recentChanges = await db2.select({
+      businessId: rankHistory2.businessId,
+      businessName: businesses2.name,
+      oldRank: rankHistory2.previousRank,
+      newRank: rankHistory2.rank
+    }).from(rankHistory2).innerJoin(businesses2, eq29(rankHistory2.businessId, businesses2.id)).where(and19(eq29(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc17(rankHistory2.createdAt)).limit(50);
+    if (recentChanges.length === 0) return 0;
+    let biggestMover = recentChanges[0];
+    let biggestDelta = 0;
+    for (const change of recentChanges) {
+      const delta = Math.abs((change.oldRank || 0) - (change.newRank || 0));
+      if (delta > biggestDelta) {
+        biggestDelta = delta;
+        biggestMover = change;
+      }
+    }
+    if (biggestDelta < 2) return 0;
+    const cityUsers = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      notificationPrefs: members4.notificationPrefs
+    }).from(members4).where(and19(eq29(members4.city, city), isNotNull5(members4.pushToken)));
+    let sent = 0;
+    for (const user of cityUsers) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.cityAlerts === false) continue;
+      const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
+      await sendPushNotification(
+        [user.pushToken],
+        `${city} rankings update`,
+        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
+        { screen: "rankings" }
+      );
+      sent++;
+    }
+    triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
+    recordPushDelivery("cityHighlights", city, cityUsers.length, sent, cityUsers.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog.error(`City highlights push failed: ${city}`, err);
+    return 0;
+  }
+}
+var triggerLog;
+var init_notification_triggers = __esm({
+  "server/notification-triggers.ts"() {
+    "use strict";
+    init_push();
+    init_push_analytics();
+    init_logger();
+    triggerLog = log.tag("NotifyTrigger");
   }
 });
 
@@ -6217,235 +6657,6 @@ var init_seed = __esm({
     HOURS_BAKERY = { mon: "07:00-16:00", tue: "07:00-16:00", wed: "07:00-16:00", thu: "07:00-16:00", fri: "07:00-16:00", sat: "08:00-15:00", sun: "08:00-14:00" };
     HOURS_FAST_FOOD = { mon: "10:00-23:00", tue: "10:00-23:00", wed: "10:00-23:00", thu: "10:00-23:00", fri: "10:00-00:00", sat: "10:00-00:00", sun: "10:00-22:00" };
     HOURS_STREET_FOOD = { mon: "11:00-21:00", tue: "11:00-21:00", wed: "11:00-21:00", thu: "11:00-21:00", fri: "11:00-22:00", sat: "11:00-22:00", sun: "12:00-20:00" };
-  }
-});
-
-// server/notification-triggers.ts
-var notification_triggers_exports = {};
-__export(notification_triggers_exports, {
-  onClaimDecision: () => onClaimDecision,
-  onNewRatingForBusiness: () => onNewRatingForBusiness,
-  onRankingChange: () => onRankingChange,
-  onTierUpgrade: () => onTierUpgrade,
-  sendCityHighlightsPush: () => sendCityHighlightsPush,
-  sendWeeklyDigestPush: () => sendWeeklyDigestPush,
-  startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
-});
-async function onTierUpgrade(memberId, pushToken, newTier) {
-  if (!pushToken) return;
-  try {
-    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
-    const member = await getMemberById2(memberId);
-    const prefs = member?.notificationPrefs || {};
-    if (prefs.tierUpgrades === false) return;
-    await sendPushNotification(
-      [pushToken],
-      "You've been promoted!",
-      `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
-      { screen: "profile" }
-    );
-    triggerLog.info(`Tier upgrade push sent: ${memberId} \u2192 ${newTier}`);
-  } catch (err) {
-    triggerLog.error(`Tier upgrade push failed: ${memberId}`, err);
-  }
-}
-async function onClaimDecision(memberId, pushToken, businessName, approved) {
-  if (!pushToken) return;
-  try {
-    if (approved) {
-      await sendPushNotification(
-        [pushToken],
-        `Claim approved: ${businessName}`,
-        "You're now the verified owner. Access your dashboard to see analytics.",
-        { screen: "business" }
-      );
-    } else {
-      await sendPushNotification(
-        [pushToken],
-        `Claim update: ${businessName}`,
-        "Your claim could not be verified. Contact support for next steps.",
-        { screen: "profile" }
-      );
-    }
-    triggerLog.info(`Claim decision push sent: ${memberId}, approved=${approved}`);
-  } catch (err) {
-    triggerLog.error(`Claim decision push failed: ${memberId}`, err);
-  }
-}
-async function sendWeeklyDigestPush() {
-  try {
-    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull5 } = await import("drizzle-orm");
-    const usersWithTokens = await db2.select({
-      id: members4.id,
-      pushToken: members4.pushToken,
-      displayName: members4.displayName,
-      notificationPrefs: members4.notificationPrefs
-    }).from(members4).where(isNotNull5(members4.pushToken));
-    let sent = 0;
-    for (const user of usersWithTokens) {
-      if (!user.pushToken) continue;
-      const prefs = user.notificationPrefs || {};
-      if (prefs.weeklyDigest === false) continue;
-      const firstName = (user.displayName || "").split(" ")[0] || "there";
-      await sendPushNotification(
-        [user.pushToken],
-        "Your weekly rankings update",
-        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
-        { screen: "search" }
-      );
-      sent++;
-    }
-    triggerLog.info(`Weekly digest push sent to ${sent} users`);
-    return sent;
-  } catch (err) {
-    triggerLog.error("Weekly digest push failed:", err);
-    return 0;
-  }
-}
-function startWeeklyDigestScheduler() {
-  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
-  const now = /* @__PURE__ */ new Date();
-  const dayOfWeek = now.getUTCDay();
-  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-  const nextMonday = new Date(now);
-  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
-  nextMonday.setUTCHours(10, 0, 0, 0);
-  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
-  const msUntilFirst = nextMonday.getTime() - now.getTime();
-  triggerLog.info(`Weekly digest scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
-  const initialTimeout = setTimeout(() => {
-    sendWeeklyDigestPush();
-    setInterval(sendWeeklyDigestPush, WEEK_MS2);
-  }, msUntilFirst);
-  return initialTimeout;
-}
-async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
-  if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
-  const direction = newRank < oldRank ? "up" : "down";
-  const delta = Math.abs(newRank - oldRank);
-  if (delta < 2) return 0;
-  try {
-    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19 } = await import("drizzle-orm");
-    const raters = await db2.selectDistinct({
-      memberId: ratings5.memberId,
-      pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
-    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(eq29(ratings5.businessId, businessId), isNotNull5(members4.pushToken)));
-    let sent = 0;
-    for (const rater of raters) {
-      if (!rater.pushToken) continue;
-      const prefs = rater.notificationPrefs || {};
-      if (prefs.rankingChanges === false) continue;
-      const emoji = direction === "up" ? "\u{1F4C8}" : "\u{1F4C9}";
-      await sendPushNotification(
-        [rater.pushToken],
-        `${emoji} ${businessName} moved ${direction}`,
-        `Now ranked #${newRank} in ${city} (was #${oldRank})`,
-        { screen: "business", businessId }
-      );
-      sent++;
-    }
-    triggerLog.info(`Ranking change push: ${businessName} #${oldRank}\u2192#${newRank}, sent to ${sent} raters`);
-    return sent;
-  } catch (err) {
-    triggerLog.error(`Ranking change push failed: ${businessId}`, err);
-    return 0;
-  }
-}
-async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, raterName, score) {
-  try {
-    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { ratings: ratings5, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19, ne: ne2 } = await import("drizzle-orm");
-    const otherRaters = await db2.selectDistinct({
-      memberId: ratings5.memberId,
-      pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
-    }).from(ratings5).innerJoin(members4, eq29(ratings5.memberId, members4.id)).where(and19(
-      eq29(ratings5.businessId, businessId),
-      ne2(ratings5.memberId, ratingMemberId),
-      isNotNull5(members4.pushToken)
-    ));
-    let sent = 0;
-    for (const rater of otherRaters) {
-      if (!rater.pushToken) continue;
-      const prefs = rater.notificationPrefs || {};
-      if (prefs.savedBusinessAlerts === false) continue;
-      await sendPushNotification(
-        [rater.pushToken],
-        `New rating for ${businessName}`,
-        `${raterName} gave it a ${score.toFixed(1)}. See how it affects the ranking.`,
-        { screen: "business", businessId }
-      );
-      sent++;
-    }
-    triggerLog.info(`New rating push: ${businessName} by ${raterName}, sent to ${sent} raters`);
-    return sent;
-  } catch (err) {
-    triggerLog.error(`New rating push failed: ${businessId}`, err);
-    return 0;
-  }
-}
-async function sendCityHighlightsPush(city) {
-  try {
-    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq29, isNotNull: isNotNull5, and: and19, gte: gte9, desc: desc17 } = await import("drizzle-orm");
-    const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-    const recentChanges = await db2.select({
-      businessId: rankHistory2.businessId,
-      businessName: businesses2.name,
-      oldRank: rankHistory2.previousRank,
-      newRank: rankHistory2.rank
-    }).from(rankHistory2).innerJoin(businesses2, eq29(rankHistory2.businessId, businesses2.id)).where(and19(eq29(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc17(rankHistory2.createdAt)).limit(50);
-    if (recentChanges.length === 0) return 0;
-    let biggestMover = recentChanges[0];
-    let biggestDelta = 0;
-    for (const change of recentChanges) {
-      const delta = Math.abs((change.oldRank || 0) - (change.newRank || 0));
-      if (delta > biggestDelta) {
-        biggestDelta = delta;
-        biggestMover = change;
-      }
-    }
-    if (biggestDelta < 2) return 0;
-    const cityUsers = await db2.select({
-      id: members4.id,
-      pushToken: members4.pushToken,
-      notificationPrefs: members4.notificationPrefs
-    }).from(members4).where(and19(eq29(members4.city, city), isNotNull5(members4.pushToken)));
-    let sent = 0;
-    for (const user of cityUsers) {
-      if (!user.pushToken) continue;
-      const prefs = user.notificationPrefs || {};
-      if (prefs.cityAlerts === false) continue;
-      const direction = (biggestMover.newRank || 0) < (biggestMover.oldRank || 0) ? "climbed" : "dropped";
-      await sendPushNotification(
-        [user.pushToken],
-        `${city} rankings update`,
-        `${biggestMover.businessName} ${direction} ${biggestDelta} spots this week. See full rankings.`,
-        { screen: "rankings" }
-      );
-      sent++;
-    }
-    triggerLog.info(`City highlights push: ${city}, biggest mover: ${biggestMover.businessName}, sent to ${sent} users`);
-    return sent;
-  } catch (err) {
-    triggerLog.error(`City highlights push failed: ${city}`, err);
-    return 0;
-  }
-}
-var triggerLog;
-var init_notification_triggers = __esm({
-  "server/notification-triggers.ts"() {
-    "use strict";
-    init_push();
-    init_logger();
-    triggerLog = log.tag("NotifyTrigger");
   }
 });
 
@@ -10235,8 +10446,22 @@ function registerBusinessRoutes(app2) {
     if (!query || query.trim().length === 0) {
       return res.json({ data: [] });
     }
-    const suggestions = await autocompleteBusinesses(query, city);
-    return res.json({ data: suggestions });
+    const [bizSuggestions, dishData] = await Promise.all([
+      autocompleteBusinesses(query, city),
+      Promise.resolve().then(() => (init_businesses(), businesses_exports)).then((m) => m.getTopDishesForAutocomplete(city, 50))
+    ]);
+    const { buildDishSuggestions: buildDishSuggestions2, mergeSuggestions: mergeSuggestions2, scoreSuggestion: scoreSuggestion2 } = await Promise.resolve().then(() => (init_search_autocomplete(), search_autocomplete_exports));
+    const bizMapped = bizSuggestions.map((b) => ({
+      id: b.id,
+      text: b.name,
+      subtext: [b.cuisine, b.neighborhood].filter(Boolean).join(" \xB7 ") || b.category,
+      type: "business",
+      slug: b.slug,
+      score: scoreSuggestion2(query, b.name, "business")
+    }));
+    const dishSuggestions2 = buildDishSuggestions2(query, dishData);
+    const merged = mergeSuggestions2([...bizMapped, ...dishSuggestions2], 8);
+    return res.json({ data: merged });
   }));
   app2.get("/api/businesses/popular-categories", wrapAsync(async (req, res) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
@@ -11436,6 +11661,118 @@ function getClaimStats() {
   };
 }
 
+// server/claim-verification-v2.ts
+init_logger();
+var claimV2Log = log.tag("ClaimV2");
+var evidenceStore = /* @__PURE__ */ new Map();
+var SCORE_WEIGHTS = {
+  documentUploaded: 25,
+  businessNameMatch: 30,
+  addressMatch: 20,
+  phoneMatch: 15,
+  multipleDocuments: 10
+};
+var AUTO_APPROVE_THRESHOLD = 70;
+function computeVerificationScore(hasDocument, businessNameMatch, addressMatch, phoneMatch, documentCount) {
+  let score = 0;
+  if (hasDocument) score += SCORE_WEIGHTS.documentUploaded;
+  if (businessNameMatch) score += SCORE_WEIGHTS.businessNameMatch;
+  if (addressMatch) score += SCORE_WEIGHTS.addressMatch;
+  if (phoneMatch) score += SCORE_WEIGHTS.phoneMatch;
+  if (documentCount > 1) score += SCORE_WEIGHTS.multipleDocuments;
+  return Math.min(score, 100);
+}
+function shouldAutoApprove(score) {
+  return score >= AUTO_APPROVE_THRESHOLD;
+}
+function addDocumentToEvidence(claimId, document) {
+  let evidence = evidenceStore.get(claimId);
+  if (!evidence) {
+    evidence = {
+      claimId,
+      documents: [],
+      businessNameMatch: false,
+      addressMatch: false,
+      phoneMatch: false,
+      verificationScore: 0,
+      autoApproved: false,
+      reviewNotes: [],
+      scoredAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    evidenceStore.set(claimId, evidence);
+  }
+  evidence.documents.push(document);
+  claimV2Log.info(`Document added to claim ${claimId}: ${document.fileName} (${document.documentType})`);
+  return evidence;
+}
+function scoreClaimEvidence(claimId, businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone) {
+  const evidence = evidenceStore.get(claimId) || {
+    claimId,
+    documents: [],
+    businessNameMatch: false,
+    addressMatch: false,
+    phoneMatch: false,
+    verificationScore: 0,
+    autoApproved: false,
+    reviewNotes: [],
+    scoredAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  const bizNameLower = businessName.toLowerCase();
+  const claimantLower = claimantName.toLowerCase();
+  evidence.businessNameMatch = bizNameLower.includes(claimantLower) || claimantLower.includes(bizNameLower) || levenshteinSimilar(bizNameLower, claimantLower, 3);
+  if (claimantAddress && businessAddress) {
+    evidence.addressMatch = normalizeAddress(claimantAddress) === normalizeAddress(businessAddress);
+  }
+  if (claimantPhone && businessPhone) {
+    evidence.phoneMatch = normalizePhone(claimantPhone) === normalizePhone(businessPhone);
+  }
+  evidence.verificationScore = computeVerificationScore(
+    evidence.documents.length > 0,
+    evidence.businessNameMatch,
+    evidence.addressMatch,
+    evidence.phoneMatch,
+    evidence.documents.length
+  );
+  evidence.autoApproved = shouldAutoApprove(evidence.verificationScore);
+  evidence.scoredAt = (/* @__PURE__ */ new Date()).toISOString();
+  evidence.reviewNotes = [];
+  if (evidence.businessNameMatch) evidence.reviewNotes.push("Business name matches claimant");
+  if (evidence.addressMatch) evidence.reviewNotes.push("Address verified");
+  if (evidence.phoneMatch) evidence.reviewNotes.push("Phone number matches");
+  if (evidence.documents.length > 0) evidence.reviewNotes.push(`${evidence.documents.length} document(s) uploaded`);
+  if (evidence.autoApproved) evidence.reviewNotes.push("Auto-approved: score >= threshold");
+  evidenceStore.set(claimId, evidence);
+  claimV2Log.info(`Claim ${claimId} scored: ${evidence.verificationScore}/100, autoApproved=${evidence.autoApproved}`);
+  return evidence;
+}
+function getClaimEvidence(claimId) {
+  return evidenceStore.get(claimId) || null;
+}
+function getAllEvidence() {
+  return Array.from(evidenceStore.values());
+}
+function normalizeAddress(addr) {
+  return addr.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+}
+function normalizePhone(phone) {
+  return phone.replace(/[^0-9]/g, "").slice(-10);
+}
+function levenshteinSimilar(a, b, maxDist) {
+  if (Math.abs(a.length - b.length) > maxDist) return false;
+  const la = a.length;
+  const lb = b.length;
+  const dp = Array.from({ length: la + 1 }, () => Array(lb + 1).fill(0));
+  for (let i = 0; i <= la; i++) dp[i][0] = i;
+  for (let j = 0; j <= lb; j++) dp[0][j] = j;
+  for (let i = 1; i <= la; i++) {
+    for (let j = 1; j <= lb; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[la][lb] <= maxDist;
+}
+
 // server/routes-admin-claims-verification.ts
 var adminClaimLog = log.tag("AdminClaimVerify");
 function registerAdminClaimVerificationRoutes(app2) {
@@ -11458,6 +11795,46 @@ function registerAdminClaimVerificationRoutes(app2) {
     if (!result) return res.status(400).json({ error: "Cannot reject claim" });
     adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
     res.json({ success: true });
+  });
+  app2.post("/api/admin/claims/:id/document", (req, res) => {
+    const { fileName, fileType, fileSize, documentType } = req.body;
+    if (!fileName || !fileType || !fileSize || !documentType) {
+      return res.status(400).json({ error: "fileName, fileType, fileSize, documentType required" });
+    }
+    const evidence = addDocumentToEvidence(req.params.id, {
+      fileName: String(fileName).slice(0, 200),
+      fileType: String(fileType).slice(0, 50),
+      fileSize: Number(fileSize),
+      uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      documentType
+    });
+    adminClaimLog.info(`Document uploaded for claim ${req.params.id}: ${fileName}`);
+    res.json({ data: evidence });
+  });
+  app2.post("/api/admin/claims/:id/score", (req, res) => {
+    const { businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone } = req.body;
+    if (!businessName || !claimantName) {
+      return res.status(400).json({ error: "businessName and claimantName required" });
+    }
+    const evidence = scoreClaimEvidence(
+      req.params.id,
+      businessName,
+      claimantName,
+      claimantAddress,
+      businessAddress,
+      claimantPhone,
+      businessPhone
+    );
+    adminClaimLog.info(`Claim ${req.params.id} scored: ${evidence.verificationScore}/100, auto=${evidence.autoApproved}`);
+    res.json({ data: evidence });
+  });
+  app2.get("/api/admin/claims/:id/evidence", (req, res) => {
+    const evidence = getClaimEvidence(req.params.id);
+    if (!evidence) return res.status(404).json({ error: "No evidence for this claim" });
+    res.json({ data: evidence });
+  });
+  app2.get("/api/admin/claims/evidence/all", (_req, res) => {
+    res.json({ data: getAllEvidence() });
   });
 }
 
@@ -12015,6 +12392,7 @@ function getHealthySummary() {
 }
 
 // server/routes-admin-health.ts
+init_push_analytics();
 function registerAdminHealthRoutes(app2) {
   app2.get(
     "/api/admin/city-health/summary",
@@ -12042,6 +12420,21 @@ function registerAdminHealthRoutes(app2) {
         return res.status(404).json({ error: `No health data for city: ${city}` });
       }
       return res.json({ data: health });
+    })
+  );
+  app2.get(
+    "/api/admin/push-analytics",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const days = Math.min(30, Math.max(1, parseInt(req.query.days) || 7));
+      const summary = computePushAnalytics(days);
+      return res.json({
+        data: {
+          ...summary,
+          recordCount: getPushRecordCount(),
+          daysBack: days
+        }
+      });
     })
   );
 }
@@ -13267,13 +13660,12 @@ function registerScoreBreakdownRoutes(app2) {
   }));
 }
 
-// server/routes.ts
-init_stripe_webhook();
-init_logger();
-init_storage();
+// server/routes-ratings.ts
 init_schema();
 init_analytics2();
 init_tier_staleness();
+init_storage();
+init_logger();
 
 // server/rating-integrity.ts
 init_logger();
@@ -13371,7 +13763,160 @@ function checkVelocity(businessId, raterId, raterIp) {
   return { flagged: false, reducedWeight: 1 };
 }
 
+// server/routes-ratings.ts
+function registerRatingRoutes(app2) {
+  app2.post("/api/ratings", requireAuth, wrapAsync(async (req, res) => {
+    try {
+      const parsed = insertRatingSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: parsed.error.errors[0].message });
+      }
+      parsed.data.q1Score = sanitizeNumber(parsed.data.q1Score, 1, 5, 3);
+      parsed.data.q2Score = sanitizeNumber(parsed.data.q2Score, 1, 5, 3);
+      parsed.data.q3Score = sanitizeNumber(parsed.data.q3Score, 1, 5, 3);
+      const memberId = req.user.id;
+      const raterIp = req.ip || req.socket.remoteAddress || "unknown";
+      const ownerCheck = checkOwnerSelfRating(parsed.data.businessId, memberId, raterIp);
+      if (!ownerCheck.allowed) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId: parsed.data.businessId });
+        return res.status(403).json({ error: ownerCheck.reason });
+      }
+      const velocityCheck = checkVelocity(parsed.data.businessId, memberId, raterIp);
+      if (velocityCheck.flagged) {
+        log.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
+      }
+      logRatingSubmission(parsed.data.businessId, memberId, raterIp);
+      const result = await submitRating(memberId, parsed.data, {
+        velocityFlagged: velocityCheck.flagged,
+        velocityRule: velocityCheck.rule,
+        velocityWeight: velocityCheck.reducedWeight
+      });
+      const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
+      if (verifiedTier !== result.newTier) {
+        result.newTier = verifiedTier;
+        result.tierUpgraded = verifiedTier !== req.user.credibilityTier;
+      }
+      broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
+      broadcast("ranking_updated", { businessId: parsed.data.businessId });
+      broadcast("challenger_updated", { businessId: parsed.data.businessId });
+      trackEvent("first_rating", memberId);
+      trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
+      if (result.tierUpgraded && req.user.pushToken) {
+        const { onTierUpgrade: onTierUpgrade2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
+        onTierUpgrade2(memberId, req.user.pushToken, result.newTier).catch(() => {
+        });
+      }
+      {
+        const { onRankingChange: onRankingChange2, onNewRatingForBusiness: onNewRatingForBusiness2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
+        const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const biz = await getBusinessById2(parsed.data.businessId);
+        if (biz) {
+          if (result.rankChanged && result.prevRank && result.newRank) {
+            onRankingChange2(parsed.data.businessId, biz.name, result.prevRank, result.newRank, biz.city).catch(() => {
+            });
+          }
+          const raterName = req.user.displayName || "Someone";
+          const score = result.rating.weightedScore ?? result.rating.q1Score ?? 0;
+          onNewRatingForBusiness2(parsed.data.businessId, biz.name, memberId, raterName, score).catch(() => {
+          });
+        }
+      }
+      try {
+        const { invalidatePrerenderCache: invalidatePrerenderCache2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
+        const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+        const biz = await getBusinessById2(parsed.data.businessId);
+        if (biz?.slug) invalidatePrerenderCache2("biz", biz.slug);
+      } catch {
+      }
+      const userExperiments = getUserExperiments(String(memberId));
+      for (const expId of userExperiments) {
+        trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
+      }
+      return res.status(201).json({ data: result });
+    } catch (err) {
+      const memberId = req.user?.id;
+      const businessId = req.body?.businessId;
+      if (err.message.includes("3+ days")) {
+        trackEvent("rating_rejected_account_age", memberId, { businessId });
+        return res.status(403).json({ error: err.message });
+      }
+      if (err.message.includes("Already rated")) {
+        trackEvent("rating_rejected_duplicate", memberId, { businessId });
+        return res.status(409).json({ error: err.message });
+      }
+      if (err.message.includes("suspended")) {
+        trackEvent("rating_rejected_suspended", memberId, { businessId });
+        return res.status(403).json({ error: err.message });
+      }
+      if (err.message.includes("business owner")) {
+        trackEvent("rating_rejected_owner_self", memberId, { businessId });
+        return res.status(403).json({ error: err.message });
+      }
+      trackEvent("rating_rejected_unknown", memberId, { businessId, error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.patch("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
+    const { editRating: editRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    const ratingId = req.params.id;
+    const updates = {
+      q1Score: req.body.q1Score ? sanitizeNumber(req.body.q1Score, 1, 5, void 0) : void 0,
+      q2Score: req.body.q2Score ? sanitizeNumber(req.body.q2Score, 1, 5, void 0) : void 0,
+      q3Score: req.body.q3Score ? sanitizeNumber(req.body.q3Score, 1, 5, void 0) : void 0,
+      wouldReturn: req.body.wouldReturn,
+      note: req.body.note !== void 0 ? sanitizeString(req.body.note, 160) : void 0
+    };
+    try {
+      const updated = await editRating2(ratingId, req.user.id, updates);
+      broadcast("rating_updated", { ratingId, businessId: updated.businessId });
+      return res.json({ data: updated });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot edit")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("expired")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.delete("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
+    const { deleteRating: deleteRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    try {
+      await deleteRating2(req.params.id, req.user.id);
+      broadcast("rating_deleted", { ratingId: req.params.id });
+      return res.json({ data: { deleted: true } });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("Cannot delete")) return res.status(403).json({ error: err.message });
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+  app2.post("/api/ratings/:id/flag", requireAuth, wrapAsync(async (req, res) => {
+    const { submitRatingFlag: submitRatingFlag2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
+    try {
+      const flag = await submitRatingFlag2(req.params.id, req.user.id, {
+        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
+        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
+        q3InsiderSuspected: req.body.q3InsiderSuspected,
+        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
+        q5CompetitorBombing: req.body.q5CompetitorBombing,
+        explanation: sanitizeString(req.body.explanation, 500)
+      });
+      return res.status(201).json({ data: flag });
+    } catch (err) {
+      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
+      if (err.message.includes("own rating")) return res.status(403).json({ error: err.message });
+      if (err.message.includes("unique") || err.message.includes("duplicate")) {
+        return res.status(409).json({ error: "You have already flagged this rating" });
+      }
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+}
+
 // server/routes.ts
+init_stripe_webhook();
+init_logger();
+init_storage();
+init_schema();
 async function registerRoutes(app2) {
   setupAuth(app2);
   app2.use("/api", (req, res, next) => {
@@ -13526,136 +14071,7 @@ async function registerRoutes(app2) {
   registerQrRoutes(app2);
   registerNotificationRoutes(app2);
   registerReferralRoutes(app2);
-  app2.post("/api/ratings", requireAuth, wrapAsync(async (req, res) => {
-    try {
-      const parsed = insertRatingSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ error: parsed.error.errors[0].message });
-      }
-      parsed.data.q1Score = sanitizeNumber(parsed.data.q1Score, 1, 5, 3);
-      parsed.data.q2Score = sanitizeNumber(parsed.data.q2Score, 1, 5, 3);
-      parsed.data.q3Score = sanitizeNumber(parsed.data.q3Score, 1, 5, 3);
-      const memberId = req.user.id;
-      const raterIp = req.ip || req.socket.remoteAddress || "unknown";
-      const ownerCheck = checkOwnerSelfRating(parsed.data.businessId, memberId, raterIp);
-      if (!ownerCheck.allowed) {
-        trackEvent("rating_rejected_owner_self", memberId, { businessId: parsed.data.businessId });
-        return res.status(403).json({ error: ownerCheck.reason });
-      }
-      const velocityCheck = checkVelocity(parsed.data.businessId, memberId, raterIp);
-      if (velocityCheck.flagged) {
-        log.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
-      }
-      logRatingSubmission(parsed.data.businessId, memberId, raterIp);
-      const result = await submitRating(memberId, parsed.data, {
-        velocityFlagged: velocityCheck.flagged,
-        velocityRule: velocityCheck.rule,
-        velocityWeight: velocityCheck.reducedWeight
-      });
-      const verifiedTier = checkAndRefreshTier(result.newTier, result.newCredibilityScore);
-      if (verifiedTier !== result.newTier) {
-        result.newTier = verifiedTier;
-        result.tierUpgraded = verifiedTier !== req.user.credibilityTier;
-      }
-      broadcast("rating_submitted", { businessId: parsed.data.businessId, memberId });
-      broadcast("ranking_updated", { businessId: parsed.data.businessId });
-      broadcast("challenger_updated", { businessId: parsed.data.businessId });
-      trackEvent("first_rating", memberId);
-      trackEvent("rating_submitted", memberId, { businessId: parsed.data.businessId });
-      if (result.tierUpgraded && req.user.pushToken) {
-        const { notifyTierUpgrade: notifyTierUpgrade2 } = await Promise.resolve().then(() => (init_push(), push_exports));
-        notifyTierUpgrade2(memberId, req.user.pushToken, result.newTier).catch(() => {
-        });
-      }
-      try {
-        const { invalidatePrerenderCache: invalidatePrerenderCache2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
-        const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-        const biz = await getBusinessById2(parsed.data.businessId);
-        if (biz?.slug) invalidatePrerenderCache2("biz", biz.slug);
-      } catch {
-      }
-      const userExperiments = getUserExperiments(String(memberId));
-      for (const expId of userExperiments) {
-        trackOutcome(String(memberId), expId, "rated", parsed.data.q1Score);
-      }
-      return res.status(201).json({ data: result });
-    } catch (err) {
-      const memberId = req.user?.id;
-      const businessId = req.body?.businessId;
-      if (err.message.includes("3+ days")) {
-        trackEvent("rating_rejected_account_age", memberId, { businessId });
-        return res.status(403).json({ error: err.message });
-      }
-      if (err.message.includes("Already rated")) {
-        trackEvent("rating_rejected_duplicate", memberId, { businessId });
-        return res.status(409).json({ error: err.message });
-      }
-      if (err.message.includes("suspended")) {
-        trackEvent("rating_rejected_suspended", memberId, { businessId });
-        return res.status(403).json({ error: err.message });
-      }
-      if (err.message.includes("business owner")) {
-        trackEvent("rating_rejected_owner_self", memberId, { businessId });
-        return res.status(403).json({ error: err.message });
-      }
-      trackEvent("rating_rejected_unknown", memberId, { businessId, error: err.message });
-      return res.status(400).json({ error: err.message });
-    }
-  }));
-  app2.patch("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
-    const { editRating: editRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
-    const ratingId = req.params.id;
-    const updates = {
-      q1Score: req.body.q1Score ? sanitizeNumber(req.body.q1Score, 1, 5, void 0) : void 0,
-      q2Score: req.body.q2Score ? sanitizeNumber(req.body.q2Score, 1, 5, void 0) : void 0,
-      q3Score: req.body.q3Score ? sanitizeNumber(req.body.q3Score, 1, 5, void 0) : void 0,
-      wouldReturn: req.body.wouldReturn,
-      note: req.body.note !== void 0 ? sanitizeString(req.body.note, 160) : void 0
-    };
-    try {
-      const updated = await editRating2(ratingId, req.user.id, updates);
-      broadcast("rating_updated", { ratingId, businessId: updated.businessId });
-      return res.json({ data: updated });
-    } catch (err) {
-      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
-      if (err.message.includes("Cannot edit")) return res.status(403).json({ error: err.message });
-      if (err.message.includes("expired")) return res.status(403).json({ error: err.message });
-      return res.status(400).json({ error: err.message });
-    }
-  }));
-  app2.delete("/api/ratings/:id", requireAuth, wrapAsync(async (req, res) => {
-    const { deleteRating: deleteRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
-    try {
-      await deleteRating2(req.params.id, req.user.id);
-      broadcast("rating_deleted", { ratingId: req.params.id });
-      return res.json({ data: { deleted: true } });
-    } catch (err) {
-      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
-      if (err.message.includes("Cannot delete")) return res.status(403).json({ error: err.message });
-      return res.status(400).json({ error: err.message });
-    }
-  }));
-  app2.post("/api/ratings/:id/flag", requireAuth, wrapAsync(async (req, res) => {
-    const { submitRatingFlag: submitRatingFlag2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
-    try {
-      const flag = await submitRatingFlag2(req.params.id, req.user.id, {
-        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
-        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
-        q3InsiderSuspected: req.body.q3InsiderSuspected,
-        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
-        q5CompetitorBombing: req.body.q5CompetitorBombing,
-        explanation: sanitizeString(req.body.explanation, 500)
-      });
-      return res.status(201).json({ data: flag });
-    } catch (err) {
-      if (err.message.includes("not found")) return res.status(404).json({ error: err.message });
-      if (err.message.includes("own rating")) return res.status(403).json({ error: err.message });
-      if (err.message.includes("unique") || err.message.includes("duplicate")) {
-        return res.status(409).json({ error: "You have already flagged this rating" });
-      }
-      return res.status(400).json({ error: err.message });
-    }
-  }));
+  registerRatingRoutes(app2);
   registerMemberRoutes(app2);
   app2.get("/api/challengers/active", wrapAsync(async (req, res) => {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
@@ -14195,8 +14611,9 @@ function setupErrorHandler(app2) {
   }
   recalculateAllDishBoards();
   const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1e3);
-  const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
+  const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2, startCityHighlightsScheduler: startCityHighlightsScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
   const weeklyDigestTimeout = startWeeklyDigestScheduler2();
+  const cityHighlightsTimeout = startCityHighlightsScheduler2();
   const { startDripScheduler: startDripScheduler2 } = await Promise.resolve().then(() => (init_drip_scheduler(), drip_scheduler_exports));
   const dripSchedulerTimeout = startDripScheduler2();
   const { startOutreachScheduler: startOutreachScheduler2 } = await Promise.resolve().then(() => (init_outreach_scheduler(), outreach_scheduler_exports));
@@ -14215,6 +14632,7 @@ function setupErrorHandler(app2) {
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
+    clearTimeout(cityHighlightsTimeout);
     clearTimeout(dripSchedulerTimeout);
     clearTimeout(outreachSchedulerTimeout);
     server.close(() => {
