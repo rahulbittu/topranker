@@ -27,7 +27,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { BusinessCard, MapBusinessCard, haversineKm, MapView } from "@/components/search/SubComponents";
 import { AutocompleteDropdown, RecentSearchesPanel } from "@/components/search/SearchOverlays";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { getActiveCategories, type BestInCategory } from "@/shared/best-in-categories";
+import { getActiveCategories, getCategoriesByCuisine, getAvailableCuisines, CUISINE_DISPLAY, type BestInCategory } from "@/shared/best-in-categories";
 
 const AMBER = BRAND.colors.amber;
 
@@ -48,6 +48,12 @@ export default function SearchScreen() {
   const [priceFilter, setPriceFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<"ranked" | "rated" | "trending">("ranked");
   const [selectedMapBiz, setSelectedMapBiz] = useState<MappedBusiness | null>(null);
+  const [bestInCuisine, setBestInCuisine] = useState<string | null>(null);
+  const bestInCuisines = useMemo(() => getAvailableCuisines(), []);
+  const bestInItems = useMemo(() =>
+    bestInCuisine ? getCategoriesByCuisine(bestInCuisine) : getActiveCategories().slice(0, 15),
+    [bestInCuisine],
+  );
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [showDiscoverTip, setShowDiscoverTip] = useState(false);
@@ -488,9 +494,35 @@ export default function SearchScreen() {
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.cuisineTabsScroll}
+                  >
+                    <TouchableOpacity
+                      onPress={() => { Haptics.selectionAsync(); setBestInCuisine(null); }}
+                      style={[styles.cuisineTab, bestInCuisine === null && styles.cuisineTabActive]}
+                    >
+                      <Text style={[styles.cuisineTabText, bestInCuisine === null && styles.cuisineTabTextActive]}>All</Text>
+                    </TouchableOpacity>
+                    {bestInCuisines.filter(c => c !== "universal").map((cuisine) => {
+                      const display = CUISINE_DISPLAY[cuisine] || { label: cuisine, emoji: "" };
+                      return (
+                        <TouchableOpacity
+                          key={cuisine}
+                          onPress={() => { Haptics.selectionAsync(); setBestInCuisine(cuisine); }}
+                          style={[styles.cuisineTab, bestInCuisine === cuisine && styles.cuisineTabActive]}
+                        >
+                          <Text style={[styles.cuisineTabText, bestInCuisine === cuisine && styles.cuisineTabTextActive]}>
+                            {display.emoji} {display.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.bestInScroll}
                   >
-                    {getActiveCategories().map((cat: BestInCategory) => (
+                    {bestInItems.map((cat: BestInCategory) => (
                       <TouchableOpacity
                         key={cat.slug}
                         style={styles.bestInCard}
@@ -689,6 +721,22 @@ const styles = StyleSheet.create({
   },
   bestInSeeAll: {
     fontSize: 12, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold",
+  },
+  cuisineTabsScroll: {
+    flexDirection: "row", paddingBottom: 8, gap: 6,
+  },
+  cuisineTab: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+    backgroundColor: "rgba(13, 27, 42, 0.06)",
+  },
+  cuisineTabActive: {
+    backgroundColor: "rgba(13, 27, 42, 0.12)", borderWidth: 1, borderColor: "#0D1B2A",
+  },
+  cuisineTabText: {
+    fontSize: 11, fontFamily: "DMSans_500Medium", color: Colors.textSecondary,
+  },
+  cuisineTabTextActive: {
+    color: "#0D1B2A", fontFamily: "DMSans_700Bold",
   },
   bestInScroll: {
     gap: 10, paddingRight: 4,

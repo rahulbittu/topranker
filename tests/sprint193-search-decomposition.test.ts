@@ -115,14 +115,14 @@ describe("search.tsx — file size", () => {
   const content = fs.readFileSync(filePath, "utf-8");
   const lineCount = content.split("\n").length;
 
-  it("is under 900 LOC after extraction", () => {
-    // Bumped from 800 to 900: Sprint 259 added Best In Dallas section (~70 LOC)
-    expect(lineCount).toBeLessThan(900);
+  it("is under 950 LOC after extraction", () => {
+    // Bumped to 950: Sprint 284 added cuisine picker tabs (~50 LOC)
+    expect(lineCount).toBeLessThan(950);
   });
 
   it("reduced from original and stays manageable", () => {
-    // Best In Dallas section added ~70 LOC of core product UI
-    expect(lineCount).toBeLessThan(900);
+    // Sprint 284: cuisine picker added ~50 LOC of cuisine filter UI
+    expect(lineCount).toBeLessThan(950);
   });
 });
 

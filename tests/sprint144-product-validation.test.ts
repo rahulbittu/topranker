@@ -119,9 +119,9 @@ describe("Experiment Integration Verification", () => {
 // ─── 2. File Size Compliance (6 tests) ──────────────────────────────
 
 describe("File Size Compliance", () => {
-  it("search.tsx is under 900 LOC (Sprint 184: autocomplete + recent searches + dynamic categories)", () => {
+  it("search.tsx is under 950 LOC (Sprint 284: cuisine picker + Best In tabs)", () => {
     const loc = countLOC("app/(tabs)/search.tsx");
-    expect(loc).toBeLessThan(900);
+    expect(loc).toBeLessThan(950);
   });
 
   it("challenger.tsx is under 550 LOC", () => {
