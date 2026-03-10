@@ -5808,140 +5808,7 @@ var init_push_analytics = __esm({
   }
 });
 
-// server/notification-triggers.ts
-var notification_triggers_exports = {};
-__export(notification_triggers_exports, {
-  onClaimDecision: () => onClaimDecision,
-  onNewRatingForBusiness: () => onNewRatingForBusiness,
-  onRankingChange: () => onRankingChange,
-  onTierUpgrade: () => onTierUpgrade,
-  sendCityHighlightsPush: () => sendCityHighlightsPush,
-  sendWeeklyDigestPush: () => sendWeeklyDigestPush,
-  startCityHighlightsScheduler: () => startCityHighlightsScheduler,
-  startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
-});
-async function onTierUpgrade(memberId, pushToken, newTier) {
-  if (!pushToken) return;
-  try {
-    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
-    const member = await getMemberById2(memberId);
-    const prefs = member?.notificationPrefs || {};
-    if (prefs.tierUpgrades === false) return;
-    await sendPushNotification(
-      [pushToken],
-      "You've been promoted!",
-      `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
-      { screen: "profile" }
-    );
-    triggerLog.info(`Tier upgrade push sent: ${memberId} \u2192 ${newTier}`);
-  } catch (err) {
-    triggerLog.error(`Tier upgrade push failed: ${memberId}`, err);
-  }
-}
-async function onClaimDecision(memberId, pushToken, businessName, approved) {
-  if (!pushToken) return;
-  try {
-    if (approved) {
-      await sendPushNotification(
-        [pushToken],
-        `Claim approved: ${businessName}`,
-        "You're now the verified owner. Access your dashboard to see analytics.",
-        { screen: "business" }
-      );
-    } else {
-      await sendPushNotification(
-        [pushToken],
-        `Claim update: ${businessName}`,
-        "Your claim could not be verified. Contact support for next steps.",
-        { screen: "profile" }
-      );
-    }
-    triggerLog.info(`Claim decision push sent: ${memberId}, approved=${approved}`);
-  } catch (err) {
-    triggerLog.error(`Claim decision push failed: ${memberId}`, err);
-  }
-}
-async function sendWeeklyDigestPush() {
-  try {
-    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull5 } = await import("drizzle-orm");
-    const usersWithTokens = await db2.select({
-      id: members4.id,
-      pushToken: members4.pushToken,
-      displayName: members4.displayName,
-      notificationPrefs: members4.notificationPrefs
-    }).from(members4).where(isNotNull5(members4.pushToken));
-    let sent = 0;
-    for (const user of usersWithTokens) {
-      if (!user.pushToken) continue;
-      const prefs = user.notificationPrefs || {};
-      if (prefs.weeklyDigest === false) continue;
-      const firstName = (user.displayName || "").split(" ")[0] || "there";
-      await sendPushNotification(
-        [user.pushToken],
-        "Your weekly rankings update",
-        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
-        { screen: "search" }
-      );
-      sent++;
-    }
-    triggerLog.info(`Weekly digest push sent to ${sent} users`);
-    recordPushDelivery("weeklyDigest", "all", usersWithTokens.length, sent, usersWithTokens.length - sent);
-    return sent;
-  } catch (err) {
-    triggerLog.error("Weekly digest push failed:", err);
-    return 0;
-  }
-}
-function startWeeklyDigestScheduler() {
-  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
-  const now = /* @__PURE__ */ new Date();
-  const dayOfWeek = now.getUTCDay();
-  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-  const nextMonday = new Date(now);
-  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
-  nextMonday.setUTCHours(10, 0, 0, 0);
-  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
-  const msUntilFirst = nextMonday.getTime() - now.getTime();
-  triggerLog.info(`Weekly digest scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
-  const initialTimeout = setTimeout(() => {
-    sendWeeklyDigestPush();
-    setInterval(sendWeeklyDigestPush, WEEK_MS2);
-  }, msUntilFirst);
-  return initialTimeout;
-}
-function startCityHighlightsScheduler() {
-  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
-  const now = /* @__PURE__ */ new Date();
-  const dayOfWeek = now.getUTCDay();
-  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
-  const nextMonday = new Date(now);
-  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
-  nextMonday.setUTCHours(11, 0, 0, 0);
-  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
-  const msUntilFirst = nextMonday.getTime() - now.getTime();
-  triggerLog.info(`City highlights scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
-  async function runCityHighlights() {
-    try {
-      const { getActiveCities: getActiveCities2, getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
-      const cities = [...getActiveCities2(), ...getBetaCities2()];
-      let totalSent = 0;
-      for (const city of cities) {
-        const sent = await sendCityHighlightsPush(city);
-        totalSent += sent;
-      }
-      triggerLog.info(`City highlights completed: ${totalSent} pushes across ${cities.length} cities`);
-    } catch (err) {
-      triggerLog.error("City highlights scheduler error:", err);
-    }
-  }
-  const initialTimeout = setTimeout(() => {
-    runCityHighlights();
-    setInterval(runCityHighlights, WEEK_MS2);
-  }, msUntilFirst);
-  return initialTimeout;
-}
+// server/notification-triggers-events.ts
 async function onRankingChange(businessId, businessName, oldRank, newRank, city) {
   if (oldRank === newRank || oldRank === 0 || newRank === 0) return 0;
   const direction = newRank < oldRank ? "up" : "down";
@@ -6063,14 +5930,160 @@ async function sendCityHighlightsPush(city) {
     return 0;
   }
 }
+function startCityHighlightsScheduler() {
+  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(11, 0, 0, 0);
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog.info(`City highlights scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  async function runCityHighlights() {
+    try {
+      const { getActiveCities: getActiveCities2, getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
+      const cities = [...getActiveCities2(), ...getBetaCities2()];
+      let totalSent = 0;
+      for (const city of cities) {
+        const sent = await sendCityHighlightsPush(city);
+        totalSent += sent;
+      }
+      triggerLog.info(`City highlights completed: ${totalSent} pushes across ${cities.length} cities`);
+    } catch (err) {
+      triggerLog.error("City highlights scheduler error:", err);
+    }
+  }
+  const initialTimeout = setTimeout(() => {
+    runCityHighlights();
+    setInterval(runCityHighlights, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
 var triggerLog;
+var init_notification_triggers_events = __esm({
+  "server/notification-triggers-events.ts"() {
+    "use strict";
+    init_push();
+    init_push_analytics();
+    init_logger();
+    triggerLog = log.tag("NotifyTrigger");
+  }
+});
+
+// server/notification-triggers.ts
+var notification_triggers_exports = {};
+__export(notification_triggers_exports, {
+  onClaimDecision: () => onClaimDecision,
+  onNewRatingForBusiness: () => onNewRatingForBusiness,
+  onRankingChange: () => onRankingChange,
+  onTierUpgrade: () => onTierUpgrade,
+  sendCityHighlightsPush: () => sendCityHighlightsPush,
+  sendWeeklyDigestPush: () => sendWeeklyDigestPush,
+  startCityHighlightsScheduler: () => startCityHighlightsScheduler,
+  startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
+});
+async function onTierUpgrade(memberId, pushToken, newTier) {
+  if (!pushToken) return;
+  try {
+    const { getMemberById: getMemberById2 } = await Promise.resolve().then(() => (init_members(), members_exports));
+    const member = await getMemberById2(memberId);
+    const prefs = member?.notificationPrefs || {};
+    if (prefs.tierUpgrades === false) return;
+    await sendPushNotification(
+      [pushToken],
+      "You've been promoted!",
+      `Your credibility reached ${newTier} tier. Your ratings now carry more weight.`,
+      { screen: "profile" }
+    );
+    triggerLog2.info(`Tier upgrade push sent: ${memberId} \u2192 ${newTier}`);
+  } catch (err) {
+    triggerLog2.error(`Tier upgrade push failed: ${memberId}`, err);
+  }
+}
+async function onClaimDecision(memberId, pushToken, businessName, approved) {
+  if (!pushToken) return;
+  try {
+    if (approved) {
+      await sendPushNotification(
+        [pushToken],
+        `Claim approved: ${businessName}`,
+        "You're now the verified owner. Access your dashboard to see analytics.",
+        { screen: "business" }
+      );
+    } else {
+      await sendPushNotification(
+        [pushToken],
+        `Claim update: ${businessName}`,
+        "Your claim could not be verified. Contact support for next steps.",
+        { screen: "profile" }
+      );
+    }
+    triggerLog2.info(`Claim decision push sent: ${memberId}, approved=${approved}`);
+  } catch (err) {
+    triggerLog2.error(`Claim decision push failed: ${memberId}`, err);
+  }
+}
+async function sendWeeklyDigestPush() {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { isNotNull: isNotNull5 } = await import("drizzle-orm");
+    const usersWithTokens = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      displayName: members4.displayName,
+      notificationPrefs: members4.notificationPrefs
+    }).from(members4).where(isNotNull5(members4.pushToken));
+    let sent = 0;
+    for (const user of usersWithTokens) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.weeklyDigest === false) continue;
+      const firstName = (user.displayName || "").split(" ")[0] || "there";
+      await sendPushNotification(
+        [user.pushToken],
+        "Your weekly rankings update",
+        `Hey ${firstName}, check what's changed in your city's rankings this week.`,
+        { screen: "search" }
+      );
+      sent++;
+    }
+    triggerLog2.info(`Weekly digest push sent to ${sent} users`);
+    recordPushDelivery("weeklyDigest", "all", usersWithTokens.length, sent, usersWithTokens.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog2.error("Weekly digest push failed:", err);
+    return 0;
+  }
+}
+function startWeeklyDigestScheduler() {
+  const WEEK_MS2 = 7 * 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const dayOfWeek = now.getUTCDay();
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : dayOfWeek === 1 ? 0 : 8 - dayOfWeek;
+  const nextMonday = new Date(now);
+  nextMonday.setUTCDate(now.getUTCDate() + daysUntilMonday);
+  nextMonday.setUTCHours(10, 0, 0, 0);
+  if (nextMonday <= now) nextMonday.setUTCDate(nextMonday.getUTCDate() + 7);
+  const msUntilFirst = nextMonday.getTime() - now.getTime();
+  triggerLog2.info(`Weekly digest scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  const initialTimeout = setTimeout(() => {
+    sendWeeklyDigestPush();
+    setInterval(sendWeeklyDigestPush, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+var triggerLog2;
 var init_notification_triggers = __esm({
   "server/notification-triggers.ts"() {
     "use strict";
     init_push();
     init_push_analytics();
     init_logger();
-    triggerLog = log.tag("NotifyTrigger");
+    init_notification_triggers_events();
+    triggerLog2 = log.tag("NotifyTrigger");
   }
 });
 

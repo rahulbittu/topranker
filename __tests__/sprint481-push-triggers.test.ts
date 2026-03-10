@@ -11,9 +11,9 @@ import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-describe("Sprint 481: Push Notification Triggers", () => {
+describe("Sprint 481: Push Notification Triggers (moved to events file Sprint 504)", () => {
   const src = fs.readFileSync(
-    path.resolve(__dirname, "../server/notification-triggers.ts"),
+    path.resolve(__dirname, "../server/notification-triggers-events.ts"),
     "utf-8"
   );
 
@@ -120,13 +120,11 @@ describe("Sprint 481: Push Notification Triggers", () => {
       expect(src).toContain('import { sendPushNotification } from "./push"');
     });
 
-    it("documents all 8 triggers in header comment", () => {
+    it("documents event triggers in header comment", () => {
       expect(src).toContain("onRankingChange");
       expect(src).toContain("onNewRatingForBusiness");
       expect(src).toContain("sendCityHighlightsPush");
-      expect(src).toContain("onTierUpgrade");
-      expect(src).toContain("onClaimDecision");
-      expect(src).toContain("scheduleWeeklyDigestPush");
+      expect(src).toContain("startCityHighlightsScheduler");
     });
   });
 });

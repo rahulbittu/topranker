@@ -75,8 +75,8 @@ describe("Sprint 492: Push Notification Analytics", () => {
     });
   });
 
-  describe("notification-triggers.ts delivery recording", () => {
-    const src = readFile("server/notification-triggers.ts");
+  describe("notification-triggers-events.ts delivery recording (moved Sprint 504)", () => {
+    const src = readFile("server/notification-triggers-events.ts");
 
     it("imports recordPushDelivery from push-analytics", () => {
       expect(src).toContain('import { recordPushDelivery } from "./push-analytics"');
@@ -95,7 +95,8 @@ describe("Sprint 492: Push Notification Analytics", () => {
     });
 
     it("records delivery for weekly digest trigger", () => {
-      expect(src).toContain('recordPushDelivery("weeklyDigest"');
+      const trigSrc = readFile("server/notification-triggers.ts");
+      expect(trigSrc).toContain('recordPushDelivery("weeklyDigest"');
     });
   });
 

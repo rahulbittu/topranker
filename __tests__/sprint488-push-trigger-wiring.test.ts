@@ -59,9 +59,9 @@ describe("Sprint 488: Push Trigger Wiring", () => {
     });
   });
 
-  describe("notification-triggers.ts city highlights scheduler", () => {
+  describe("notification-triggers-events.ts city highlights scheduler (moved Sprint 504)", () => {
     const src = fs.readFileSync(
-      path.resolve(__dirname, "../server/notification-triggers.ts"),
+      path.resolve(__dirname, "../server/notification-triggers-events.ts"),
       "utf-8"
     );
 
