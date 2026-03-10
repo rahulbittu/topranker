@@ -15,7 +15,7 @@ import { type CredibilityTier } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import * as Haptics from "expo-haptics";
-import { BRAND } from "@/constants/brand";
+import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { Analytics } from "@/lib/analytics";
 import { getRatingImpact, clearRatingImpact } from "@/lib/rating-impact";
 import { getShareUrl, getShareText, copyShareLink } from "@/lib/sharing";
@@ -221,6 +221,19 @@ export default function BusinessProfileScreen() {
           onToggleBookmark={handleToggleBookmark}
           onShare={handleShare}
         />
+
+        {/* Breadcrumb Navigation */}
+        <View style={styles.breadcrumb}>
+          <TouchableOpacity onPress={() => router.push("/")} accessibilityRole="link" accessibilityLabel="Go to Rankings">
+            <Text style={styles.breadcrumbLink}>Rankings</Text>
+          </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={10} color={Colors.textTertiary} />
+          <TouchableOpacity onPress={() => router.push({ pathname: "/(tabs)/search", params: { category: business.category } })} accessibilityRole="link" accessibilityLabel={`View ${getCategoryDisplay(business.category).label}`}>
+            <Text style={styles.breadcrumbLink}>{getCategoryDisplay(business.category).label}</Text>
+          </TouchableOpacity>
+          <Ionicons name="chevron-forward" size={10} color={Colors.textTertiary} />
+          <Text style={styles.breadcrumbCurrent} numberOfLines={1}>{business.name}</Text>
+        </View>
 
         {/* Business Name Card */}
         <BusinessNameCard
@@ -500,6 +513,17 @@ const styles = StyleSheet.create({
     fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
   },
 
+  breadcrumb: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4,
+  },
+  breadcrumbLink: {
+    fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_500Medium",
+  },
+  breadcrumbCurrent: {
+    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    flexShrink: 1,
+  },
   content: { gap: 0 },
   body: { paddingHorizontal: 14, gap: 12, paddingTop: 14 },
   descriptionText: {
