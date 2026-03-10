@@ -166,9 +166,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || "restaurant";
     const cuisine = sanitizeString(req.query.cuisine, 50) || undefined;
+    const neighborhood = sanitizeString(req.query.neighborhood, 100) || undefined; // Sprint 549
+    const priceRange = sanitizeString(req.query.priceRange, 10) || undefined; // Sprint 549
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
 
-    const bizList = await getLeaderboard(city, category, limit, cuisine);
+    const bizList = await getLeaderboard(city, category, limit, cuisine, neighborhood, priceRange);
     const bizIds = bizList.map(b => b.id);
     const [photoMap, dishRankingsMap] = await Promise.all([
       getBusinessPhotosMap(bizIds),
@@ -226,6 +228,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const city = sanitizeString(req.query.city, 100) || "Dallas";
     const category = sanitizeString(req.query.category, 50) || undefined;
     const data = await getCuisines(city, category);
+    return res.json({ data });
+  }));
+
+  // Sprint 549: Get distinct neighborhoods for a city
+  app.get("/api/leaderboard/neighborhoods", wrapAsync(async (req: Request, res: Response) => {
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const { getNeighborhoods } = await import("./storage/businesses");
+    const data = await getNeighborhoods(city);
     return res.json({ data });
   }));
 

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Platform, Modal,
+  Platform, Modal, ScrollView,
   TextInput, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,7 +14,7 @@ import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
 import { getAvailableCuisines, CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { useDishShortcuts } from "@/lib/hooks/useDishShortcuts";
-import { fetchLeaderboard, fetchCategories, submitCategorySuggestion } from "@/lib/api";
+import { fetchLeaderboard, fetchCategories, fetchNeighborhoods, submitCategorySuggestion } from "@/lib/api";
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
@@ -87,9 +87,20 @@ export default function LeaderboardScreen() {
     : [{ slug: "restaurant", label: "Restaurants", emoji: getCategoryDisplay("restaurant").emoji }],
     [dbCategories]);
 
+  // Sprint 549: Neighborhood + price range filters
+  const [neighborhoodFilter, setNeighborhoodFilter] = useState<string | null>(null);
+  const [priceFilter, setPriceFilter] = useState<string | null>(null);
+  const PRICE_OPTIONS = ["$", "$$", "$$$", "$$$$"] as const;
+
+  const { data: neighborhoods = [] } = useQuery({
+    queryKey: ["neighborhoods", city],
+    queryFn: () => fetchNeighborhoods(city),
+    staleTime: 300000,
+  });
+
   const { data: businesses = [], isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
-    queryKey: ["leaderboard", city, activeCategory, selectedCuisine],
-    queryFn: () => fetchLeaderboard(city, activeCategory, 50, selectedCuisine || undefined),
+    queryKey: ["leaderboard", city, activeCategory, selectedCuisine, neighborhoodFilter, priceFilter],
+    queryFn: () => fetchLeaderboard(city, activeCategory, 50, selectedCuisine || undefined, neighborhoodFilter || undefined, priceFilter || undefined),
     staleTime: 30000,
   });
 
@@ -200,6 +211,49 @@ export default function LeaderboardScreen() {
             variant="sticky"
           />
         </View>
+      )}
+
+      {/* Sprint 549: Neighborhood + Price filter chips */}
+      {(neighborhoods.length > 0 || true) && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterChipRow} contentContainerStyle={styles.filterChipContent}>
+          {/* Neighborhood filter */}
+          {neighborhoods.length > 0 && neighborhoods.slice(0, 8).map((n) => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.filterChip, neighborhoodFilter === n && styles.filterChipActive]}
+              onPress={() => { Haptics.selectionAsync(); setNeighborhoodFilter(neighborhoodFilter === n ? null : n); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by ${n}`}
+            >
+              <Ionicons name="location-outline" size={11} color={neighborhoodFilter === n ? "#fff" : Colors.textSecondary} />
+              <Text style={[styles.filterChipText, neighborhoodFilter === n && styles.filterChipTextActive]}>{n}</Text>
+            </TouchableOpacity>
+          ))}
+          {/* Price filter */}
+          {PRICE_OPTIONS.map((p) => (
+            <TouchableOpacity
+              key={p}
+              style={[styles.filterChip, priceFilter === p && styles.filterChipActive]}
+              onPress={() => { Haptics.selectionAsync(); setPriceFilter(priceFilter === p ? null : p); }}
+              accessibilityRole="button"
+              accessibilityLabel={`Filter by price ${p}`}
+            >
+              <Text style={[styles.filterChipText, priceFilter === p && styles.filterChipTextActive]}>{p}</Text>
+            </TouchableOpacity>
+          ))}
+          {/* Clear filters */}
+          {(neighborhoodFilter || priceFilter) && (
+            <TouchableOpacity
+              style={styles.clearFilterChip}
+              onPress={() => { setNeighborhoodFilter(null); setPriceFilter(null); }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear all filters"
+            >
+              <Ionicons name="close-circle" size={12} color={Colors.textTertiary} />
+              <Text style={styles.clearFilterChipText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       )}
 
       {isLoading ? (
@@ -419,5 +473,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     zIndex: 10,
+  },
+  // Sprint 549: Neighborhood + Price filter chips
+  filterChipRow: {
+    maxHeight: 36, marginBottom: 4,
+  },
+  filterChipContent: {
+    paddingHorizontal: 16, gap: 6, alignItems: "center" as const,
+  },
+  filterChip: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: AMBER, borderColor: AMBER,
+  },
+  filterChipText: {
+    fontSize: 11, fontWeight: "600" as const, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
+  },
+  filterChipTextActive: {
+    color: "#fff",
+  },
+  clearFilterChip: {
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
+    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 16,
+  },
+  clearFilterChipText: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium",
   },
 });

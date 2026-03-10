@@ -291,12 +291,20 @@ async function apiFetch<T>(path: string): Promise<T> {
   }
 }
 
-export async function fetchLeaderboard(city: string, category: string, limit: number = 50, cuisine?: string) {
+// Sprint 549: Added neighborhood + priceRange filter params
+export async function fetchLeaderboard(city: string, category: string, limit: number = 50, cuisine?: string, neighborhood?: string, priceRange?: string) {
   const apiCategory = categoryToApi(category);
   let url = `/api/leaderboard?city=${encodeURIComponent(city)}&category=${encodeURIComponent(apiCategory)}&limit=${limit}`;
   if (cuisine) url += `&cuisine=${encodeURIComponent(cuisine)}`;
+  if (neighborhood) url += `&neighborhood=${encodeURIComponent(neighborhood)}`;
+  if (priceRange) url += `&priceRange=${encodeURIComponent(priceRange)}`;
   const businesses = await apiFetch<ApiBusiness[]>(url);
   return businesses.map(mapApiBusiness);
+}
+
+// Sprint 549: Fetch distinct neighborhoods for a city
+export async function fetchNeighborhoods(city: string): Promise<string[]> {
+  return apiFetch<string[]>(`/api/leaderboard/neighborhoods?city=${encodeURIComponent(city)}`);
 }
 
 export interface ApiPhotoMeta {

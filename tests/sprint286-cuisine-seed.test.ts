@@ -150,7 +150,8 @@ describe("Sprint 286: Client API — cuisine support", () => {
 
   it("rankings page passes selectedCuisine to query", () => {
     expect(rankings).toContain("selectedCuisine");
-    expect(rankings).toContain('queryKey: ["leaderboard", city, activeCategory, selectedCuisine]');
+    // Sprint 549: queryKey now includes neighborhoodFilter and priceFilter
+    expect(rankings).toContain('queryKey: ["leaderboard", city, activeCategory, selectedCuisine, neighborhoodFilter, priceFilter]');
   });
 });
 

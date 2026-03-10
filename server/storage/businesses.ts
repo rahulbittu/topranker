@@ -7,17 +7,21 @@ import { db } from "../db";
 import { computeDecayFactor, applyBayesianPrior } from "@shared/score-engine";
 import { cacheAside, cacheDelPattern, trackCacheMiss } from "../redis";
 
+// Sprint 549: Added neighborhood + priceRange filters
 export async function getLeaderboard(
   city: string,
   category: string,
   limit: number = 50,
   cuisine?: string,
+  neighborhood?: string,
+  priceRange?: string,
 ): Promise<Business[]> {
-  const key = `leaderboard:${city}:${category}:${cuisine || "all"}:${limit}`;
+  const key = `leaderboard:${city}:${category}:${cuisine || "all"}:${neighborhood || "all"}:${priceRange || "all"}:${limit}`;
   return cacheAside(key, 300, async () => {
     trackCacheMiss();
     // Sprint 273: Filter by leaderboard eligibility (3+ raters, 1+ dine-in, credibility >= 0.5)
     // Sprint 286: Optional cuisine filter for Category → Cuisine → Dish workflow
+    // Sprint 549: Optional neighborhood + priceRange filters
     return db
       .select()
       .from(businesses)
@@ -28,10 +32,33 @@ export async function getLeaderboard(
           eq(businesses.isActive, true),
           eq(businesses.leaderboardEligible, true),
           ...(cuisine ? [eq(businesses.cuisine, cuisine)] : []),
+          ...(neighborhood ? [eq(businesses.neighborhood, neighborhood)] : []),
+          ...(priceRange ? [eq(businesses.priceRange, priceRange)] : []),
         ),
       )
       .orderBy(asc(businesses.rankPosition))
       .limit(limit);
+  });
+}
+
+// Sprint 549: Get distinct neighborhoods for a city
+export async function getNeighborhoods(city: string): Promise<string[]> {
+  const key = `neighborhoods:${city}`;
+  return cacheAside(key, 600, async () => {
+    trackCacheMiss();
+    const rows = await db
+      .selectDistinct({ neighborhood: businesses.neighborhood })
+      .from(businesses)
+      .where(
+        and(
+          eq(businesses.city, city),
+          eq(businesses.isActive, true),
+          sql`${businesses.neighborhood} IS NOT NULL`,
+          sql`${businesses.neighborhood} != ''`,
+        ),
+      )
+      .orderBy(asc(businesses.neighborhood));
+    return rows.map(r => r.neighborhood!);
   });
 }
 
