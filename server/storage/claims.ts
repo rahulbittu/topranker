@@ -101,6 +101,75 @@ export async function getClaimsByMember(memberId: string) {
     .orderBy(desc(businessClaims.submittedAt));
 }
 
+/**
+ * Sprint 649: Submit claim with email verification code.
+ * Generates a 6-digit code, stores it with 48-hour expiry.
+ */
+export async function submitClaimWithCode(
+  businessId: string,
+  memberId: string,
+  verificationMethod: string,
+): Promise<BusinessClaim> {
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+  const [claim] = await db
+    .insert(businessClaims)
+    .values({
+      businessId, memberId, verificationMethod,
+      verificationCode: code,
+      codeExpiresAt: expiresAt,
+    })
+    .returning();
+  return claim;
+}
+
+/**
+ * Sprint 649: Verify claim by 6-digit code.
+ * Returns the updated claim if code matches, null otherwise.
+ * Max 5 attempts before locking out.
+ */
+export async function verifyClaimByCode(
+  claimId: string,
+  memberId: string,
+  code: string,
+): Promise<{ success: boolean; error?: string }> {
+  const [claim] = await db
+    .select()
+    .from(businessClaims)
+    .where(and(eq(businessClaims.id, claimId), eq(businessClaims.memberId, memberId)));
+
+  if (!claim) return { success: false, error: "Claim not found" };
+  if (claim.status !== "pending") return { success: false, error: "Claim already reviewed" };
+  if ((claim.attempts || 0) >= 5) return { success: false, error: "Too many attempts. Contact support." };
+  if (claim.codeExpiresAt && new Date(claim.codeExpiresAt) < new Date()) {
+    await db.update(businessClaims).set({ status: "expired" }).where(eq(businessClaims.id, claimId));
+    return { success: false, error: "Verification code expired" };
+  }
+
+  // Increment attempts
+  await db.update(businessClaims)
+    .set({ attempts: (claim.attempts || 0) + 1 })
+    .where(eq(businessClaims.id, claimId));
+
+  if (claim.verificationCode !== code) {
+    return { success: false, error: "Invalid verification code" };
+  }
+
+  // Code matches — auto-approve
+  await db.update(businessClaims)
+    .set({ status: "verified", reviewedAt: new Date() })
+    .where(eq(businessClaims.id, claimId));
+
+  // Transfer ownership
+  if (claim.businessId && claim.memberId) {
+    await db.update(businesses)
+      .set({ ownerId: claim.memberId, isClaimed: true, claimedAt: new Date() })
+      .where(eq(businesses.id, claim.businessId));
+  }
+
+  return { success: true };
+}
+
 export async function getClaimCount() {
   const [result] = await db
     .select({ cnt: count() })

@@ -111,8 +111,8 @@ describe("Sprint 476: Search Result Processing Extraction", () => {
       expect(src).toContain("sortByRelevance(filtered, query)");
     });
 
-    it("is under 340 LOC (was 376)", () => {
-      expect(src.split("\n").length).toBeLessThan(340);
+    it("is under 360 LOC (Sprint 649: +claim email verification)", () => {
+      expect(src.split("\n").length).toBeLessThan(360);
     });
 
     it("no longer imports combinedRelevance directly", () => {

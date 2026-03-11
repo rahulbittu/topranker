@@ -321,6 +321,63 @@ Questions? Contact support@topranker.com
   });
 }
 
+/**
+ * Sprint 649: Send 6-digit verification code for business claim.
+ */
+export async function sendClaimVerificationCodeEmail(params: {
+  email: string;
+  displayName: string;
+  businessName: string;
+  code: string;
+}): Promise<void> {
+  const { email, displayName, businessName, code } = params;
+  const firstName = displayName.split(" ")[0];
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Verify Your Ownership</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, use the code below to verify your claim for <strong>${businessName}</strong>.
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <div style="display:inline-block;background:#0D1B2A;border-radius:12px;padding:16px 32px;">
+              <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#C49A1A;">${code}</span>
+            </div>
+          </div>
+          <p style="margin:0 0 8px;color:#888;font-size:12px;text-align:center;">This code expires in 48 hours.</p>
+          <p style="margin:16px 0 0;color:#555;font-size:14px;line-height:1.6;">
+            Enter this code on the business page to complete verification and gain access to your owner dashboard.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F7F6F3;padding:16px 24px;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker — Trustworthy Rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `Hi ${firstName}, your verification code for ${businessName} is: ${code}. This code expires in 48 hours.`;
+
+  await sendEmail({
+    to: email,
+    subject: `TopRanker: Verify your claim for ${businessName}`,
+    html,
+    text,
+  });
+}
+
 export async function sendClaimApprovedEmail(params: {
   email: string;
   displayName: string;

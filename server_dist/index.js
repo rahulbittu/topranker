@@ -3305,6 +3305,37 @@ async function getClaimsByMember(memberId) {
     reviewedAt: businessClaims.reviewedAt
   }).from(businessClaims).leftJoin(businesses, eq15(businessClaims.businessId, businesses.id)).where(eq15(businessClaims.memberId, memberId)).orderBy(desc12(businessClaims.submittedAt));
 }
+async function submitClaimWithCode(businessId, memberId, verificationMethod) {
+  const code = String(Math.floor(1e5 + Math.random() * 9e5));
+  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1e3);
+  const [claim] = await db.insert(businessClaims).values({
+    businessId,
+    memberId,
+    verificationMethod,
+    verificationCode: code,
+    codeExpiresAt: expiresAt
+  }).returning();
+  return claim;
+}
+async function verifyClaimByCode(claimId, memberId, code) {
+  const [claim] = await db.select().from(businessClaims).where(and12(eq15(businessClaims.id, claimId), eq15(businessClaims.memberId, memberId)));
+  if (!claim) return { success: false, error: "Claim not found" };
+  if (claim.status !== "pending") return { success: false, error: "Claim already reviewed" };
+  if ((claim.attempts || 0) >= 5) return { success: false, error: "Too many attempts. Contact support." };
+  if (claim.codeExpiresAt && new Date(claim.codeExpiresAt) < /* @__PURE__ */ new Date()) {
+    await db.update(businessClaims).set({ status: "expired" }).where(eq15(businessClaims.id, claimId));
+    return { success: false, error: "Verification code expired" };
+  }
+  await db.update(businessClaims).set({ attempts: (claim.attempts || 0) + 1 }).where(eq15(businessClaims.id, claimId));
+  if (claim.verificationCode !== code) {
+    return { success: false, error: "Invalid verification code" };
+  }
+  await db.update(businessClaims).set({ status: "verified", reviewedAt: /* @__PURE__ */ new Date() }).where(eq15(businessClaims.id, claimId));
+  if (claim.businessId && claim.memberId) {
+    await db.update(businesses).set({ ownerId: claim.memberId, isClaimed: true, claimedAt: /* @__PURE__ */ new Date() }).where(eq15(businesses.id, claim.businessId));
+  }
+  return { success: true };
+}
 async function getClaimCount() {
   const [result] = await db.select({ cnt: count9() }).from(businessClaims).where(eq15(businessClaims.status, "pending"));
   return Number(result?.cnt ?? 0);
@@ -3687,6 +3718,7 @@ __export(storage_exports, {
   searchBusinesses: () => searchBusinesses,
   searchDishes: () => searchDishes,
   submitClaim: () => submitClaim,
+  submitClaimWithCode: () => submitClaimWithCode,
   submitDishSuggestion: () => submitDishSuggestion,
   submitRating: () => submitRating,
   submitRatingFlag: () => submitRatingFlag,
@@ -3702,6 +3734,7 @@ __export(storage_exports, {
   updatePaymentStatus: () => updatePaymentStatus,
   updatePaymentStatusByStripeId: () => updatePaymentStatusByStripeId,
   updatePushToken: () => updatePushToken,
+  verifyClaimByCode: () => verifyClaimByCode,
   verifyEmailToken: () => verifyEmailToken,
   voteDishSuggestion: () => voteDishSuggestion
 });
@@ -5579,6 +5612,7 @@ __export(email_exports, {
   sendClaimApprovedEmail: () => sendClaimApprovedEmail,
   sendClaimConfirmationEmail: () => sendClaimConfirmationEmail,
   sendClaimRejectedEmail: () => sendClaimRejectedEmail,
+  sendClaimVerificationCodeEmail: () => sendClaimVerificationCodeEmail,
   sendEmail: () => sendEmail,
   sendPasswordResetEmail: () => sendPasswordResetEmail,
   sendPaymentReceiptEmail: () => sendPaymentReceiptEmail,
@@ -5840,6 +5874,51 @@ Questions? Contact support@topranker.com
   await sendEmail({
     to: email,
     subject: `TopRanker Receipt: $${dollars} \u2014 ${typeLabel}`,
+    html,
+    text: text2
+  });
+}
+async function sendClaimVerificationCodeEmail(params) {
+  const { email, displayName, businessName, code } = params;
+  const firstName = displayName.split(" ")[0];
+  const html = `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
+<body style="margin:0;padding:0;background:#F7F6F3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F6F3;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" style="max-width:520px;background:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
+          <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
+        </td></tr>
+        <tr><td style="padding:32px 24px;">
+          <h2 style="margin:0 0 12px;color:#0D1B2A;font-size:20px;font-weight:700;">Verify Your Ownership</h2>
+          <p style="margin:0 0 16px;color:#555;font-size:15px;line-height:1.6;">
+            Hi ${firstName}, use the code below to verify your claim for <strong>${businessName}</strong>.
+          </p>
+          <div style="text-align:center;margin:24px 0;">
+            <div style="display:inline-block;background:#0D1B2A;border-radius:12px;padding:16px 32px;">
+              <span style="font-size:32px;font-weight:900;letter-spacing:8px;color:#C49A1A;">${code}</span>
+            </div>
+          </div>
+          <p style="margin:0 0 8px;color:#888;font-size:12px;text-align:center;">This code expires in 48 hours.</p>
+          <p style="margin:16px 0 0;color:#555;font-size:14px;line-height:1.6;">
+            Enter this code on the business page to complete verification and gain access to your owner dashboard.
+          </p>
+        </td></tr>
+        <tr><td style="background:#F7F6F3;padding:16px 24px;text-align:center;">
+          <p style="margin:0;color:#999;font-size:11px;">TopRanker \u2014 Trustworthy Rankings</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+  const text2 = `Hi ${firstName}, your verification code for ${businessName} is: ${code}. This code expires in 48 hours.`;
+  await sendEmail({
+    to: email,
+    subject: `TopRanker: Verify your claim for ${businessName}`,
     html,
     text: text2
   });
@@ -13101,7 +13180,7 @@ function registerBusinessRoutes(app2) {
     if (!role || role.length === 0) {
       return res.status(400).json({ error: "Role is required" });
     }
-    const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2, submitClaim: submitClaim2, submitClaimWithCode: submitClaimWithCode2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const existing = await getClaimByMemberAndBusiness2(req.user.id, business.id);
     if (existing) {
       return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
@@ -13111,6 +13190,24 @@ function registerBusinessRoutes(app2) {
     if (businessEmail) parts.push(`email:${businessEmail}`);
     if (website) parts.push(`website:${website}`);
     const verificationMethod = parts.join(" | ");
+    if (preferredMethod === "email" && businessEmail) {
+      const claim2 = await submitClaimWithCode2(business.id, req.user.id, verificationMethod);
+      const { sendClaimVerificationCodeEmail: sendClaimVerificationCodeEmail2, sendClaimAdminNotification: sendClaimAdminNotification3 } = await Promise.resolve().then(() => (init_email(), email_exports));
+      sendClaimVerificationCodeEmail2({
+        email: businessEmail,
+        displayName: req.user.displayName || "User",
+        businessName: business.name,
+        code: claim2.verificationCode || ""
+      }).catch(() => {
+      });
+      sendClaimAdminNotification3({
+        businessName: business.name,
+        claimantName: req.user.displayName || "Unknown",
+        claimantEmail: req.user.email || ""
+      }).catch(() => {
+      });
+      return res.json({ data: { id: claim2.id, status: claim2.status, requiresCode: true } });
+    }
     const claim = await submitClaim2(business.id, req.user.id, verificationMethod);
     const { sendClaimConfirmationEmail: sendClaimConfirmationEmail2, sendClaimAdminNotification: sendClaimAdminNotification2 } = await Promise.resolve().then(() => (init_email(), email_exports));
     sendClaimConfirmationEmail2({
@@ -13126,6 +13223,27 @@ function registerBusinessRoutes(app2) {
     }).catch(() => {
     });
     return res.json({ data: { id: claim.id, status: claim.status } });
+  }));
+  app2.post("/api/businesses/claims/:claimId/verify", requireAuth, wrapAsync(async (req, res) => {
+    const { claimId } = req.params;
+    const code = sanitizeString(req.body.code, 6);
+    if (!code || code.length !== 6) {
+      return res.status(400).json({ error: "6-digit verification code required" });
+    }
+    const { verifyClaimByCode: verifyClaimByCode2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const result = await verifyClaimByCode2(claimId, req.user.id, code);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    const { getClaimByMemberAndBusiness: getClaimByMemberAndBusiness2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const { sendClaimApprovedEmail: sendClaimApprovedEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
+    sendClaimApprovedEmail2({
+      email: req.user.email || "",
+      displayName: req.user.displayName || "User",
+      businessName: "your business"
+    }).catch(() => {
+    });
+    return res.json({ data: { verified: true } });
   }));
   app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
     const businessId = req.params.id;

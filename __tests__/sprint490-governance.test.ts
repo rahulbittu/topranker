@@ -106,10 +106,9 @@ describe("Sprint 490: Governance", () => {
       expect(loc).toBeLessThan(560);
     });
 
-    it("routes-businesses.ts under 280 LOC (post-extraction)", () => {
-      // Sprint 541: +15 LOC for photoMeta + communityPhotoCount
+    it("routes-businesses.ts under 360 LOC (Sprint 649: +claim email verification)", () => {
       const loc = readFile("server/routes-businesses.ts").split("\n").length;
-      expect(loc).toBeLessThan(310); // Sprint 626: +action fields endpoint
+      expect(loc).toBeLessThan(360);
     });
 
     it("notification-triggers.ts under 450 LOC", () => {

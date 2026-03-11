@@ -184,7 +184,7 @@ export function registerBusinessRoutes(app: Express) {
       return res.status(400).json({ error: "Role is required" });
     }
 
-    const { getClaimByMemberAndBusiness, submitClaim } = await import("./storage");
+    const { getClaimByMemberAndBusiness, submitClaim, submitClaimWithCode } = await import("./storage");
     const existing = await getClaimByMemberAndBusiness(req.user!.id, business.id);
     if (existing) {
       return res.status(409).json({ error: "You already have a pending or approved claim for this business" });
@@ -196,8 +196,27 @@ export function registerBusinessRoutes(app: Express) {
     if (businessEmail) parts.push(`email:${businessEmail}`);
     if (website) parts.push(`website:${website}`);
     const verificationMethod = parts.join(" | ");
-    const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
 
+    // Sprint 649: Email verification path — generate code + send verification email
+    if (preferredMethod === "email" && businessEmail) {
+      const claim = await submitClaimWithCode(business.id, req.user!.id, verificationMethod);
+      const { sendClaimVerificationCodeEmail, sendClaimAdminNotification } = await import("./email");
+      sendClaimVerificationCodeEmail({
+        email: businessEmail,
+        displayName: req.user!.displayName || "User",
+        businessName: business.name,
+        code: claim.verificationCode || "",
+      }).catch(() => {});
+      sendClaimAdminNotification({
+        businessName: business.name,
+        claimantName: req.user!.displayName || "Unknown",
+        claimantEmail: req.user!.email || "",
+      }).catch(() => {});
+      return res.json({ data: { id: claim.id, status: claim.status, requiresCode: true } });
+    }
+
+    // Non-email path — manual admin review
+    const claim = await submitClaim(business.id, req.user!.id, verificationMethod);
     const { sendClaimConfirmationEmail, sendClaimAdminNotification } = await import("./email");
     sendClaimConfirmationEmail({
       email: req.user!.email || "",
@@ -211,6 +230,33 @@ export function registerBusinessRoutes(app: Express) {
     }).catch(() => {});
 
     return res.json({ data: { id: claim.id, status: claim.status } });
+  }));
+
+  // Sprint 649: Verify business claim with 6-digit code
+  app.post("/api/businesses/claims/:claimId/verify", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const { claimId } = req.params;
+    const code = sanitizeString(req.body.code, 6);
+    if (!code || code.length !== 6) {
+      return res.status(400).json({ error: "6-digit verification code required" });
+    }
+
+    const { verifyClaimByCode } = await import("./storage");
+    const result = await verifyClaimByCode(claimId, req.user!.id, code);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    // Send approval email
+    const { getClaimByMemberAndBusiness } = await import("./storage");
+    const { sendClaimApprovedEmail } = await import("./email");
+    sendClaimApprovedEmail({
+      email: req.user!.email || "",
+      displayName: req.user!.displayName || "User",
+      businessName: "your business",
+    }).catch(() => {});
+
+    return res.json({ data: { verified: true } });
   }));
 
   // Sprint 486: Dashboard, rank-history, and dimension-breakdown extracted to routes-business-analytics.ts

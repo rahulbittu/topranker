@@ -142,6 +142,8 @@ export {
 // Claims & Flags
 export {
   submitClaim,
+  submitClaimWithCode,
+  verifyClaimByCode,
   getClaimByMemberAndBusiness,
   getClaimsByMember,
   getPendingClaims,

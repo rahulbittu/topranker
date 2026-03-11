@@ -35,7 +35,7 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 640.6
+    "currentSizeKb": 646.8
   },
   "tests": {
     "minCount": 10800,

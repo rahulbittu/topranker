@@ -70,10 +70,9 @@ describe("Sprint 486: Business Analytics Route Extraction", () => {
       "utf-8"
     );
 
-    it("is under 280 LOC (was 325)", () => {
-      // Sprint 541: +15 LOC for photoMeta + communityPhotoCount
+    it("is under 360 LOC (Sprint 649: +claim email verification)", () => {
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(310); // Sprint 626: +action fields endpoint
+      expect(lines).toBeLessThan(360);
     });
 
     it("no longer imports buildDashboardTrend", () => {
