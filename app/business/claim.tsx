@@ -29,6 +29,11 @@ export default function ClaimBusinessScreen() {
   const [website, setWebsite] = useState("");
   const [verificationMethod, setVerificationMethod] = useState<"email" | "phone" | "document">("email");
   const [submitted, setSubmitted] = useState(false);
+  const [requiresCode, setRequiresCode] = useState(false);
+  const [claimId, setClaimId] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   if (!user) {
     return (
@@ -38,6 +43,99 @@ export default function ClaimBusinessScreen() {
         <TouchableOpacity style={styles.ctaBtn} onPress={() => router.push("/auth/login")} activeOpacity={0.85}>
           <Text style={styles.ctaBtnText}>Sign In</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // Sprint 654: Verification code entry step
+  if (verified) {
+    return (
+      <View style={[styles.container, styles.centered, { paddingTop: topPad }]}>
+        <View style={[styles.successCircle, { backgroundColor: Colors.green }]}>
+          <Ionicons name="checkmark" size={36} color="#FFFFFF" />
+        </View>
+        <Text style={styles.successTitle}>Business Verified!</Text>
+        <Text style={styles.successSub}>
+          {name || "This business"} is now verified and linked to your account. You can access the owner dashboard.
+        </Text>
+        <TouchableOpacity
+          style={styles.ctaBtn}
+          onPress={() => router.push({ pathname: "/business/dashboard", params: { name: name || "", slug: slug || "" } })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.ctaBtnText}>Open Dashboard</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) {
+      Alert.alert("Invalid Code", "Please enter the 6-digit verification code.");
+      return;
+    }
+    setVerifying(true);
+    try {
+      const res = await fetch(`${getApiUrl()}/api/businesses/claims/${claimId}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code: verificationCode }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        Alert.alert("Verification Failed", json.error || "Invalid code. Please try again.");
+        setVerifying(false);
+        return;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setVerified(true);
+    } catch {
+      Alert.alert("Error", "Network error — please try again");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  if (requiresCode) {
+    return (
+      <View style={[styles.container, { paddingTop: topPad }]}>
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
+            <Ionicons name="chevron-back" size={22} color={Colors.text} />
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>Verify Business</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <View style={[styles.centered, { flex: 1, paddingHorizontal: 32 }]}>
+          <View style={styles.codeIcon}>
+            <Ionicons name="mail-open-outline" size={32} color={BRAND.colors.amber} />
+          </View>
+          <Text style={styles.codeTitle}>Check Your Business Email</Text>
+          <Text style={styles.codeSub}>
+            We sent a 6-digit verification code to your business email ({businessEmail}). Enter it below to verify ownership.
+          </Text>
+          <TextInput
+            style={styles.codeInput}
+            value={verificationCode}
+            onChangeText={(t) => setVerificationCode(t.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            placeholderTextColor={Colors.textTertiary}
+            keyboardType="number-pad"
+            maxLength={6}
+            textAlign="center"
+            autoFocus
+          />
+          <Text style={styles.codeHint}>Code expires in 48 hours. Max 5 attempts.</Text>
+          <TouchableOpacity
+            style={[styles.ctaBtn, { width: "100%", marginTop: 16 }, verifying && { opacity: 0.7 }]}
+            onPress={handleVerifyCode}
+            activeOpacity={0.85}
+            disabled={verifying}
+          >
+            <Text style={styles.ctaBtnText}>{verifying ? "Verifying..." : "Verify Code"}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -88,7 +186,13 @@ export default function ClaimBusinessScreen() {
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setSubmitted(true);
+      // Sprint 654: Handle email verification code flow
+      if (json.data?.requiresCode) {
+        setClaimId(json.data.id);
+        setRequiresCode(true);
+      } else {
+        setSubmitted(true);
+      }
     } catch {
       Alert.alert("Error", "Network error — please try again");
     } finally {
@@ -362,5 +466,31 @@ const styles = StyleSheet.create({
   methodHint: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
     lineHeight: 16, marginTop: 4,
+  },
+
+  // Sprint 654: Verification code entry
+  codeIcon: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: `${BRAND.colors.amber}15`, alignItems: "center", justifyContent: "center",
+    marginBottom: 16,
+  },
+  codeTitle: {
+    fontSize: 22, fontWeight: "700", color: Colors.text,
+    fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5, marginBottom: 8,
+  },
+  codeSub: {
+    fontSize: 14, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", lineHeight: 20, marginBottom: 20,
+  },
+  codeInput: {
+    fontSize: 32, fontWeight: "800", color: Colors.text,
+    fontFamily: "DMSans_800ExtraBold", letterSpacing: 8,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14,
+    paddingVertical: 16, paddingHorizontal: 24, width: "100%",
+    borderWidth: 2, borderColor: BRAND.colors.amber,
+  },
+  codeHint: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    marginTop: 8,
   },
 });

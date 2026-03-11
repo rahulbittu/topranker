@@ -73,7 +73,7 @@ export function BusinessBottomSection({
       {!isClaimed && (
         <View style={styles.claimCard}>
           <Text style={styles.claimTitle}>Own this business?</Text>
-          <Text style={styles.claimDesc}>Claim your listing to respond to reviews and update your info</Text>
+          <Text style={styles.claimDesc}>Claim your listing to access analytics and get a verified badge</Text>
           <TouchableOpacity
             style={styles.claimBtn}
             activeOpacity={0.8}
@@ -81,11 +81,7 @@ export function BusinessBottomSection({
             accessibilityLabel="Claim this business listing"
             onPress={() => {
               Analytics.dashboardUpgradeTap(businessSlug);
-              if (Platform.OS === "web") {
-                window.alert("Business claiming will be available soon. Contact us to get started.");
-              } else {
-                Alert.alert("Coming Soon", "Business claiming will be available in a future update. Contact us to get started.");
-              }
+              router.push({ pathname: "/business/claim", params: { name: businessName, slug: businessSlug } });
             }}
           >
             <Text style={styles.claimBtnText}>Claim Listing</Text>
