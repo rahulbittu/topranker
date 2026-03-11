@@ -20,19 +20,9 @@ import { VelocityIndicator } from "@/components/dashboard/VelocityIndicator";
 import { DimensionBreakdownCard } from "@/components/dashboard/DimensionBreakdownCard";
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { RatingVelocityWidget } from "@/components/dashboard/RatingVelocityWidget";
+import { ReviewCard } from "@/components/dashboard/ReviewCard";
 
 const { width: SCREEN_W } = Dimensions.get("window");
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return `${Math.floor(days / 7)}w ago`;
-}
 
 interface VolumePoint {
   period: string;
@@ -79,77 +69,6 @@ function StatCard({ label, value, delta, icon, color, delay }: {
   );
 }
 
-function MiniChart({ data, color }: { data: number[]; color: string }) {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const chartH = 60;
-  const barW = (SCREEN_W - 80) / data.length - 4;
-
-  return (
-    <View style={styles.chartContainer}>
-      <View style={styles.chartBars}>
-        {data.map((val, i) => {
-          const height = ((val - min) / range) * chartH + 8;
-          const isLast = i === data.length - 1;
-          return (
-            <Animated.View
-              key={i}
-              entering={FadeInDown.delay(600 + i * 80).duration(300)}
-              style={[styles.chartBar, { height, width: barW, backgroundColor: isLast ? color : `${color}40` }]}
-            />
-          );
-        })}
-      </View>
-      <View style={styles.chartLabels}>
-        {data.map((_, i) => (
-          <Text key={i} style={[styles.chartLabel, { width: barW + 4 }]}>W{i + 1}</Text>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function ReviewCard({ rating, delay }: { rating: DashboardData["recentRatings"][0]; delay: number }) {
-  const tierColors: Record<string, string> = {
-    community: "#94A3B8", city: "#3B82F6", trusted: "#8B5CF6", top: "#F59E0B",
-  };
-  const tierNames: Record<string, string> = {
-    community: "Community", city: "City", trusted: "Trusted", top: "Top",
-  };
-
-  return (
-    <Animated.View entering={FadeInDown.delay(delay).duration(400)} style={styles.reviewCard}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewUser}>
-          <View style={[styles.reviewAvatar, { backgroundColor: tierColors[rating.tier] || Colors.textTertiary }]}>
-            <Text style={styles.reviewAvatarText}>{rating.user.charAt(0)}</Text>
-          </View>
-          <View>
-            <Text style={styles.reviewUserName}>{rating.user}</Text>
-            <Text style={[styles.reviewTier, { color: tierColors[rating.tier] }]}>{tierNames[rating.tier]} Reviewer</Text>
-          </View>
-        </View>
-        <View style={styles.reviewScoreWrap}>
-          <Text style={styles.reviewScore}>{rating.score.toFixed(1)}</Text>
-          <Text style={styles.reviewDate}>{timeAgo(rating.date)}</Text>
-        </View>
-      </View>
-      {rating.note && <Text style={styles.reviewNote}>"{rating.note}"</Text>}
-      <View style={styles.reviewActions}>
-        <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7}>
-          <Ionicons name="chatbubble-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.reviewActionText}>Reply</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7}>
-          <Ionicons name="flag-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.reviewActionText}>Flag</Text>
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
-}
-
 export default function BusinessDashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -170,7 +89,6 @@ export default function BusinessDashboardScreen() {
     enabled: !!slug,
   });
 
-  // Sprint 532: Dimension breakdown for insights tab
   const { data: dimensionData } = useQuery<{
     dimensions: { food: number; service: number; vibe: number; packaging: number; waitTime: number; value: number };
     visitTypeDistribution: { dineIn: number; delivery: number; takeaway: number };
@@ -269,7 +187,6 @@ export default function BusinessDashboardScreen() {
               <VelocityIndicator velocityChange={a.velocityChange} />
             </Animated.View>
 
-            {/* Sprint 567: Rating velocity widget with weekly breakdown */}
             {a.weeklyVolume.length > 0 && (
               <RatingVelocityWidget
                 weeklyData={a.weeklyVolume.map((w, i) => ({ week: `W${i + 1}`, count: w.count, avgScore: w.avgScore }))}
@@ -299,7 +216,6 @@ export default function BusinessDashboardScreen() {
               </View>
             </Animated.View>
 
-            {/* Sprint 554: Hours editor for claimed owners */}
             {slug && <HoursEditor businessId={slug} delay={800} />}
           </>
         )}
@@ -315,7 +231,6 @@ export default function BusinessDashboardScreen() {
 
         {activeTab === "insights" && (
           <>
-            {/* Sprint 532: Dimension breakdown card */}
             {dimensionData && dimensionData.totalRatings > 0 && (
               <DimensionBreakdownCard
                 dimensions={dimensionData.dimensions}
@@ -469,27 +384,7 @@ const styles = StyleSheet.create({
   proCardSub: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", marginTop: 2 },
   proCardPrice: { fontSize: 16, fontWeight: "800", color: BRAND.colors.amber, fontFamily: "DMSans_800ExtraBold" },
 
-  // Reviews
   sectionTitle: { fontSize: 16, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
-  reviewCard: { backgroundColor: Colors.surfaceRaised, borderRadius: 14, padding: 14, gap: 10 },
-  reviewHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  reviewUser: { flexDirection: "row", alignItems: "center", gap: 10 },
-  reviewAvatar: {
-    width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center",
-  },
-  reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF", fontFamily: "DMSans_700Bold" },
-  reviewUserName: { fontSize: 13, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
-  reviewTier: { fontSize: 10, fontFamily: "DMSans_400Regular" },
-  reviewScoreWrap: { alignItems: "flex-end" },
-  reviewScore: { fontSize: 18, fontWeight: "800", color: Colors.text, fontFamily: "PlayfairDisplay_700Bold" },
-  reviewDate: { fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  reviewNote: {
-    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
-    fontStyle: "italic", lineHeight: 19,
-  },
-  reviewActions: { flexDirection: "row", gap: 16 },
-  reviewActionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  reviewActionText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
 
   // Insights
   insightCard: {

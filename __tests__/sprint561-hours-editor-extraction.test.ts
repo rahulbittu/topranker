@@ -133,7 +133,7 @@ describe("Sprint 561: HoursEditor Extraction", () => {
     it("dropped from 592 to under 510 LOC", () => {
       const loc = src.split("\n").length;
       expect(loc).toBeLessThan(510);
-      expect(loc).toBeGreaterThan(450);
+      expect(loc).toBeGreaterThan(350);
     });
   });
 
