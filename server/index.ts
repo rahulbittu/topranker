@@ -188,6 +188,16 @@ function configureExpoAndLanding(app: express.Application) {
   app.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
 
   const distPath = path.resolve(process.cwd(), "dist");
+  const distBackupPath = path.resolve(process.cwd(), "dist-web-backup");
+  // Sprint 593: If dist-web-backup exists, copy it over dist to defeat build cache
+  if (fs.existsSync(path.join(distBackupPath, "index.html"))) {
+    try {
+      fs.cpSync(distBackupPath, distPath, { recursive: true, force: true });
+      log("Restored dist/ from dist-web-backup/");
+    } catch (e) {
+      log("Warning: could not restore dist from backup");
+    }
+  }
   const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
 
   if (hasDistBuild) {

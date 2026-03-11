@@ -16167,6 +16167,15 @@ function configureExpoAndLanding(app2) {
   app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
   app2.use(express.static(path2.resolve(process.cwd(), "static-build"), { index: false }));
   const distPath = path2.resolve(process.cwd(), "dist");
+  const distBackupPath = path2.resolve(process.cwd(), "dist-web-backup");
+  if (fs2.existsSync(path2.join(distBackupPath, "index.html"))) {
+    try {
+      fs2.cpSync(distBackupPath, distPath, { recursive: true, force: true });
+      log2("Restored dist/ from dist-web-backup/");
+    } catch (e) {
+      log2("Warning: could not restore dist from backup");
+    }
+  }
   const hasDistBuild = fs2.existsSync(path2.join(distPath, "index.html"));
   if (hasDistBuild) {
     app2.use(express.static(distPath, {
