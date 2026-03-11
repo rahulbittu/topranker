@@ -192,24 +192,28 @@ describe("combinedRelevance", () => {
     expect(rankingSrc).toContain("export function combinedRelevance");
   });
 
-  it("weights text match at 38% (Sprint 633: rebalanced for city bonus)", () => {
-    expect(rankingSrc).toContain("text * 0.38");
+  it("weights text match at 36% (Sprint 639: rebalanced for proximity)", () => {
+    expect(rankingSrc).toContain("text * 0.36");
   });
 
-  it("weights category at 18% (Sprint 633: rebalanced for city bonus)", () => {
-    expect(rankingSrc).toContain("category * 0.18");
+  it("weights category at 16% (Sprint 639: rebalanced for proximity)", () => {
+    expect(rankingSrc).toContain("category * 0.16");
   });
 
-  it("weights completeness at 10%", () => {
-    expect(rankingSrc).toContain("completeness * 0.10");
+  it("weights completeness at 9% (Sprint 639: rebalanced for proximity)", () => {
+    expect(rankingSrc).toContain("completeness * 0.09");
   });
 
-  it("weights volume at 14% (Sprint 633: rebalanced for city bonus)", () => {
-    expect(rankingSrc).toContain("volume * 0.14");
+  it("weights volume at 13% (Sprint 639: rebalanced for proximity)", () => {
+    expect(rankingSrc).toContain("volume * 0.13");
   });
 
-  it("weights cityBonus at 6% (Sprint 633: new city bonus signal)", () => {
-    expect(rankingSrc).toContain("cityBonus * 0.06");
+  it("weights cityBonus at 5% (Sprint 639: rebalanced for proximity)", () => {
+    expect(rankingSrc).toContain("cityBonus * 0.05");
+  });
+
+  it("weights proximity at 8% (Sprint 639: new proximity signal)", () => {
+    expect(rankingSrc).toContain("proximity * 0.08");
   });
 });
 
@@ -279,8 +283,8 @@ describe("DiscoverFilters — sort hint", () => {
 // 10. File health
 // ---------------------------------------------------------------------------
 describe("file health", () => {
-  it("search-ranking-v2.ts stays under 380 LOC (Sprint 534: added dish + intent parsing)", () => {
-    expect(rankingSrc.split("\n").length).toBeLessThan(380);
+  it("search-ranking-v2.ts stays under 410 LOC (Sprint 639: proximity signal)", () => {
+    expect(rankingSrc.split("\n").length).toBeLessThan(410);
   });
 
   it("routes-businesses.ts stays functional", () => {

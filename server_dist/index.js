@@ -10238,6 +10238,22 @@ function cityMatchBonus(ctx) {
   if (bizCity.includes(searchCity) || searchCity.includes(bizCity)) return 0.05;
   return 0;
 }
+function proximitySignal(ctx) {
+  if (!ctx.userLat || !ctx.userLng || !ctx.bizLat || !ctx.bizLng) return 0;
+  const dist = haversineKm(ctx.userLat, ctx.userLng, ctx.bizLat, ctx.bizLng);
+  if (dist <= 1) return 1;
+  if (dist <= 3) return 0.8 - (dist - 1) * 0.15;
+  if (dist <= 10) return 0.5 - (dist - 3) * 0.043;
+  if (dist <= 20) return 0.2 - (dist - 10) * 0.02;
+  return 0;
+}
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 function combinedRelevance(name, ctx) {
   const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
   const intentCtx = { ...ctx, query: intentQuery || ctx.query };
@@ -10247,7 +10263,8 @@ function combinedRelevance(name, ctx) {
   const completeness = profileCompleteness(ctx);
   const volume = ratingVolumeSignal(ctx.ratingCount);
   const cityBonus = cityMatchBonus(ctx);
-  return Math.min(1, text2 * 0.38 + category * 0.18 + dish * 0.14 + completeness * 0.1 + volume * 0.14 + cityBonus * 0.06);
+  const proximity = proximitySignal(ctx);
+  return Math.min(1, text2 * 0.36 + category * 0.16 + dish * 0.13 + completeness * 0.09 + volume * 0.13 + cityBonus * 0.05 + proximity * 0.08);
 }
 
 // server/routes-admin-ranking.ts
@@ -12814,7 +12831,7 @@ init_hours_utils();
 
 // server/search-result-processor.ts
 init_hours_utils();
-function haversineKm(lat1, lng1, lat2, lng2) {
+function haversineKm2(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
@@ -12844,7 +12861,7 @@ function enrichSearchResults(bizList, photoMap, opts) {
     const relevanceScore = opts.query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
     let distanceKm = null;
     if (opts.userLat != null && opts.userLng != null && b.lat && b.lng) {
-      distanceKm = haversineKm(opts.userLat, opts.userLng, parseFloat(b.lat), parseFloat(b.lng));
+      distanceKm = haversineKm2(opts.userLat, opts.userLng, parseFloat(b.lat), parseFloat(b.lng));
     }
     const bHours = b.openingHours;
     const openStatus = computeOpenStatus(bHours);

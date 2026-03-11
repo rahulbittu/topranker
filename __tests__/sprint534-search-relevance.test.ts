@@ -93,14 +93,15 @@ describe("Sprint 534: Search Relevance Tuning", () => {
       expect(score).toBeGreaterThan(0);
     });
 
-    it("uses 38/18/14/10/14/6 weight split (Sprint 633: city bonus)", () => {
+    it("uses 36/16/13/9/13/5/8 weight split (Sprint 639: proximity)", () => {
       const src = readFile("server/search-ranking-v2.ts");
-      expect(src).toContain("text * 0.38");
-      expect(src).toContain("category * 0.18");
-      expect(src).toContain("dish * 0.14");
-      expect(src).toContain("completeness * 0.10");
-      expect(src).toContain("volume * 0.14");
-      expect(src).toContain("cityBonus * 0.06");
+      expect(src).toContain("text * 0.36");
+      expect(src).toContain("category * 0.16");
+      expect(src).toContain("dish * 0.13");
+      expect(src).toContain("completeness * 0.09");
+      expect(src).toContain("volume * 0.13");
+      expect(src).toContain("cityBonus * 0.05");
+      expect(src).toContain("proximity * 0.08");
     });
   });
 
@@ -151,8 +152,8 @@ describe("Sprint 534: Search Relevance Tuning", () => {
     const src = readFile("server/search-ranking-v2.ts");
     const lines = src.split("\n").length;
 
-    it("search-ranking-v2.ts stays under 380 LOC", () => {
-      expect(lines).toBeLessThan(380);
+    it("search-ranking-v2.ts stays under 410 LOC (Sprint 639: proximity)", () => {
+      expect(lines).toBeLessThan(410);
     });
   });
 });

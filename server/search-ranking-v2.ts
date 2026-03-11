@@ -106,6 +106,10 @@ export interface SearchContext {
   city?: string;         // Sprint 534: City name for query intent parsing
   hasActionUrls?: boolean; // Sprint 633: Action URL presence signal
   businessCity?: string;   // Sprint 633: Business's own city for matching
+  userLat?: number;        // Sprint 639: User latitude for proximity scoring
+  userLng?: number;        // Sprint 639: User longitude for proximity scoring
+  bizLat?: number;         // Sprint 639: Business latitude
+  bizLng?: number;         // Sprint 639: Business longitude
 }
 
 /**
@@ -311,9 +315,32 @@ export function cityMatchBonus(ctx: SearchContext): number {
 }
 
 /**
+ * Sprint 639: Proximity signal (0-1).
+ * Nearby businesses get a boost when user location is available.
+ * 0km = 1.0, 1km = 0.8, 3km = 0.5, 10km = 0.2, 20km+ = 0.
+ */
+export function proximitySignal(ctx: SearchContext): number {
+  if (!ctx.userLat || !ctx.userLng || !ctx.bizLat || !ctx.bizLng) return 0;
+  const dist = haversineKm(ctx.userLat, ctx.userLng, ctx.bizLat, ctx.bizLng);
+  if (dist <= 1) return 1.0;
+  if (dist <= 3) return 0.8 - (dist - 1) * 0.15;
+  if (dist <= 10) return 0.5 - (dist - 3) * 0.043;
+  if (dist <= 20) return 0.2 - (dist - 10) * 0.02;
+  return 0;
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
  * Sprint 436+534: Combined search relevance score (0-1).
  * Sprint 534: Added dish signal and query intent parsing.
- * Weights: text 40%, category/cuisine 20%, dish 15%, completeness 10%, volume 15%.
+ * Weights: text 36%, category 16%, dish 13%, completeness 9%, volume 13%, city 5%, proximity 8%.
  */
 export function combinedRelevance(name: string, ctx: SearchContext): number {
   // Sprint 534: Parse query intent (strip stop words + city)
@@ -326,7 +353,10 @@ export function combinedRelevance(name: string, ctx: SearchContext): number {
   const volume = ratingVolumeSignal(ctx.ratingCount);
   // Sprint 633: City match bonus adds to base relevance
   const cityBonus = cityMatchBonus(ctx);
-  return Math.min(1, text * 0.38 + category * 0.18 + dish * 0.14 + completeness * 0.10 + volume * 0.14 + cityBonus * 0.06);
+  // Sprint 639: Proximity signal when user location is available
+  const proximity = proximitySignal(ctx);
+  // Weights: text 36%, category 16%, dish 13%, completeness 9%, volume 13%, city 5%, proximity 8%
+  return Math.min(1, text * 0.36 + category * 0.16 + dish * 0.13 + completeness * 0.09 + volume * 0.13 + cityBonus * 0.05 + proximity * 0.08);
 }
 
 export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[]; search?: SearchContext }[]): RankedBusiness[] {
