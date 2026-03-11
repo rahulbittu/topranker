@@ -245,6 +245,22 @@ export const BusinessCard = React.memo(function BusinessCard({
             </View>
           )}
         </View>
+        {/* Sprint 609: Rate CTA — direct rating from discover card */}
+        <TouchableOpacity
+          style={s.rateCta}
+          onPress={(e) => {
+            e.stopPropagation();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push({ pathname: "/rate/[id]", params: { id: item.slug } });
+          }}
+          hitSlop={4}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Rate ${item.name}`}
+        >
+          <Ionicons name="star-outline" size={12} color={AMBER} />
+          <Text style={s.rateCtaText}>Rate this</Text>
+        </TouchableOpacity>
         {showConfTooltip && (() => {
           const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
           return (
@@ -392,6 +408,15 @@ const s = StyleSheet.create({
   confTooltipText: {
     fontSize: 11, color: Colors.textSecondary,
     fontFamily: "DMSans_400Regular", lineHeight: 14,
+  },
+  rateCta: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+    backgroundColor: `${AMBER}10`, borderWidth: 1, borderColor: `${AMBER}25`,
+  },
+  rateCtaText: {
+    fontSize: 11, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold",
   },
 
   mapCard: {
