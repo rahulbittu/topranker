@@ -20,6 +20,7 @@ import { usePressAnimation } from "@/hooks/usePressAnimation";
 import { MappedBusiness } from "@/types/business";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { pct } from "@/lib/style-helpers";
+import { getRankConfidence, RANK_CONFIDENCE_LABELS } from "@/lib/data";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -219,6 +220,25 @@ export function HeroCard({ item, categoryLabel }: { item: MappedBusiness; catego
           <View style={s.heroStripRow2}>
             <StarRating score={item.weightedScore} />
             <Text style={s.heroStripRatings}>{(item.ratingCount ?? 0).toLocaleString()} weighted ratings</Text>
+            {(() => {
+              const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
+              if (conf === "strong" || conf === "established") {
+                return (
+                  <View style={s.heroConfPill}>
+                    <Ionicons name="shield-checkmark" size={9} color={Colors.green} />
+                    <Text style={[s.heroConfPillText, { color: Colors.green }]}>VERIFIED</Text>
+                  </View>
+                );
+              }
+              return (
+                <View style={[s.heroConfPill, { backgroundColor: `${AMBER}15` }]}>
+                  <Ionicons name="hourglass-outline" size={9} color={AMBER} />
+                  <Text style={[s.heroConfPillText, { color: AMBER }]}>
+                    {RANK_CONFIDENCE_LABELS[conf].label.toUpperCase()}
+                  </Text>
+                </View>
+              );
+            })()}
             {(item.ratingCount ?? 0) >= 50 && (
               <View style={s.hotBadge}>
                 <Ionicons name="flame" size={10} color="#fff" />
@@ -304,6 +324,12 @@ const s = StyleSheet.create({
   heroStripCategory: { ...TYPOGRAPHY.ui.label, color: Colors.textSecondary },
   heroStripRatings: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary },
   heroStripLink: { fontSize: 12, color: AMBER, fontFamily: "DMSans_600SemiBold" },
+  heroConfPill: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6,
+    backgroundColor: "rgba(34,197,94,0.1)",
+  },
+  heroConfPillText: { fontSize: 8, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.3 },
   hotBadge: {
     flexDirection: "row", alignItems: "center", gap: 2,
     paddingHorizontal: 6, paddingVertical: 1, borderRadius: 99, backgroundColor: Colors.red,
