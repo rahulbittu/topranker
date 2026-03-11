@@ -75,12 +75,14 @@ export function registerAdminRoutes(app: Express) {
       return res.json({ data: updated });
   }));
 
-  // ── Seed Cities ──────────────────────────────────────────
-  app.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
-      const { seedCities } = await import("./seed-cities");
-      await seedCities();
-      return res.json({ data: { message: "Cities seeded successfully" } });
-  }));
+  // Sprint 619: Seed cities — dev only, excluded from production bundle
+  if (process.env.NODE_ENV !== "production") {
+    app.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
+        const { seedCities } = await import("./seed-cities");
+        await seedCities();
+        return res.json({ data: { message: "Cities seeded successfully" } });
+    }));
+  }
 
   // ── Google Places Photo Fetching ─────────────────────────
   app.post("/api/admin/fetch-photos", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {

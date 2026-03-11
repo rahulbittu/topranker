@@ -65,8 +65,8 @@ describe("Sprint 559: Hours Wire + Carousel Cache", () => {
     });
 
     it("build size updated", () => {
-      // Sprint 566: dish photo integration +0.7kb
-      expect(config.build.currentSizeKb).toBeGreaterThanOrEqual(711);
+      // Sprint 619: seed exclusion dropped build to ~625.7kb
+      expect(config.build.currentSizeKb).toBeGreaterThanOrEqual(600);
     });
   });
 

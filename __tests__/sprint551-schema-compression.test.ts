@@ -57,11 +57,11 @@ describe("Sprint 551: Schema Compression", () => {
     expect(src).toContain("export type BetaFeedback");
   });
 
-  it("server build size unchanged at 707.1kb", () => {
-    // Build size stays stable — compression is whitespace/comments only
+  it("server build size under 750kb", () => {
+    // Sprint 619: seed exclusion dropped build from 734.9kb to ~625.7kb
     const buildSrc = readFile("server_dist/index.js");
     const sizeKb = Buffer.byteLength(buildSrc, "utf-8") / 1024;
-    expect(sizeKb).toBeGreaterThan(700);
+    expect(sizeKb).toBeGreaterThan(500);
     expect(sizeKb).toBeLessThan(750);
   });
 

@@ -855,7 +855,7 @@ var init_logger = __esm({
       warn: 2,
       error: 3
     };
-    MIN_LEVEL = process.env.NODE_ENV === "production" ? "info" : "debug";
+    MIN_LEVEL = true ? "info" : "debug";
     log = {
       /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
       tag: createTaggedLogger,
@@ -2010,7 +2010,7 @@ async function sendPushNotification(tokens2, title, body, data) {
     sound: "default",
     channelId: "default"
   }));
-  if (process.env.NODE_ENV !== "production") {
+  if (false) {
     pushLog.debug("DEV MODE \u2014 would send:", messages);
     return messages.map(() => ({ status: "ok", id: `dev-${Date.now()}` }));
   }
@@ -3738,7 +3738,7 @@ var init_config = __esm({
       // Server
       port: parseInt(optional("PORT", "5000"), 10),
       nodeEnv: optional("NODE_ENV", "development"),
-      isProduction: process.env.NODE_ENV === "production",
+      isProduction: true,
       // Google OAuth (optional — feature disabled if not set)
       googleClientId: process.env.GOOGLE_CLIENT_ID || null,
       // Stripe (optional — mock payments if not set)
@@ -5517,191 +5517,6 @@ var init_hours_utils = __esm({
   }
 });
 
-// server/seed-cities.ts
-var seed_cities_exports = {};
-__export(seed_cities_exports, {
-  seedCities: () => seedCities
-});
-async function seedCities() {
-  console.log(`Seeding ${ALL_CITY_BUSINESSES.length} businesses across 10 cities...`);
-  let seeded = 0;
-  for (const biz of ALL_CITY_BUSINESSES) {
-    try {
-      await db.insert(businesses).values({
-        name: biz.name,
-        slug: biz.slug,
-        category: biz.category,
-        city: biz.city,
-        neighborhood: biz.neighborhood,
-        address: biz.address,
-        phone: biz.phone,
-        lat: biz.lat,
-        lng: biz.lng,
-        weightedScore: biz.weightedScore,
-        rawAvgScore: biz.rawAvgScore,
-        rankPosition: biz.rankPosition,
-        rankDelta: biz.rankDelta,
-        totalRatings: biz.totalRatings,
-        description: biz.description,
-        priceRange: biz.priceRange,
-        isOpenNow: biz.isOpenNow,
-        photoUrl: biz.photoUrl || null,
-        isActive: true,
-        dataSource: "admin"
-      });
-      seeded++;
-    } catch (err) {
-      if (err.message?.includes("unique") || err.message?.includes("duplicate")) {
-        console.log(`  Skipping ${biz.name} (already exists)`);
-      } else {
-        console.error(`  Failed to seed ${biz.name}:`, err.message);
-      }
-    }
-  }
-  console.log(`
-Seeded ${seeded}/${ALL_CITY_BUSINESSES.length} businesses.`);
-  console.log("Cities: Austin (10), Houston (8), San Antonio (7), Fort Worth (7), Oklahoma City (10), New Orleans (10), Memphis (10), Nashville (10), Charlotte (10), Raleigh (10)");
-}
-var AUSTIN_BUSINESSES, HOUSTON_BUSINESSES, SAN_ANTONIO_BUSINESSES, FORT_WORTH_BUSINESSES, OKC_BUSINESSES, NOLA_BUSINESSES, MEMPHIS_BUSINESSES, NASHVILLE_BUSINESSES, CHARLOTTE_BUSINESSES, RALEIGH_BUSINESSES, ALL_CITY_BUSINESSES, isDirectRun;
-var init_seed_cities = __esm({
-  "server/seed-cities.ts"() {
-    "use strict";
-    init_db();
-    init_schema();
-    AUSTIN_BUSINESSES = [
-      { name: "Franklin Barbecue", slug: "franklin-barbecue-austin", city: "Austin", neighborhood: "East Austin", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "The most famous BBQ in Texas. Worth the 4-hour wait.", priceRange: "$$", phone: "(512) 653-1187", address: "900 E 11th St, Austin, TX", lat: "30.2701", lng: "-97.7267", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Uchi", slug: "uchi-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "James Beard-winning Japanese farmhouse dining.", priceRange: "$$$$", phone: "(512) 916-4808", address: "801 S Lamar Blvd, Austin, TX", lat: "30.2561", lng: "-97.7628", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop" },
-      { name: "Torchy's Tacos", slug: "torchys-tacos-austin", city: "Austin", neighborhood: "South Congress", category: "street_food", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Damn good tacos. The Trailer Park is legendary.", priceRange: "$", phone: "(512) 366-0537", address: "1311 S 1st St, Austin, TX", lat: "30.2502", lng: "-97.7540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Salt Lick BBQ", slug: "salt-lick-bbq-austin", city: "Austin", neighborhood: "Driftwood", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 1, totalRatings: 389, description: "Open-pit BBQ in the Hill Country since 1967.", priceRange: "$$", phone: "(512) 858-4959", address: "18300 FM 1826, Driftwood, TX", lat: "30.1561", lng: "-97.9410", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Ramen Tatsu-Ya", slug: "ramen-tatsu-ya-austin", city: "Austin", neighborhood: "North Loop", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Austin's best ramen. No compromise.", priceRange: "$$", phone: "(512) 893-5561", address: "8557 Research Blvd, Austin, TX", lat: "30.3561", lng: "-97.7310", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
-      { name: "Odd Duck", slug: "odd-duck-austin", city: "Austin", neighborhood: "South Lamar", category: "restaurant", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 5, rankDelta: 0, totalRatings: 234, description: "Farm-to-table seasonal small plates.", priceRange: "$$$", phone: "(512) 433-6521", address: "1201 S Lamar Blvd, Austin, TX", lat: "30.2501", lng: "-97.7630", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Jo's Coffee", slug: "jos-coffee-austin", city: "Austin", neighborhood: "South Congress", category: "cafe", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "I Love You So Much wall. Iconic SoCo coffee.", priceRange: "$", phone: "(512) 444-3800", address: "1300 S Congress Ave, Austin, TX", lat: "30.2490", lng: "-97.7491", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Rainey Street Bar District", slug: "rainey-street-austin", city: "Austin", neighborhood: "Rainey Street", category: "bar", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Historic bungalows turned into Austin's hottest bar street.", priceRange: "$$", phone: "(512) 555-0001", address: "Rainey Street, Austin, TX", lat: "30.2580", lng: "-97.7380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-austin", city: "Austin", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.200", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Texas institution. Honey butter chicken biscuit.", priceRange: "$", phone: "(512) 555-0002", address: "Multiple locations, Austin, TX", lat: "30.2672", lng: "-97.7431", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Quack's 43rd St Bakery", slug: "quacks-bakery-austin", city: "Austin", neighborhood: "Hyde Park", category: "bakery", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Neighborhood bakery with legendary carrot cake.", priceRange: "$", phone: "(512) 453-3399", address: "411 E 43rd St, Austin, TX", lat: "30.3051", lng: "-97.7230", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    HOUSTON_BUSINESSES = [
-      { name: "Killen's Barbecue", slug: "killens-bbq-houston", city: "Houston", neighborhood: "Pearland", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "Pitmaster Ronnie Killen's award-winning BBQ.", priceRange: "$$", phone: "(281) 485-2272", address: "3613 E Broadway St, Pearland, TX", lat: "29.5633", lng: "-95.2763", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Pappas Bros. Steakhouse", slug: "pappas-bros-houston", city: "Houston", neighborhood: "Galleria", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Houston's finest steakhouse. USDA Prime aged beef.", priceRange: "$$$$", phone: "(713) 780-7352", address: "5839 Westheimer Rd, Houston, TX", lat: "29.7372", lng: "-95.4888", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Crawfish & Noodles", slug: "crawfish-noodles-houston", city: "Houston", neighborhood: "Chinatown", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 1, totalRatings: 378, description: "Vietnamese-Cajun fusion that started a revolution.", priceRange: "$$", phone: "(281) 988-8098", address: "11360 Bellaire Blvd, Houston, TX", lat: "29.7045", lng: "-95.5358", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
-      { name: "Tacos Tierra Caliente", slug: "tacos-tierra-caliente-houston", city: "Houston", neighborhood: "Montrose", category: "street_food", weightedScore: "4.600", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Late-night taco truck with the best al pastor in Houston.", priceRange: "$", phone: "(713) 555-0003", address: "1220 Westheimer Rd, Houston, TX", lat: "29.7414", lng: "-95.3917", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Buc-ee's", slug: "buc-ees-houston", city: "Houston", neighborhood: "Baytown", category: "fast_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Texas-sized gas station with legendary BBQ and beaver nuggets.", priceRange: "$", phone: "(979) 238-6390", address: "4500 I-10 East, Baytown, TX", lat: "29.7827", lng: "-94.9594", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Blacksmith Coffee", slug: "blacksmith-coffee-houston", city: "Houston", neighborhood: "Montrose", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Third-wave coffee in a beautiful Montrose space.", priceRange: "$$", phone: "(713) 555-0004", address: "1018 Westheimer Rd, Houston, TX", lat: "29.7413", lng: "-95.3870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Julep", slug: "julep-houston", city: "Houston", neighborhood: "Washington Ave", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Southern cocktail bar with craft juleps and live music.", priceRange: "$$$", phone: "(713) 869-4383", address: "1919 Washington Ave, Houston, TX", lat: "29.7643", lng: "-95.3842", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Common Bond Bakery", slug: "common-bond-houston", city: "Houston", neighborhood: "Montrose", category: "bakery", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "European-inspired bakery and cafe.", priceRange: "$$", phone: "(713) 529-3535", address: "1706 Westheimer Rd, Houston, TX", lat: "29.7434", lng: "-95.3977", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    SAN_ANTONIO_BUSINESSES = [
-      { name: "2M Smokehouse", slug: "2m-smokehouse-san-antonio", city: "San Antonio", neighborhood: "South Side", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "Tex-Mex meets BBQ. The brisket enchiladas are legendary.", priceRange: "$$", phone: "(210) 885-9352", address: "2731 S WW White Rd, San Antonio, TX", lat: "29.3921", lng: "-98.4347", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Mi Tierra Cafe", slug: "mi-tierra-san-antonio", city: "San Antonio", neighborhood: "Market Square", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "Open 24 hours since 1941. The Riverwalk institution.", priceRange: "$$", phone: "(210) 225-1262", address: "218 Produce Row, San Antonio, TX", lat: "29.4246", lng: "-98.4969", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Garcia's Mexican Food", slug: "garcias-san-antonio", city: "San Antonio", neighborhood: "West Side", category: "street_food", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "No-frills Tex-Mex. The puffy tacos are life-changing.", priceRange: "$", phone: "(210) 735-4525", address: "842 Fredericksburg Rd, San Antonio, TX", lat: "29.4521", lng: "-98.5121", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
-      { name: "Estate Coffee", slug: "estate-coffee-san-antonio", city: "San Antonio", neighborhood: "Southtown", category: "cafe", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 178, description: "Specialty coffee in the heart of Southtown arts district.", priceRange: "$$", phone: "(210) 555-0005", address: "1320 S Alamo St, San Antonio, TX", lat: "29.4150", lng: "-98.4901", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-san-antonio", city: "San Antonio", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.250", rawAvgScore: "4.10", rankPosition: 1, rankDelta: 0, totalRatings: 678, description: "Born right here in San Antonio. The HQ city.", priceRange: "$", phone: "(210) 555-0006", address: "Multiple locations, San Antonio, TX", lat: "29.4241", lng: "-98.4936", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "The Esquire Tavern", slug: "esquire-tavern-san-antonio", city: "San Antonio", neighborhood: "Riverwalk", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "The longest bar in Texas, right on the Riverwalk.", priceRange: "$$", phone: "(210) 222-2521", address: "155 E Commerce St, San Antonio, TX", lat: "29.4234", lng: "-98.4876", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Bird Bakery", slug: "bird-bakery-san-antonio", city: "San Antonio", neighborhood: "Alamo Heights", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Cupcakes and cookies by Elizabeth Chambers.", priceRange: "$$", phone: "(210) 804-2473", address: "5912 Broadway, San Antonio, TX", lat: "29.4633", lng: "-98.4623", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" }
-    ];
-    FORT_WORTH_BUSINESSES = [
-      { name: "Heim Barbecue", slug: "heim-bbq-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "restaurant", weightedScore: "4.700", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Bacon burnt ends put Heim on the map. Texas Monthly Top 50.", priceRange: "$$", phone: "(817) 882-6970", address: "1109 W Magnolia Ave, Fort Worth, TX", lat: "32.7185", lng: "-97.3448", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Joe T. Garcia's", slug: "joe-t-garcias-fort-worth", city: "Fort Worth", neighborhood: "Northside", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 567, description: "The legendary patio. Enchiladas and fajitas only.", priceRange: "$$", phone: "(817) 626-4356", address: "2201 N Commerce St, Fort Worth, TX", lat: "32.7665", lng: "-97.3292", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Salsa Limon", slug: "salsa-limon-fort-worth", city: "Fort Worth", neighborhood: "Near South", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Mexican street food truck turned brick-and-mortar.", priceRange: "$", phone: "(817) 927-4328", address: "4200 S Freeway, Fort Worth, TX", lat: "32.7100", lng: "-97.3232", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Avoca Coffee", slug: "avoca-coffee-fort-worth", city: "Fort Worth", neighborhood: "Magnolia", category: "cafe", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Fort Worth's premier specialty coffee roaster.", priceRange: "$$", phone: "(817) 677-6741", address: "1311 W Magnolia Ave, Fort Worth, TX", lat: "32.7180", lng: "-97.3465", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-fort-worth", city: "Fort Worth", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Texas institution. Always there at 2am.", priceRange: "$", phone: "(817) 555-0007", address: "Multiple locations, Fort Worth, TX", lat: "32.7555", lng: "-97.3308", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "The Usual", slug: "the-usual-fort-worth", city: "Fort Worth", neighborhood: "Sundance Square", category: "bar", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Craft cocktail bar in Sundance Square.", priceRange: "$$$", phone: "(817) 810-0114", address: "310 Houston St, Fort Worth, TX", lat: "32.7548", lng: "-97.3313", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Swiss Pastry Shop", slug: "swiss-pastry-fort-worth", city: "Fort Worth", neighborhood: "Camp Bowie", category: "bakery", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Fort Worth's oldest bakery. Since 1950.", priceRange: "$", phone: "(817) 732-5661", address: "3936 W Vickery Blvd, Fort Worth, TX", lat: "32.7370", lng: "-97.3698", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" }
-    ];
-    OKC_BUSINESSES = [
-      { name: "Cattlemen's Steakhouse", slug: "cattlemens-steakhouse-okc", city: "Oklahoma City", neighborhood: "Stockyards City", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Oklahoma's most famous steakhouse since 1910", priceRange: "$$$", phone: "(405) 236-0416", address: "1309 S Agnew Ave, Oklahoma City, OK", lat: "35.4558", lng: "-97.5378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Nic's Grill", slug: "nics-grill-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 2, rankDelta: 0, totalRatings: 467, description: "Tiny counter spot. Best burger in OKC, maybe America", priceRange: "$", phone: "(405) 524-0999", address: "1201 N Pennsylvania Ave, Oklahoma City, OK", lat: "35.4780", lng: "-97.5168", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Waffle Champion", slug: "waffle-champion-okc", city: "Oklahoma City", neighborhood: "Midtown", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Gourmet waffles meet breakfast innovation", priceRange: "$$", phone: "(405) 601-9956", address: "1212 N Walker Ave, Oklahoma City, OK", lat: "35.4785", lng: "-97.5225", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
-      { name: "Empire Slice House", slug: "empire-slice-house-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "restaurant", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "Artisan pizza with local OKC personality", priceRange: "$$", phone: "(405) 525-7423", address: "1734 NW 16th St, Oklahoma City, OK", lat: "35.4821", lng: "-97.5340", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
-      { name: "Tamashii Ramen House", slug: "tamashii-ramen-okc", city: "Oklahoma City", neighborhood: "Asian District", category: "restaurant", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 4, rankDelta: 0, totalRatings: 278, description: "Authentic Japanese ramen in OKC's vibrant Asian District", priceRange: "$$", phone: "(405) 600-7788", address: "6608 N May Ave, Oklahoma City, OK", lat: "35.5122", lng: "-97.5605", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
-      { name: "The Jones Assembly", slug: "jones-assembly-okc", city: "Oklahoma City", neighborhood: "Film Row", category: "bar", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Restaurant, bar, and live music venue. OKC culture hub", priceRange: "$$$", phone: "(405) 212-2378", address: "901 W Sheridan Ave, Oklahoma City, OK", lat: "35.4660", lng: "-97.5280", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Pie Junkie", slug: "pie-junkie-okc", city: "Oklahoma City", neighborhood: "Classen", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Handmade pies with seasonal Oklahoma flavors", priceRange: "$$", phone: "(405) 605-8767", address: "1711 NW 16th St, Oklahoma City, OK", lat: "35.4819", lng: "-97.5320", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
-      { name: "Big Truck Tacos", slug: "big-truck-tacos-okc", city: "Oklahoma City", neighborhood: "NW 23rd", category: "street_food", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 356, description: "Food truck turned institution. OKC taco legend", priceRange: "$", phone: "(405) 525-8226", address: "530 NW 23rd St, Oklahoma City, OK", lat: "35.4872", lng: "-97.5241", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Hideaway Pizza", slug: "hideaway-pizza-okc", city: "Oklahoma City", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 445, description: "Oklahoma pizza chain since 1957. The OG", priceRange: "$", phone: "(405) 840-2777", address: "6616 N Western Ave, Oklahoma City, OK", lat: "35.5130", lng: "-97.5435", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
-      { name: "The Press", slug: "the-press-okc", city: "Oklahoma City", neighborhood: "Plaza District", category: "cafe", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Coffee and community in the heart of Plaza District", priceRange: "$", phone: "(405) 524-0222", address: "1738 NW 16th St, Oklahoma City, OK", lat: "35.4822", lng: "-97.5342", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
-    ];
-    NOLA_BUSINESSES = [
-      { name: "Commander's Palace", slug: "commanders-palace-nola", city: "New Orleans", neighborhood: "Garden District", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 612, description: "Fine dining legend since 1893. Creole cuisine at its finest", priceRange: "$$$$", phone: "(504) 899-8221", address: "1403 Washington Ave, New Orleans, LA", lat: "29.9291", lng: "-90.0892", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Dooky Chase's", slug: "dooky-chases-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Queen of Creole cuisine. Civil rights history meets gumbo perfection", priceRange: "$$$", phone: "(504) 821-0600", address: "2301 Orleans Ave, New Orleans, LA", lat: "29.9650", lng: "-90.0775", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Cafe Du Monde", slug: "cafe-du-monde-nola", city: "New Orleans", neighborhood: "French Quarter", category: "cafe", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 789, description: "Beignets and chicory coffee 24/7 since 1862", priceRange: "$", phone: "(504) 525-4544", address: "800 Decatur St, New Orleans, LA", lat: "29.9574", lng: "-90.0618", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Willie Mae's Scotch House", slug: "willie-maes-scotch-house-nola", city: "New Orleans", neighborhood: "Treme", category: "restaurant", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Best fried chicken in America. James Beard Award winner", priceRange: "$$", phone: "(504) 822-9503", address: "2401 St Ann St, New Orleans, LA", lat: "29.9660", lng: "-90.0790", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Cochon", slug: "cochon-nola", city: "New Orleans", neighborhood: "Warehouse District", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 398, description: "Cajun nose-to-tail cooking with Louisiana soul", priceRange: "$$$", phone: "(504) 588-2123", address: "930 Tchoupitoulas St, New Orleans, LA", lat: "29.9430", lng: "-90.0680", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Bacchanal Wine", slug: "bacchanal-wine-nola", city: "New Orleans", neighborhood: "Bywater", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 423, description: "Wine bar meets backyard concert venue in the Bywater", priceRange: "$$", phone: "(504) 948-9111", address: "600 Poland Ave, New Orleans, LA", lat: "29.9630", lng: "-90.0400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Dong Phuong Bakery", slug: "dong-phuong-bakery-nola", city: "New Orleans", neighborhood: "New Orleans East", category: "bakery", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Vietnamese-French bakery. Best king cake and banh mi in NOLA", priceRange: "$", phone: "(504) 254-0214", address: "14207 Chef Menteur Hwy, New Orleans, LA", lat: "30.0280", lng: "-89.9580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
-      { name: "Dat Dog", slug: "dat-dog-nola", city: "New Orleans", neighborhood: "Frenchmen Street", category: "street_food", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Gourmet hot dogs with wild toppings. NOLA street food icon", priceRange: "$", phone: "(504) 309-3362", address: "601 Frenchmen St, New Orleans, LA", lat: "29.9640", lng: "-90.0570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Raising Cane's", slug: "raising-canes-nola", city: "New Orleans", neighborhood: "Multiple", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 567, description: "Born in Baton Rouge, perfected in NOLA. One love \u2014 chicken fingers", priceRange: "$", phone: "(504) 304-6264", address: "Multiple locations, New Orleans, LA", lat: "29.9511", lng: "-90.0715", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "French Truck Coffee", slug: "french-truck-coffee-nola", city: "New Orleans", neighborhood: "CBD", category: "cafe", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 0, totalRatings: 289, description: "Local roaster serving NOLA's best specialty coffee", priceRange: "$$", phone: "(504) 309-7880", address: "1200 Carondelet St, New Orleans, LA", lat: "29.9410", lng: "-90.0730", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
-    ];
-    MEMPHIS_BUSINESSES = [
-      { name: "Central BBQ", slug: "central-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "restaurant", weightedScore: "4.820", rawAvgScore: "4.70", rankPosition: 1, rankDelta: 0, totalRatings: 589, description: "Memphis dry-rub ribs perfected. Competition-winning BBQ.", priceRange: "$$", phone: "(901) 672-7760", address: "2249 Central Ave, Memphis, TN", lat: "35.1312", lng: "-89.9903", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Gus's World Famous Fried Chicken", slug: "gus-fried-chicken-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.750", rawAvgScore: "4.65", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Spicy fried chicken legend. The original since 1953.", priceRange: "$$", phone: "(901) 527-4877", address: "310 S Front St, Memphis, TN", lat: "35.1380", lng: "-90.0560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Charlie Vergos' Rendezvous", slug: "rendezvous-memphis", city: "Memphis", neighborhood: "Downtown Memphis", category: "restaurant", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 3, rankDelta: 0, totalRatings: 467, description: "Underground dry-rub rib institution since 1948.", priceRange: "$$", phone: "(901) 523-2746", address: "52 S 2nd St, Memphis, TN", lat: "35.1420", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Dyer's Burgers", slug: "dyers-burgers-memphis", city: "Memphis", neighborhood: "Beale Street", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Deep-fried burgers on Beale Street since 1912. Legendary grease.", priceRange: "$", phone: "(901) 527-3937", address: "205 Beale St, Memphis, TN", lat: "35.1395", lng: "-90.0530", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Muddy's Bake Shop", slug: "muddys-bake-shop-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "bakery", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "From-scratch cupcakes and pies in Cooper-Young.", priceRange: "$", phone: "(901) 683-8844", address: "2263 Young Ave, Memphis, TN", lat: "35.1270", lng: "-89.9880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
-      { name: "City & State Coffee", slug: "city-state-coffee-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Specialty coffee and community in the Cooper-Young district.", priceRange: "$$", phone: "(901) 249-2406", address: "2625 Broad Ave, Memphis, TN", lat: "35.1350", lng: "-89.9760", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Aldo's Pizza Pies", slug: "aldos-pizza-memphis", city: "Memphis", neighborhood: "Cooper-Young", category: "restaurant", weightedScore: "4.400", rawAvgScore: "4.25", rankPosition: 5, rankDelta: 0, totalRatings: 198, description: "Neapolitan-style pizza in the heart of Cooper-Young.", priceRange: "$$", phone: "(901) 276-7600", address: "1937 Young Ave, Memphis, TN", lat: "35.1275", lng: "-89.9920", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
-      { name: "Blues City Cafe", slug: "blues-city-cafe-memphis", city: "Memphis", neighborhood: "Beale Street", category: "bar", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 412, description: "Live blues and BBQ on Beale Street. Memphis nightlife icon.", priceRange: "$$", phone: "(901) 526-3637", address: "138 Beale St, Memphis, TN", lat: "35.1393", lng: "-90.0540", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Payne's Bar-B-Q", slug: "paynes-bbq-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "street_food", weightedScore: "4.620", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 367, description: "Chopped pork sandwich perfection. No-frills Memphis BBQ.", priceRange: "$", phone: "(901) 272-1523", address: "1762 Lamar Ave, Memphis, TN", lat: "35.1230", lng: "-89.9870", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Jack Pirtle's Chicken", slug: "jack-pirtles-memphis", city: "Memphis", neighborhood: "Midtown Memphis", category: "fast_food", weightedScore: "4.300", rawAvgScore: "4.15", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Memphis fried chicken chain since 1956. Local institution.", priceRange: "$", phone: "(901) 324-7800", address: "1217 S Bellevue Blvd, Memphis, TN", lat: "35.1240", lng: "-90.0100", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" }
-    ];
-    NASHVILLE_BUSINESSES = [
-      { name: "Prince's Hot Chicken Shack", slug: "princes-hot-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.850", rawAvgScore: "4.75", rankPosition: 1, rankDelta: 0, totalRatings: 623, description: "The original Nashville hot chicken. Since 1945.", priceRange: "$", phone: "(615) 226-9442", address: "123 Ewing Dr, Nashville, TN", lat: "36.1880", lng: "-86.7450", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Hattie B's Hot Chicken", slug: "hattie-bs-nashville", city: "Nashville", neighborhood: "Midtown", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 534, description: "Nashville hot chicken with Southern sides. Worth the wait.", priceRange: "$$", phone: "(615) 678-4794", address: "112 19th Ave S, Nashville, TN", lat: "36.1530", lng: "-86.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Martin's Bar-B-Que Joint", slug: "martins-bbq-nashville", city: "Nashville", neighborhood: "12South", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 445, description: "Whole-hog BBQ done right. West Tennessee pit tradition.", priceRange: "$$", phone: "(615) 288-0880", address: "2400 Elliston Pl, Nashville, TN", lat: "36.1540", lng: "-86.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Biscuit Love", slug: "biscuit-love-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Southern brunch institution. The Bonuts are legendary.", priceRange: "$$", phone: "(615) 490-9584", address: "316 11th Ave S, Nashville, TN", lat: "36.1520", lng: "-86.7880", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1504113888839-1c8eb50233d3?w=600&h=400&fit=crop" },
-      { name: "The Pharmacy Burger Parlor", slug: "pharmacy-burger-nashville", city: "Nashville", neighborhood: "East Nashville", category: "restaurant", weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 4, rankDelta: 0, totalRatings: 378, description: "German-style biergarten with craft burgers.", priceRange: "$$", phone: "(615) 712-9517", address: "731 McFerrin Ave, Nashville, TN", lat: "36.1850", lng: "-86.7620", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Five Daughters Bakery", slug: "five-daughters-bakery-nashville", city: "Nashville", neighborhood: "12South", category: "bakery", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "100-layer donuts and artisan pastries in 12South.", priceRange: "$$", phone: "(615) 490-6554", address: "1110 Caruthers Ave, Nashville, TN", lat: "36.1310", lng: "-86.7890", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
-      { name: "Robert's Western World", slug: "roberts-western-world-nashville", city: "Nashville", neighborhood: "Broadway", category: "bar", weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Honky-tonk legend on Lower Broadway. Live country every night.", priceRange: "$", phone: "(615) 244-9552", address: "416 Broadway, Nashville, TN", lat: "36.1590", lng: "-86.7770", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Bolton's Spicy Chicken & Fish", slug: "boltons-spicy-chicken-nashville", city: "Nashville", neighborhood: "East Nashville", category: "street_food", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 345, description: "Hot fish and hot chicken. East Nashville staple.", priceRange: "$", phone: "(615) 254-8015", address: "624 Main St, Nashville, TN", lat: "36.1780", lng: "-86.7580", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Slim & Husky's", slug: "slim-huskys-nashville", city: "Nashville", neighborhood: "East Nashville", category: "fast_food", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 1, rankDelta: 0, totalRatings: 398, description: "Artisan pizza and craft beer. Black-owned Nashville favorite.", priceRange: "$", phone: "(615) 891-2433", address: "911 Buchanan St, Nashville, TN", lat: "36.1820", lng: "-86.7950", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=600&h=400&fit=crop" },
-      { name: "Barista Parlor", slug: "barista-parlor-nashville", city: "Nashville", neighborhood: "The Gulch", category: "cafe", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 267, description: "Nashville's craft coffee pioneer. Industrial chic spaces.", priceRange: "$$", phone: "(615) 712-9766", address: "519 Gallatin Ave, Nashville, TN", lat: "36.1740", lng: "-86.7560", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
-    ];
-    CHARLOTTE_BUSINESSES = [
-      { name: "Midwood Smokehouse", slug: "midwood-smokehouse-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bbq", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 512, description: "Texas-style BBQ meets Carolina tradition. Brisket and pulled pork perfection.", priceRange: "$$", phone: "(704) 295-4227", address: "1401 Central Ave, Charlotte, NC", lat: "35.2180", lng: "-80.8190", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Haberdish", slug: "haberdish-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 445, description: "Southern sharing plates in the NoDa arts district.", priceRange: "$$$", phone: "(704) 817-7768", address: "3106 N Davidson St, Charlotte, NC", lat: "35.2450", lng: "-80.8120", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Optimist Hall", slug: "optimist-hall-charlotte", city: "Charlotte", neighborhood: "South End", category: "restaurant", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 3, rankDelta: 0, totalRatings: 398, description: "Historic textile mill turned food hall with 20+ vendors.", priceRange: "$$", phone: "(704) 603-0400", address: "1115 N Brevard St, Charlotte, NC", lat: "35.2320", lng: "-80.8330", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&h=400&fit=crop" },
-      { name: "The Asbury", slug: "the-asbury-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 4, rankDelta: 0, totalRatings: 356, description: "Farm-to-table Southern fine dining in the Dunhill Hotel.", priceRange: "$$$$", phone: "(704) 342-1193", address: "237 N Tryon St, Charlotte, NC", lat: "35.2280", lng: "-80.8430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Not Just Coffee", slug: "not-just-coffee-charlotte", city: "Charlotte", neighborhood: "South End", category: "cafe", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Charlotte's original specialty coffee roaster.", priceRange: "$$", phone: "(704) 831-7799", address: "224 E 7th St, Charlotte, NC", lat: "35.2260", lng: "-80.8390", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "Mac's Speed Shop", slug: "macs-speed-shop-charlotte", city: "Charlotte", neighborhood: "South End", category: "bbq", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 5, rankDelta: 0, totalRatings: 423, description: "BBQ and bikes. Legendary pulled pork and craft beer selection.", priceRange: "$$", phone: "(704) 522-6227", address: "2511 South Blvd, Charlotte, NC", lat: "35.2080", lng: "-80.8570", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Amelie's French Bakery", slug: "amelies-french-bakery-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "bakery", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 389, description: "24-hour French bakery and cafe. Charlotte institution.", priceRange: "$", phone: "(704) 376-1781", address: "2424 N Davidson St, Charlotte, NC", lat: "35.2410", lng: "-80.8140", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
-      { name: "The Broken Spoke", slug: "broken-spoke-charlotte", city: "Charlotte", neighborhood: "Plaza Midwood", category: "bar", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Dive bar meets craft cocktails in Plaza Midwood.", priceRange: "$$", phone: "(704) 375-2882", address: "2416 Central Ave, Charlotte, NC", lat: "35.2185", lng: "-80.8050", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "Leah & Louise", slug: "leah-and-louise-charlotte", city: "Charlotte", neighborhood: "Uptown", category: "restaurant", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 6, rankDelta: 0, totalRatings: 289, description: "Modern juke joint with Southern and global soul food.", priceRange: "$$$", phone: "(704) 343-1010", address: "301 E 7th St, Charlotte, NC", lat: "35.2275", lng: "-80.8370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Sunflour Baking Company", slug: "sunflour-baking-charlotte", city: "Charlotte", neighborhood: "NoDa", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 234, description: "Scratch-made pastries and brunch in the NoDa arts scene.", priceRange: "$$", phone: "(704) 741-0398", address: "220 E 36th St, Charlotte, NC", lat: "35.2440", lng: "-80.8160", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
-    ];
-    RALEIGH_BUSINESSES = [
-      { name: "Beasley's Chicken + Honey", slug: "beasleys-chicken-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.780", rawAvgScore: "4.65", rankPosition: 1, rankDelta: 0, totalRatings: 489, description: "Ashley Christensen's fried chicken temple. James Beard winner.", priceRange: "$$", phone: "(919) 322-0127", address: "237 S Wilmington St, Raleigh, NC", lat: "35.7760", lng: "-78.6380", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "Poole's Diner", slug: "pooles-diner-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "restaurant", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 2, rankDelta: 0, totalRatings: 456, description: "Farm-to-fork pioneer in a retro 1940s diner space.", priceRange: "$$$", phone: "(919) 832-4477", address: "426 S McDowell St, Raleigh, NC", lat: "35.7740", lng: "-78.6400", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "The Pit Authentic Barbecue", slug: "the-pit-bbq-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "bbq", weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 534, description: "Whole-hog Eastern NC barbecue in the Warehouse District.", priceRange: "$$", phone: "(919) 890-4500", address: "328 W Davie St, Raleigh, NC", lat: "35.7720", lng: "-78.6430", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Brewery Bhavana", slug: "brewery-bhavana-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bar", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 378, description: "Brewery, bookstore, dim sum parlor, and flower shop. All in one.", priceRange: "$$", phone: "(919) 829-9998", address: "218 S Blount St, Raleigh, NC", lat: "35.7755", lng: "-78.6360", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Jolie", slug: "jolie-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "restaurant", weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 3, rankDelta: 0, totalRatings: 312, description: "French-inspired neighborhood bistro in Five Points.", priceRange: "$$$", phone: "(919) 896-8783", address: "620 Glenwood Ave, Raleigh, NC", lat: "35.7870", lng: "-78.6470", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      { name: "Sitti", slug: "sitti-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "restaurant", weightedScore: "4.500", rawAvgScore: "4.35", rankPosition: 4, rankDelta: 0, totalRatings: 345, description: "Lebanese cuisine on Glenwood South. Raleigh's Mediterranean gem.", priceRange: "$$", phone: "(919) 239-4070", address: "137 S Wilmington St, Raleigh, NC", lat: "35.7770", lng: "-78.6375", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "Videri Chocolate Factory", slug: "videri-chocolate-raleigh", city: "Raleigh", neighborhood: "Warehouse District", category: "cafe", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 289, description: "Bean-to-bar chocolate factory with cafe. Raleigh sweet spot.", priceRange: "$$", phone: "(919) 831-1180", address: "327 W Davie St, Raleigh, NC", lat: "35.7718", lng: "-78.6428", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "La Farm Bakery", slug: "la-farm-bakery-raleigh", city: "Raleigh", neighborhood: "Five Points", category: "bakery", weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan French bakery. Best bread in the Triangle.", priceRange: "$$", phone: "(919) 657-0657", address: "4248 NW Cary Pkwy, Raleigh, NC", lat: "35.8010", lng: "-78.7990", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
-      { name: "Clyde Cooper's Barbecue", slug: "clyde-coopers-bbq-raleigh", city: "Raleigh", neighborhood: "Downtown Raleigh", category: "bbq", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 0, totalRatings: 423, description: "Eastern NC BBQ since 1938. Raleigh's oldest barbecue joint.", priceRange: "$", phone: "(919) 832-7614", address: "109 E Davie St, Raleigh, NC", lat: "35.7730", lng: "-78.6370", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Hummingbird", slug: "hummingbird-raleigh", city: "Raleigh", neighborhood: "Glenwood South", category: "cafe", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Coffee and cocktails with Raleigh rooftop views.", priceRange: "$$", phone: "(919) 301-1749", address: "223 S Wilmington St, Raleigh, NC", lat: "35.7758", lng: "-78.6378", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" }
-    ];
-    ALL_CITY_BUSINESSES = [
-      ...AUSTIN_BUSINESSES,
-      ...HOUSTON_BUSINESSES,
-      ...SAN_ANTONIO_BUSINESSES,
-      ...FORT_WORTH_BUSINESSES,
-      ...OKC_BUSINESSES,
-      ...NOLA_BUSINESSES,
-      ...MEMPHIS_BUSINESSES,
-      ...NASHVILLE_BUSINESSES,
-      ...CHARLOTTE_BUSINESSES,
-      ...RALEIGH_BUSINESSES
-    ];
-    isDirectRun = process.argv[1]?.includes("seed-cities");
-    if (isDirectRun) {
-      seedCities().then(() => process.exit(0)).catch((err) => {
-        console.error("Seed failed:", err);
-        process.exit(1);
-      });
-    }
-  }
-});
-
 // server/email.ts
 var email_exports = {};
 __export(email_exports, {
@@ -7203,7 +7018,7 @@ async function refreshSuggestionsFromDb() {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { sql: sql21 } = await import("drizzle-orm");
+    const { sql: sql20 } = await import("drizzle-orm");
     const cityRows = await db2.selectDistinct({ city: businesses2.city }).from(businesses2);
     const cities = cityRows.map((r) => r.city).filter(Boolean);
     for (const city of cities) {
@@ -7211,7 +7026,7 @@ async function refreshSuggestionsFromDb() {
         name: businesses2.name,
         category: businesses2.category,
         neighborhood: businesses2.neighborhood
-      }).from(businesses2).where(sql21`${businesses2.city} = ${city}`);
+      }).from(businesses2).where(sql20`${businesses2.city} = ${city}`);
       buildSuggestionIndex(city, rows.map((r) => ({
         name: r.name,
         category: r.category,
@@ -7311,13 +7126,13 @@ async function onRankingChange(businessId, businessName, oldRank, newRank, city)
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, isNotNull: isNotNull8, and: and22 } = await import("drizzle-orm");
+    const { eq: eq35, isNotNull: isNotNull8, and: and21 } = await import("drizzle-orm");
     const raters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(ratings6).innerJoin(members4, eq36(ratings6.memberId, members4.id)).where(and22(eq36(ratings6.businessId, businessId), isNotNull8(members4.pushToken)));
+    }).from(ratings6).innerJoin(members4, eq35(ratings6.memberId, members4.id)).where(and21(eq35(ratings6.businessId, businessId), isNotNull8(members4.pushToken)));
     let sent = 0;
     for (const rater of raters) {
       if (!rater.pushToken) continue;
@@ -7351,14 +7166,14 @@ async function onNewRatingForBusiness(businessId, businessName, ratingMemberId, 
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6, members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, isNotNull: isNotNull8, and: and22, ne: ne2 } = await import("drizzle-orm");
+    const { eq: eq35, isNotNull: isNotNull8, and: and21, ne: ne2 } = await import("drizzle-orm");
     const otherRaters = await db2.selectDistinct({
       memberId: ratings6.memberId,
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(ratings6).innerJoin(members4, eq36(ratings6.memberId, members4.id)).where(and22(
-      eq36(ratings6.businessId, businessId),
+    }).from(ratings6).innerJoin(members4, eq35(ratings6.memberId, members4.id)).where(and21(
+      eq35(ratings6.businessId, businessId),
       ne2(ratings6.memberId, ratingMemberId),
       isNotNull8(members4.pushToken)
     ));
@@ -7394,14 +7209,14 @@ async function sendCityHighlightsPush(city) {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4, rankHistory: rankHistory2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, isNotNull: isNotNull8, and: and22, gte: gte9, desc: desc18 } = await import("drizzle-orm");
+    const { eq: eq35, isNotNull: isNotNull8, and: and21, gte: gte9, desc: desc18 } = await import("drizzle-orm");
     const oneWeekAgo = new Date(Date.now() - 7 * 864e5).toISOString();
     const recentChanges = await db2.select({
       businessId: rankHistory2.businessId,
       businessName: businesses2.name,
       oldRank: rankHistory2.previousRank,
       newRank: rankHistory2.rank
-    }).from(rankHistory2).innerJoin(businesses2, eq36(rankHistory2.businessId, businesses2.id)).where(and22(eq36(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc18(rankHistory2.createdAt)).limit(50);
+    }).from(rankHistory2).innerJoin(businesses2, eq35(rankHistory2.businessId, businesses2.id)).where(and21(eq35(businesses2.city, city), gte9(rankHistory2.createdAt, oneWeekAgo))).orderBy(desc18(rankHistory2.createdAt)).limit(50);
     if (recentChanges.length === 0) return 0;
     let biggestMover = recentChanges[0];
     let biggestDelta = 0;
@@ -7418,7 +7233,7 @@ async function sendCityHighlightsPush(city) {
       pushToken: members4.pushToken,
       notificationPrefs: members4.notificationPrefs,
       notificationFrequencyPrefs: members4.notificationFrequencyPrefs
-    }).from(members4).where(and22(eq36(members4.city, city), isNotNull8(members4.pushToken)));
+    }).from(members4).where(and21(eq35(members4.city, city), isNotNull8(members4.pushToken)));
     let sent = 0;
     for (const user of cityUsers) {
       if (!user.pushToken) continue;
@@ -7618,666 +7433,18 @@ var init_notification_triggers = __esm({
   }
 });
 
-// server/seed.ts
-var seed_exports = {};
-__export(seed_exports, {
-  seedDatabase: () => seedDatabase
-});
-import { sql as sql19, eq as eq33, and as and20 } from "drizzle-orm";
-import bcrypt2 from "bcrypt";
-function getHoursForCategory(category) {
-  switch (category) {
-    case "cafe":
-      return HOURS_CAFE;
-    case "bar":
-      return HOURS_BAR;
-    case "bakery":
-      return HOURS_BAKERY;
-    case "fast_food":
-      return HOURS_FAST_FOOD;
-    case "street_food":
-      return HOURS_STREET_FOOD;
-    default:
-      return HOURS_RESTAURANT;
-  }
-}
-async function seedDatabase() {
-  console.log("Seeding database...");
-  const existingBusinesses = await db.select({ id: businesses.id }).from(businesses).limit(1);
-  if (existingBusinesses.length > 0) {
-    console.log("Database already seeded, skipping...");
-    return;
-  }
-  const insertedBusinesses = [];
-  for (const biz of SEED_BUSINESSES) {
-    const dineInCount = Math.max(3, Math.floor(biz.totalRatings * 0.6));
-    const credWeightedSum = (parseFloat(biz.weightedScore) * biz.totalRatings * 0.7).toFixed(4);
-    const eligible = biz.totalRatings >= 10 && dineInCount >= 1;
-    const [inserted] = await db.insert(businesses).values({
-      name: biz.name,
-      slug: biz.slug,
-      category: biz.category,
-      cuisine: biz.cuisine || null,
-      city: "Dallas",
-      neighborhood: biz.neighborhood,
-      address: biz.address,
-      phone: biz.phone,
-      website: biz.website || null,
-      lat: biz.lat,
-      lng: biz.lng,
-      weightedScore: biz.weightedScore,
-      rawAvgScore: biz.rawAvgScore,
-      rankPosition: biz.rankPosition,
-      rankDelta: biz.rankDelta,
-      totalRatings: biz.totalRatings,
-      description: biz.description,
-      priceRange: biz.priceRange,
-      isOpenNow: biz.isOpenNow,
-      photoUrl: biz.photoUrl || null,
-      openingHours: getHoursForCategory(biz.category),
-      hoursLastUpdated: /* @__PURE__ */ new Date(),
-      dineInCount,
-      credibilityWeightedSum: credWeightedSum,
-      leaderboardEligible: eligible,
-      isActive: true,
-      dataSource: "admin"
-    }).returning();
-    insertedBusinesses.push(inserted);
-  }
-  console.log(`Seeded ${insertedBusinesses.length} businesses`);
-  const photoSets = {};
-  let photoCount = 0;
-  for (const biz of insertedBusinesses) {
-    const photos = photoSets[biz.slug] || (biz.photoUrl ? [biz.photoUrl] : []);
-    for (let i = 0; i < photos.length; i++) {
-      await db.insert(businessPhotos).values({
-        businessId: biz.id,
-        photoUrl: photos[i],
-        isHero: i === 0,
-        sortOrder: i
-      });
-      photoCount++;
-    }
-  }
-  console.log(`Seeded ${photoCount} business photos`);
-  for (const dishGroup of SEED_DISHES) {
-    const biz = insertedBusinesses.find((b) => b.slug === dishGroup.businessSlug);
-    if (!biz) continue;
-    for (const dish of dishGroup.dishes) {
-      await db.insert(dishes).values({
-        businessId: biz.id,
-        name: dish.name,
-        nameNormalized: dish.name.toLowerCase().trim(),
-        suggestedBy: "community",
-        voteCount: dish.voteCount
-      });
-    }
-  }
-  console.log("Seeded dishes");
-  const SEED_DISH_BOARDS = [
-    { dishName: "Biryani", dishSlug: "biryani", dishEmoji: "\u{1F35B}", displayOrder: 1 },
-    { dishName: "Ramen", dishSlug: "ramen", dishEmoji: "\u{1F35C}", displayOrder: 2 },
-    { dishName: "Taco", dishSlug: "taco", dishEmoji: "\u{1F32E}", displayOrder: 3 },
-    { dishName: "Burger", dishSlug: "burger", dishEmoji: "\u{1F354}", displayOrder: 4 },
-    { dishName: "Coffee", dishSlug: "coffee", dishEmoji: "\u2615", displayOrder: 5 },
-    // Sprint 303: Expanded dish leaderboards
-    { dishName: "Pizza", dishSlug: "pizza", dishEmoji: "\u{1F355}", displayOrder: 6 },
-    { dishName: "Pho", dishSlug: "pho", dishEmoji: "\u{1F372}", displayOrder: 7 },
-    { dishName: "Dosa", dishSlug: "dosa", dishEmoji: "\u{1FAD3}", displayOrder: 8 },
-    { dishName: "Kebab", dishSlug: "kebab", dishEmoji: "\u{1F959}", displayOrder: 9 },
-    { dishName: "Brisket", dishSlug: "brisket", dishEmoji: "\u{1F969}", displayOrder: 10 },
-    // Sprint 315: Expanded dish leaderboards
-    { dishName: "Butter Chicken", dishSlug: "butter-chicken", dishEmoji: "\u{1F357}", displayOrder: 11 },
-    { dishName: "Samosa", dishSlug: "samosa", dishEmoji: "\u{1F95F}", displayOrder: 12 },
-    { dishName: "Burrito", dishSlug: "burrito", dishEmoji: "\u{1F32F}", displayOrder: 13 },
-    { dishName: "Enchilada", dishSlug: "enchilada", dishEmoji: "\u{1FAD4}", displayOrder: 14 },
-    { dishName: "Sushi", dishSlug: "sushi", dishEmoji: "\u{1F363}", displayOrder: 15 },
-    { dishName: "Pasta", dishSlug: "pasta", dishEmoji: "\u{1F35D}", displayOrder: 16 },
-    { dishName: "Banh Mi", dishSlug: "banh-mi", dishEmoji: "\u{1F956}", displayOrder: 17 },
-    { dishName: "Wings", dishSlug: "wings", dishEmoji: "\u{1F357}", displayOrder: 18 },
-    { dishName: "Falafel", dishSlug: "falafel", dishEmoji: "\u{1F9C6}", displayOrder: 19 },
-    // Sprint 316: Korean + Thai leaderboards
-    { dishName: "Korean BBQ", dishSlug: "korean-bbq", dishEmoji: "\u{1F969}", displayOrder: 20 },
-    { dishName: "Bibimbap", dishSlug: "bibimbap", dishEmoji: "\u{1F35A}", displayOrder: 21 },
-    { dishName: "Fried Chicken", dishSlug: "fried-chicken", dishEmoji: "\u{1F357}", displayOrder: 22 },
-    { dishName: "Pad Thai", dishSlug: "pad-thai", dishEmoji: "\u{1F35C}", displayOrder: 23 },
-    { dishName: "Green Curry", dishSlug: "green-curry", dishEmoji: "\u{1F35B}", displayOrder: 24 },
-    // Sprint 320: Chinese leaderboards
-    { dishName: "Dim Sum", dishSlug: "dim-sum", dishEmoji: "\u{1F95F}", displayOrder: 25 },
-    { dishName: "Peking Duck", dishSlug: "peking-duck", dishEmoji: "\u{1F986}", displayOrder: 26 },
-    { dishName: "Hot Pot", dishSlug: "hot-pot", dishEmoji: "\u{1FAD5}", displayOrder: 27 }
-  ];
-  for (const board of SEED_DISH_BOARDS) {
-    const [lb] = await db.insert(dishLeaderboards).values({
-      city: "dallas",
-      dishName: board.dishName,
-      dishSlug: board.dishSlug,
-      dishEmoji: board.dishEmoji,
-      status: "active",
-      displayOrder: board.displayOrder,
-      source: "system"
-    }).returning();
-    const slugPattern = "%" + board.dishSlug + "%";
-    const spacePattern = "%" + board.dishSlug.replace(/-/g, " ") + "%";
-    const matchingDishes = await db.select({ businessId: dishes.businessId }).from(dishes).innerJoin(businesses, eq33(dishes.businessId, businesses.id)).where(and20(
-      eq33(businesses.city, "Dallas"),
-      sql19`(${dishes.nameNormalized} ILIKE ${slugPattern} OR ${dishes.nameNormalized} ILIKE ${spacePattern})`
-    ));
-    const uniqueBizIds = [...new Set(matchingDishes.map((d) => d.businessId))];
-    for (let i = 0; i < uniqueBizIds.length; i++) {
-      const biz = insertedBusinesses.find((b) => b.id === uniqueBizIds[i]);
-      if (!biz) continue;
-      await db.insert(dishLeaderboardEntries).values({
-        leaderboardId: lb.id,
-        businessId: biz.id,
-        dishScore: (4.5 - i * 0.3).toFixed(2),
-        dishRatingCount: Math.max(3, 15 - i * 3),
-        rankPosition: i + 1,
-        photoUrl: biz.photoUrl
-      });
-    }
-    const MIN_ENTRIES = 5;
-    if (uniqueBizIds.length < MIN_ENTRIES) {
-      const remaining = MIN_ENTRIES - uniqueBizIds.length;
-      const usedIds = new Set(uniqueBizIds);
-      const candidates = insertedBusinesses.filter((b) => !usedIds.has(b.id) && b.city === "Dallas");
-      const offset = board.displayOrder * 3 % candidates.length;
-      for (let j = 0; j < remaining && j < candidates.length; j++) {
-        const biz = candidates[(offset + j) % candidates.length];
-        const rank = uniqueBizIds.length + j + 1;
-        await db.insert(dishLeaderboardEntries).values({
-          leaderboardId: lb.id,
-          businessId: biz.id,
-          dishScore: (4 - j * 0.25).toFixed(2),
-          dishRatingCount: Math.max(2, 8 - j * 2),
-          rankPosition: rank,
-          photoUrl: biz.photoUrl
-        });
-      }
-    }
-  }
-  console.log("Seeded dish leaderboards (27 boards for Dallas, min 5 entries each)");
-  const spiceGarden = insertedBusinesses.find((b) => b.slug === "spice-garden-dallas");
-  const yardKitchen = insertedBusinesses.find((b) => b.slug === "the-yard-kitchen-dallas");
-  const luckyCat = insertedBusinesses.find((b) => b.slug === "lucky-cat-ramen-dallas");
-  const cultivar = insertedBusinesses.find((b) => b.slug === "cultivar-coffee-dallas");
-  if (spiceGarden && yardKitchen) {
-    const endDate = /* @__PURE__ */ new Date();
-    endDate.setDate(endDate.getDate() + 18);
-    await db.insert(challengers).values({
-      challengerId: yardKitchen.id,
-      defenderId: spiceGarden.id,
-      category: "restaurant",
-      city: "Dallas",
-      entryFeePaid: true,
-      startDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1e3),
-      endDate,
-      challengerWeightedVotes: "1847.500",
-      defenderWeightedVotes: "2234.800",
-      totalVotes: 142,
-      status: "active"
-    });
-    await db.update(businesses).set({ inChallenger: true }).where(sql19`${businesses.id} IN (${spiceGarden.id}, ${yardKitchen.id})`);
-    console.log("Seeded challenger: Spice Garden vs The Yard Kitchen");
-  }
-  if (cultivar && luckyCat) {
-    const endDate2 = /* @__PURE__ */ new Date();
-    endDate2.setDate(endDate2.getDate() + 25);
-    await db.insert(challengers).values({
-      challengerId: luckyCat.id,
-      defenderId: cultivar.id,
-      category: "cafe",
-      city: "Dallas",
-      entryFeePaid: true,
-      startDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1e3),
-      endDate: endDate2,
-      challengerWeightedVotes: "892.300",
-      defenderWeightedVotes: "1156.700",
-      totalVotes: 78,
-      status: "active"
-    });
-    console.log("Seeded challenger: Cultivar Coffee vs Lucky Cat Ramen");
-  }
-  const demoPassword = await bcrypt2.hash("demo123", 10);
-  await db.insert(members).values({
-    displayName: "Alex Chen",
-    username: "alexchen",
-    email: "alex@demo.com",
-    password: demoPassword,
-    city: "Dallas",
-    credibilityScore: 142,
-    credibilityTier: "city",
-    totalRatings: 12,
-    totalCategories: 3,
-    distinctBusinesses: 8,
-    ratingVariance: "1.200",
-    isFoundingMember: false,
-    joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3)
-  });
-  console.log("Seeded demo member: alex@demo.com / demo123");
-  console.log("Database seeding complete!");
-}
-var SEED_BUSINESSES, SEED_DISHES, HOURS_RESTAURANT, HOURS_CAFE, HOURS_BAR, HOURS_BAKERY, HOURS_FAST_FOOD, HOURS_STREET_FOOD;
-var init_seed = __esm({
-  "server/seed.ts"() {
-    "use strict";
-    init_db();
-    init_schema();
-    SEED_BUSINESSES = [
-      // ── Indian Restaurants ────────────────────────────────────
-      { name: "Spice Garden", slug: "spice-garden-dallas", neighborhood: "Uptown", category: "restaurant", cuisine: "indian", weightedScore: "4.720", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 312, description: "Thirty years of perfecting North Indian cuisine. Legendary biryani and butter chicken.", priceRange: "$$$", phone: "(214) 555-0192", address: "3821 Cedar Springs Rd, Uptown, Dallas", lat: "32.8087452", lng: "-96.8024537", isOpenNow: true, website: "https://spicegardendallas.com", photoUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&h=400&fit=crop" },
-      { name: "Tandoori Flames", slug: "tandoori-flames-irving", neighborhood: "Irving", category: "restaurant", cuisine: "indian", weightedScore: "4.650", rawAvgScore: "4.52", rankPosition: 2, rankDelta: 1, totalRatings: 278, description: "Authentic Hyderabadi biryani and tandoori specialties. The dum biryani is legendary.", priceRange: "$$", phone: "(972) 555-0301", address: "7600 N MacArthur Blvd, Irving, Dallas", lat: "32.8912345", lng: "-96.9512345", isOpenNow: true, website: "https://tandooriflames.com", photoUrl: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=600&h=400&fit=crop" },
-      { name: "Bawarchi Biryanis", slug: "bawarchi-biryanis-plano", neighborhood: "Plano", category: "restaurant", cuisine: "indian", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 3, rankDelta: 0, totalRatings: 245, description: "South Indian biryani house known for Hyderabadi goat biryani and dosas.", priceRange: "$$", phone: "(469) 555-0401", address: "3320 Coit Rd, Plano, Dallas", lat: "33.0212345", lng: "-96.7712345", isOpenNow: true, website: "https://bawarchibiryanis.com", photoUrl: "https://images.unsplash.com/photo-1596797038530-2c107229654b?w=600&h=400&fit=crop" },
-      { name: "Chennai Cafe", slug: "chennai-cafe-frisco", neighborhood: "Frisco", category: "restaurant", cuisine: "indian", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 4, rankDelta: -1, totalRatings: 189, description: "Pure vegetarian South Indian. The masala dosa and filter coffee are perfection.", priceRange: "$", phone: "(469) 555-0501", address: "8200 Preston Rd, Frisco, Dallas", lat: "33.1012345", lng: "-96.8012345", isOpenNow: false, website: "https://chennaicafe.com", photoUrl: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&h=400&fit=crop" },
-      { name: "Desi District", slug: "desi-district-richardson", neighborhood: "Richardson", category: "restaurant", cuisine: "indian", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 5, rankDelta: 2, totalRatings: 167, description: "Street food-style Indian \u2014 chaat, pav bhaji, vada pav. Richardson's desi favorite.", priceRange: "$", phone: "(972) 555-0601", address: "101 S Greenville Ave, Richardson, Dallas", lat: "32.9512345", lng: "-96.7234567", isOpenNow: true, website: "https://desidistrict.com", photoUrl: "https://images.unsplash.com/photo-1606491956689-2ea866880049?w=600&h=400&fit=crop" },
-      // ── Mexican Restaurants ───────────────────────────────────
-      { name: "Abuela's Kitchen", slug: "abuelas-kitchen-dallas", neighborhood: "Oak Cliff", category: "restaurant", cuisine: "mexican", weightedScore: "4.480", rawAvgScore: "4.35", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Three generations of Mexican recipes from Oaxaca. Mole negro is transcendent.", priceRange: "$", phone: "(214) 555-0567", address: "1234 Jefferson Blvd, Oak Cliff, Dallas", lat: "32.7453102", lng: "-96.8312487", isOpenNow: true, website: "https://abuelaskitchendallas.com", photoUrl: "https://images.unsplash.com/photo-1653005753991-22a8bf831f89?w=600&h=400&fit=crop" },
-      { name: "El Rincon del Sabor", slug: "el-rincon-del-sabor-dallas", neighborhood: "Pleasant Grove", category: "restaurant", cuisine: "mexican", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 1, totalRatings: 198, description: "Birria tacos, pozole, and menudo. Weekend specials draw lines down the block.", priceRange: "$", phone: "(214) 555-3201", address: "1902 Buckner Blvd, Pleasant Grove, Dallas", lat: "32.7312345", lng: "-96.7112345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Casa Oaxaca", slug: "casa-oaxaca-dallas", neighborhood: "Bishop Arts", category: "restaurant", cuisine: "mexican", weightedScore: "4.250", rawAvgScore: "4.12", rankPosition: 3, rankDelta: -1, totalRatings: 167, description: "Authentic Oaxacan cuisine \u2014 tlayudas, mezcal flights, chapulines.", priceRange: "$$", phone: "(214) 555-3301", address: "335 W Davis St, Bishop Arts, Dallas", lat: "32.7489012", lng: "-96.8312345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
-      { name: "Taqueria La Ventana", slug: "taqueria-la-ventana-dallas", neighborhood: "Oak Cliff", category: "restaurant", cuisine: "mexican", weightedScore: "4.120", rawAvgScore: "4.00", rankPosition: 4, rankDelta: 0, totalRatings: 312, description: "Al pastor from the trompo, fresh tortillas, legendary salsa verde.", priceRange: "$", phone: "(214) 555-3401", address: "2456 W Illinois Ave, Oak Cliff, Dallas", lat: "32.7312345", lng: "-96.8456789", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop" },
-      // ── Japanese Restaurants ──────────────────────────────────
-      { name: "Lucky Cat Ramen", slug: "lucky-cat-ramen-dallas", neighborhood: "Deep Ellum", category: "restaurant", cuisine: "japanese", weightedScore: "4.510", rawAvgScore: "4.38", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Authentic Japanese ramen with house-made noodles. Tonkotsu is the star.", priceRange: "$$", phone: "(214) 555-0345", address: "2815 Main St, Deep Ellum, Dallas", lat: "32.7833148", lng: "-96.7836459", isOpenNow: false, website: "https://luckycatramen.com", photoUrl: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop" },
-      { name: "Uchi Dallas", slug: "uchi-dallas", neighborhood: "Oak Lawn", category: "restaurant", cuisine: "japanese", weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 2, rankDelta: 1, totalRatings: 278, description: "Japanese farmhouse dining with innovative sushi and hot tastings.", priceRange: "$$$$", phone: "(214) 855-5454", address: "2817 Maple Ave, Oak Lawn, Dallas", lat: "32.8023000", lng: "-96.8100000", isOpenNow: true, website: "https://uchidallas.com", photoUrl: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&h=400&fit=crop" },
-      { name: "Tei-An", slug: "tei-an-dallas", neighborhood: "Arts District", category: "restaurant", cuisine: "japanese", weightedScore: "4.250", rawAvgScore: "4.12", rankPosition: 3, rankDelta: -1, totalRatings: 189, description: "Hand-cut soba noodles and Japanese small plates in the Arts District.", priceRange: "$$$", phone: "(214) 220-2828", address: "1722 Routh St, Arts District, Dallas", lat: "32.7890000", lng: "-96.7990000", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1553621042-f6e147245754?w=600&h=400&fit=crop" },
-      // ── Korean Restaurants ────────────────────────────────────
-      { name: "Seoul Brothers", slug: "seoul-brothers-dallas", neighborhood: "Carrollton", category: "restaurant", cuisine: "korean", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 1, rankDelta: 0, totalRatings: 143, description: "Korean fusion with bold flavors. The bibimbap and Korean fried chicken are must-try.", priceRange: "$$", phone: "(214) 555-0678", address: "2570 Old Denton Rd, Carrollton, Dallas", lat: "32.9537482", lng: "-96.8903456", isOpenNow: false, website: "https://seoulbrothersdallas.com", photoUrl: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?w=600&h=400&fit=crop" },
-      { name: "Koryo Kalbi", slug: "koryo-kalbi-dallas", neighborhood: "Royal Lane", category: "restaurant", cuisine: "korean", weightedScore: "4.220", rawAvgScore: "4.10", rankPosition: 2, rankDelta: 1, totalRatings: 134, description: "Traditional Korean BBQ with tabletop grills. The galbi and japchae are standouts.", priceRange: "$$", phone: "(214) 555-3501", address: "2638 Royal Lane, Dallas", lat: "32.8812345", lng: "-96.7812345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&h=400&fit=crop" },
-      // ── Thai Restaurants ──────────────────────────────────────
-      { name: "Khao Noodle Shop", slug: "khao-noodle-dallas", neighborhood: "Lowest Greenville", category: "restaurant", cuisine: "thai", weightedScore: "4.400", rawAvgScore: "4.28", rankPosition: 1, rankDelta: 0, totalRatings: 154, description: "Northern Thai street food with zero compromise. James Beard-recognized.", priceRange: "$$", phone: "(214) 555-0887", address: "4812 Bryan St, Lowest Greenville, Dallas", lat: "32.7908432", lng: "-96.7712345", isOpenNow: true, website: "https://khaonoodleshop.com", photoUrl: "https://images.unsplash.com/photo-1552611052-33e04de1b100?w=600&h=400&fit=crop" },
-      { name: "Asian Mint", slug: "asian-mint-dallas", neighborhood: "Knox-Henderson", category: "restaurant", cuisine: "thai", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Modern Thai with creative cocktails. The pad thai and green curry are signatures.", priceRange: "$$", phone: "(214) 555-3601", address: "4901 Bryan St, Knox-Henderson, Dallas", lat: "32.7912345", lng: "-96.7712345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?w=600&h=400&fit=crop" },
-      // ── Italian Restaurants ───────────────────────────────────
-      { name: "Lucia", slug: "lucia-dallas", neighborhood: "Bishop Arts", category: "restaurant", cuisine: "italian", weightedScore: "4.450", rawAvgScore: "4.32", rankPosition: 1, rankDelta: 0, totalRatings: 167, description: "Chef David Uygur's intimate Italian-inspired dining room. Handmade pasta.", priceRange: "$$$$", phone: "(214) 555-0666", address: "408 W 8th St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8276789", isOpenNow: false, website: "https://luciadallas.com", photoUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=400&fit=crop" },
-      { name: "Cane Rosso", slug: "cane-rosso-dallas", neighborhood: "Deep Ellum", category: "restaurant", cuisine: "italian", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 2, rankDelta: 1, totalRatings: 234, description: "Neapolitan-style pizza with locally sourced ingredients. The honey bastard is iconic.", priceRange: "$$", phone: "(214) 741-1188", address: "2612 Commerce St, Deep Ellum, Dallas", lat: "32.7823000", lng: "-96.7858000", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&h=400&fit=crop" },
-      // ── American Restaurants ──────────────────────────────────
-      { name: "The Yard Kitchen", slug: "the-yard-kitchen-dallas", neighborhood: "Bishop Arts", category: "restaurant", cuisine: "american", weightedScore: "4.580", rawAvgScore: "4.45", rankPosition: 1, rankDelta: 0, totalRatings: 287, description: "Farm-to-table restaurant in Bishop Arts District. Hyper-seasonal menus.", priceRange: "$$", phone: "(214) 555-0234", address: "402 N Bishop Ave, Bishop Arts, Dallas", lat: "32.7505612", lng: "-96.8267483", isOpenNow: true, website: "https://theyardkitchen.com", photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Smoke & Vine", slug: "smoke-and-vine-dallas", neighborhood: "Oak Lawn", category: "restaurant", cuisine: "american", weightedScore: "4.350", rawAvgScore: "4.20", rankPosition: 2, rankDelta: 2, totalRatings: 156, description: "Texas BBQ meets fine wine in this Oak Lawn gem.", priceRange: "$$$", phone: "(214) 555-0456", address: "4011 Lemmon Ave, Oak Lawn, Dallas", lat: "32.8118523", lng: "-96.8200134", isOpenNow: true, website: "https://smokeandvinedallas.com", photoUrl: "https://images.unsplash.com/photo-1544025162-d76694265947?w=600&h=400&fit=crop" },
-      { name: "Pecan Lodge", slug: "pecan-lodge-dallas", neighborhood: "Deep Ellum", category: "restaurant", cuisine: "american", weightedScore: "4.250", rawAvgScore: "4.12", rankPosition: 3, rankDelta: 0, totalRatings: 523, description: "The most decorated BBQ joint in Dallas history. Brisket perfection.", priceRange: "$$", phone: "(214) 555-0948", address: "2702 Main St, Deep Ellum, Dallas", lat: "32.7844523", lng: "-96.7842178", isOpenNow: true, website: "https://pecanlodge.com", photoUrl: "https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=600&h=400&fit=crop" },
-      { name: "Fearing's", slug: "fearings-dallas", neighborhood: "Uptown", category: "restaurant", cuisine: "american", weightedScore: "4.100", rawAvgScore: "3.98", rankPosition: 4, rankDelta: -1, totalRatings: 178, description: "Dean Fearing's flagship inside the Ritz-Carlton. Bold Texas flavors.", priceRange: "$$$$", phone: "(214) 555-0220", address: "2121 McKinney Ave, Uptown, Dallas", lat: "32.7978432", lng: "-96.8012345", isOpenNow: true, website: "https://fearingsrestaurant.com", photoUrl: "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=600&h=400&fit=crop" },
-      // ── Vietnamese Restaurant ─────────────────────────────────
-      { name: "Pho Empire", slug: "pho-empire-dallas", neighborhood: "Garland", category: "restaurant", cuisine: "vietnamese", weightedScore: "4.320", rawAvgScore: "4.18", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Pho simmered for 24 hours. The rare beef pho and bun bo Hue are unmatched.", priceRange: "$", phone: "(972) 555-3701", address: "2345 W Walnut St, Garland, Dallas", lat: "32.9012345", lng: "-96.6512345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop" },
-      { name: "Saigon Bites", slug: "saigon-bites-dallas", neighborhood: "East Dallas", category: "restaurant", cuisine: "vietnamese", weightedScore: "4.150", rawAvgScore: "4.02", rankPosition: 2, rankDelta: 1, totalRatings: 145, description: "Banh mi, spring rolls, and broken rice plates. Fast and flavorful.", priceRange: "$", phone: "(214) 555-3801", address: "4523 Bryan St, East Dallas, Dallas", lat: "32.7912345", lng: "-96.7612345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1576577445504-6af96477db52?w=600&h=400&fit=crop" },
-      // ── Mediterranean Restaurant ──────────────────────────────
-      { name: "Kabob King", slug: "kabob-king-dallas", neighborhood: "Richardson", category: "restaurant", cuisine: "mediterranean", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 1, rankDelta: 0, totalRatings: 145, description: "Pakistani-style seekh kabobs grilled fresh. The lamb chops are superb.", priceRange: "$", phone: "(214) 555-1567", address: "750 W Arapaho Rd, Richardson, Dallas", lat: "32.9512345", lng: "-96.7534567", isOpenNow: true, website: "https://kabobkingdallas.com", photoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" },
-      // ── Chinese Restaurant ────────────────────────────────────
-      { name: "Royal China", slug: "royal-china-dallas", neighborhood: "Richardson", category: "restaurant", cuisine: "chinese", weightedScore: "4.300", rawAvgScore: "4.18", rankPosition: 1, rankDelta: 0, totalRatings: 198, description: "Dim sum palace. Weekend carts, Peking duck, and hand-pulled noodles.", priceRange: "$$", phone: "(972) 555-3901", address: "3924 N Central Expy, Richardson, Dallas", lat: "32.9412345", lng: "-96.7412345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600&h=400&fit=crop" },
-      { name: "Sichuan House", slug: "sichuan-house-dallas", neighborhood: "Plano", category: "restaurant", cuisine: "chinese", weightedScore: "4.180", rawAvgScore: "4.05", rankPosition: 2, rankDelta: 1, totalRatings: 156, description: "Fiery Sichuan specialties \u2014 mapo tofu, dan dan noodles, dry pot.", priceRange: "$$", phone: "(469) 555-4001", address: "2500 N Central Expy, Plano, Dallas", lat: "33.0112345", lng: "-96.7212345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=600&h=400&fit=crop" },
-      // ── Sprint 298: Additional restaurants to meet 3-per-cuisine minimum ──
-      { name: "Golden Dragon Palace", slug: "golden-dragon-palace-dallas", neighborhood: "Carrollton", category: "restaurant", cuisine: "chinese", weightedScore: "4.050", rawAvgScore: "3.92", rankPosition: 3, rankDelta: 0, totalRatings: 112, description: "Cantonese classics and weekend dim sum carts.", priceRange: "$$", phone: "(972) 555-4101", address: "1820 E Belt Line Rd, Carrollton, Dallas", lat: "32.9612345", lng: "-96.8812345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=600&h=400&fit=crop" },
-      { name: "Nonna's Trattoria", slug: "nonnas-trattoria-dallas", neighborhood: "Greenville", category: "restaurant", cuisine: "italian", weightedScore: "4.080", rawAvgScore: "3.95", rankPosition: 3, rankDelta: 1, totalRatings: 134, description: "Handmade pasta and wood-fired pizza in a cozy trattoria.", priceRange: "$$", phone: "(214) 555-4201", address: "2912 Greenville Ave, Greenville, Dallas", lat: "32.8156789", lng: "-96.7734567", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&h=400&fit=crop" },
-      { name: "Seoul BBQ House", slug: "seoul-bbq-house-dallas", neighborhood: "Carrollton", category: "restaurant", cuisine: "korean", weightedScore: "4.100", rawAvgScore: "3.98", rankPosition: 3, rankDelta: 0, totalRatings: 128, description: "Tabletop grills, banchan, and premium beef cuts.", priceRange: "$$", phone: "(972) 555-4301", address: "2625 Old Denton Rd, Carrollton, Dallas", lat: "33.0012345", lng: "-96.8912345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1590301157890-4810ed352733?w=600&h=400&fit=crop" },
-      { name: "Thai Orchid Garden", slug: "thai-orchid-garden-dallas", neighborhood: "Richardson", category: "restaurant", cuisine: "thai", weightedScore: "4.050", rawAvgScore: "3.90", rankPosition: 3, rankDelta: 1, totalRatings: 109, description: "Authentic Thai curries, pad see ew, and mango sticky rice.", priceRange: "$", phone: "(972) 555-4401", address: "816 W Arapaho Rd, Richardson, Dallas", lat: "32.9534567", lng: "-96.7556789", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1562565652-a0d8f0c59eb4?w=600&h=400&fit=crop" },
-      { name: "Pho 95", slug: "pho-95-dallas", neighborhood: "Arlington", category: "restaurant", cuisine: "vietnamese", weightedScore: "4.020", rawAvgScore: "3.88", rankPosition: 3, rankDelta: 0, totalRatings: 95, description: "Straightforward Vietnamese pho and vermicelli bowls.", priceRange: "$", phone: "(817) 555-4501", address: "4250 S Cooper St, Arlington, Dallas", lat: "32.6912345", lng: "-97.1112345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&h=400&fit=crop" },
-      { name: "Istanbul Grill", slug: "istanbul-grill-dallas", neighborhood: "Plano", category: "restaurant", cuisine: "mediterranean", weightedScore: "4.150", rawAvgScore: "4.02", rankPosition: 2, rankDelta: 0, totalRatings: 134, description: "Turkish kebabs, hummus, and fresh baked pide.", priceRange: "$$", phone: "(469) 555-4601", address: "3000 Custer Rd, Plano, Dallas", lat: "33.0312345", lng: "-96.7812345", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" },
-      { name: "Shawarma Point", slug: "shawarma-point-dallas", neighborhood: "Irving", category: "restaurant", cuisine: "mediterranean", weightedScore: "4.020", rawAvgScore: "3.90", rankPosition: 3, rankDelta: 1, totalRatings: 98, description: "Lebanese-style shawarma wraps and falafel plates.", priceRange: "$", phone: "(972) 555-4701", address: "1234 W Pioneer Dr, Irving, Dallas", lat: "32.8234567", lng: "-96.9434567", isOpenNow: true, photoUrl: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?w=600&h=400&fit=crop" },
-      // ── Cafes (no cuisine — category-level) ───────────────────
-      { name: "Cultivar Coffee", slug: "cultivar-coffee-dallas", neighborhood: "East Dallas", category: "cafe", cuisine: null, weightedScore: "4.650", rawAvgScore: "4.50", rankPosition: 1, rankDelta: 0, totalRatings: 189, description: "Single-origin pour-overs and house-roasted beans.", priceRange: "$$", phone: "(214) 555-0789", address: "313 N Bishop Ave, East Dallas, Dallas", lat: "32.7932145", lng: "-96.7645321", isOpenNow: true, website: "https://cultivarcoffee.com", photoUrl: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&h=400&fit=crop" },
-      { name: "Houndstooth Coffee", slug: "houndstooth-coffee-dallas", neighborhood: "Henderson", category: "cafe", cuisine: null, weightedScore: "4.520", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 167, description: "Specialty coffee bar with minimalist aesthetic.", priceRange: "$$", phone: "(214) 555-0890", address: "1900 N Henderson Ave, Henderson, Dallas", lat: "32.7998765", lng: "-96.7789012", isOpenNow: true, website: "https://houndstoothcoffee.com", photoUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&h=400&fit=crop" },
-      { name: "The Brew Room", slug: "the-brew-room-dallas", neighborhood: "Uptown", category: "cafe", cuisine: null, weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 132, description: "Cozy Uptown cafe with craft coffee and pastries.", priceRange: "$", phone: "(214) 555-0901", address: "2901 Thomas Ave, Uptown, Dallas", lat: "32.8012345", lng: "-96.7976543", isOpenNow: false, website: "https://thebrewroomdallas.com", photoUrl: "https://images.unsplash.com/photo-1559305616-3f99cd43e353?w=600&h=400&fit=crop" },
-      { name: "Mudleaf Coffee", slug: "mudleaf-coffee-dallas", neighborhood: "Oak Cliff", category: "cafe", cuisine: null, weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 98, description: "Community-focused coffee shop in Oak Cliff.", priceRange: "$", phone: "(214) 555-1012", address: "1621 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8345678", isOpenNow: true, website: "https://mudleafcoffee.com", photoUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600&h=400&fit=crop" },
-      { name: "Merit Coffee", slug: "merit-coffee-dallas", neighborhood: "Design District", category: "cafe", cuisine: null, weightedScore: "4.100", rawAvgScore: "4.00", rankPosition: 5, rankDelta: 0, totalRatings: 76, description: "Texas-based specialty coffee roasters.", priceRange: "$$", phone: "(214) 555-1123", address: "1445 Hi Line Dr, Design District, Dallas", lat: "32.7856789", lng: "-96.8123456", isOpenNow: false, website: "https://meritcoffee.com", photoUrl: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=600&h=400&fit=crop" },
-      // ── Street Food ───────────────────────────────────────────
-      { name: "Taco Stop", slug: "taco-stop-dallas", neighborhood: "Oak Cliff", category: "street_food", cuisine: "mexican", weightedScore: "4.710", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 456, description: "Legendary street tacos \u2014 the al pastor is unreal.", priceRange: "$", phone: "(214) 555-1234", address: "2811 Greenville Ave, Oak Cliff, Dallas", lat: "32.7423456", lng: "-96.8378901", isOpenNow: true, website: "https://tacostopdallas.com", photoUrl: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&h=400&fit=crop" },
-      { name: "Fuel City Tacos", slug: "fuel-city-tacos-dallas", neighborhood: "Riverfront", category: "street_food", cuisine: "mexican", weightedScore: "4.540", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 378, description: "Gas station tacos that are famous citywide.", priceRange: "$", phone: "(214) 555-1345", address: "801 S Riverfront Blvd, Riverfront, Dallas", lat: "32.7701234", lng: "-96.8178901", isOpenNow: true, website: "https://fuelcitytacos.com", photoUrl: "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=600&h=400&fit=crop" },
-      { name: "Elote Man", slug: "elote-man-dallas", neighborhood: "Pleasant Grove", category: "street_food", cuisine: "mexican", weightedScore: "4.320", rawAvgScore: "4.20", rankPosition: 3, rankDelta: 1, totalRatings: 189, description: "Mexican street corn done right.", priceRange: "$", phone: "(214) 555-1456", address: "Mobile - Pleasant Grove area", lat: "32.7234567", lng: "-96.7456789", isOpenNow: false, photoUrl: "https://images.unsplash.com/photo-1504544750208-dc0358e63f7f?w=600&h=400&fit=crop" },
-      { name: "Chimmy's Churros", slug: "chimmys-churros-dallas", neighborhood: "Deep Ellum", category: "street_food", cuisine: "mexican", weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 112, description: "Fresh churros with creative dipping sauces.", priceRange: "$", phone: "(214) 555-1678", address: "2737 Main St, Deep Ellum, Dallas", lat: "32.7834567", lng: "-96.7823456", isOpenNow: true, website: "https://chimmyschurros.com", photoUrl: "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=600&h=400&fit=crop" },
-      // ── Bars ──────────────────────────────────────────────────
-      { name: "Midnight Rambler", slug: "midnight-rambler-dallas", neighborhood: "Downtown", category: "bar", cuisine: null, weightedScore: "4.680", rawAvgScore: "4.55", rankPosition: 1, rankDelta: 0, totalRatings: 234, description: "Sophisticated cocktail bar in the Joule Hotel basement.", priceRange: "$$$", phone: "(214) 555-1789", address: "1530 Main St, Downtown, Dallas", lat: "32.7812345", lng: "-96.7967890", isOpenNow: true, website: "https://midnightrambler.com", photoUrl: "https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=600&h=400&fit=crop" },
-      { name: "Atwater Alley", slug: "atwater-alley-dallas", neighborhood: "Deep Ellum", category: "bar", cuisine: null, weightedScore: "4.450", rawAvgScore: "4.30", rankPosition: 2, rankDelta: 1, totalRatings: 198, description: "Craft beer and creative cocktails in Deep Ellum.", priceRange: "$$", phone: "(214) 555-1890", address: "2815 Elm St, Deep Ellum, Dallas", lat: "32.7823456", lng: "-96.7834567", isOpenNow: true, website: "https://atwateralley.com", photoUrl: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=600&h=400&fit=crop" },
-      { name: "The Grapevine Bar", slug: "the-grapevine-bar-dallas", neighborhood: "Greenville", category: "bar", cuisine: null, weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 3, rankDelta: -1, totalRatings: 167, description: "Oldest bar in Dallas with classic dive bar vibes.", priceRange: "$", phone: "(214) 555-1901", address: "3902 Maple Ave, Greenville, Dallas", lat: "32.8134567", lng: "-96.8123456", isOpenNow: false, website: "https://thegrapevinebar.com", photoUrl: "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=600&h=400&fit=crop" },
-      { name: "Javier's Cigar Bar", slug: "javiers-cigar-bar-dallas", neighborhood: "Knox-Henderson", category: "bar", cuisine: null, weightedScore: "4.120", rawAvgScore: "4.00", rankPosition: 4, rankDelta: 0, totalRatings: 134, description: "Upscale cigar lounge with premium spirits.", priceRange: "$$$", phone: "(214) 555-2012", address: "4912 Cole Ave, Knox-Henderson, Dallas", lat: "32.8212345", lng: "-96.7912345", isOpenNow: true, website: "https://javierscigarbar.com", photoUrl: "https://images.unsplash.com/photo-1525268323446-0505b6fe7778?w=600&h=400&fit=crop" },
-      { name: "Lee Harvey's", slug: "lee-harveys-dallas", neighborhood: "Cedars", category: "bar", cuisine: null, weightedScore: "3.950", rawAvgScore: "3.85", rankPosition: 5, rankDelta: 0, totalRatings: 189, description: "Iconic outdoor patio bar in the Cedars.", priceRange: "$", phone: "(214) 555-2123", address: "1807 Gould St, Cedars, Dallas", lat: "32.7723456", lng: "-96.7923456", isOpenNow: true, website: "https://leeharveys.com", photoUrl: "https://images.unsplash.com/photo-1538488881038-e252a119ace7?w=600&h=400&fit=crop" },
-      // ── Bakeries ──────────────────────────────────────────────
-      { name: "Village Baking Co.", slug: "village-baking-co-dallas", neighborhood: "Greenville", category: "bakery", cuisine: null, weightedScore: "4.730", rawAvgScore: "4.60", rankPosition: 1, rankDelta: 0, totalRatings: 267, description: "Artisan sourdough and French pastries.", priceRange: "$$", phone: "(214) 555-2234", address: "2009 Greenville Ave, Greenville, Dallas", lat: "32.8012345", lng: "-96.7712345", isOpenNow: true, website: "https://villagebakingco.com", photoUrl: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&h=400&fit=crop" },
-      { name: "La Casita Bakeshop", slug: "la-casita-bakeshop-dallas", neighborhood: "Oak Cliff", category: "bakery", cuisine: null, weightedScore: "4.550", rawAvgScore: "4.40", rankPosition: 2, rankDelta: 0, totalRatings: 198, description: "Mexican-inspired pastries and traditional conchas.", priceRange: "$", phone: "(214) 555-2345", address: "1522 W Davis St, Oak Cliff, Dallas", lat: "32.7489012", lng: "-96.8334567", isOpenNow: true, website: "https://lacasitabakeshop.com", photoUrl: "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&h=400&fit=crop" },
-      { name: "Bisous Bisous", slug: "bisous-bisous-patisserie-dallas", neighborhood: "Knox-Henderson", category: "bakery", cuisine: null, weightedScore: "4.380", rawAvgScore: "4.25", rankPosition: 3, rankDelta: 1, totalRatings: 156, description: "French macaron specialists with seasonal flavors.", priceRange: "$$", phone: "(214) 555-2456", address: "3809 McKinney Ave, Knox-Henderson, Dallas", lat: "32.8112345", lng: "-96.7934567", isOpenNow: false, website: "https://bisousbisous.com", photoUrl: "https://images.unsplash.com/photo-1612203985729-70726954388c?w=600&h=400&fit=crop" },
-      { name: "Empire Baking Co.", slug: "empire-baking-co-dallas", neighborhood: "East Dallas", category: "bakery", cuisine: null, weightedScore: "4.200", rawAvgScore: "4.10", rankPosition: 4, rankDelta: -1, totalRatings: 132, description: "Dallas staple for bread and celebration cakes.", priceRange: "$$", phone: "(214) 555-2567", address: "5450 W Lovers Lane, East Dallas, Dallas", lat: "32.8534567", lng: "-96.7812345", isOpenNow: true, website: "https://empirebaking.com", photoUrl: "https://images.unsplash.com/photo-1517433670267-08bbd4be890f?w=600&h=400&fit=crop" },
-      { name: "Haute Sweets", slug: "haute-sweets-patisserie-dallas", neighborhood: "Bishop Arts", category: "bakery", cuisine: null, weightedScore: "4.050", rawAvgScore: "3.95", rankPosition: 5, rankDelta: 0, totalRatings: 89, description: "Avant-garde desserts and sculptural pastries.", priceRange: "$$$", phone: "(214) 555-2678", address: "414 W Davis St, Bishop Arts, Dallas", lat: "32.7494123", lng: "-96.8278901", isOpenNow: false, website: "https://hautesweetspatisserie.com", photoUrl: "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&h=400&fit=crop" },
-      // ── Fast Food ─────────────────────────────────────────────
-      { name: "Raising Cane's", slug: "raising-canes-dallas", neighborhood: "Greenville", category: "fast_food", cuisine: "american", weightedScore: "4.420", rawAvgScore: "4.30", rankPosition: 1, rankDelta: 0, totalRatings: 523, description: "One love \u2014 chicken fingers, crinkle fries, Texas toast, and that sauce.", priceRange: "$", phone: "(214) 555-2789", address: "5809 Greenville Ave, Greenville, Dallas", lat: "32.8612345", lng: "-96.7712345", isOpenNow: true, website: "https://raisingcanes.com", photoUrl: "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=600&h=400&fit=crop" },
-      { name: "Whataburger", slug: "whataburger-dallas", neighborhood: "Multiple", category: "fast_food", cuisine: "american", weightedScore: "4.280", rawAvgScore: "4.15", rankPosition: 2, rankDelta: 0, totalRatings: 678, description: "Texas institution. The honey butter chicken biscuit is legendary.", priceRange: "$", phone: "(214) 555-2890", address: "Multiple locations, Dallas", lat: "32.7767000", lng: "-96.7970000", isOpenNow: true, website: "https://whataburger.com", photoUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&h=400&fit=crop" },
-      { name: "In-N-Out Burger", slug: "in-n-out-burger-dallas", neighborhood: "Uptown", category: "fast_food", cuisine: "american", weightedScore: "4.150", rawAvgScore: "4.00", rankPosition: 3, rankDelta: 1, totalRatings: 445, description: "California import that Dallas can't get enough of.", priceRange: "$", phone: "(214) 555-2901", address: "3500 McKinney Ave, Uptown, Dallas", lat: "32.8112345", lng: "-96.8012345", isOpenNow: true, website: "https://in-n-out.com", photoUrl: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&h=400&fit=crop" },
-      { name: "Wingstop", slug: "wingstop-dallas-hq", neighborhood: "Addison", category: "fast_food", cuisine: "american", weightedScore: "3.980", rawAvgScore: "3.85", rankPosition: 4, rankDelta: -1, totalRatings: 312, description: "Dallas-born wing chain \u2014 the original HQ location.", priceRange: "$", phone: "(214) 555-3012", address: "5501 LBJ Freeway, Addison, Dallas", lat: "32.9512345", lng: "-96.8312345", isOpenNow: false, website: "https://wingstop.com", photoUrl: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?w=600&h=400&fit=crop" },
-      { name: "Taco Bell Cantina", slug: "taco-bell-cantina-dallas", neighborhood: "Deep Ellum", category: "fast_food", cuisine: "mexican", weightedScore: "3.820", rawAvgScore: "3.70", rankPosition: 5, rankDelta: 0, totalRatings: 201, description: "The elevated Taco Bell experience with booze.", priceRange: "$", phone: "(214) 555-3123", address: "2649 Main St, Deep Ellum, Dallas", lat: "32.7843210", lng: "-96.7854321", isOpenNow: true, website: "https://tacobell.com/cantina", photoUrl: "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?w=600&h=400&fit=crop" }
-    ];
-    SEED_DISHES = [
-      // Indian
-      { businessSlug: "spice-garden-dallas", dishes: [
-        { name: "Dum Pukht Lamb Biryani", voteCount: 87 },
-        { name: "Butter Chicken", voteCount: 54 },
-        { name: "Garlic Naan", voteCount: 32 }
-      ] },
-      { businessSlug: "tandoori-flames-irving", dishes: [
-        { name: "Hyderabadi Goat Biryani", voteCount: 112 },
-        { name: "Tandoori Chicken", voteCount: 78 },
-        { name: "Paneer Tikka", voteCount: 45 }
-      ] },
-      { businessSlug: "bawarchi-biryanis-plano", dishes: [
-        { name: "Goat Biryani", voteCount: 98 },
-        { name: "Masala Dosa", voteCount: 67 },
-        { name: "Chicken 65", voteCount: 43 }
-      ] },
-      { businessSlug: "chennai-cafe-frisco", dishes: [
-        { name: "Masala Dosa", voteCount: 134 },
-        { name: "Filter Coffee", voteCount: 89 },
-        { name: "Idli Sambar", voteCount: 56 }
-      ] },
-      { businessSlug: "desi-district-richardson", dishes: [
-        { name: "Pav Bhaji", voteCount: 76 },
-        { name: "Chaat Platter", voteCount: 65 },
-        { name: "Vada Pav", voteCount: 43 }
-      ] },
-      // Mexican
-      { businessSlug: "abuelas-kitchen-dallas", dishes: [
-        { name: "Mole Negro", voteCount: 89 },
-        { name: "Enchiladas Oaxaque\xF1as", voteCount: 67 },
-        { name: "Tamales", voteCount: 45 }
-      ] },
-      { businessSlug: "el-rincon-del-sabor-dallas", dishes: [
-        { name: "Birria Tacos", voteCount: 134 },
-        { name: "Pozole Rojo", voteCount: 78 },
-        { name: "Menudo", voteCount: 56 }
-      ] },
-      { businessSlug: "taco-stop-dallas", dishes: [
-        { name: "Al Pastor Taco", voteCount: 134 },
-        { name: "Barbacoa Taco", voteCount: 89 },
-        { name: "Carnitas Taco", voteCount: 67 }
-      ] },
-      // Japanese
-      { businessSlug: "lucky-cat-ramen-dallas", dishes: [
-        { name: "Tonkotsu Ramen", voteCount: 78 },
-        { name: "Spicy Miso Ramen", voteCount: 45 },
-        { name: "Gyoza", voteCount: 29 }
-      ] },
-      { businessSlug: "uchi-dallas", dishes: [
-        { name: "Hama Chili", voteCount: 98 },
-        { name: "Wagyu Sashimi", voteCount: 76 }
-      ] },
-      // Korean
-      { businessSlug: "seoul-brothers-dallas", dishes: [
-        { name: "Korean Fried Chicken", voteCount: 89 },
-        { name: "Bibimbap", voteCount: 67 },
-        { name: "Japchae", voteCount: 34 }
-      ] },
-      // Thai
-      { businessSlug: "khao-noodle-dallas", dishes: [
-        { name: "Boat Noodles", voteCount: 98 },
-        { name: "Khao Piak Sen", voteCount: 76 },
-        { name: "Laab", voteCount: 45 }
-      ] },
-      // Vietnamese
-      { businessSlug: "pho-empire-dallas", dishes: [
-        { name: "Rare Beef Pho", voteCount: 112 },
-        { name: "Bun Bo Hue", voteCount: 78 },
-        { name: "Banh Mi", voteCount: 56 }
-      ] },
-      // Chinese
-      { businessSlug: "royal-china-dallas", dishes: [
-        { name: "Dim Sum Platter", voteCount: 98 },
-        { name: "Peking Duck", voteCount: 76 },
-        { name: "Har Gow", voteCount: 54 }
-      ] },
-      // Italian
-      { businessSlug: "lucia-dallas", dishes: [
-        { name: "Handmade Pappardelle", voteCount: 87 },
-        { name: "Grilled Branzino", voteCount: 56 }
-      ] },
-      { businessSlug: "cane-rosso-dallas", dishes: [
-        { name: "Honey Bastard Pizza", voteCount: 112 },
-        { name: "Margherita Pizza", voteCount: 89 }
-      ] },
-      // American
-      { businessSlug: "the-yard-kitchen-dallas", dishes: [
-        { name: "Heritage Pork Chop", voteCount: 65 },
-        { name: "Smoked Brisket Mac", voteCount: 42 }
-      ] },
-      { businessSlug: "pecan-lodge-dallas", dishes: [
-        { name: "Brisket", voteCount: 156 },
-        { name: "Beef Rib", voteCount: 98 },
-        { name: "Banana Pudding", voteCount: 67 }
-      ] },
-      // Bars / Cafes / Bakeries
-      { businessSlug: "midnight-rambler-dallas", dishes: [
-        { name: "The Rambler Old Fashioned", voteCount: 98 },
-        { name: "Mezcal Negroni", voteCount: 56 }
-      ] },
-      { businessSlug: "village-baking-co-dallas", dishes: [
-        { name: "Country Sourdough", voteCount: 112 },
-        { name: "Pain au Chocolat", voteCount: 67 },
-        { name: "Almond Croissant", voteCount: 45 }
-      ] },
-      { businessSlug: "cultivar-coffee-dallas", dishes: [
-        { name: "Ethiopian Yirgacheffe", voteCount: 76 },
-        { name: "Oat Milk Cortado", voteCount: 54 }
-      ] },
-      { businessSlug: "raising-canes-dallas", dishes: [
-        { name: "The Box Combo", voteCount: 156 },
-        { name: "Extra Cane's Sauce", voteCount: 89 }
-      ] },
-      // ── Sprint 303: Dish seed expansion — Sprint 298 businesses ──
-      { businessSlug: "golden-dragon-palace-dallas", dishes: [
-        { name: "Cantonese Roast Duck", voteCount: 67 },
-        { name: "Dim Sum Platter", voteCount: 54 },
-        { name: "Wonton Noodle Soup", voteCount: 38 }
-      ] },
-      { businessSlug: "nonnas-trattoria-dallas", dishes: [
-        { name: "Cacio e Pepe", voteCount: 78 },
-        { name: "Margherita Pizza", voteCount: 65 },
-        { name: "Tiramisu", voteCount: 43 }
-      ] },
-      { businessSlug: "seoul-bbq-house-dallas", dishes: [
-        { name: "Korean BBQ Combo", voteCount: 72 },
-        { name: "Kimchi Jjigae", voteCount: 56 },
-        { name: "Bulgogi", voteCount: 41 }
-      ] },
-      { businessSlug: "thai-orchid-garden-dallas", dishes: [
-        { name: "Green Curry", voteCount: 65 },
-        { name: "Pad See Ew", voteCount: 48 },
-        { name: "Mango Sticky Rice", voteCount: 34 }
-      ] },
-      { businessSlug: "pho-95-dallas", dishes: [
-        { name: "Pho Dac Biet", voteCount: 58 },
-        { name: "Vermicelli Bowl", voteCount: 42 },
-        { name: "Banh Mi", voteCount: 31 }
-      ] },
-      { businessSlug: "istanbul-grill-dallas", dishes: [
-        { name: "Adana Kebab", voteCount: 72 },
-        { name: "Hummus Platter", voteCount: 54 },
-        { name: "Lamb Pide", voteCount: 38 }
-      ] },
-      { businessSlug: "shawarma-point-dallas", dishes: [
-        { name: "Chicken Shawarma Wrap", voteCount: 65 },
-        { name: "Falafel Plate", voteCount: 48 },
-        { name: "Garlic Toum Fries", voteCount: 29 }
-      ] },
-      // ── Sprint 303: Additional dishes for existing businesses ──
-      { businessSlug: "koryo-kalbi-dallas", dishes: [
-        { name: "Galbi", voteCount: 78 },
-        { name: "Japchae", voteCount: 45 },
-        { name: "Kimchi Pancake", voteCount: 34 }
-      ] },
-      { businessSlug: "asian-mint-dallas", dishes: [
-        { name: "Pad Thai", voteCount: 89 },
-        { name: "Green Curry", voteCount: 54 },
-        { name: "Tom Kha Gai", voteCount: 38 }
-      ] },
-      { businessSlug: "saigon-bites-dallas", dishes: [
-        { name: "Banh Mi", voteCount: 76 },
-        { name: "Spring Rolls", voteCount: 54 },
-        { name: "Broken Rice Plate", voteCount: 38 }
-      ] },
-      { businessSlug: "sichuan-house-dallas", dishes: [
-        { name: "Mapo Tofu", voteCount: 87 },
-        { name: "Dan Dan Noodles", voteCount: 65 },
-        { name: "Dry Pot Chicken", voteCount: 43 }
-      ] },
-      { businessSlug: "kabob-king-dallas", dishes: [
-        { name: "Seekh Kabob", voteCount: 89 },
-        { name: "Lamb Chops", voteCount: 67 },
-        { name: "Chicken Tikka", voteCount: 45 }
-      ] },
-      { businessSlug: "smoke-and-vine-dallas", dishes: [
-        { name: "Smoked Brisket", voteCount: 98 },
-        { name: "Pulled Pork", voteCount: 67 },
-        { name: "Mac and Cheese", voteCount: 45 }
-      ] },
-      { businessSlug: "fearings-dallas", dishes: [
-        { name: "Tortilla Soup", voteCount: 87 },
-        { name: "Barbecued Shrimp Taco", voteCount: 65 },
-        { name: "Rattlesnake Queso", voteCount: 43 }
-      ] },
-      { businessSlug: "tei-an-dallas", dishes: [
-        { name: "Hand-Cut Soba", voteCount: 76 },
-        { name: "Tempura Assortment", voteCount: 54 }
-      ] },
-      { businessSlug: "casa-oaxaca-dallas", dishes: [
-        { name: "Tlayuda", voteCount: 78 },
-        { name: "Chapulines Taco", voteCount: 56 },
-        { name: "Mezcal Flight", voteCount: 34 }
-      ] },
-      { businessSlug: "taqueria-la-ventana-dallas", dishes: [
-        { name: "Al Pastor Taco", voteCount: 112 },
-        { name: "Salsa Verde", voteCount: 67 },
-        { name: "Fresh Tortillas", voteCount: 45 }
-      ] },
-      // ── Sprint 315: Expanded dishes for new leaderboards ──
-      // Samosa
-      { businessSlug: "desi-district-richardson", dishes: [
-        { name: "Aloo Samosa", voteCount: 89 }
-      ] },
-      { businessSlug: "chennai-cafe-frisco", dishes: [
-        { name: "Samosa Chaat", voteCount: 54 }
-      ] },
-      { businessSlug: "tandoori-flames-irving", dishes: [
-        { name: "Keema Samosa", voteCount: 67 }
-      ] },
-      // Burrito
-      { businessSlug: "abuelas-kitchen-dallas", dishes: [
-        { name: "Carne Asada Burrito", voteCount: 76 }
-      ] },
-      { businessSlug: "el-rincon-del-sabor-dallas", dishes: [
-        { name: "Burrito Mojado", voteCount: 89 }
-      ] },
-      { businessSlug: "taqueria-la-ventana-dallas", dishes: [
-        { name: "Al Pastor Burrito", voteCount: 56 }
-      ] },
-      // Enchilada (covers enchilada ILIKE match)
-      { businessSlug: "casa-oaxaca-dallas", dishes: [
-        { name: "Enchilada Suizas", voteCount: 65 }
-      ] },
-      // Sushi
-      { businessSlug: "uchi-dallas", dishes: [
-        { name: "Omakase Sushi", voteCount: 112 }
-      ] },
-      { businessSlug: "tei-an-dallas", dishes: [
-        { name: "Chirashi Sushi Bowl", voteCount: 65 }
-      ] },
-      // Pasta
-      { businessSlug: "lucia-dallas", dishes: [
-        { name: "Ricotta Gnudi Pasta", voteCount: 78 }
-      ] },
-      { businessSlug: "nonnas-trattoria-dallas", dishes: [
-        { name: "Pasta Bolognese", voteCount: 87 }
-      ] },
-      { businessSlug: "cane-rosso-dallas", dishes: [
-        { name: "Truffle Pasta", voteCount: 56 }
-      ] },
-      // Wings
-      { businessSlug: "the-yard-kitchen-dallas", dishes: [
-        { name: "Smoked Wings", voteCount: 78 }
-      ] },
-      { businessSlug: "raising-canes-dallas", dishes: [
-        { name: "Buffalo Wings", voteCount: 65 }
-      ] },
-      { businessSlug: "fearings-dallas", dishes: [
-        { name: "Jalape\xF1o Wings", voteCount: 54 }
-      ] },
-      // Falafel
-      { businessSlug: "istanbul-grill-dallas", dishes: [
-        { name: "Crispy Falafel Plate", voteCount: 65 }
-      ] },
-      { businessSlug: "kabob-king-dallas", dishes: [
-        { name: "Falafel Wrap", voteCount: 54 }
-      ] },
-      // ── Sprint 316: Korean + Thai seed dishes ──
-      // Korean BBQ
-      { businessSlug: "seoul-brothers-dallas", dishes: [
-        { name: "Korean BBQ Platter", voteCount: 98 }
-      ] },
-      { businessSlug: "koryo-kalbi-dallas", dishes: [
-        { name: "Premium Korean BBQ Set", voteCount: 87 }
-      ] },
-      { businessSlug: "seoul-bbq-house-dallas", dishes: [
-        { name: "Korean BBQ All-You-Can-Eat", voteCount: 76 }
-      ] },
-      // Bibimbap
-      { businessSlug: "seoul-brothers-dallas", dishes: [
-        { name: "Stone Pot Bibimbap", voteCount: 78 }
-      ] },
-      { businessSlug: "koryo-kalbi-dallas", dishes: [
-        { name: "Dolsot Bibimbap", voteCount: 65 }
-      ] },
-      // Fried Chicken
-      { businessSlug: "seoul-brothers-dallas", dishes: [
-        { name: "Yangnyeom Fried Chicken", voteCount: 89 }
-      ] },
-      { businessSlug: "raising-canes-dallas", dishes: [
-        { name: "Classic Fried Chicken Fingers", voteCount: 112 }
-      ] },
-      // Pad Thai
-      { businessSlug: "khao-noodle-dallas", dishes: [
-        { name: "Classic Pad Thai", voteCount: 76 }
-      ] },
-      { businessSlug: "asian-mint-dallas", dishes: [
-        { name: "Shrimp Pad Thai", voteCount: 89 }
-      ] },
-      { businessSlug: "thai-orchid-garden-dallas", dishes: [
-        { name: "Pad Thai with Tofu", voteCount: 54 }
-      ] },
-      // Green Curry
-      { businessSlug: "khao-noodle-dallas", dishes: [
-        { name: "Thai Green Curry", voteCount: 65 }
-      ] },
-      // ── Sprint 320: Chinese seed dishes ──
-      // Dim Sum
-      { businessSlug: "royal-china-dallas", dishes: [
-        { name: "Dim Sum Selection", voteCount: 87 }
-      ] },
-      { businessSlug: "golden-dragon-palace-dallas", dishes: [
-        { name: "Weekend Dim Sum Brunch", voteCount: 72 }
-      ] },
-      // Peking Duck
-      { businessSlug: "royal-china-dallas", dishes: [
-        { name: "Whole Peking Duck", voteCount: 76 }
-      ] },
-      { businessSlug: "golden-dragon-palace-dallas", dishes: [
-        { name: "Half Peking Duck with Pancakes", voteCount: 54 }
-      ] },
-      // Hot Pot
-      { businessSlug: "sichuan-house-dallas", dishes: [
-        { name: "Sichuan Hot Pot", voteCount: 92 }
-      ] }
-    ];
-    HOURS_RESTAURANT = { mon: "11:00-22:00", tue: "11:00-22:00", wed: "11:00-22:00", thu: "11:00-22:00", fri: "11:00-23:00", sat: "11:00-23:00", sun: "11:00-21:00" };
-    HOURS_CAFE = { mon: "06:30-18:00", tue: "06:30-18:00", wed: "06:30-18:00", thu: "06:30-18:00", fri: "06:30-18:00", sat: "07:00-17:00", sun: "07:00-17:00" };
-    HOURS_BAR = { mon: "16:00-02:00", tue: "16:00-02:00", wed: "16:00-02:00", thu: "16:00-02:00", fri: "16:00-02:00", sat: "14:00-02:00", sun: "14:00-00:00" };
-    HOURS_BAKERY = { mon: "07:00-16:00", tue: "07:00-16:00", wed: "07:00-16:00", thu: "07:00-16:00", fri: "07:00-16:00", sat: "08:00-15:00", sun: "08:00-14:00" };
-    HOURS_FAST_FOOD = { mon: "10:00-23:00", tue: "10:00-23:00", wed: "10:00-23:00", thu: "10:00-23:00", fri: "10:00-00:00", sat: "10:00-00:00", sun: "10:00-22:00" };
-    HOURS_STREET_FOOD = { mon: "11:00-21:00", tue: "11:00-21:00", wed: "11:00-21:00", thu: "11:00-21:00", fri: "11:00-22:00", sat: "11:00-22:00", sun: "12:00-20:00" };
-  }
-});
-
 // server/google-places-import.ts
 var google_places_import_exports = {};
 __export(google_places_import_exports, {
   autoImportGooglePlaces: () => autoImportGooglePlaces
 });
-import { eq as eq34 } from "drizzle-orm";
+import { eq as eq33 } from "drizzle-orm";
 async function autoImportGooglePlaces() {
   if (!config.googleMapsApiKey) {
     log.tag("GoogleImport").info("No Google Maps API key \u2014 skipping auto-import");
     return;
   }
-  const existing = await db.select({ id: businesses.id }).from(businesses).where(eq34(businesses.dataSource, "google_bulk_import")).limit(1);
+  const existing = await db.select({ id: businesses.id }).from(businesses).where(eq33(businesses.dataSource, "google_bulk_import")).limit(1);
   if (existing.length > 0) {
     log.tag("GoogleImport").info("Google Places data already imported \u2014 skipping");
     return;
@@ -8307,7 +7474,7 @@ async function autoImportGooglePlaces() {
           if (r.status === "imported") {
             const match = importData.find((d) => d.name === r.name);
             if (match) {
-              const [biz] = await db.select({ id: businesses.id }).from(businesses).where(eq34(businesses.googlePlaceId, match.placeId));
+              const [biz] = await db.select({ id: businesses.id }).from(businesses).where(eq33(businesses.googlePlaceId, match.placeId));
               if (biz) {
                 await fetchAndStorePhotos(biz.id, match.placeId).catch(() => {
                 });
@@ -8691,7 +7858,7 @@ __export(outreach_scheduler_exports, {
   processOwnerOutreach: () => processOwnerOutreach,
   startOutreachScheduler: () => startOutreachScheduler
 });
-import { eq as eq35, isNotNull as isNotNull7, and as and21 } from "drizzle-orm";
+import { eq as eq34, isNotNull as isNotNull7, and as and20 } from "drizzle-orm";
 async function processOwnerOutreach() {
   let claimInvites = 0;
   let proUpgrades = 0;
@@ -8704,8 +7871,8 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       rankPosition: businesses.rankPosition
     }).from(businesses).where(
-      and21(
-        eq35(businesses.isClaimed, false),
+      and20(
+        eq34(businesses.isClaimed, false),
         isNotNull7(businesses.rankPosition)
       )
     );
@@ -8723,10 +7890,10 @@ async function processOwnerOutreach() {
       totalRatings: businesses.totalRatings,
       weightedScore: businesses.weightedScore
     }).from(businesses).where(
-      and21(
-        eq35(businesses.isClaimed, true),
+      and20(
+        eq34(businesses.isClaimed, true),
         isNotNull7(businesses.ownerId),
-        eq35(businesses.subscriptionStatus, "none")
+        eq34(businesses.subscriptionStatus, "none")
       )
     );
     for (const biz of proCandidates) {
@@ -8736,7 +7903,7 @@ async function processOwnerOutreach() {
         continue;
       }
       try {
-        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq35(members.id, biz.ownerId));
+        const [owner] = await db.select({ email: members.email, displayName: members.displayName }).from(members).where(eq34(members.id, biz.ownerId));
         if (!owner?.email) continue;
         await sendOwnerProUpgradeEmail({
           email: owner.email,
@@ -8950,8 +8117,8 @@ async function authenticateGoogleUser(token) {
   if (member) {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36 } = await import("drizzle-orm");
-    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq36(members4.id, member.id));
+    const { eq: eq35 } = await import("drizzle-orm");
+    await db2.update(members4).set({ authId: googleId, avatarUrl: avatarUrl || member.avatarUrl }).where(eq35(members4.id, member.id));
     return { ...member, authId: googleId };
   }
   const baseUsername = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
@@ -12040,11 +11207,13 @@ function registerAdminRoutes(app2) {
     }
     return res.json({ data: updated });
   }));
-  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
-    const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
-    await seedCities2();
-    return res.json({ data: { message: "Cities seeded successfully" } });
-  }));
+  if (false) {
+    app2.post("/api/admin/seed-cities", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
+      const { seedCities } = await null;
+      await seedCities();
+      return res.json({ data: { message: "Cities seeded successfully" } });
+    }));
+  }
   app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const city = sanitizeString(req.body.city, 100) || void 0;
     const limit = Math.min(50, parseInt(req.body.limit) || 20);
@@ -12446,7 +11615,7 @@ function registerAdminRoutes(app2) {
     if (!isAdminEmail(req.user?.email)) return res.status(403).json({ error: "Admin only" });
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, asc: asc4 } = await import("drizzle-orm");
+    const { eq: eq35, asc: asc4 } = await import("drizzle-orm");
     const allBusinesses = await db2.select({
       id: businesses2.id,
       name: businesses2.name,
@@ -12457,7 +11626,7 @@ function registerAdminRoutes(app2) {
       credibilityWeightedSum: businesses2.credibilityWeightedSum,
       leaderboardEligible: businesses2.leaderboardEligible,
       weightedScore: businesses2.weightedScore
-    }).from(businesses2).where(eq36(businesses2.isActive, true)).orderBy(asc4(businesses2.leaderboardEligible));
+    }).from(businesses2).where(eq35(businesses2.isActive, true)).orderBy(asc4(businesses2.leaderboardEligible));
     const eligible = allBusinesses.filter((b) => b.leaderboardEligible);
     const ineligible = allBusinesses.filter((b) => !b.leaderboardEligible);
     const nearEligible = ineligible.filter(
@@ -13093,8 +12262,8 @@ function registerAuthRoutes(app2) {
     if (!/\d/.test(password)) {
       return res.status(400).json({ error: "Password must contain at least one number" });
     }
-    const bcrypt3 = await import("bcrypt");
-    const hashedPassword = await bcrypt3.hash(password, 10);
+    const bcrypt2 = await import("bcrypt");
+    const hashedPassword = await bcrypt2.hash(password, 10);
     const { resetPasswordWithToken: resetPasswordWithToken2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const result = await resetPasswordWithToken2(token, hashedPassword);
     if (!result.success) {
@@ -14150,15 +13319,15 @@ Sitemap: ${SITE_URL2}/sitemap.xml
     const { getActiveChallenges: getActiveChallenges2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { challengers: challengers2, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36 } = await import("drizzle-orm");
+    const { eq: eq35 } = await import("drizzle-orm");
     const challengeId = req.params.id;
-    const [challenge] = await db2.select().from(challengers2).where(eq36(challengers2.id, challengeId));
+    const [challenge] = await db2.select().from(challengers2).where(eq35(challengers2.id, challengeId));
     if (!challenge) {
       return res.status(404).json({ error: "Challenge not found" });
     }
     const [challengerBiz, defenderBiz] = await Promise.all([
-      db2.select().from(businesses2).where(eq36(businesses2.id, challenge.challengerId)).then((r) => r[0]),
-      db2.select().from(businesses2).where(eq36(businesses2.id, challenge.defenderId)).then((r) => r[0])
+      db2.select().from(businesses2).where(eq35(businesses2.id, challenge.challengerId)).then((r) => r[0]),
+      db2.select().from(businesses2).where(eq35(businesses2.id, challenge.defenderId)).then((r) => r[0])
     ]);
     const challengerName = challengerBiz?.name || "Challenger";
     const defenderName = defenderBiz?.name || "Defender";
@@ -15256,7 +14425,7 @@ function registerRatingPhotoRoutes(app2) {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { ratingPhotos: ratingPhotos2, ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { eq: eq36 } = await import("drizzle-orm");
+      const { eq: eq35 } = await import("drizzle-orm");
       const [photo] = await db2.insert(ratingPhotos2).values({
         ratingId,
         photoUrl,
@@ -15307,7 +14476,7 @@ function registerRatingPhotoRoutes(app2) {
         hasPhoto: true,
         hasReceipt: isReceipt === true ? true : void 0,
         verificationBoost: newBoost.toFixed(3)
-      }).where(eq36(ratings6.id, ratingId));
+      }).where(eq35(ratings6.id, ratingId));
       const { recalculateBusinessScore: recalculateBusinessScore2, recalculateRanks: recalculateRanks2 } = await Promise.resolve().then(() => (init_businesses(), businesses_exports));
       const { getBusinessById: getBusinessById2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
       await recalculateBusinessScore2(rating.businessId);
@@ -15344,8 +14513,8 @@ function registerRatingPhotoRoutes(app2) {
     const ratingId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36 } = await import("drizzle-orm");
-    const photos = await db2.select().from(ratingPhotos2).where(eq36(ratingPhotos2.ratingId, ratingId));
+    const { eq: eq35 } = await import("drizzle-orm");
+    const photos = await db2.select().from(ratingPhotos2).where(eq35(ratingPhotos2.ratingId, ratingId));
     const mapped = photos.map((p) => ({ ...p, isPhotoVerified: !!p.contentHash }));
     return res.json({ data: mapped });
   }));
@@ -15360,7 +14529,7 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, and: and22, sql: sql21, count: count17 } = await import("drizzle-orm");
+    const { eq: eq35, and: and21, sql: sql20, count: count17 } = await import("drizzle-orm");
     const allRatings = await db2.select({
       visitType: ratings6.visitType,
       foodScore: ratings6.foodScore,
@@ -15379,9 +14548,9 @@ function registerScoreBreakdownRoutes(app2) {
       hasReceipt: ratings6.hasReceipt,
       wouldReturn: ratings6.wouldReturn,
       createdAt: ratings6.createdAt
-    }).from(ratings6).where(and22(
-      eq36(ratings6.businessId, businessId),
-      eq36(ratings6.isFlagged, false)
+    }).from(ratings6).where(and21(
+      eq35(ratings6.businessId, businessId),
+      eq35(ratings6.isFlagged, false)
     ));
     if (allRatings.length === 0) {
       return res.json({
@@ -15456,11 +14625,11 @@ function registerScoreBreakdownRoutes(app2) {
     const businessId = req.params.id;
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { rankHistory: rankHistory2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq36, asc: asc4 } = await import("drizzle-orm");
+    const { eq: eq35, asc: asc4 } = await import("drizzle-orm");
     const history = await db2.select({
       date: rankHistory2.snapshotDate,
       score: rankHistory2.weightedScore
-    }).from(rankHistory2).where(eq36(rankHistory2.businessId, businessId)).orderBy(asc4(rankHistory2.snapshotDate)).limit(90);
+    }).from(rankHistory2).where(eq35(rankHistory2.businessId, businessId)).orderBy(asc4(rankHistory2.snapshotDate)).limit(90);
     const data = history.map((h) => ({
       date: h.date,
       score: parseFloat(h.score)
@@ -16018,7 +15187,7 @@ function isLocalhostOrigin(origin) {
   return origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
 }
 function securityHeaders(req, res, next) {
-  const isDev = process.env.NODE_ENV !== "production";
+  const isDev = false;
   const origin = req.headers.origin;
   if (isDev) {
     if (origin) {
@@ -16230,7 +15399,7 @@ function configureExpoAndLanding(app2) {
   );
   const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction = true;
   log2("Serving static Expo files with dynamic manifest routing");
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
@@ -16405,8 +15574,10 @@ function setupErrorHandler(app2) {
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
-  const { seedDatabase: seedDatabase2 } = await Promise.resolve().then(() => (init_seed(), seed_exports));
-  seedDatabase2().catch((err) => log.error("Seed error:", err));
+  if (false) {
+    const { seedDatabase } = await null;
+    seedDatabase().catch((err) => log.error("Seed error:", err));
+  }
   const { autoImportGooglePlaces: autoImportGooglePlaces2 } = await Promise.resolve().then(() => (init_google_places_import(), google_places_import_exports));
   autoImportGooglePlaces2().catch((err) => log.error("Google Places auto-import error:", err));
   const { closeExpiredChallenges: closeExpiredChallenges2 } = await Promise.resolve().then(() => (init_challengers(), challengers_exports));

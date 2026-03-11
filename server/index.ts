@@ -384,8 +384,11 @@ function setupErrorHandler(app: express.Application) {
 
   configureExpoAndLanding(app);
 
-  const { seedDatabase } = await import("./seed");
-  seedDatabase().catch((err) => logger.error("Seed error:", err));
+  // Sprint 619: Skip seed in production — saves ~109kb from bundle
+  if (process.env.NODE_ENV !== "production") {
+    const { seedDatabase } = await import("./seed");
+    seedDatabase().catch((err) => logger.error("Seed error:", err));
+  }
 
   // Sprint 593: Auto-import real Google Places data on startup (non-blocking)
   const { autoImportGooglePlaces } = await import("./google-places-import");
