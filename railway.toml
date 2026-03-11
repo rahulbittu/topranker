@@ -4,12 +4,12 @@ installCommand = "npm install"
 buildCommand = "npm run server:build"
 
 [deploy]
-startCommand = "npm run server:prod"
+startCommand = "PORT=8080 npm run server:prod"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [service]
-internalPort = 5000
+internalPort = 8080
 
 [checks.web]
 type = "http"
