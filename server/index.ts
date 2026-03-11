@@ -415,6 +415,19 @@ function setupErrorHandler(app: express.Application) {
     res.json(info);
   });
 
+  // Temporary: debug DB query errors
+  app.get("/api/debug-query", async (_req: Request, res: Response) => {
+    try {
+      const { db } = await import("./db");
+      const { businesses } = await import("@shared/schema");
+      const { sql } = await import("drizzle-orm");
+      const result = await db.select({ count: sql`count(*)` }).from(businesses);
+      res.json({ ok: true, businessCount: result[0]?.count });
+    } catch (e: any) {
+      res.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) });
+    }
+  });
+
   const server = await registerRoutes(app);
 
   // Startup banner: count registered routes (Sprint 121)

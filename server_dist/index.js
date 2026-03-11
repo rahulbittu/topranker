@@ -16372,6 +16372,17 @@ function setupErrorHandler(app2) {
     }
     res.json(info);
   });
+  app.get("/api/debug-query", async (_req, res) => {
+    try {
+      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+      const { sql: sql21 } = await import("drizzle-orm");
+      const result = await db2.select({ count: sql21`count(*)` }).from(businesses2);
+      res.json({ ok: true, businessCount: result[0]?.count });
+    } catch (e) {
+      res.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) });
+    }
+  });
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);
