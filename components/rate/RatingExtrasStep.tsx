@@ -16,7 +16,7 @@ import Colors from "@/constants/colors";
 import { TIER_INFLUENCE_LABELS, type CredibilityTier } from "@/lib/data";
 import type { ApiDish } from "@/lib/api";
 import { DishPill } from "@/components/rate/SubComponents";
-import { PhotoBoostMeter } from "@/components/rate/PhotoBoostMeter";
+import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
 import { NoteSentimentIndicator } from "@/components/rate/NoteSentimentIndicator";
 import { getPhotoPromptsByVisitType, getReceiptHint, type VisitType } from "@/components/rate/RatingPrompts";
 
@@ -211,6 +211,43 @@ export function RatingExtrasStep({
         </View>
       ) : null}
 
+      {/* Dish photo nudge — appears after dish selection when no photos yet */}
+      {selectedDish && photos.length === 0 && canAddMore && (
+        <View style={s.dishPhotoNudge}>
+          <View style={s.dishPhotoNudgeHeader}>
+            <Ionicons name="camera" size={18} color={Colors.gold} />
+            <Text style={s.dishPhotoNudgeTitle}>
+              Got a photo of your {selectedDish}?
+            </Text>
+          </View>
+          <Text style={s.dishPhotoNudgeHint}>
+            A dish photo adds +15% verification boost to your rating
+          </Text>
+          <View style={s.dishPhotoNudgeActions}>
+            <TouchableOpacity
+              style={s.dishPhotoNudgeBtn}
+              onPress={addPhotoFromCamera}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Take a photo of ${selectedDish}`}
+            >
+              <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
+              <Text style={s.dishPhotoNudgeBtnText}>Snap it</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.dishPhotoNudgeBtnSecondary}
+              onPress={addPhotoFromGallery}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Choose a photo of ${selectedDish} from gallery`}
+            >
+              <Ionicons name="images-outline" size={16} color={Colors.gold} />
+              <Text style={s.dishPhotoNudgeBtnTextSecondary}>From gallery</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {/* Quick Note */}
       <View style={s.noteInputWrap}>
         <TextInput
@@ -282,7 +319,7 @@ export function RatingExtrasStep({
             </TouchableOpacity>
           </View>
         )}
-        {photos.length === 0 && (
+        {photos.length === 0 && !selectedDish && (
           <View style={s.photoPromptSection}>
             {getPhotoPromptsByVisitType(visitType).map((prompt, idx) => (
               <View key={idx} style={s.photoPromptRow}>
@@ -295,6 +332,7 @@ export function RatingExtrasStep({
             ))}
           </View>
         )}
+        {photos.length > 0 && photos.length < MAX_PHOTOS && <PhotoTips />}
       </View>
 
       {/* Receipt Upload — Sprint 382: +25% verification boost */}
@@ -431,6 +469,34 @@ const s = StyleSheet.create({
   },
   dishSelectedText: {
     fontSize: 14, color: Colors.gold, fontFamily: "DMSans_600SemiBold", flex: 1,
+  },
+  dishPhotoNudge: {
+    backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 14, padding: 14, gap: 8,
+    borderWidth: 1, borderColor: "rgba(196,154,26,0.2)",
+  },
+  dishPhotoNudgeHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  dishPhotoNudgeTitle: {
+    fontSize: 14, fontWeight: "600", color: Colors.text,
+    fontFamily: "DMSans_600SemiBold", flex: 1,
+  },
+  dishPhotoNudgeHint: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+  },
+  dishPhotoNudgeActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  dishPhotoNudgeBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    backgroundColor: Colors.gold, borderRadius: 10, paddingVertical: 10,
+  },
+  dishPhotoNudgeBtnText: {
+    fontSize: 13, fontWeight: "600", color: "#FFFFFF", fontFamily: "DMSans_600SemiBold",
+  },
+  dishPhotoNudgeBtnSecondary: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    backgroundColor: "transparent", borderRadius: 10, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.gold,
+  },
+  dishPhotoNudgeBtnTextSecondary: {
+    fontSize: 13, fontWeight: "600", color: Colors.gold, fontFamily: "DMSans_600SemiBold",
   },
   noteInputWrap: { gap: 4 },
   noteInput: {
