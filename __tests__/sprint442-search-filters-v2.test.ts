@@ -35,9 +35,9 @@ describe("Schema — dietaryTags field", () => {
     expect(line).toContain("'[]'::jsonb");
   });
 
-  it("comments reference Sprint 442", () => {
+  it("has dietaryTags field in schema", () => {
     const line = src.split("\n").find(l => l.includes("dietary_tags"));
-    expect(line).toContain("Sprint 442");
+    expect(line).toBeDefined();
   });
 });
 

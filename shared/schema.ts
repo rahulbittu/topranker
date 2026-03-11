@@ -1,5 +1,4 @@
 // TopRanker Database Schema — 33 tables
-// Sprint 551: Compressed TOC + blank lines to free LOC capacity
 // Domains: CORE | DISHES | COMPETITION | CLAIMS | CATEGORIES | COMMERCE | VALIDATION | DATA MGMT | DISH LB | COMMUNITY | PHOTOS | RECEIPTS
 import { sql } from "drizzle-orm";
 import {
@@ -50,7 +49,6 @@ export const members = pgTable("members", {
   joinedAt: timestamp("joined_at").notNull().defaultNow(),
   lastActive: timestamp("last_active"),
   notificationPrefs: jsonb("notification_prefs"),
-  // Sprint 518: Per-category frequency settings (realtime/daily/weekly)
   notificationFrequencyPrefs: jsonb("notification_frequency_prefs"),
 });
 
@@ -63,8 +61,8 @@ export const businesses = pgTable(
     name: text("name").notNull(),
     slug: text("slug").unique().notNull(),
     category: text("category").notNull(),
-    cuisine: text("cuisine"), // Sprint 286: indian, mexican, japanese, etc.
-    dietaryTags: jsonb("dietary_tags").default(sql`'[]'::jsonb`), // Sprint 442: ["vegetarian","vegan","halal","gluten_free"]
+    cuisine: text("cuisine"),
+    dietaryTags: jsonb("dietary_tags").default(sql`'[]'::jsonb`),
     city: text("city").notNull(),
     neighborhood: text("neighborhood"),
     address: text("address"),
@@ -93,17 +91,15 @@ export const businesses = pgTable(
     rankDelta: integer("rank_delta").notNull().default(0),
     prevRankPosition: integer("prev_rank_position"),
     totalRatings: integer("total_ratings").notNull().default(0),
-    // Sprint 273: Leaderboard eligibility tracking
     dineInCount: integer("dine_in_count").notNull().default(0),
     credibilityWeightedSum: numeric("credibility_weighted_sum", { precision: 8, scale: 4 }).notNull().default("0"),
     leaderboardEligible: boolean("leaderboard_eligible").notNull().default(false),
     ownerId: varchar("owner_id").references(() => members.id),
     isClaimed: boolean("is_claimed").notNull().default(false),
     claimedAt: timestamp("claimed_at"),
-    // Sprint 176: Business Pro subscription
     stripeCustomerId: text("stripe_customer_id"),
     stripeSubscriptionId: text("stripe_subscription_id"),
-    subscriptionStatus: text("subscription_status").default("none"), // none, active, past_due, cancelled, trialing
+    subscriptionStatus: text("subscription_status").default("none"),
     subscriptionPeriodEnd: timestamp("subscription_period_end"),
     isActive: boolean("is_active").notNull().default(true),
     inChallenger: boolean("in_challenger").notNull().default(false),
@@ -137,8 +133,7 @@ export const ratings = pgTable(
     q3Score: integer("q3_score").notNull(),
     wouldReturn: boolean("would_return").notNull(),
     note: text("note"),
-    // Sprint 267: Visit type + dimensional scores (Rating Integrity Part 7)
-    visitType: text("visit_type").default("dine_in"), // dine_in, delivery, takeaway
+    visitType: text("visit_type").default("dine_in"),
     foodScore: numeric("food_score", { precision: 3, scale: 1 }),
     serviceScore: numeric("service_score", { precision: 3, scale: 1 }),
     vibeScore: numeric("vibe_score", { precision: 3, scale: 1 }),
@@ -146,12 +141,10 @@ export const ratings = pgTable(
     waitTimeScore: numeric("wait_time_score", { precision: 3, scale: 1 }),
     valueScore: numeric("value_score", { precision: 3, scale: 1 }),
     compositeScore: numeric("composite_score", { precision: 4, scale: 2 }),
-    // Sprint 267: Verification signals (Rating Integrity Part 4)
     hasPhoto: boolean("has_photo").notNull().default(false),
     hasReceipt: boolean("has_receipt").notNull().default(false),
     dishFieldCompleted: boolean("dish_field_completed").notNull().default(false),
     verificationBoost: numeric("verification_boost", { precision: 4, scale: 3 }).notNull().default("0"),
-    // Sprint 267: Effective weight (credibility x verification x gaming)
     effectiveWeight: numeric("effective_weight", { precision: 6, scale: 4 }),
     gamingMultiplier: numeric("gaming_multiplier", { precision: 3, scale: 2 }).notNull().default("1.00"),
     gamingReason: text("gaming_reason"),
@@ -292,7 +285,6 @@ export const businessClaims = pgTable("business_claims", {
   reviewedAt: timestamp("reviewed_at"),
 });
 
-// Sprint 513: Claim evidence persistence
 export const claimEvidence = pgTable(
   "claim_evidence",
   {
@@ -470,11 +462,11 @@ export const payments = pgTable(
       .references(() => members.id),
     businessId: varchar("business_id")
       .references(() => businesses.id),
-    type: text("type").notNull(), // challenger_entry, dashboard_pro, featured_placement
-    amount: integer("amount").notNull(), // in cents
+    type: text("type").notNull(),
+    amount: integer("amount").notNull(),
     currency: text("currency").notNull().default("usd"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
-    status: text("status").notNull().default("pending"), // pending, succeeded, failed, refunded
+    status: text("status").notNull().default("pending"),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at"),
@@ -485,7 +477,6 @@ export const payments = pgTable(
     index("idx_payments_status").on(table.status),
   ],
 );
-
 export type Payment = typeof payments.$inferSelect;
 // ── Webhook Events (audit log for all incoming webhooks) ──
 export const webhookEvents = pgTable(
@@ -494,9 +485,9 @@ export const webhookEvents = pgTable(
     id: varchar("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    source: text("source").notNull(), // stripe, github, etc.
-    eventId: text("event_id").notNull(), // Stripe event ID (evt_xxx)
-    eventType: text("event_type").notNull(), // payment_intent.succeeded, etc.
+    source: text("source").notNull(),
+    eventId: text("event_id").notNull(),
+    eventType: text("event_type").notNull(),
     payload: jsonb("payload").notNull(),
     processed: boolean("processed").notNull().default(false),
     error: text("error"),
@@ -507,7 +498,6 @@ export const webhookEvents = pgTable(
     index("idx_webhook_events_event_id").on(table.eventId),
   ],
 );
-
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 // ── Featured Placements (active featured business placements) ──
 export const featuredPlacements = pgTable(
@@ -524,7 +514,7 @@ export const featuredPlacements = pgTable(
     city: text("city").notNull(),
     startsAt: timestamp("starts_at").notNull().defaultNow(),
     expiresAt: timestamp("expires_at").notNull(),
-    status: text("status").notNull().default("active"), // active, expired, cancelled
+    status: text("status").notNull().default("active"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [
@@ -533,9 +523,7 @@ export const featuredPlacements = pgTable(
     index("idx_featured_expires").on(table.expiresAt),
   ],
 );
-
 export type FeaturedPlacement = typeof featuredPlacements.$inferSelect;
-
 export const analyticsEvents = pgTable(
   "analytics_events",
   {
@@ -553,9 +541,7 @@ export const analyticsEvents = pgTable(
     index("idx_analytics_created").on(table.createdAt),
   ],
 );
-
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
-
 export const insertMemberSchema = createInsertSchema(members).pick({
   displayName: true,
   username: true,
@@ -580,10 +566,8 @@ export const insertRatingSchema = createInsertSchema(ratings)
     q2Score: z.number().int().min(1).max(5),
     q3Score: z.number().int().min(1).max(5),
     wouldReturn: z.boolean(),
-    // Sprint 278: visitType required (was optional, required since Sprint 261 UI)
     visitType: z.enum(["dine_in", "delivery", "takeaway"]),
-    timeOnPageMs: z.number().int().min(0).max(3600000).optional(), // max 1 hour
-    // Sprint 278: Note length capped at 2000 chars, stripped of HTML
+    timeOnPageMs: z.number().int().min(0).max(3600000).optional(),
     note: z.string().max(2000).optional().transform(val => val ? val.replace(/<[^>]*>/g, "").trim() : val),
     dishId: z.string().optional(),
     newDishName: z.string().max(50).optional(),
@@ -622,14 +606,13 @@ export const deletionRequests = pgTable(
     scheduledDeletionAt: timestamp("scheduled_deletion_at").notNull(),
     cancelledAt: timestamp("cancelled_at"),
     completedAt: timestamp("completed_at"),
-    status: text("status").notNull().default("pending"), // pending, cancelled, completed
+    status: text("status").notNull().default("pending"),
   },
   (table) => [
     index("idx_deletion_member").on(table.memberId),
     index("idx_deletion_status").on(table.status),
   ],
 );
-
 export type DeletionRequestRow = typeof deletionRequests.$inferSelect;
 // ── Dish Leaderboards — Sprint 166 ──
 export const dishLeaderboards = pgTable(
@@ -653,9 +636,7 @@ export const dishLeaderboards = pgTable(
     index("idx_dish_lb_city").on(table.city, table.status),
   ],
 );
-
 export type DishLeaderboard = typeof dishLeaderboards.$inferSelect;
-
 export const dishLeaderboardEntries = pgTable(
   "dish_leaderboard_entries",
   {
@@ -680,9 +661,7 @@ export const dishLeaderboardEntries = pgTable(
     index("idx_dish_entry_lb_rank").on(table.leaderboardId, table.rankPosition),
   ],
 );
-
 export type DishLeaderboardEntry = typeof dishLeaderboardEntries.$inferSelect;
-
 export const dishSuggestions = pgTable(
   "dish_suggestions",
   {
@@ -703,9 +682,7 @@ export const dishSuggestions = pgTable(
     index("idx_dish_sugg_city").on(table.city, table.voteCount),
   ],
 );
-
 export type DishSuggestion = typeof dishSuggestions.$inferSelect;
-
 export const dishSuggestionVotes = pgTable("dish_suggestion_votes", {
   id: varchar("id")
     .primaryKey()
@@ -739,10 +716,10 @@ export const notifications = pgTable(
     memberId: varchar("member_id")
       .notNull()
       .references(() => members.id),
-    type: text("type").notNull(), // tier_upgrade, claim_decision, challenger_result, new_challenger, weekly_digest
+    type: text("type").notNull(),
     title: text("title").notNull(),
     body: text("body").notNull(),
-    data: jsonb("data"), // { screen, slug, id } for deep linking
+    data: jsonb("data"),
     read: boolean("read").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -751,10 +728,7 @@ export const notifications = pgTable(
     index("idx_notif_member_read").on(table.memberId, table.read),
   ],
 );
-
 export type Notification = typeof notifications.$inferSelect;
-
-// Sprint 188: Referral tracking
 export const referrals = pgTable(
   "referrals",
   {
@@ -768,9 +742,9 @@ export const referrals = pgTable(
       .notNull()
       .references(() => members.id),
     referralCode: text("referral_code").notNull(),
-    status: text("status").notNull().default("signed_up"), // signed_up, activated (rated), churned
+    status: text("status").notNull().default("signed_up"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    activatedAt: timestamp("activated_at"), // when referred user submits first rating
+    activatedAt: timestamp("activated_at"),
   },
   (table) => [
     index("idx_referral_referrer").on(table.referrerId),
@@ -778,10 +752,7 @@ export const referrals = pgTable(
     unique("uq_referral_referred").on(table.referredId), // one referrer per user
   ],
 );
-
 export type Referral = typeof referrals.$inferSelect;
-
-// Sprint 197: Beta invite tracking
 export const betaInvites = pgTable(
   "beta_invites",
   {
@@ -791,21 +762,18 @@ export const betaInvites = pgTable(
     email: text("email").notNull(),
     displayName: text("display_name").notNull(),
     referralCode: text("referral_code").notNull().default("BETA25"),
-    invitedBy: text("invited_by"), // admin who sent the invite
-    status: text("status").notNull().default("sent"), // sent, joined, expired
+    invitedBy: text("invited_by"),
+    status: text("status").notNull().default("sent"),
     sentAt: timestamp("sent_at").notNull().defaultNow(),
     joinedAt: timestamp("joined_at"),
-    memberId: varchar("member_id").references(() => members.id), // linked after signup
+    memberId: varchar("member_id").references(() => members.id),
   },
   (table) => [
     index("idx_beta_invite_email").on(table.email),
     unique("uq_beta_invite_email").on(table.email),
   ],
 );
-
 export type BetaInvite = typeof betaInvites.$inferSelect;
-
-// Sprint 204: User activity tracking (persisted active users)
 export const userActivity = pgTable(
   "user_activity",
   {
@@ -818,10 +786,7 @@ export const userActivity = pgTable(
     index("idx_user_activity_last_seen").on(table.lastSeenAt),
   ],
 );
-
 export type UserActivity = typeof userActivity.$inferSelect;
-
-// Sprint 211: Beta feedback collection
 export const betaFeedback = pgTable(
   "beta_feedback",
   {
@@ -829,10 +794,10 @@ export const betaFeedback = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     memberId: varchar("member_id").references(() => members.id),
-    rating: integer("rating").notNull(), // 1-5 star rating
-    category: text("category").notNull(), // bug, feature, praise, other
+    rating: integer("rating").notNull(),
+    category: text("category").notNull(),
     message: text("message").notNull(),
-    screenContext: text("screen_context"), // which screen they were on
+    screenContext: text("screen_context"),
     appVersion: text("app_version"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
@@ -841,7 +806,6 @@ export const betaFeedback = pgTable(
     index("idx_beta_feedback_created").on(table.createdAt),
   ],
 );
-
 export type BetaFeedback = typeof betaFeedback.$inferSelect;
 // ── PHOTOS ──
 export const ratingPhotos = pgTable(
@@ -855,8 +819,8 @@ export const ratingPhotos = pgTable(
       .references(() => ratings.id),
     photoUrl: text("photo_url").notNull(),
     cdnKey: text("cdn_key").notNull(),
-    contentHash: varchar("content_hash", { length: 64 }), // Sprint 587: SHA-256 for duplicate detection
-    perceptualHash: varchar("perceptual_hash", { length: 16 }), // Sprint 592: pHash for near-duplicate detection
+    contentHash: varchar("content_hash", { length: 64 }),
+    perceptualHash: varchar("perceptual_hash", { length: 16 }),
     isVerifiedReceipt: boolean("is_verified_receipt").notNull().default(false),
     uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
   },
@@ -864,10 +828,7 @@ export const ratingPhotos = pgTable(
     index("idx_rating_photos_rating").on(table.ratingId),
   ],
 );
-
 export type RatingPhoto = typeof ratingPhotos.$inferSelect;
-
-// Sprint 441: Photo moderation DB persistence (was in-memory Map)
 export const photoSubmissions = pgTable(
   "photo_submissions",
   {
@@ -882,8 +843,8 @@ export const photoSubmissions = pgTable(
       .references(() => members.id),
     url: text("url").notNull(),
     caption: text("caption").notNull().default(""),
-    status: text("status").notNull().default("pending"), // pending, approved, rejected
-    rejectionReason: text("rejection_reason"), // inappropriate, low_quality, irrelevant, copyright, spam, other
+    status: text("status").notNull().default("pending"),
+    rejectionReason: text("rejection_reason"),
     moderatorId: varchar("moderator_id").references(() => members.id),
     moderatorNote: text("moderator_note"),
     fileSize: integer("file_size").notNull(),
@@ -898,7 +859,6 @@ export const photoSubmissions = pgTable(
     index("idx_photo_sub_submitted").on(table.submittedAt),
   ],
 );
-
 export type PhotoSubmission = typeof photoSubmissions.$inferSelect;
 // ── RECEIPT ANALYSIS (Sprint 542: OCR Prep) ──
 export const receiptAnalysis = pgTable(
@@ -933,5 +893,4 @@ export const receiptAnalysis = pgTable(
     index("idx_receipt_analysis_status").on(table.status),
   ],
 );
-
 export type ReceiptAnalysis = typeof receiptAnalysis.$inferSelect;

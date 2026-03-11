@@ -114,7 +114,6 @@ var init_schema = __esm({
       joinedAt: timestamp("joined_at").notNull().defaultNow(),
       lastActive: timestamp("last_active"),
       notificationPrefs: jsonb("notification_prefs"),
-      // Sprint 518: Per-category frequency settings (realtime/daily/weekly)
       notificationFrequencyPrefs: jsonb("notification_frequency_prefs")
     });
     businesses = pgTable(
@@ -125,9 +124,7 @@ var init_schema = __esm({
         slug: text("slug").unique().notNull(),
         category: text("category").notNull(),
         cuisine: text("cuisine"),
-        // Sprint 286: indian, mexican, japanese, etc.
         dietaryTags: jsonb("dietary_tags").default(sql`'[]'::jsonb`),
-        // Sprint 442: ["vegetarian","vegan","halal","gluten_free"]
         city: text("city").notNull(),
         neighborhood: text("neighborhood"),
         address: text("address"),
@@ -152,18 +149,15 @@ var init_schema = __esm({
         rankDelta: integer("rank_delta").notNull().default(0),
         prevRankPosition: integer("prev_rank_position"),
         totalRatings: integer("total_ratings").notNull().default(0),
-        // Sprint 273: Leaderboard eligibility tracking
         dineInCount: integer("dine_in_count").notNull().default(0),
         credibilityWeightedSum: numeric("credibility_weighted_sum", { precision: 8, scale: 4 }).notNull().default("0"),
         leaderboardEligible: boolean("leaderboard_eligible").notNull().default(false),
         ownerId: varchar("owner_id").references(() => members.id),
         isClaimed: boolean("is_claimed").notNull().default(false),
         claimedAt: timestamp("claimed_at"),
-        // Sprint 176: Business Pro subscription
         stripeCustomerId: text("stripe_customer_id"),
         stripeSubscriptionId: text("stripe_subscription_id"),
         subscriptionStatus: text("subscription_status").default("none"),
-        // none, active, past_due, cancelled, trialing
         subscriptionPeriodEnd: timestamp("subscription_period_end"),
         isActive: boolean("is_active").notNull().default(true),
         inChallenger: boolean("in_challenger").notNull().default(false),
@@ -190,9 +184,7 @@ var init_schema = __esm({
         q3Score: integer("q3_score").notNull(),
         wouldReturn: boolean("would_return").notNull(),
         note: text("note"),
-        // Sprint 267: Visit type + dimensional scores (Rating Integrity Part 7)
         visitType: text("visit_type").default("dine_in"),
-        // dine_in, delivery, takeaway
         foodScore: numeric("food_score", { precision: 3, scale: 1 }),
         serviceScore: numeric("service_score", { precision: 3, scale: 1 }),
         vibeScore: numeric("vibe_score", { precision: 3, scale: 1 }),
@@ -200,12 +192,10 @@ var init_schema = __esm({
         waitTimeScore: numeric("wait_time_score", { precision: 3, scale: 1 }),
         valueScore: numeric("value_score", { precision: 3, scale: 1 }),
         compositeScore: numeric("composite_score", { precision: 4, scale: 2 }),
-        // Sprint 267: Verification signals (Rating Integrity Part 4)
         hasPhoto: boolean("has_photo").notNull().default(false),
         hasReceipt: boolean("has_receipt").notNull().default(false),
         dishFieldCompleted: boolean("dish_field_completed").notNull().default(false),
         verificationBoost: numeric("verification_boost", { precision: 4, scale: 3 }).notNull().default("0"),
-        // Sprint 267: Effective weight (credibility x verification x gaming)
         effectiveWeight: numeric("effective_weight", { precision: 6, scale: 4 }),
         gamingMultiplier: numeric("gaming_multiplier", { precision: 3, scale: 2 }).notNull().default("1.00"),
         gamingReason: text("gaming_reason"),
@@ -439,13 +429,10 @@ var init_schema = __esm({
         memberId: varchar("member_id").notNull().references(() => members.id),
         businessId: varchar("business_id").references(() => businesses.id),
         type: text("type").notNull(),
-        // challenger_entry, dashboard_pro, featured_placement
         amount: integer("amount").notNull(),
-        // in cents
         currency: text("currency").notNull().default("usd"),
         stripePaymentIntentId: text("stripe_payment_intent_id"),
         status: text("status").notNull().default("pending"),
-        // pending, succeeded, failed, refunded
         metadata: jsonb("metadata"),
         createdAt: timestamp("created_at").notNull().defaultNow(),
         updatedAt: timestamp("updated_at")
@@ -461,11 +448,8 @@ var init_schema = __esm({
       {
         id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
         source: text("source").notNull(),
-        // stripe, github, etc.
         eventId: text("event_id").notNull(),
-        // Stripe event ID (evt_xxx)
         eventType: text("event_type").notNull(),
-        // payment_intent.succeeded, etc.
         payload: jsonb("payload").notNull(),
         processed: boolean("processed").notNull().default(false),
         error: text("error"),
@@ -486,7 +470,6 @@ var init_schema = __esm({
         startsAt: timestamp("starts_at").notNull().defaultNow(),
         expiresAt: timestamp("expires_at").notNull(),
         status: text("status").notNull().default("active"),
-        // active, expired, cancelled
         createdAt: timestamp("created_at").notNull().defaultNow()
       },
       (table) => [
@@ -531,11 +514,8 @@ var init_schema = __esm({
       q2Score: z.number().int().min(1).max(5),
       q3Score: z.number().int().min(1).max(5),
       wouldReturn: z.boolean(),
-      // Sprint 278: visitType required (was optional, required since Sprint 261 UI)
       visitType: z.enum(["dine_in", "delivery", "takeaway"]),
       timeOnPageMs: z.number().int().min(0).max(36e5).optional(),
-      // max 1 hour
-      // Sprint 278: Note length capped at 2000 chars, stripped of HTML
       note: z.string().max(2e3).optional().transform((val) => val ? val.replace(/<[^>]*>/g, "").trim() : val),
       dishId: z.string().optional(),
       newDishName: z.string().max(50).optional(),
@@ -552,7 +532,6 @@ var init_schema = __esm({
         cancelledAt: timestamp("cancelled_at"),
         completedAt: timestamp("completed_at"),
         status: text("status").notNull().default("pending")
-        // pending, cancelled, completed
       },
       (table) => [
         index("idx_deletion_member").on(table.memberId),
@@ -633,11 +612,9 @@ var init_schema = __esm({
         id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
         memberId: varchar("member_id").notNull().references(() => members.id),
         type: text("type").notNull(),
-        // tier_upgrade, claim_decision, challenger_result, new_challenger, weekly_digest
         title: text("title").notNull(),
         body: text("body").notNull(),
         data: jsonb("data"),
-        // { screen, slug, id } for deep linking
         read: boolean("read").notNull().default(false),
         createdAt: timestamp("created_at").notNull().defaultNow()
       },
@@ -654,10 +631,8 @@ var init_schema = __esm({
         referredId: varchar("referred_id").notNull().references(() => members.id),
         referralCode: text("referral_code").notNull(),
         status: text("status").notNull().default("signed_up"),
-        // signed_up, activated (rated), churned
         createdAt: timestamp("created_at").notNull().defaultNow(),
         activatedAt: timestamp("activated_at")
-        // when referred user submits first rating
       },
       (table) => [
         index("idx_referral_referrer").on(table.referrerId),
@@ -674,13 +649,10 @@ var init_schema = __esm({
         displayName: text("display_name").notNull(),
         referralCode: text("referral_code").notNull().default("BETA25"),
         invitedBy: text("invited_by"),
-        // admin who sent the invite
         status: text("status").notNull().default("sent"),
-        // sent, joined, expired
         sentAt: timestamp("sent_at").notNull().defaultNow(),
         joinedAt: timestamp("joined_at"),
         memberId: varchar("member_id").references(() => members.id)
-        // linked after signup
       },
       (table) => [
         index("idx_beta_invite_email").on(table.email),
@@ -703,12 +675,9 @@ var init_schema = __esm({
         id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
         memberId: varchar("member_id").references(() => members.id),
         rating: integer("rating").notNull(),
-        // 1-5 star rating
         category: text("category").notNull(),
-        // bug, feature, praise, other
         message: text("message").notNull(),
         screenContext: text("screen_context"),
-        // which screen they were on
         appVersion: text("app_version"),
         createdAt: timestamp("created_at").notNull().defaultNow()
       },
@@ -725,9 +694,7 @@ var init_schema = __esm({
         photoUrl: text("photo_url").notNull(),
         cdnKey: text("cdn_key").notNull(),
         contentHash: varchar("content_hash", { length: 64 }),
-        // Sprint 587: SHA-256 for duplicate detection
         perceptualHash: varchar("perceptual_hash", { length: 16 }),
-        // Sprint 592: pHash for near-duplicate detection
         isVerifiedReceipt: boolean("is_verified_receipt").notNull().default(false),
         uploadedAt: timestamp("uploaded_at").notNull().defaultNow()
       },
@@ -744,9 +711,7 @@ var init_schema = __esm({
         url: text("url").notNull(),
         caption: text("caption").notNull().default(""),
         status: text("status").notNull().default("pending"),
-        // pending, approved, rejected
         rejectionReason: text("rejection_reason"),
-        // inappropriate, low_quality, irrelevant, copyright, spam, other
         moderatorId: varchar("moderator_id").references(() => members.id),
         moderatorNote: text("moderator_note"),
         fileSize: integer("file_size").notNull(),

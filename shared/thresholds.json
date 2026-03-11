@@ -1,7 +1,7 @@
 {
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
-    "shared/schema.ts": { "maxLOC": 960, "current": 938, "notes": "Sprint 595: raised ceiling 950→960, stable" },
+    "shared/schema.ts": { "maxLOC": 960, "current": 896, "notes": "Sprint 597: compressed 938→896, removed comments/blank lines" },
     "server/routes.ts": { "maxLOC": 400, "current": 386, "notes": "Core routes" },
     "server/storage/businesses.ts": { "maxLOC": 620, "current": 600, "notes": "Sprint 554: +updateBusinessHours" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
@@ -28,7 +28,7 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 731.6
+    "currentSizeKb": 729.9
   },
   "tests": {
     "minCount": 10800,
