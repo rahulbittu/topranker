@@ -13,8 +13,19 @@ import { TierBadge } from "@/components/profile/SubComponents";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { type CredibilityTier } from "@/lib/data";
 
+// Sprint 625: Format name as "First L." (e.g., "Rahul P.")
+export function formatShortName(firstName?: string | null, lastName?: string | null, displayName?: string): string {
+  if (firstName) {
+    const lastInitial = lastName ? ` ${lastName.charAt(0).toUpperCase()}.` : "";
+    return `${firstName}${lastInitial}`;
+  }
+  return displayName || "";
+}
+
 export interface ProfileIdentityCardProps {
   displayName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   username: string;
   avatarUrl: string | null;
   tier: CredibilityTier;
@@ -23,11 +34,14 @@ export interface ProfileIdentityCardProps {
 
 export function ProfileIdentityCard({
   displayName,
+  firstName,
+  lastName,
   username,
   avatarUrl,
   tier,
   isFoundingMember,
 }: ProfileIdentityCardProps) {
+  const shortName = formatShortName(firstName, lastName, displayName);
   return (
     <FadeInView delay={100} duration={500}>
       <LinearGradient
@@ -42,7 +56,7 @@ export function ProfileIdentityCard({
           )}
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{displayName}</Text>
+          <Text style={styles.profileName}>{shortName}</Text>
           <Text style={styles.username}>@{username}</Text>
           <View style={styles.badgeRow}>
             <TierBadge tier={tier} />

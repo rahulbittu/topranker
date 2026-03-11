@@ -1,7 +1,7 @@
 {
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
-    "shared/schema.ts": { "maxLOC": 960, "current": 896, "notes": "Sprint 597: compressed 938→896, removed comments/blank lines" },
+    "shared/schema.ts": { "maxLOC": 960, "current": 898, "notes": "Sprint 625: +firstName/lastName columns (896→898)" },
     "server/routes.ts": { "maxLOC": 400, "current": 377, "notes": "Sprint 623: +/api/google-places-fallback (367→377)" },
     "server/storage/businesses.ts": { "maxLOC": 650, "current": 624, "notes": "Sprint 617: +getJustRatedBusinesses (600→624)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
@@ -34,10 +34,10 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 627.3
+    "currentSizeKb": 628.1
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11524
+    "currentCount": 11547
   }
 }

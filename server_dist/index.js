@@ -90,6 +90,8 @@ var init_schema = __esm({
       id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
       authId: varchar("auth_id").unique(),
       displayName: text("display_name").notNull(),
+      firstName: text("first_name"),
+      lastName: text("last_name"),
       username: text("username").unique().notNull(),
       email: text("email").unique().notNull(),
       password: text("password"),
@@ -1166,6 +1168,8 @@ async function getDishVoteStreakStats(memberId) {
 async function updateMemberProfile(memberId, updates) {
   const updateData = {};
   if (updates.displayName !== void 0) updateData.displayName = updates.displayName;
+  if (updates.firstName !== void 0) updateData.firstName = updates.firstName;
+  if (updates.lastName !== void 0) updateData.lastName = updates.lastName;
   if (updates.username !== void 0) updateData.username = updates.username;
   if (Object.keys(updateData).length === 0) return null;
   const [updated] = await db.update(members).set(updateData).where(eq2(members.id, memberId)).returning();
@@ -12513,13 +12517,25 @@ function registerMemberRoutes(app2) {
     }
   }));
   app2.put("/api/members/me", requireAuth, wrapAsync(async (req, res) => {
-    const { displayName, username } = req.body;
+    const { displayName, firstName, lastName, username } = req.body;
     const updates = {};
     if (displayName !== void 0) {
       if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
         return res.status(400).json({ error: "displayName must be 1-50 characters" });
       }
       updates.displayName = displayName;
+    }
+    if (firstName !== void 0) {
+      if (firstName !== null && (typeof firstName !== "string" || firstName.length > 30)) {
+        return res.status(400).json({ error: "firstName must be 0-30 characters" });
+      }
+      updates.firstName = firstName;
+    }
+    if (lastName !== void 0) {
+      if (lastName !== null && (typeof lastName !== "string" || lastName.length > 30)) {
+        return res.status(400).json({ error: "lastName must be 0-30 characters" });
+      }
+      updates.lastName = lastName;
     }
     if (username !== void 0) {
       if (typeof username !== "string" || !/^[a-zA-Z0-9_]{3,30}$/.test(username)) {

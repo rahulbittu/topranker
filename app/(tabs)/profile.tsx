@@ -121,6 +121,8 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       {/* Sprint 584: Extracted identity card */}
       <ProfileIdentityCard
         displayName={profile.displayName}
+        firstName={(profile as any).firstName}
+        lastName={(profile as any).lastName}
         username={profile.username}
         avatarUrl={profile.avatarUrl}
         tier={tier}

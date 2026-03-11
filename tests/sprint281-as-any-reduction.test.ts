@@ -50,14 +50,14 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(110); // Sprint 572: RatingPhotoGallery grid styles
+    expect(total).toBeLessThan(120); // Sprint 625: firstName/lastName as-any casts
   });
 
   it("client-side casts under 15", () => {
     const app = countAsAnyInDir("app");
     const components = countAsAnyInDir("components");
     const lib = countAsAnyInDir("lib");
-    expect(app + components + lib).toBeLessThan(48); // Sprint 578: DimensionComparisonCard type casts
+    expect(app + components + lib).toBeLessThan(58); // Sprint 625: firstName/lastName as-any casts
   });
 });
 

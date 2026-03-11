@@ -28,6 +28,8 @@ export default function EditProfileScreen() {
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
   const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [firstName, setFirstName] = useState((user as any)?.firstName ?? "");
+  const [lastName, setLastName] = useState((user as any)?.lastName ?? "");
   const [username, setUsername] = useState(user?.username ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [saving, setSaving] = useState(false);
@@ -131,6 +133,8 @@ export default function EditProfileScreen() {
   const emailChanged = email.trim() !== (user?.email ?? "");
   const hasChanges =
     displayName.trim() !== (user?.displayName ?? "") ||
+    firstName.trim() !== ((user as any)?.firstName ?? "") ||
+    lastName.trim() !== ((user as any)?.lastName ?? "") ||
     username.trim() !== (user?.username ?? "") ||
     emailChanged;
 
@@ -164,6 +168,8 @@ export default function EditProfileScreen() {
       ) {
         const res = await apiRequest("PUT", "/api/members/me", {
           displayName: trimmedName,
+          firstName: firstName.trim() || null,
+          lastName: lastName.trim() || null,
           username: trimmedUsername,
         });
         if (!res.ok) {
@@ -263,7 +269,45 @@ export default function EditProfileScreen() {
         {/* Form */}
         <Text style={styles.sectionHeader}>PROFILE INFORMATION</Text>
         <View style={styles.card}>
-          {/* Display Name */}
+          {/* Sprint 625: First Name + Last Name */}
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>First Name</Text>
+            <TextInput
+              style={[
+                styles.fieldInput,
+                focusedField === "firstName" && styles.fieldInputFocused,
+              ]}
+              value={firstName}
+              onChangeText={setFirstName}
+              onFocus={() => setFocusedField("firstName")}
+              onBlur={() => setFocusedField(null)}
+              placeholder="First name"
+              placeholderTextColor={Colors.textTertiary}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={30}
+            />
+            <Text style={styles.fieldHint}>Shown as "First L." on your profile</Text>
+          </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Last Name</Text>
+            <TextInput
+              style={[
+                styles.fieldInput,
+                focusedField === "lastName" && styles.fieldInputFocused,
+              ]}
+              value={lastName}
+              onChangeText={setLastName}
+              onFocus={() => setFocusedField("lastName")}
+              onBlur={() => setFocusedField(null)}
+              placeholder="Last name"
+              placeholderTextColor={Colors.textTertiary}
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={30}
+            />
+          </View>
+          {/* Display Name (fallback) */}
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Display Name</Text>
             <TextInput

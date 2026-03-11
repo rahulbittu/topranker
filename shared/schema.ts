@@ -23,6 +23,8 @@ export const members = pgTable("members", {
     .default(sql`gen_random_uuid()`),
   authId: varchar("auth_id").unique(),
   displayName: text("display_name").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   username: text("username").unique().notNull(),
   email: text("email").unique().notNull(),
   password: text("password"),

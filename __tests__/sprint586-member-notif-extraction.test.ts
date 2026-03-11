@@ -82,7 +82,7 @@ describe("Sprint 586: routes-members.ts After Extraction", () => {
 
   it("LOC under 225 after extraction", () => {
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(225);
+    expect(lines).toBeLessThan(240); // Sprint 625: +firstName/lastName validation
   });
 });
 

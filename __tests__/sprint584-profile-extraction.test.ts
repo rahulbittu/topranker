@@ -62,7 +62,7 @@ describe("Sprint 584: ProfileIdentityCard Component", () => {
 
   it("component LOC under 100", () => {
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(100);
+    expect(lines).toBeLessThan(110); // Sprint 625: +formatShortName + firstName/lastName
   });
 });
 

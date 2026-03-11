@@ -150,14 +150,28 @@ export function registerMemberRoutes(app: Express) {
   }));
 
   app.put("/api/members/me", requireAuth, wrapAsync(async (req: Request, res: Response) => {
-    const { displayName, username } = req.body;
-    const updates: { displayName?: string; username?: string } = {};
+    const { displayName, firstName, lastName, username } = req.body;
+    const updates: { displayName?: string; firstName?: string | null; lastName?: string | null; username?: string } = {};
 
     if (displayName !== undefined) {
       if (typeof displayName !== "string" || displayName.length < 1 || displayName.length > 50) {
         return res.status(400).json({ error: "displayName must be 1-50 characters" });
       }
       updates.displayName = displayName;
+    }
+
+    // Sprint 625: First/last name fields
+    if (firstName !== undefined) {
+      if (firstName !== null && (typeof firstName !== "string" || firstName.length > 30)) {
+        return res.status(400).json({ error: "firstName must be 0-30 characters" });
+      }
+      updates.firstName = firstName;
+    }
+    if (lastName !== undefined) {
+      if (lastName !== null && (typeof lastName !== "string" || lastName.length > 30)) {
+        return res.status(400).json({ error: "lastName must be 0-30 characters" });
+      }
+      updates.lastName = lastName;
     }
 
     if (username !== undefined) {
