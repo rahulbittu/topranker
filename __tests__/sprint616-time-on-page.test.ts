@@ -95,8 +95,8 @@ describe("Sprint 616 — Time-on-Page Indicator", () => {
       expect(thresholds.files["components/rate/TimeOnPageIndicator.tsx"]).toBeDefined();
     });
 
-    it("tracks 28 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(28);
+    it("tracks 29 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(29);
     });
 
     it("server build under 750kb", () => {

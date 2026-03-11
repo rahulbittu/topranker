@@ -120,6 +120,7 @@ describe("RatingExtrasStep component", () => {
 // ---------------------------------------------------------------------------
 describe("rate/[id].tsx — integration with extracted modules", () => {
   const rateSrc = readFile("app/rate/[id].tsx");
+  const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
 
   it("imports useRatingSubmit", () => {
     expect(rateSrc).toContain("useRatingSubmit");
@@ -138,12 +139,12 @@ describe("rate/[id].tsx — integration with extracted modules", () => {
   });
 
   it("still has step 1 scoring inline", () => {
-    expect(rateSrc).toContain("CircleScorePicker");
+    expect(dimSrc).toContain("CircleScorePicker");
     expect(rateSrc).toContain("getDimensionLabels");
   });
 
   it("still has dish context banner", () => {
-    expect(rateSrc).toContain("dishContextBanner");
-    expect(rateSrc).toContain("dishContext");
+    expect(dimSrc).toContain("dishContextBanner");
+    expect(dimSrc).toContain("dishContext");
   });
 });

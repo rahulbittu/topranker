@@ -10,6 +10,7 @@ import * as path from "path";
 
 const ratePath = path.resolve(__dirname, "../app/rate/[id].tsx");
 const rateCode = fs.readFileSync(ratePath, "utf-8");
+const dimSrc = fs.readFileSync(path.resolve(__dirname, "../components/rate/DimensionScoringStep.tsx"), "utf-8");
 
 describe("Sprint 334 — Auto-Advance Dimensions", () => {
   // Focus tracking state
@@ -67,21 +68,20 @@ describe("Sprint 334 — Auto-Advance Dimensions", () => {
     expect(rateCode).toContain("setFocusedDimension(0)");
   });
 
-  // CircleScorePicker uses new handlers
+  // CircleScorePicker uses new handlers (Sprint 621: via DimensionScoringStep props)
   it("should use handleQ1 for Q1 CircleScorePicker", () => {
-    expect(rateCode).toContain("onChange={handleQ1}");
+    expect(rateCode).toContain("onQ1Change={handleQ1}");
   });
 
   it("should use handleQ2 for Q2 CircleScorePicker", () => {
-    expect(rateCode).toContain("onChange={handleQ2}");
+    expect(rateCode).toContain("onQ2Change={handleQ2}");
   });
 
   it("should use handleQ3 for Q3 CircleScorePicker", () => {
-    expect(rateCode).toContain("onChange={handleQ3}");
+    expect(rateCode).toContain("onQ3Change={handleQ3}");
   });
 
   it("should use handleReturn for yes/no buttons", () => {
-    expect(rateCode).toContain("handleReturn(true)");
-    expect(rateCode).toContain("handleReturn(false)");
+    expect(rateCode).toContain("onReturnChange={handleReturn}");
   });
 });

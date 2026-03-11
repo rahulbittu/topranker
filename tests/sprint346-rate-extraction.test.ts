@@ -10,9 +10,12 @@ import * as path from "path";
 let rateSrc = "";
 let hookSrc = "";
 
+let dimSrc = "";
+
 beforeAll(() => {
   rateSrc = fs.readFileSync(path.resolve("app/rate/[id].tsx"), "utf-8");
   hookSrc = fs.readFileSync(path.resolve("lib/hooks/useRatingAnimations.ts"), "utf-8");
+  dimSrc = fs.readFileSync(path.resolve("components/rate/DimensionScoringStep.tsx"), "utf-8");
 });
 
 // ── Extracted hook file ──────────────────────────────────────────
@@ -114,7 +117,7 @@ describe("Rate screen LOC reduction", () => {
 // ── Backwards compatibility ──────────────────────────────────────
 describe("Backwards compatibility", () => {
   it("should still use Animated.View for dimensions", () => {
-    expect(rateSrc).toContain("<Animated.View style={[styles.compactQuestion, dim0Style]}");
+    expect(dimSrc).toContain("<Animated.View style={[s.compactQuestion, dim0Style]}");
   });
 
   it("should still pass dimensionTimingMs to submit", () => {
@@ -126,6 +129,6 @@ describe("Backwards compatibility", () => {
   });
 
   it("should still have FadeIn for step transitions", () => {
-    expect(rateSrc).toContain("FadeIn.duration(300)");
+    expect(dimSrc).toContain("FadeIn.duration(300)");
   });
 });

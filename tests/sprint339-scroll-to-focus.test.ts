@@ -12,6 +12,10 @@ const rateSrc = fs.readFileSync(
   path.resolve(__dirname, "..", "app", "rate", "[id].tsx"),
   "utf-8",
 );
+const dimSrc = fs.readFileSync(
+  path.resolve(__dirname, "..", "components", "rate", "DimensionScoringStep.tsx"),
+  "utf-8",
+);
 
 // ── 1. ScrollView ref ──────────────────────────────────────────────────
 
@@ -41,19 +45,19 @@ describe("Sprint 339 — dimension Y positions", () => {
   });
 
   it("Q1 records Y position on layout", () => {
-    expect(rateSrc).toContain("dimensionYPositions.current[0] = e.nativeEvent.layout.y");
+    expect(dimSrc).toContain("onDimensionLayout(0, e.nativeEvent.layout.y)");
   });
 
   it("Q2 records Y position on layout", () => {
-    expect(rateSrc).toContain("dimensionYPositions.current[1] = e.nativeEvent.layout.y");
+    expect(dimSrc).toContain("onDimensionLayout(1, e.nativeEvent.layout.y)");
   });
 
   it("Q3 records Y position on layout", () => {
-    expect(rateSrc).toContain("dimensionYPositions.current[2] = e.nativeEvent.layout.y");
+    expect(dimSrc).toContain("onDimensionLayout(2, e.nativeEvent.layout.y)");
   });
 
   it("Would Return records Y position on layout", () => {
-    expect(rateSrc).toContain("dimensionYPositions.current[3] = e.nativeEvent.layout.y");
+    expect(dimSrc).toContain("onDimensionLayout(3, e.nativeEvent.layout.y)");
   });
 });
 

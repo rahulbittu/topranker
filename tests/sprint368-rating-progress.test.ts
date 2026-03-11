@@ -8,6 +8,7 @@ const readFile = (relPath: string) =>
 describe("Sprint 368: Rating flow UX polish (progress indicator)", () => {
   const subSrc = readFile("components/rate/SubComponents.tsx");
   const rateSrc = readFile("app/rate/[id].tsx");
+  const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
 
   // ── Step labels ───────────────────────────────────────────
 
@@ -127,7 +128,7 @@ describe("Sprint 368: Rating flow UX polish (progress indicator)", () => {
 
   describe("Existing rating flow preserved", () => {
     it("should still have CircleScorePicker", () => {
-      expect(rateSrc).toContain("CircleScorePicker");
+      expect(dimSrc).toContain("CircleScorePicker");
     });
 
     it("should still have RatingConfirmation", () => {

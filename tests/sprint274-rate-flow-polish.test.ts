@@ -19,6 +19,7 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 274: Rate Flow UX Polish", () => {
   const rateSrc = readFile("app/rate/[id].tsx");
+  const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
 
   // ── Live Score Preview ──────────────────────────────────────
 
@@ -28,9 +29,9 @@ describe("Sprint 274: Rate Flow UX Polish", () => {
   });
 
   it("rate screen shows live score preview", () => {
-    expect(rateSrc).toContain("liveScorePreview");
-    expect(rateSrc).toContain("YOUR SCORE");
-    expect(rateSrc).toContain("rawScore.toFixed(1)");
+    expect(dimSrc).toContain("liveScorePreview");
+    expect(dimSrc).toContain("YOUR SCORE");
+    expect(dimSrc).toContain("rawScore.toFixed(1)");
   });
 
   it("live score uses visit-type weighted computation", () => {
@@ -39,8 +40,8 @@ describe("Sprint 274: Rate Flow UX Polish", () => {
   });
 
   it("live score shows weight multiplier", () => {
-    expect(rateSrc).toContain("weightedScore.toFixed(1)");
-    expect(rateSrc).toContain("voteWeight");
+    expect(dimSrc).toContain("weightedScore.toFixed(1)");
+    expect(dimSrc).toContain("voteWeight");
   });
 
   // ── Error Recovery ──────────────────────────────────────────
@@ -65,10 +66,10 @@ describe("Sprint 274: Rate Flow UX Polish", () => {
   // ── Style Definitions ──────────────────────────────────────
 
   it("has liveScorePreview style", () => {
-    expect(rateSrc).toContain("liveScorePreview:");
-    expect(rateSrc).toContain("liveScoreLabel:");
-    expect(rateSrc).toContain("liveScoreValue:");
-    expect(rateSrc).toContain("liveScoreWeight:");
+    expect(dimSrc).toContain("liveScorePreview:");
+    expect(dimSrc).toContain("liveScoreLabel:");
+    expect(dimSrc).toContain("liveScoreValue:");
+    expect(dimSrc).toContain("liveScoreWeight:");
   });
 
   it("has errorRetryText style", () => {

@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeIn } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
@@ -21,11 +21,12 @@ import { useAuth } from "@/lib/auth-context";
 import { fetchBusinessBySlug, fetchDishSearch, type ApiDish } from "@/lib/api";
 import { Confetti } from "@/components/Confetti";
 import {
-  CircleScorePicker, ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
+  ProgressBar, StepIndicator, StepDescription, RatingConfirmation,
 } from "@/components/rate/SubComponents";
 import { RatingExtrasStep } from "@/components/rate/RatingExtrasStep";
 import { RatingReviewStep } from "@/components/rate/RatingReviewStep";
-import { VisitTypeStep, getDimensionLabels, getDimensionTooltips, DimensionTooltip, type VisitType } from "@/components/rate/VisitTypeStep";
+import { DimensionScoringStep } from "@/components/rate/DimensionScoringStep";
+import { VisitTypeStep, getDimensionLabels, getDimensionTooltips, type VisitType } from "@/components/rate/VisitTypeStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
@@ -339,58 +340,22 @@ export default function RateScreen() {
         {step === 0 ? (
           <VisitTypeStep businessName={business.name} visitType={visitType} onSelect={setVisitType} />
         ) : step === 1 ? (
-          <Animated.View entering={FadeIn.duration(300)} style={styles.stepContent} key="step1" accessibilityRole="summary">
-            {dishContext && (
-              <View style={styles.dishContextBanner}>
-                <Text style={styles.dishContextText}>
-                  You're rating {business.name} for their <Text style={{ fontWeight: "700" }}>{dishContext}</Text>
-                </Text>
-              </View>
-            )}
-            {/* Sprint 334/342: Auto-advance focus with animated highlight */}
-            <Animated.View style={[styles.compactQuestion, dim0Style]} onLayout={(e) => { dimensionYPositions.current[0] = e.nativeEvent.layout.y; }}>
-              <View style={styles.labelWithTooltip}>
-                <Text style={styles.compactLabel}>{q1Label}</Text>
-                <DimensionTooltip tooltip={dimensionTooltips[0]} visible={activeTooltip === 0} onToggle={() => setActiveTooltip(activeTooltip === 0 ? null : 0)} />
-              </View>
-              <CircleScorePicker value={q1Score} onChange={handleQ1} circleSize={circleSize} />
-            </Animated.View>
-            <Animated.View style={[styles.compactQuestion, dim1Style]} onLayout={(e) => { dimensionYPositions.current[1] = e.nativeEvent.layout.y; }}>
-              <View style={styles.labelWithTooltip}>
-                <Text style={styles.compactLabel}>{q2Label}</Text>
-                <DimensionTooltip tooltip={dimensionTooltips[1]} visible={activeTooltip === 1} onToggle={() => setActiveTooltip(activeTooltip === 1 ? null : 1)} />
-              </View>
-              <CircleScorePicker value={q2Score} onChange={handleQ2} circleSize={circleSize} />
-            </Animated.View>
-            <Animated.View style={[styles.compactQuestion, dim2Style]} onLayout={(e) => { dimensionYPositions.current[2] = e.nativeEvent.layout.y; }}>
-              <View style={styles.labelWithTooltip}>
-                <Text style={styles.compactLabel}>{q3Label}</Text>
-                <DimensionTooltip tooltip={dimensionTooltips[2]} visible={activeTooltip === 2} onToggle={() => setActiveTooltip(activeTooltip === 2 ? null : 2)} />
-              </View>
-              <CircleScorePicker value={q3Score} onChange={handleQ3} circleSize={circleSize} />
-            </Animated.View>
-            <Animated.View style={[styles.compactQuestion, dim3Style]} onLayout={(e) => { dimensionYPositions.current[3] = e.nativeEvent.layout.y; }}>
-              <Text style={styles.compactLabel}>{returnLabel}</Text>
-              <View style={styles.yesNoRow}>
-                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === true && styles.yesNoBtnYes]} onPress={() => handleReturn(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
-                  <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />
-                  <Text style={[styles.yesNoText, wouldReturn === true && styles.yesNoTextActive]}>YES</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.yesNoBtn, wouldReturn === false && styles.yesNoBtnNo]} onPress={() => handleReturn(false)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="No, would not return" accessibilityState={{ selected: wouldReturn === false }}>
-                  <Ionicons name="close-circle" size={24} color={wouldReturn === false ? "#fff" : Colors.textTertiary} />
-                  <Text style={[styles.yesNoText, wouldReturn === false && styles.yesNoTextActive]}>NO</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-            {/* Sprint 274: Live composite score preview */}
-            {rawScore > 0 && (
-              <Animated.View entering={FadeIn.duration(200)} style={styles.liveScorePreview} accessibilityLiveRegion="polite" accessibilityLabel={`Your score: ${rawScore.toFixed(1)}, weighted: ${weightedScore.toFixed(1)}`}>
-                <Text style={styles.liveScoreLabel}>YOUR SCORE</Text>
-                <Text style={styles.liveScoreValue}>{rawScore.toFixed(1)}</Text>
-                <Text style={styles.liveScoreWeight}>×{voteWeight} weight = {weightedScore.toFixed(1)}</Text>
-              </Animated.View>
-            )}
-          </Animated.View>
+          <DimensionScoringStep
+            businessName={business.name}
+            dishContext={dishContext}
+            q1Label={q1Label} q2Label={q2Label} q3Label={q3Label}
+            returnLabel={returnLabel}
+            dimensionTooltips={dimensionTooltips}
+            q1Score={q1Score} q2Score={q2Score} q3Score={q3Score}
+            wouldReturn={wouldReturn}
+            rawScore={rawScore} weightedScore={weightedScore} voteWeight={voteWeight}
+            circleSize={circleSize}
+            activeTooltip={activeTooltip} setActiveTooltip={setActiveTooltip}
+            onQ1Change={handleQ1} onQ2Change={handleQ2} onQ3Change={handleQ3}
+            onReturnChange={handleReturn}
+            dim0Style={dim0Style} dim1Style={dim1Style} dim2Style={dim2Style} dim3Style={dim3Style}
+            onDimensionLayout={(idx, y) => { dimensionYPositions.current[idx] = y; }}
+          />
         ) : step === 2 ? (
           <RatingExtrasStep
             existingDishes={existingDishes}
@@ -514,31 +479,6 @@ const styles = StyleSheet.create({
   },
   stepArea: { flex: 1, paddingHorizontal: 20 },
   stepAreaContent: { paddingVertical: 8 },
-  stepContent: { gap: 20 },
-  compactQuestion: { gap: 8 },
-  labelWithTooltip: { flexDirection: "row" as const, alignItems: "center" as const, gap: 6 },
-  compactLabel: {
-    fontSize: 15, fontWeight: "600" as const, color: Colors.text,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  dishContextBanner: {
-    backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 10,
-    padding: 12, marginBottom: 12, flexDirection: "row", alignItems: "center",
-  },
-  dishContextText: { fontSize: 13, color: "#111" },
-  yesNoRow: { flexDirection: "row", gap: 12 },
-  yesNoBtn: {
-    flex: 1, alignItems: "center", justifyContent: "center",
-    flexDirection: "row", gap: 6, paddingVertical: 14, borderRadius: 14,
-    backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: Colors.border,
-  },
-  yesNoBtnYes: { backgroundColor: Colors.green, borderColor: Colors.green },
-  yesNoBtnNo: { backgroundColor: Colors.red, borderColor: Colors.red },
-  yesNoText: {
-    fontSize: 18, fontWeight: "700" as const, color: Colors.textTertiary,
-    fontFamily: "DMSans_700Bold", letterSpacing: 1,
-  },
-  yesNoTextActive: { color: "#fff" },
   bottomBar: {
     flexDirection: "row", alignItems: "center", gap: 12,
     paddingHorizontal: 20, paddingTop: 12,
@@ -568,34 +508,5 @@ const styles = StyleSheet.create({
   errorRetryText: {
     fontSize: 13, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
-  },
-  // Sprint 274: Live score preview
-  liveScorePreview: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: Colors.surfaceRaised,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginTop: 8,
-  },
-  liveScoreLabel: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: Colors.textTertiary,
-    fontFamily: "DMSans_600SemiBold",
-    letterSpacing: 1,
-  },
-  liveScoreValue: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: Colors.gold,
-    fontFamily: "PlayfairDisplay_700Bold",
-  },
-  liveScoreWeight: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    fontFamily: "DMSans_400Regular",
   },
 });

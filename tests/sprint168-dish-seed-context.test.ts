@@ -76,6 +76,7 @@ describe("Seed file — dish leaderboard seeding", () => {
 // ---------------------------------------------------------------------------
 describe("Rating flow — dish context pre-fill", () => {
   const rateSrc = readFile("app/rate/[id].tsx");
+  const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
 
   it("accepts dish search param", () => {
     expect(rateSrc).toContain("dish: dishContext");
@@ -88,14 +89,14 @@ describe("Rating flow — dish context pre-fill", () => {
   });
 
   it("shows dish context banner when param provided", () => {
-    expect(rateSrc).toContain("dishContextBanner");
-    expect(rateSrc).toContain("You're rating");
-    expect(rateSrc).toContain("for their");
+    expect(dimSrc).toContain("dishContextBanner");
+    expect(dimSrc).toContain("You're rating");
+    expect(dimSrc).toContain("for their");
   });
 
   it("has styles for dish context banner", () => {
-    expect(rateSrc).toContain("dishContextBanner:");
-    expect(rateSrc).toContain("dishContextText:");
+    expect(dimSrc).toContain("dishContextBanner:");
+    expect(dimSrc).toContain("dishContextText:");
   });
 });
 

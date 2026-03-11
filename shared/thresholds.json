@@ -28,6 +28,7 @@
     "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 506, "notes": "Sprint 616: +TimeOnPageIndicator (501→506)" },
     "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" },
     "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" },
+    "components/rate/DimensionScoringStep.tsx": { "maxLOC": 170, "current": 151, "notes": "Sprint 621: extracted step 1 dimension scoring" },
     "components/search/JustRatedSection.tsx": { "maxLOC": 140, "current": 122, "notes": "Sprint 617: just-rated feed section" }
   },
   "build": {
@@ -36,6 +37,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11439
+    "currentCount": 11460
   }
 }

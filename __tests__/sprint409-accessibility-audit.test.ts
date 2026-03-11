@@ -12,6 +12,7 @@ function readFile(rel: string): string {
 
 describe("Sprint 409 — Rating Flow Accessibility Audit", () => {
   const rateSrc = readFile("app/rate/[id].tsx");
+  const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
   const subSrc = readFile("components/rate/SubComponents.tsx");
   const extrasSrc = readFile("components/rate/RatingExtrasStep.tsx");
 
@@ -111,12 +112,12 @@ describe("Sprint 409 — Rating Flow Accessibility Audit", () => {
 
   describe("rate/[id].tsx accessibility", () => {
     it("live score preview has accessibilityLiveRegion", () => {
-      expect(rateSrc).toContain('accessibilityLiveRegion="polite"');
+      expect(dimSrc).toContain('accessibilityLiveRegion="polite"');
     });
 
     it("live score has accessible label with scores", () => {
-      expect(rateSrc).toContain("Your score:");
-      expect(rateSrc).toContain("weighted:");
+      expect(dimSrc).toContain("Your score:");
+      expect(dimSrc).toContain("weighted:");
     });
 
     it("business name has header role", () => {
@@ -133,8 +134,8 @@ describe("Sprint 409 — Rating Flow Accessibility Audit", () => {
     });
 
     it("would-return buttons have accessible labels", () => {
-      expect(rateSrc).toContain('accessibilityLabel="Yes, would return"');
-      expect(rateSrc).toContain('accessibilityLabel="No, would not return"');
+      expect(dimSrc).toContain('accessibilityLabel="Yes, would return"');
+      expect(dimSrc).toContain('accessibilityLabel="No, would not return"');
     });
   });
 });

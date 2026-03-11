@@ -18,6 +18,7 @@ const readFile = (relPath: string) =>
 
 const visitTypeSrc = readFile("components/rate/VisitTypeStep.tsx");
 const rateFlowSrc = readFile("app/rate/[id].tsx");
+const dimSrc = readFile("components/rate/DimensionScoringStep.tsx");
 
 // ---------------------------------------------------------------------------
 // 1. Tooltip data structure
@@ -189,19 +190,19 @@ describe("rate/[id].tsx — tooltip integration", () => {
   });
 
   it("renders DimensionTooltip for each dimension", () => {
-    expect(rateFlowSrc).toContain("dimensionTooltips[0]");
-    expect(rateFlowSrc).toContain("dimensionTooltips[1]");
-    expect(rateFlowSrc).toContain("dimensionTooltips[2]");
+    expect(dimSrc).toContain("dimensionTooltips[0]");
+    expect(dimSrc).toContain("dimensionTooltips[1]");
+    expect(dimSrc).toContain("dimensionTooltips[2]");
   });
 
   it("toggles tooltip on press", () => {
-    expect(rateFlowSrc).toContain("activeTooltip === 0 ? null : 0");
-    expect(rateFlowSrc).toContain("activeTooltip === 1 ? null : 1");
-    expect(rateFlowSrc).toContain("activeTooltip === 2 ? null : 2");
+    expect(dimSrc).toContain("activeTooltip === 0 ? null : 0");
+    expect(dimSrc).toContain("activeTooltip === 1 ? null : 1");
+    expect(dimSrc).toContain("activeTooltip === 2 ? null : 2");
   });
 
   it("has labelWithTooltip style", () => {
-    expect(rateFlowSrc).toContain("labelWithTooltip");
+    expect(dimSrc).toContain("labelWithTooltip");
   });
 });
 

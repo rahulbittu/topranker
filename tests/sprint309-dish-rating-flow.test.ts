@@ -14,6 +14,7 @@ const pageSrc = fs.readFileSync(path.join(ROOT, "app/dish/[slug].tsx"), "utf-8")
 // Sprint 317: Entry card extracted to DishEntryCard component
 const entryCardSrc = fs.readFileSync(path.join(ROOT, "components/dish/DishEntryCard.tsx"), "utf-8");
 const rateSrc = fs.readFileSync(path.join(ROOT, "app/rate/[id].tsx"), "utf-8");
+const dimSrc = fs.readFileSync(path.join(ROOT, "components/rate/DimensionScoringStep.tsx"), "utf-8");
 
 describe("Sprint 309 — Dish Rating Flow", () => {
   // ─── Entry card Rate button ────────────────────────────────
@@ -51,7 +52,7 @@ describe("Sprint 309 — Dish Rating Flow", () => {
   });
 
   it("rate page shows dish context banner", () => {
-    expect(rateSrc).toContain("dishContextBanner");
+    expect(dimSrc).toContain("dishContextBanner");
   });
 
   // ─── Enhanced CTA ──────────────────────────────────────────
