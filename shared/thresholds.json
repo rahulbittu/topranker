@@ -16,7 +16,7 @@
     "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 169, "notes": "Sprint 567: velocity widget" },
     "components/business/CollapsibleReviews.tsx": { "maxLOC": 370, "current": 349, "notes": "Sprint 563: carousel extracted" },
     "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 70, "notes": "Sprint 563: extracted from CollapsibleReviews" },
-    "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 100, "current": 80, "notes": "Sprint 553: new" },
+    "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 115, "current": 106, "notes": "Sprint 593: web flexbox row" },
     "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 414, "notes": "Sprint 546: dedup" },
     "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" },
     "components/search/CityComparisonOverlay.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 568: city comparison overlay" },
@@ -28,10 +28,10 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 731.4
+    "currentSizeKb": 731.6
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11273
+    "currentCount": 11290
   }
 }

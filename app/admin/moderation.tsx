@@ -1,41 +1,24 @@
 /**
- * Admin Moderation Queue — Sprint 367
- * UI for reviewing, approving, and rejecting moderation items.
- * Supports bulk actions, content type filtering, and violation priority sorting.
- * Owner: Sarah Nakamura (Lead Eng)
+ * Admin Moderation Queue — Sprint 594 UX Enhancement
+ * Text search, moderator notes on reject, stale item highlighting,
+ * item counts on filter chips, relative time display.
+ * Owner: Nadia Kaur (Security)
  */
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, RefreshControl, Alert, Platform,
+  ActivityIndicator, RefreshControl, Alert, Platform, TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-type IoniconsName = React.ComponentProps<typeof Ionicons>["name"];
 import Colors from "../../constants/colors";
 import { BRAND } from "../../constants/brand";
 import { TYPOGRAPHY } from "../../constants/typography";
 import { apiFetch, apiRequest } from "../../lib/api";
+import { ModerationItem, ModerationItemCard } from "../../components/admin/ModerationItemCard";
 
 type ContentType = "review" | "photo" | "reply";
-type ModerationStatus = "pending" | "approved" | "rejected";
-
-interface ModerationItem {
-  id: string;
-  contentType: ContentType;
-  contentId: string;
-  memberId: string;
-  businessId: string;
-  content: string;
-  violations: string[];
-  status: ModerationStatus;
-  moderatorId: string | null;
-  moderatorNote: string | null;
-  createdAt: string;
-  resolvedAt: string | null;
-}
 
 interface QueueStats {
   total: number;
@@ -43,18 +26,6 @@ interface QueueStats {
   approved: number;
   rejected: number;
 }
-
-const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
-  review: "Review",
-  photo: "Photo",
-  reply: "Reply",
-};
-
-const CONTENT_TYPE_ICONS: Record<ContentType, string> = {
-  review: "chatbubble-outline",
-  photo: "image-outline",
-  reply: "arrow-undo-outline",
-};
 
 function useQueueStats() {
   return useQuery<QueueStats>({
@@ -77,6 +48,10 @@ function useFilteredQueue(filter: { status?: string; contentType?: string; sort?
   });
 }
 
+const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
+  review: "Review", photo: "Photo", reply: "Reply",
+};
+
 export default function ModerationScreen() {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("pending");
@@ -84,6 +59,9 @@ export default function ModerationScreen() {
   const [sortByViolations, setSortByViolations] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
+  const [showRejectInput, setShowRejectInput] = useState<Record<string, boolean>>({});
 
   const { data: stats } = useQueueStats();
   const { data: items = [], isLoading, refetch } = useFilteredQueue({
@@ -91,6 +69,16 @@ export default function ModerationScreen() {
     contentType: typeFilter || undefined,
     sort: sortByViolations ? "violations" : undefined,
   });
+
+  // Client-side text search filter
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items;
+    const q = searchQuery.toLowerCase();
+    return items.filter(i =>
+      i.content.toLowerCase().includes(q) ||
+      i.violations.some(v => v.toLowerCase().includes(q))
+    );
+  }, [items, searchQuery]);
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["admin", "moderation"] });
@@ -103,8 +91,13 @@ export default function ModerationScreen() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("POST", `/api/admin/moderation/${id}/reject`),
-    onSuccess: invalidateAll,
+    mutationFn: ({ id, note }: { id: string; note: string }) =>
+      apiRequest("POST", `/api/admin/moderation/${id}/reject`, { note }),
+    onSuccess: (_, { id }) => {
+      invalidateAll();
+      setRejectNotes(prev => { const n = { ...prev }; delete n[id]; return n; });
+      setShowRejectInput(prev => { const n = { ...prev }; delete n[id]; return n; });
+    },
   });
 
   const bulkApproveMutation = useMutation({
@@ -126,216 +119,168 @@ export default function ModerationScreen() {
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
   const selectAll = () => {
-    if (selectedIds.size === items.length) {
+    if (selectedIds.size === filteredItems.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(items.map(i => i.id)));
+      setSelectedIds(new Set(filteredItems.map(i => i.id)));
     }
   };
 
-  const handleBulkApprove = () => {
+  const handleBulkAction = (action: "approve" | "reject") => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    const confirm = () => bulkApproveMutation.mutate(ids);
+    const label = action === "approve" ? "Approve" : "Reject";
+    const run = () => action === "approve" ? bulkApproveMutation.mutate(ids) : bulkRejectMutation.mutate(ids);
     if (Platform.OS === "web") {
-      if (window.confirm(`Approve ${ids.length} items?`)) confirm();
+      if (window.confirm(`${label} ${ids.length} items?`)) run();
     } else {
-      Alert.alert("Bulk Approve", `Approve ${ids.length} items?`, [
+      Alert.alert(`Bulk ${label}`, `${label} ${ids.length} items?`, [
         { text: "Cancel", style: "cancel" },
-        { text: "Approve", onPress: confirm },
+        { text: label, style: action === "reject" ? "destructive" : "default", onPress: run },
       ]);
     }
   };
 
-  const handleBulkReject = () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
-    const confirm = () => bulkRejectMutation.mutate(ids);
-    if (Platform.OS === "web") {
-      if (window.confirm(`Reject ${ids.length} items?`)) confirm();
-    } else {
-      Alert.alert("Bulk Reject", `Reject ${ids.length} items?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Reject", style: "destructive", onPress: confirm },
-      ]);
-    }
-  };
+  const statusOptions = [
+    { key: "pending", label: "Pending", count: stats?.pending },
+    { key: "approved", label: "Approved", count: stats?.approved },
+    { key: "rejected", label: "Rejected", count: stats?.rejected },
+    { key: "", label: "All", count: stats?.total },
+  ];
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Moderation Queue</Text>
+    <View style={st.container}>
+      <Text style={st.title}>Moderation Queue</Text>
+
+      {/* Search bar */}
+      <View style={st.searchRow}>
+        <Ionicons name="search-outline" size={16} color={Colors.textTertiary} />
+        <TextInput
+          style={st.searchInput}
+          placeholder="Search content or violations..."
+          placeholderTextColor={Colors.textTertiary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery("")} hitSlop={8}>
+            <Ionicons name="close-circle" size={16} color={Colors.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
 
       {/* Stats row */}
       {stats && (
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.pending}</Text>
-            <Text style={styles.statLabel}>Pending</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.approved}</Text>
-            <Text style={styles.statLabel}>Approved</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.rejected}</Text>
-            <Text style={styles.statLabel}>Rejected</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
+        <View style={st.statsRow}>
+          {statusOptions.map(o => (
+            <View key={o.key || "all"} style={st.statCard}>
+              <Text style={st.statValue}>{o.count ?? 0}</Text>
+              <Text style={st.statLabel}>{o.label}</Text>
+            </View>
+          ))}
         </View>
       )}
 
-      {/* Filter chips */}
-      <View style={styles.filterRow}>
-        {["pending", "approved", "rejected", ""].map(s => (
+      {/* Status filter chips with counts */}
+      <View style={st.filterRow}>
+        {statusOptions.map(o => (
           <TouchableOpacity
-            key={s || "all"}
-            style={[styles.filterChip, statusFilter === s && styles.filterChipActive]}
-            onPress={() => setStatusFilter(s)}
+            key={o.key || "all"}
+            style={[st.filterChip, statusFilter === o.key && st.filterChipActive]}
+            onPress={() => setStatusFilter(o.key)}
             accessibilityRole="button"
           >
-            <Text style={[styles.filterChipText, statusFilter === s && styles.filterChipTextActive]}>
-              {s || "All"}
+            <Text style={[st.filterChipText, statusFilter === o.key && st.filterChipTextActive]}>
+              {o.label}{o.count != null ? ` (${o.count})` : ""}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Content type + sort */}
-      <View style={styles.filterRow}>
-        {["", "review", "photo", "reply"].map(t => (
+      <View style={st.filterRow}>
+        {(["", "review", "photo", "reply"] as const).map(t => (
           <TouchableOpacity
             key={t || "all-types"}
-            style={[styles.filterChip, typeFilter === t && styles.filterChipActive]}
+            style={[st.filterChip, typeFilter === t && st.filterChipActive]}
             onPress={() => setTypeFilter(t)}
             accessibilityRole="button"
           >
-            <Text style={[styles.filterChipText, typeFilter === t && styles.filterChipTextActive]}>
-              {t ? CONTENT_TYPE_LABELS[t as ContentType] : "All Types"}
+            <Text style={[st.filterChipText, typeFilter === t && st.filterChipTextActive]}>
+              {t ? CONTENT_TYPE_LABELS[t] : "All Types"}
             </Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
-          style={[styles.filterChip, sortByViolations && styles.filterChipActive]}
+          style={[st.filterChip, sortByViolations && st.filterChipActive]}
           onPress={() => setSortByViolations(!sortByViolations)}
           accessibilityRole="button"
         >
           <Ionicons name="warning-outline" size={12} color={sortByViolations ? "#fff" : Colors.textSecondary} />
-          <Text style={[styles.filterChipText, sortByViolations && styles.filterChipTextActive]}>Priority</Text>
+          <Text style={[st.filterChipText, sortByViolations && st.filterChipTextActive]}>Priority</Text>
         </TouchableOpacity>
       </View>
 
       {/* Bulk actions bar */}
       {selectedIds.size > 0 && (
-        <View style={styles.bulkBar}>
-          <Text style={styles.bulkCount}>{selectedIds.size} selected</Text>
-          <TouchableOpacity style={styles.bulkApproveBtn} onPress={handleBulkApprove} accessibilityRole="button">
+        <View style={st.bulkBar}>
+          <Text style={st.bulkCount}>{selectedIds.size} selected</Text>
+          <TouchableOpacity style={st.bulkApproveBtn} onPress={() => handleBulkAction("approve")} accessibilityRole="button">
             <Ionicons name="checkmark-circle" size={14} color="#fff" />
-            <Text style={styles.bulkBtnText}>Approve</Text>
+            <Text style={st.bulkBtnText}>Approve</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bulkRejectBtn} onPress={handleBulkReject} accessibilityRole="button">
+          <TouchableOpacity style={st.bulkRejectBtn} onPress={() => handleBulkAction("reject")} accessibilityRole="button">
             <Ionicons name="close-circle" size={14} color="#fff" />
-            <Text style={styles.bulkBtnText}>Reject</Text>
+            <Text style={st.bulkBtnText}>Reject</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {/* Select all */}
-      {items.length > 0 && statusFilter === "pending" && (
-        <TouchableOpacity style={styles.selectAllBtn} onPress={selectAll} accessibilityRole="button">
-          <Ionicons name={selectedIds.size === items.length ? "checkbox" : "square-outline"} size={16} color={BRAND.colors.amber} />
-          <Text style={styles.selectAllText}>
-            {selectedIds.size === items.length ? "Deselect All" : "Select All"}
+      {filteredItems.length > 0 && statusFilter === "pending" && (
+        <TouchableOpacity style={st.selectAllBtn} onPress={selectAll} accessibilityRole="button">
+          <Ionicons name={selectedIds.size === filteredItems.length ? "checkbox" : "square-outline"} size={16} color={BRAND.colors.amber} />
+          <Text style={st.selectAllText}>
+            {selectedIds.size === filteredItems.length ? "Deselect All" : `Select All (${filteredItems.length})`}
           </Text>
         </TouchableOpacity>
       )}
 
       {/* Items list */}
       {isLoading ? (
-        <ActivityIndicator style={styles.loader} color={BRAND.colors.amber} />
-      ) : items.length === 0 ? (
-        <View style={styles.emptyState}>
+        <ActivityIndicator style={st.loader} color={BRAND.colors.amber} />
+      ) : filteredItems.length === 0 ? (
+        <View style={st.emptyState}>
           <Ionicons name="shield-checkmark-outline" size={32} color={Colors.textTertiary} />
-          <Text style={styles.emptyText}>No items matching filters</Text>
+          <Text style={st.emptyText}>
+            {searchQuery ? "No items match your search" : "No items matching filters"}
+          </Text>
         </View>
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND.colors.amber} />}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={st.listContent}
         >
-          {items.map(item => (
-            <View key={item.id} style={[styles.itemCard, selectedIds.has(item.id) && styles.itemCardSelected]}>
-              <View style={styles.itemHeader}>
-                <TouchableOpacity onPress={() => toggleSelect(item.id)} style={styles.checkbox} accessibilityRole="checkbox">
-                  <Ionicons name={selectedIds.has(item.id) ? "checkbox" : "square-outline"} size={18} color={BRAND.colors.amber} />
-                </TouchableOpacity>
-                <Ionicons name={CONTENT_TYPE_ICONS[item.contentType] as IoniconsName} size={14} color={Colors.textSecondary} />
-                <Text style={styles.itemType}>{CONTENT_TYPE_LABELS[item.contentType]}</Text>
-                {item.violations.length > 0 && (
-                  <View style={styles.violationBadge}>
-                    <Ionicons name="warning" size={10} color={Colors.red} />
-                    <Text style={styles.violationCount}>{item.violations.length}</Text>
-                  </View>
-                )}
-                <View style={styles.flexSpacer} />
-                <Text style={styles.itemTime}>{new Date(item.createdAt).toLocaleDateString()}</Text>
-              </View>
-
-              <Text style={styles.itemContent} numberOfLines={3}>{item.content}</Text>
-
-              {item.violations.length > 0 && (
-                <View style={styles.violationList}>
-                  {item.violations.map((v, i) => (
-                    <Text key={i} style={styles.violationItem}>• {v}</Text>
-                  ))}
-                </View>
-              )}
-
-              {item.status === "pending" && (
-                <View style={styles.itemActions}>
-                  <TouchableOpacity
-                    style={styles.approveBtn}
-                    onPress={() => approveMutation.mutate(item.id)}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="checkmark" size={14} color={Colors.green} />
-                    <Text style={[styles.actionBtnText, { color: Colors.green }]}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.rejectBtn}
-                    onPress={() => rejectMutation.mutate(item.id)}
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="close" size={14} color={Colors.red} />
-                    <Text style={[styles.actionBtnText, { color: Colors.red }]}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {item.status !== "pending" && (
-                <View style={styles.resolvedRow}>
-                  <Ionicons
-                    name={item.status === "approved" ? "checkmark-circle" : "close-circle"}
-                    size={14}
-                    color={item.status === "approved" ? Colors.green : Colors.red}
-                  />
-                  <Text style={styles.resolvedText}>
-                    {item.status === "approved" ? "Approved" : "Rejected"}
-                    {item.resolvedAt ? ` on ${new Date(item.resolvedAt).toLocaleDateString()}` : ""}
-                  </Text>
-                </View>
-              )}
-            </View>
+          {filteredItems.map(item => (
+            <ModerationItemCard
+              key={item.id}
+              item={item}
+              selected={selectedIds.has(item.id)}
+              onToggleSelect={() => toggleSelect(item.id)}
+              onApprove={() => approveMutation.mutate(item.id)}
+              onReject={(note) => rejectMutation.mutate({ id: item.id, note })}
+              rejectNote={rejectNotes[item.id] || ""}
+              onRejectNoteChange={(text) => setRejectNotes(prev => ({ ...prev, [item.id]: text }))}
+              showRejectInput={!!showRejectInput[item.id]}
+              onToggleRejectInput={() => setShowRejectInput(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+            />
           ))}
         </ScrollView>
       )}
@@ -343,135 +288,56 @@ export default function ModerationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background, padding: 16 },
   title: {
     fontSize: 24, fontWeight: "700", color: Colors.text,
-    fontFamily: "PlayfairDisplay_700Bold", marginBottom: 16,
+    fontFamily: "PlayfairDisplay_700Bold", marginBottom: 12,
   },
-  statsRow: {
-    flexDirection: "row", gap: 8, marginBottom: 12,
+  searchRow: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.surface, borderRadius: 10, paddingHorizontal: 12,
+    paddingVertical: 8, marginBottom: 12, borderWidth: 1, borderColor: Colors.border,
   },
+  searchInput: {
+    flex: 1, fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular",
+    padding: 0,
+  },
+  statsRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   statCard: {
     flex: 1, backgroundColor: Colors.surface, borderRadius: 10,
     padding: 10, alignItems: "center", ...Colors.cardShadow,
   },
-  statValue: {
-    fontSize: 18, fontWeight: "700", color: Colors.text,
-    fontFamily: "DMSans_700Bold",
-  },
-  statLabel: {
-    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary, marginTop: 2,
-  },
-  filterRow: {
-    flexDirection: "row", gap: 6, marginBottom: 8, flexWrap: "wrap",
-  },
+  statValue: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  statLabel: { ...TYPOGRAPHY.ui.small, color: Colors.textTertiary, marginTop: 2 },
+  filterRow: { flexDirection: "row", gap: 6, marginBottom: 8, flexWrap: "wrap" },
   filterChip: {
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
     backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
   },
-  filterChipActive: {
-    backgroundColor: BRAND.colors.amber, borderColor: BRAND.colors.amber,
-  },
-  filterChipText: {
-    fontSize: 11, fontWeight: "600", color: Colors.textSecondary,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  filterChipTextActive: {
-    color: "#fff",
-  },
+  filterChipActive: { backgroundColor: BRAND.colors.amber, borderColor: BRAND.colors.amber },
+  filterChipText: { fontSize: 11, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
+  filterChipTextActive: { color: "#fff" },
   bulkBar: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.surface, borderRadius: 10, padding: 10,
     marginBottom: 8, ...Colors.cardShadow,
   },
-  bulkCount: {
-    fontSize: 12, fontWeight: "600", color: Colors.text,
-    fontFamily: "DMSans_600SemiBold", flex: 1,
-  },
+  bulkCount: { fontSize: 12, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1 },
   bulkApproveBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: Colors.green, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: Colors.green, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
   },
   bulkRejectBtn: {
     flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: Colors.red, borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: Colors.red, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
   },
-  bulkBtnText: {
-    fontSize: 11, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
-  },
-  selectAllBtn: {
-    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8,
-  },
-  selectAllText: {
-    fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_500Medium",
-  },
+  bulkBtnText: { fontSize: 11, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
+  selectAllBtn: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  selectAllText: { fontSize: 12, color: BRAND.colors.amber, fontFamily: "DMSans_500Medium" },
   loader: { marginTop: 40 },
   emptyState: { alignItems: "center", paddingTop: 40, gap: 8 },
-  emptyText: {
-    fontSize: 14, color: Colors.textTertiary, fontFamily: "DMSans_500Medium",
-  },
+  emptyText: { fontSize: 14, color: Colors.textTertiary, fontFamily: "DMSans_500Medium" },
   listContent: { gap: 8, paddingBottom: 40 },
-  itemCard: {
-    backgroundColor: Colors.surface, borderRadius: 12, padding: 12,
-    ...Colors.cardShadow,
-  },
-  itemCardSelected: {
-    borderWidth: 1, borderColor: BRAND.colors.amber,
-  },
-  itemHeader: {
-    flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6,
-  },
-  checkbox: { marginRight: 2 },
-  itemType: {
-    fontSize: 11, fontWeight: "600", color: Colors.textSecondary,
-    fontFamily: "DMSans_600SemiBold",
-  },
-  violationBadge: {
-    flexDirection: "row", alignItems: "center", gap: 2,
-    backgroundColor: Colors.redFaint, borderRadius: 8,
-    paddingHorizontal: 5, paddingVertical: 1,
-  },
-  violationCount: {
-    fontSize: 10, fontWeight: "700", color: Colors.red,
-    fontFamily: "DMSans_700Bold",
-  },
-  flexSpacer: { flex: 1 },
-  itemTime: {
-    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
-  },
-  itemContent: {
-    fontSize: 13, color: Colors.text, fontFamily: "DMSans_400Regular",
-    lineHeight: 18, marginBottom: 6,
-  },
-  violationList: { marginBottom: 6 },
-  violationItem: {
-    fontSize: 11, color: Colors.red, fontFamily: "DMSans_500Medium",
-    lineHeight: 16,
-  },
-  itemActions: {
-    flexDirection: "row", gap: 8, marginTop: 4,
-  },
-  approveBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-    backgroundColor: Colors.greenFaint,
-  },
-  rejectBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8,
-    backgroundColor: Colors.redFaint,
-  },
-  actionBtnText: {
-    fontSize: 11, fontWeight: "600", fontFamily: "DMSans_600SemiBold",
-  },
-  resolvedRow: {
-    flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4,
-  },
-  resolvedText: {
-    ...TYPOGRAPHY.ui.small, color: Colors.textTertiary,
-  },
 });

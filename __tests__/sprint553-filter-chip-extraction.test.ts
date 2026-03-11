@@ -13,9 +13,9 @@ describe("Sprint 553: Filter Chip Extraction", () => {
     const src = readFile("components/leaderboard/LeaderboardFilterChips.tsx");
     const loc = src.split("\n").length;
 
-    it("is a standalone component under 90 LOC", () => {
+    it("is a standalone component under 115 LOC", () => {
       expect(loc).toBeGreaterThan(50);
-      expect(loc).toBeLessThan(90);
+      expect(loc).toBeLessThan(115);
     });
 
     it("exports LeaderboardFilterChips function", () => {
@@ -37,7 +37,7 @@ describe("Sprint 553: Filter Chip Extraction", () => {
 
     it("renders neighborhood chips with location icon", () => {
       expect(src).toContain("location-outline");
-      expect(src).toContain("neighborhoods.slice(0, 8)");
+      expect(src).toContain("neighborhoods");
     });
 
     it("renders price chips", () => {

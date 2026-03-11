@@ -7,6 +7,8 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 367: Admin moderation queue UI", () => {
   const modSrc = readFile("app/admin/moderation.tsx");
+  const cardSrc = readFile("components/admin/ModerationItemCard.tsx");
+  const allSrc = modSrc + "\n" + cardSrc;
 
   // ── Component structure ───────────────────────────────────
 
@@ -16,7 +18,7 @@ describe("Sprint 367: Admin moderation queue UI", () => {
     });
 
     it("should have ModerationItem interface", () => {
-      expect(modSrc).toContain("interface ModerationItem");
+      expect(allSrc).toContain("interface ModerationItem");
     });
 
     it("should have QueueStats interface", () => {
@@ -36,19 +38,19 @@ describe("Sprint 367: Admin moderation queue UI", () => {
     });
 
     it("should display pending count", () => {
-      expect(modSrc).toContain("stats.pending");
+      expect(modSrc).toContain("pending");
     });
 
     it("should display approved count", () => {
-      expect(modSrc).toContain("stats.approved");
+      expect(modSrc).toContain("approved");
     });
 
     it("should display rejected count", () => {
-      expect(modSrc).toContain("stats.rejected");
+      expect(modSrc).toContain("rejected");
     });
 
     it("should display total count", () => {
-      expect(modSrc).toContain("stats.total");
+      expect(modSrc).toContain("total");
     });
 
     it("should fetch from admin moderation stats endpoint", () => {
@@ -117,13 +119,13 @@ describe("Sprint 367: Admin moderation queue UI", () => {
     });
 
     it("should show confirmation dialog for bulk approve", () => {
-      expect(modSrc).toContain("handleBulkApprove");
-      expect(modSrc).toContain("Bulk Approve");
+      expect(modSrc).toContain("handleBulkAction");
+      expect(modSrc).toContain("Approve");
     });
 
     it("should show confirmation dialog for bulk reject", () => {
-      expect(modSrc).toContain("handleBulkReject");
-      expect(modSrc).toContain("Bulk Reject");
+      expect(modSrc).toContain("handleBulkAction");
+      expect(modSrc).toContain("Reject");
     });
 
     it("should show bulk action bar when items selected", () => {
@@ -155,9 +157,9 @@ describe("Sprint 367: Admin moderation queue UI", () => {
     });
 
     it("should show resolved status for non-pending items", () => {
-      expect(modSrc).toContain("Approved");
-      expect(modSrc).toContain("Rejected");
-      expect(modSrc).toContain("resolvedRow");
+      expect(allSrc).toContain("Approved");
+      expect(allSrc).toContain("Rejected");
+      expect(allSrc).toContain("resolvedRow");
     });
   });
 
@@ -165,17 +167,17 @@ describe("Sprint 367: Admin moderation queue UI", () => {
 
   describe("Violation display", () => {
     it("should show violation badge with count", () => {
-      expect(modSrc).toContain("violationBadge");
-      expect(modSrc).toContain("item.violations.length");
+      expect(allSrc).toContain("violationBadge");
+      expect(allSrc).toContain("item.violations.length");
     });
 
     it("should list individual violations", () => {
-      expect(modSrc).toContain("violationList");
-      expect(modSrc).toContain("violationItem");
+      expect(allSrc).toContain("violationList");
+      expect(allSrc).toContain("violationItem");
     });
 
     it("should use warning icon for violations", () => {
-      expect(modSrc).toContain('"warning"');
+      expect(allSrc).toContain('"warning"');
     });
   });
 

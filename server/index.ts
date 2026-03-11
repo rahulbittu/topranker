@@ -190,35 +190,9 @@ function configureExpoAndLanding(app: express.Application) {
   const distPath = path.resolve(process.cwd(), "dist");
   const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
 
-  // Sprint 593: Read index.html at startup and fix stale bundle references
   let distIndexHtml = "";
   if (hasDistBuild) {
     distIndexHtml = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
-    // If dist has old bundle with localhost baked in, replace with correct bundle
-    const CORRECT_BUNDLE = "entry-78f94e63e191df2d3cd7c93110677d5d.js";
-    if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
-      log(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
-      distIndexHtml = distIndexHtml.replace(
-        /entry-[a-f0-9]+\.js/g,
-        CORRECT_BUNDLE
-      );
-    }
-  }
-
-  if (hasDistBuild) {
-    // Sprint 593: If the correct bundle doesn't exist but old one does, copy it
-    const correctBundlePath = path.join(distPath, "_expo/static/js/web/entry-78f94e63e191df2d3cd7c93110677d5d.js");
-    const oldBundlePath = path.join(distPath, "_expo/static/js/web/entry-78f94e63e191df2d3cd7c93110677d5d.js");
-    if (!fs.existsSync(correctBundlePath) && fs.existsSync(oldBundlePath)) {
-      // Serve the old bundle content at the new bundle URL via route
-      const oldBundleContent = fs.readFileSync(oldBundlePath, "utf-8");
-      // Fix localhost references in the bundle
-      const patchedBundle = oldBundleContent
-        .replace(/http:\/\/localhost:5001/g, "")
-        .replace(/localhost:5001/g, "");
-      fs.writeFileSync(correctBundlePath, patchedBundle);
-      log("Patched old bundle → new bundle path with localhost references removed");
-    }
     app.use(express.static(distPath, {
       maxAge: isProduction ? "1d" : 0,
       index: false,
@@ -399,34 +373,6 @@ function setupErrorHandler(app: express.Application) {
   // Sprint 180: SSR prerender middleware for bot traffic
   const { prerenderMiddleware } = await import("./prerender");
   app.use(prerenderMiddleware);
-
-  // Temporary debug endpoint — before registerRoutes to avoid catch-all
-  app.get("/api/debug-dist", (_req: Request, res: Response) => {
-    const cwd = process.cwd();
-    const distDir = path.resolve(process.cwd(), "dist");
-    const backupDir = path.resolve(process.cwd(), "dist-web-backup");
-    const info: Record<string, unknown> = { cwd };
-    try { info.distFiles = fs.readdirSync(distDir); } catch { info.distFiles = "NOT FOUND"; }
-    try { info.distJsFiles = fs.readdirSync(path.join(distDir, "_expo/static/js/web")); } catch { info.distJsFiles = "NOT FOUND"; }
-    try { info.backupFiles = fs.readdirSync(backupDir); } catch { info.backupFiles = "NOT FOUND"; }
-    try { info.backupJsFiles = fs.readdirSync(path.join(backupDir, "_expo/static/js/web")); } catch { info.backupJsFiles = "NOT FOUND"; }
-    try { info.distHtml = fs.readFileSync(path.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.distHtml = "NOT FOUND"; }
-    try { info.backupHtml = fs.readFileSync(path.join(backupDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.backupHtml = "NOT FOUND"; }
-    res.json(info);
-  });
-
-  // Temporary: debug DB query errors
-  app.get("/api/debug-query", async (_req: Request, res: Response) => {
-    try {
-      const { db } = await import("./db");
-      const { businesses } = await import("@shared/schema");
-      const { sql } = await import("drizzle-orm");
-      const result = await db.select({ count: sql`count(*)` }).from(businesses);
-      res.json({ ok: true, businessCount: result[0]?.count });
-    } catch (e: any) {
-      res.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) });
-    }
-  });
 
   const server = await registerRoutes(app);
 

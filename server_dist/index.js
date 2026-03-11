@@ -16171,24 +16171,6 @@ function configureExpoAndLanding(app2) {
   let distIndexHtml = "";
   if (hasDistBuild) {
     distIndexHtml = fs2.readFileSync(path2.join(distPath, "index.html"), "utf-8");
-    const CORRECT_BUNDLE = "entry-78f94e63e191df2d3cd7c93110677d5d.js";
-    if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
-      log2(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
-      distIndexHtml = distIndexHtml.replace(
-        /entry-[a-f0-9]+\.js/g,
-        CORRECT_BUNDLE
-      );
-    }
-  }
-  if (hasDistBuild) {
-    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-78f94e63e191df2d3cd7c93110677d5d.js");
-    const oldBundlePath = path2.join(distPath, "_expo/static/js/web/entry-78f94e63e191df2d3cd7c93110677d5d.js");
-    if (!fs2.existsSync(correctBundlePath) && fs2.existsSync(oldBundlePath)) {
-      const oldBundleContent = fs2.readFileSync(oldBundlePath, "utf-8");
-      const patchedBundle = oldBundleContent.replace(/http:\/\/localhost:5001/g, "").replace(/localhost:5001/g, "");
-      fs2.writeFileSync(correctBundlePath, patchedBundle);
-      log2("Patched old bundle \u2192 new bundle path with localhost references removed");
-    }
     app2.use(express.static(distPath, {
       maxAge: isProduction ? "1d" : 0,
       index: false
@@ -16335,54 +16317,6 @@ function setupErrorHandler(app2) {
   setupRequestLogging(app);
   const { prerenderMiddleware: prerenderMiddleware2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
   app.use(prerenderMiddleware2);
-  app.get("/api/debug-dist", (_req, res) => {
-    const cwd = process.cwd();
-    const distDir = path2.resolve(process.cwd(), "dist");
-    const backupDir = path2.resolve(process.cwd(), "dist-web-backup");
-    const info = { cwd };
-    try {
-      info.distFiles = fs2.readdirSync(distDir);
-    } catch {
-      info.distFiles = "NOT FOUND";
-    }
-    try {
-      info.distJsFiles = fs2.readdirSync(path2.join(distDir, "_expo/static/js/web"));
-    } catch {
-      info.distJsFiles = "NOT FOUND";
-    }
-    try {
-      info.backupFiles = fs2.readdirSync(backupDir);
-    } catch {
-      info.backupFiles = "NOT FOUND";
-    }
-    try {
-      info.backupJsFiles = fs2.readdirSync(path2.join(backupDir, "_expo/static/js/web"));
-    } catch {
-      info.backupJsFiles = "NOT FOUND";
-    }
-    try {
-      info.distHtml = fs2.readFileSync(path2.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
-    } catch {
-      info.distHtml = "NOT FOUND";
-    }
-    try {
-      info.backupHtml = fs2.readFileSync(path2.join(backupDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
-    } catch {
-      info.backupHtml = "NOT FOUND";
-    }
-    res.json(info);
-  });
-  app.get("/api/debug-query", async (_req, res) => {
-    try {
-      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { sql: sql21 } = await import("drizzle-orm");
-      const result = await db2.select({ count: sql21`count(*)` }).from(businesses2);
-      res.json({ ok: true, businessCount: result[0]?.count });
-    } catch (e) {
-      res.json({ ok: false, error: e.message, stack: e.stack?.split("\n").slice(0, 5) });
-    }
-  });
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);

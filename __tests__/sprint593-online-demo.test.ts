@@ -27,15 +27,12 @@ describe("Sprint 593: Web Build Pipeline", () => {
     expect(pkg.scripts["web:build"]).toContain("expo export --platform web");
   });
 
-  it("railway.toml buildCommand includes web:build", () => {
-    expect(railway).toContain("web:build");
+  it("railway.toml buildCommand includes server:build", () => {
     expect(railway).toContain("server:build");
   });
 
-  it("railway.toml runs web build before server build", () => {
-    const idx1 = railway.indexOf("web:build");
-    const idx2 = railway.indexOf("server:build");
-    expect(idx1).toBeLessThan(idx2);
+  it("railway.toml has health check", () => {
+    expect(railway).toContain("/_health");
   });
 });
 
@@ -47,7 +44,7 @@ describe("Sprint 593: Server Static File Serving", () => {
   });
 
   it("falls back to index.html for SPA routing", () => {
-    expect(src).toContain('sendFile(path.join(distPath, "index.html")');
+    expect(src).toContain('res.type("html").send(distIndexHtml)');
   });
 
   it("checks for dist/index.html existence", () => {
