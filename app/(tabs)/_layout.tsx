@@ -171,7 +171,8 @@ function ClassicTabLayout() {
 }
 
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  // NativeTabs generates max-height:100vh + overflow:hidden CSS that clips content on web
+  if (Platform.OS !== "web" && isLiquidGlassAvailable()) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;
