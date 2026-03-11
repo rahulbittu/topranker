@@ -5,7 +5,7 @@ import {
   TextInput, Platform, RefreshControl, Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
@@ -79,6 +79,17 @@ export default function SearchScreen() {
     if (decoded.sort) setSortBy(decoded.sort);
     if (decoded.filter) setActiveFilter(decoded.filter as any);
   }, []);
+
+  // Sprint 647: Sync filter state to URL for browser back/forward + bookmarkable searches
+  useEffect(() => {
+    if (Platform.OS !== "web" || !urlParamsRead.current) return;
+    const params = encodeSearchParams({ ...currentFilters, query: debouncedQuery || undefined });
+    const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    if (window.location.search !== (qs ? `?${qs}` : "")) {
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [debouncedQuery, currentFilters]);
 
   // Autocomplete: fast 150ms debounce for typeahead
   useEffect(() => {
