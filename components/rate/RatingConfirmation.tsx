@@ -82,7 +82,7 @@ export function RatingConfirmation({
   if (timeOnPageMs && timeOnPageMs >= 30000) boosts.push({ label: "Time plausibility", pct: "+5%", icon: "time" });
   const totalBoostPct = boosts.reduce((sum, b) => sum + parseInt(b.pct), 0);
 
-  const shareUrl = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.com";
+  const shareUrl = businessSlug ? getShareUrl("share", businessSlug) : "https://topranker.com";
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

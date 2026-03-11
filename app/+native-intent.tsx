@@ -24,6 +24,12 @@ export function redirectSystemPath({
       }
     }
 
+    // Sprint 618: Route share deep links
+    if (cleanPath.startsWith("/share/")) {
+      const slug = cleanPath.replace("/share/", "").split("?")[0];
+      if (slug) return `/share/${slug}`;
+    }
+
     // Route challenger deep links
     if (cleanPath.startsWith("/challenger") || cleanPath.startsWith("/(tabs)/challenger")) {
       return "/(tabs)/challenger";

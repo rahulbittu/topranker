@@ -10,7 +10,7 @@ export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com"] as const;
 /**
  * Generate a shareable URL for a business, challenger match, or profile.
  */
-export function getShareUrl(type: "business" | "challenger" | "profile", slug: string): string {
+export function getShareUrl(type: "business" | "challenger" | "profile" | "share", slug: string): string {
   return `https://topranker.com/${type}/${slug}`;
 }
 

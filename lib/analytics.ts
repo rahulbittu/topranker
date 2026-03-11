@@ -51,6 +51,9 @@ export type AnalyticsEvent =
 
   // Sharing
   | "share_whatsapp_tap"
+  | "share_landing_view"
+  | "share_landing_rate_tap"
+  | "share_landing_explore_tap"
 
   // Challenger
   | "view_challenger"
@@ -267,6 +270,11 @@ export const Analytics = {
 
   shareWhatsAppTap: (slug: string, context: "confirmation" | "business_detail" | "dish_leaderboard") =>
     track("share_whatsapp_tap", { slug, context }),
+
+  // Sprint 618: Share landing page
+  shareLandingView: (slug: string) => track("share_landing_view", { slug }),
+  shareLandingRateTap: (slug: string) => track("share_landing_rate_tap", { slug }),
+  shareLandingExploreTap: (slug: string) => track("share_landing_explore_tap", { slug }),
 
   // Sprint 302: Cuisine analytics
   cuisineFilterSelect: (cuisine: string, surface: "rankings" | "discover") =>
