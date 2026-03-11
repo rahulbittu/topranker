@@ -35,8 +35,8 @@ import { TierProgressNotification } from "@/components/profile/TierProgressNotif
 import { DishVoteStreakCard } from "@/components/profile/DishVoteStreakCard";
 import { ProfileStatsCard } from "@/components/profile/ProfileStatsCard";
 import { ScoreBreakdownCard } from "@/components/profile/ScoreBreakdownCard";
-import { ActivityFeed } from "@/components/profile/ActivityFeed";
 import { ActivityTimeline } from "@/components/profile/ActivityTimeline";
+import { QuickStatsRow } from "@/components/profile/QuickStatsRow";
 import { RatingHistorySection } from "@/components/profile/RatingHistorySection";
 import { BadgeDetailModal } from "@/components/badges/BadgeDetailModal";
 import { type EarnedBadge } from "@/lib/badges";
@@ -127,6 +127,14 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
         avatarUrl={profile.avatarUrl}
         tier={tier}
         isFoundingMember={profile.isFoundingMember}
+      />
+
+      {/* Sprint 638: Quick stats row */}
+      <QuickStatsRow
+        totalRatings={profile.totalRatings}
+        distinctBusinesses={profile.distinctBusinesses}
+        currentStreak={profile.currentStreak ?? 0}
+        tier={tier}
       />
 
       {/* Sprint 185: Onboarding checklist for new users */}

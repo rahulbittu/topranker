@@ -150,9 +150,9 @@ describe("ActivityFeed — show more toggle", () => {
 describe("profile.tsx — ActivityFeed integration", () => {
   const src = readFile("app/(tabs)/profile.tsx");
 
-  it("imports ActivityFeed", () => {
-    expect(src).toContain("ActivityFeed");
-    expect(src).toContain("components/profile/ActivityFeed");
+  it("imports ActivityTimeline (replaces ActivityFeed)", () => {
+    expect(src).toContain("ActivityTimeline");
+    expect(src).toContain("components/profile/ActivityTimeline");
   });
 
   it("renders activity timeline with rating history", () => {
