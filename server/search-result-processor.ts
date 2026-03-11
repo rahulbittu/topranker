@@ -55,6 +55,9 @@ export function enrichSearchResults(
       // Sprint 534: Dish-aware and city-aware relevance scoring
       dishNames: (b as any).topDishes || [],
       city: (b as any).city || opts.city,
+      // Sprint 633: Action URL presence + city match signals
+      hasActionUrls: !!(b as any).menuUrl || !!(b as any).orderUrl || !!(b as any).doordashUrl,
+      businessCity: (b as any).city || undefined,
     };
     const relevanceScore = opts.query
       ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100

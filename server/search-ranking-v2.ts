@@ -104,6 +104,8 @@ export interface SearchContext {
   ratingCount?: number;
   dishNames?: string[];  // Sprint 534: Top dish names for dish-aware scoring
   city?: string;         // Sprint 534: City name for query intent parsing
+  hasActionUrls?: boolean; // Sprint 633: Action URL presence signal
+  businessCity?: string;   // Sprint 633: Business's own city for matching
 }
 
 /**
@@ -292,7 +294,20 @@ export function profileCompleteness(ctx: SearchContext): number {
   if (ctx.hasHours !== undefined) { total++; if (ctx.hasHours) score++; }
   if (ctx.hasCuisine !== undefined) { total++; if (ctx.hasCuisine) score++; }
   if (ctx.hasDescription !== undefined) { total++; if (ctx.hasDescription) score++; }
+  // Sprint 633: Action URLs boost profile completeness
+  if (ctx.hasActionUrls !== undefined) { total++; if (ctx.hasActionUrls) score++; }
   return total > 0 ? score / total : 0;
+}
+
+// Sprint 633: City match bonus (0-0.1)
+export function cityMatchBonus(ctx: SearchContext): number {
+  if (!ctx.city || !ctx.businessCity) return 0;
+  const searchCity = ctx.city.toLowerCase().trim();
+  const bizCity = ctx.businessCity.toLowerCase().trim();
+  if (searchCity === bizCity) return 0.1;
+  // Partial match for metro areas (e.g. "Dallas" matches businesses in "Irving")
+  if (bizCity.includes(searchCity) || searchCity.includes(bizCity)) return 0.05;
+  return 0;
 }
 
 /**
@@ -309,7 +324,9 @@ export function combinedRelevance(name: string, ctx: SearchContext): number {
   const dish = dishRelevance(ctx.dishNames, intentCtx.query);
   const completeness = profileCompleteness(ctx);
   const volume = ratingVolumeSignal(ctx.ratingCount);
-  return text * 0.40 + category * 0.20 + dish * 0.15 + completeness * 0.10 + volume * 0.15;
+  // Sprint 633: City match bonus adds to base relevance
+  const cityBonus = cityMatchBonus(ctx);
+  return Math.min(1, text * 0.38 + category * 0.18 + dish * 0.14 + completeness * 0.10 + volume * 0.14 + cityBonus * 0.06);
 }
 
 export function rankBusinesses(businesses: { businessId: string; name: string; ratings: RatingInput[]; search?: SearchContext }[]): RankedBusiness[] {

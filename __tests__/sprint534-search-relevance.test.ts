@@ -93,13 +93,14 @@ describe("Sprint 534: Search Relevance Tuning", () => {
       expect(score).toBeGreaterThan(0);
     });
 
-    it("uses 40/20/15/10/15 weight split", () => {
+    it("uses 38/18/14/10/14/6 weight split (Sprint 633: city bonus)", () => {
       const src = readFile("server/search-ranking-v2.ts");
-      expect(src).toContain("text * 0.40");
-      expect(src).toContain("category * 0.20");
-      expect(src).toContain("dish * 0.15");
+      expect(src).toContain("text * 0.38");
+      expect(src).toContain("category * 0.18");
+      expect(src).toContain("dish * 0.14");
       expect(src).toContain("completeness * 0.10");
-      expect(src).toContain("volume * 0.15");
+      expect(src).toContain("volume * 0.14");
+      expect(src).toContain("cityBonus * 0.06");
     });
   });
 

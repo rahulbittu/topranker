@@ -402,11 +402,13 @@ export default function SearchScreen() {
           data={filtered}
           keyExtractor={(item: MappedBusiness) => item.id}
           renderItem={({ item, index }: { item: MappedBusiness; index: number }) => (
-            <BusinessCard
-              item={item}
-              displayRank={item.rank > 0 ? item.rank : 0}
-              distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
-            />
+            <View style={styles.resultCardWrap}>
+              <BusinessCard
+                item={item}
+                displayRank={item.rank > 0 ? item.rank : 0}
+                distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
+              />
+            </View>
           )}
           contentContainerStyle={[
             styles.resultList,
@@ -551,7 +553,8 @@ const styles = StyleSheet.create({
   viewToggleTextActive: { color: "#fff" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
-  resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
+  resultList: { gap: 8, paddingTop: 4 },
+  resultCardWrap: { paddingHorizontal: 16 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },

@@ -192,20 +192,24 @@ describe("combinedRelevance", () => {
     expect(rankingSrc).toContain("export function combinedRelevance");
   });
 
-  it("weights text match at 40% (Sprint 534: rebalanced for dish signal)", () => {
-    expect(rankingSrc).toContain("text * 0.40");
+  it("weights text match at 38% (Sprint 633: rebalanced for city bonus)", () => {
+    expect(rankingSrc).toContain("text * 0.38");
   });
 
-  it("weights category at 20%", () => {
-    expect(rankingSrc).toContain("category * 0.20");
+  it("weights category at 18% (Sprint 633: rebalanced for city bonus)", () => {
+    expect(rankingSrc).toContain("category * 0.18");
   });
 
-  it("weights completeness at 10% (Sprint 534: rebalanced for dish signal)", () => {
+  it("weights completeness at 10%", () => {
     expect(rankingSrc).toContain("completeness * 0.10");
   });
 
-  it("weights volume at 15%", () => {
-    expect(rankingSrc).toContain("volume * 0.15");
+  it("weights volume at 14% (Sprint 633: rebalanced for city bonus)", () => {
+    expect(rankingSrc).toContain("volume * 0.14");
+  });
+
+  it("weights cityBonus at 6% (Sprint 633: new city bonus signal)", () => {
+    expect(rankingSrc).toContain("cityBonus * 0.06");
   });
 });
 

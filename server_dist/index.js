@@ -10105,7 +10105,19 @@ function profileCompleteness(ctx) {
     total++;
     if (ctx.hasDescription) score++;
   }
+  if (ctx.hasActionUrls !== void 0) {
+    total++;
+    if (ctx.hasActionUrls) score++;
+  }
   return total > 0 ? score / total : 0;
+}
+function cityMatchBonus(ctx) {
+  if (!ctx.city || !ctx.businessCity) return 0;
+  const searchCity = ctx.city.toLowerCase().trim();
+  const bizCity = ctx.businessCity.toLowerCase().trim();
+  if (searchCity === bizCity) return 0.1;
+  if (bizCity.includes(searchCity) || searchCity.includes(bizCity)) return 0.05;
+  return 0;
 }
 function combinedRelevance(name, ctx) {
   const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
@@ -10115,7 +10127,8 @@ function combinedRelevance(name, ctx) {
   const dish = dishRelevance(ctx.dishNames, intentCtx.query);
   const completeness = profileCompleteness(ctx);
   const volume = ratingVolumeSignal(ctx.ratingCount);
-  return text2 * 0.4 + category * 0.2 + dish * 0.15 + completeness * 0.1 + volume * 0.15;
+  const cityBonus = cityMatchBonus(ctx);
+  return Math.min(1, text2 * 0.38 + category * 0.18 + dish * 0.14 + completeness * 0.1 + volume * 0.14 + cityBonus * 0.06);
 }
 
 // server/routes-admin-ranking.ts
@@ -12704,7 +12717,10 @@ function enrichSearchResults(bizList, photoMap, opts) {
       ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
       // Sprint 534: Dish-aware and city-aware relevance scoring
       dishNames: b.topDishes || [],
-      city: b.city || opts.city
+      city: b.city || opts.city,
+      // Sprint 633: Action URL presence + city match signals
+      hasActionUrls: !!b.menuUrl || !!b.orderUrl || !!b.doordashUrl,
+      businessCity: b.city || void 0
     };
     const relevanceScore = opts.query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
     let distanceKm = null;
