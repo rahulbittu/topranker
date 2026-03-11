@@ -16167,17 +16167,28 @@ function configureExpoAndLanding(app2) {
   app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
   app2.use(express.static(path2.resolve(process.cwd(), "static-build"), { index: false }));
   const distPath = path2.resolve(process.cwd(), "dist");
-  const distBackupPath = path2.resolve(process.cwd(), "dist-web-backup");
-  if (fs2.existsSync(path2.join(distBackupPath, "index.html"))) {
-    try {
-      fs2.cpSync(distBackupPath, distPath, { recursive: true, force: true });
-      log2("Restored dist/ from dist-web-backup/");
-    } catch (e) {
-      log2("Warning: could not restore dist from backup");
+  const hasDistBuild = fs2.existsSync(path2.join(distPath, "index.html"));
+  let distIndexHtml = "";
+  if (hasDistBuild) {
+    distIndexHtml = fs2.readFileSync(path2.join(distPath, "index.html"), "utf-8");
+    const CORRECT_BUNDLE = "entry-8624eb1277770ccc5ccf061e5c355054.js";
+    if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
+      log2(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
+      distIndexHtml = distIndexHtml.replace(
+        /entry-[a-f0-9]+\.js/g,
+        CORRECT_BUNDLE
+      );
     }
   }
-  const hasDistBuild = fs2.existsSync(path2.join(distPath, "index.html"));
   if (hasDistBuild) {
+    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-8624eb1277770ccc5ccf061e5c355054.js");
+    const oldBundlePath = path2.join(distPath, "_expo/static/js/web/entry-f0d81efe56c6a797345dce3e0af6b1c3.js");
+    if (!fs2.existsSync(correctBundlePath) && fs2.existsSync(oldBundlePath)) {
+      const oldBundleContent = fs2.readFileSync(oldBundlePath, "utf-8");
+      const patchedBundle = oldBundleContent.replace(/http:\/\/localhost:5001/g, "").replace(/localhost:5001/g, "");
+      fs2.writeFileSync(correctBundlePath, patchedBundle);
+      log2("Patched old bundle \u2192 new bundle path with localhost references removed");
+    }
     app2.use(express.static(distPath, {
       maxAge: isProduction ? "1d" : 0,
       index: false
@@ -16283,7 +16294,7 @@ document.body.appendChild(s);
         return next();
       }
       if (hasDistBuild) {
-        return res.sendFile(path2.join(distPath, "index.html"));
+        return res.type("html").send(distIndexHtml);
       }
       return serveLandingPage({ req, res, landingPageTemplate, appName });
     });

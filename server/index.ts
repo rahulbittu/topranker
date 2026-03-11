@@ -188,19 +188,37 @@ function configureExpoAndLanding(app: express.Application) {
   app.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
 
   const distPath = path.resolve(process.cwd(), "dist");
-  const distBackupPath = path.resolve(process.cwd(), "dist-web-backup");
-  // Sprint 593: If dist-web-backup exists, copy it over dist to defeat build cache
-  if (fs.existsSync(path.join(distBackupPath, "index.html"))) {
-    try {
-      fs.cpSync(distBackupPath, distPath, { recursive: true, force: true });
-      log("Restored dist/ from dist-web-backup/");
-    } catch (e) {
-      log("Warning: could not restore dist from backup");
-    }
-  }
   const hasDistBuild = fs.existsSync(path.join(distPath, "index.html"));
 
+  // Sprint 593: Read index.html at startup and fix stale bundle references
+  let distIndexHtml = "";
   if (hasDistBuild) {
+    distIndexHtml = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
+    // If dist has old bundle with localhost baked in, replace with correct bundle
+    const CORRECT_BUNDLE = "entry-8624eb1277770ccc5ccf061e5c355054.js";
+    if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
+      log(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
+      distIndexHtml = distIndexHtml.replace(
+        /entry-[a-f0-9]+\.js/g,
+        CORRECT_BUNDLE
+      );
+    }
+  }
+
+  if (hasDistBuild) {
+    // Sprint 593: If the correct bundle doesn't exist but old one does, copy it
+    const correctBundlePath = path.join(distPath, "_expo/static/js/web/entry-8624eb1277770ccc5ccf061e5c355054.js");
+    const oldBundlePath = path.join(distPath, "_expo/static/js/web/entry-f0d81efe56c6a797345dce3e0af6b1c3.js");
+    if (!fs.existsSync(correctBundlePath) && fs.existsSync(oldBundlePath)) {
+      // Serve the old bundle content at the new bundle URL via route
+      const oldBundleContent = fs.readFileSync(oldBundlePath, "utf-8");
+      // Fix localhost references in the bundle
+      const patchedBundle = oldBundleContent
+        .replace(/http:\/\/localhost:5001/g, "")
+        .replace(/localhost:5001/g, "");
+      fs.writeFileSync(correctBundlePath, patchedBundle);
+      log("Patched old bundle → new bundle path with localhost references removed");
+    }
     app.use(express.static(distPath, {
       maxAge: isProduction ? "1d" : 0,
       index: false,
@@ -322,7 +340,7 @@ document.body.appendChild(s);
       }
 
       if (hasDistBuild) {
-        return res.sendFile(path.join(distPath, "index.html"));
+        return res.type("html").send(distIndexHtml);
       }
 
       return serveLandingPage({ req, res, landingPageTemplate, appName });
