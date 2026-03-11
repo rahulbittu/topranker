@@ -47,7 +47,6 @@ export default function SearchScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const { viewMode, setViewMode } = usePersistedViewMode();
   const { priceFilter, setPriceFilter } = usePersistedPrice();
-  // Sprint 361: Extracted persistence hooks
   const { sortBy, setSortBy } = usePersistedSort();
   const { selectedCuisine, setSelectedCuisine } = usePersistedCuisine();
   const { recentSearches, saveRecentSearch, clearRecentSearches } = useRecentSearches();
@@ -58,15 +57,11 @@ export default function SearchScreen() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [autocompleteResults, setAutocompleteResults] = useState<AutocompleteSuggestion[]>([]);
-  // Sprint 442: Search filters v2 — dietary tags + distance
   const [dietaryTags, setDietaryTags] = useState<DietaryTag[]>([]);
   const [distanceFilter, setDistanceFilter] = useState<DistanceOption>(null);
-  // Sprint 447: Hours-based filters
   const [hoursFilters, setHoursFilters] = useState<HoursFilter[]>([]);
-  // Sprint 471: Filter preset chips
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
 
-  // Sprint 451: Read URL params on mount to restore filter state
   const urlParams = useLocalSearchParams();
   const urlParamsRead = useRef(false);
   useEffect(() => {
@@ -106,7 +101,6 @@ export default function SearchScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Sprint 442+447: Include dietary, distance, and hours in query key and fetch
   const searchOpts = {
     dietary: dietaryTags.length > 0 ? dietaryTags : undefined,
     lat: userLocation?.lat,
@@ -116,7 +110,6 @@ export default function SearchScreen() {
     openLate: hoursFilters.includes("openLate") || undefined,
     openWeekends: hoursFilters.includes("openWeekends") || undefined,
   };
-  // Sprint 483: Infinite scroll search with pagination
   const {
     businesses: allBusinesses,
     isLoading, isError, refetch, isRefetching,
@@ -136,7 +129,6 @@ export default function SearchScreen() {
     }
   }, [debouncedQuery, allBusinesses.length, saveRecentSearch]);
 
-  // Sprint 544: Popular search queries for search panel
   const { data: popularQueries = [] } = useQuery({
     queryKey: ["popularQueries", city],
     queryFn: () => fetchPopularQueries(city, 6),
@@ -149,14 +141,12 @@ export default function SearchScreen() {
     staleTime: 60000,
   });
 
-  // Sprint 184: Dynamic category suggestions per city
   const { data: popularCategories = [] } = useQuery({
     queryKey: ["popular-categories", city],
     queryFn: () => fetchPopularCategories(city),
     staleTime: 120000,
   });
 
-  // Sprint 301+313: Dish leaderboard data for entry counts and search matching
   interface DishBoardInfo { slug: string; name: string; emoji: string; entryCount: number; }
   const { data: dishBoards = [] } = useQuery<DishBoardInfo[]>({
     queryKey: ["dish-boards-search", city],
@@ -178,7 +168,6 @@ export default function SearchScreen() {
     for (const b of dishBoards) counts[b.slug] = b.entryCount;
     return counts;
   }, [dishBoards]);
-  // Sprint 313: Match dish leaderboards against search query
   const dishSearchMatches = useMemo(() => {
     if (!query || query.trim().length < 2) return [];
     const q = query.toLowerCase().trim();
@@ -212,7 +201,6 @@ export default function SearchScreen() {
     }
   }, [userLocation]);
 
-  // Sprint 471: Preset apply/clear handlers
   const currentFilters = useMemo((): SearchFilterState => ({
     cuisine: selectedCuisine || undefined,
     dietary: dietaryTags.length > 0 ? dietaryTags : undefined,
@@ -553,17 +541,9 @@ const styles = StyleSheet.create({
   viewToggleText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   viewToggleTextActive: { color: "#fff" },
 
-  // Sprint 332: filterChip/price/sort styles moved to DiscoverFilters component
-
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
-
-  // Sprint 571: discoverTip + activeCuisine styles moved to DiscoverSections
-
   resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
-
-  // Sprint 527: statusPillOpen/Closed moved to SearchMapSplitView
-
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
@@ -578,11 +558,4 @@ const styles = StyleSheet.create({
 
   errorIcon: { marginBottom: 12 },
 
-  // Sprint 527: Map split view styles moved to SearchMapSplitView component
-
-  // Sprint 332: priceRow/sortRow styles moved to DiscoverFilters component
-
-  // Sprint 193: Autocomplete + recent search styles moved to SearchOverlays.tsx
-
-  // Sprint 383: Empty state styles moved to DiscoverEmptyState component
 });
