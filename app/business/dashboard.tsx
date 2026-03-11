@@ -21,6 +21,7 @@ import { DimensionBreakdownCard } from "@/components/dashboard/DimensionBreakdow
 import { HoursEditor } from "@/components/dashboard/HoursEditor";
 import { RatingVelocityWidget } from "@/components/dashboard/RatingVelocityWidget";
 import { ReviewCard } from "@/components/dashboard/ReviewCard";
+import { ActionUrlEditor } from "@/components/dashboard/ActionUrlEditor";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -217,6 +218,7 @@ export default function BusinessDashboardScreen() {
             </Animated.View>
 
             {slug && <HoursEditor businessId={slug} delay={800} />}
+            {slug && <ActionUrlEditor slug={slug} delay={850} />}
           </>
         )}
 
