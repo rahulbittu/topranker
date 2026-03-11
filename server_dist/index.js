@@ -16151,6 +16151,33 @@ function configureExpoAndLanding(app2) {
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
+  app2.get("/_debug-dist", (_req, res) => {
+    const cwd = process.cwd();
+    const distDir = path2.resolve(cwd, "dist");
+    const backupDir = path2.resolve(cwd, "dist-web-backup");
+    const info = { cwd };
+    try {
+      info.distFiles = fs2.readdirSync(distDir);
+    } catch {
+      info.distFiles = "NOT FOUND";
+    }
+    try {
+      info.distJsFiles = fs2.readdirSync(path2.join(distDir, "_expo/static/js/web"));
+    } catch {
+      info.distJsFiles = "NOT FOUND";
+    }
+    try {
+      info.backupFiles = fs2.readdirSync(backupDir);
+    } catch {
+      info.backupFiles = "NOT FOUND";
+    }
+    try {
+      info.distHtml = fs2.readFileSync(path2.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
+    } catch {
+      info.distHtml = "NOT FOUND";
+    }
+    res.json(info);
+  });
   app2.use((req, res, next) => {
     if (req.path.startsWith("/api")) {
       return next();

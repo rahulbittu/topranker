@@ -167,6 +167,19 @@ function configureExpoAndLanding(app: express.Application) {
     res.status(200).send("ok");
   });
 
+  // Temporary debug endpoint — remove after deploy fix
+  app.get("/_debug-dist", (_req: Request, res: Response) => {
+    const cwd = process.cwd();
+    const distDir = path.resolve(cwd, "dist");
+    const backupDir = path.resolve(cwd, "dist-web-backup");
+    const info: Record<string, unknown> = { cwd };
+    try { info.distFiles = fs.readdirSync(distDir); } catch { info.distFiles = "NOT FOUND"; }
+    try { info.distJsFiles = fs.readdirSync(path.join(distDir, "_expo/static/js/web")); } catch { info.distJsFiles = "NOT FOUND"; }
+    try { info.backupFiles = fs.readdirSync(backupDir); } catch { info.backupFiles = "NOT FOUND"; }
+    try { info.distHtml = fs.readFileSync(path.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.distHtml = "NOT FOUND"; }
+    res.json(info);
+  });
+
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
