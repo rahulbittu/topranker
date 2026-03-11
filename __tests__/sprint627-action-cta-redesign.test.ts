@@ -54,8 +54,8 @@ describe("Sprint 627 — Business Detail Action CTAs", () => {
       expect(actionBtnSrc).toContain("accent");
     });
 
-    it("has actionBtnAccent style", () => {
-      expect(actionBtnSrc).toContain("actionBtnAccent");
+    it("has iconCircleAccent style (Sprint 642: circle buttons)", () => {
+      expect(actionBtnSrc).toContain("iconCircleAccent");
     });
 
     it("has actionBtnLabelAccent style", () => {
