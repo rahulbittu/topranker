@@ -224,15 +224,15 @@ describe("Admin WebSocket routes — server/routes-admin-websocket.ts", () => {
 // ---------------------------------------------------------------------------
 // 4. Integration (4 tests)
 // ---------------------------------------------------------------------------
-describe("Integration — routes.ts wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+describe("Integration — routes-admin.ts wiring", () => {
+  const adminSrc = readFile("server/routes-admin.ts");
 
   it("imports registerAdminWebSocketRoutes", () => {
-    expect(routesSrc).toContain('import { registerAdminWebSocketRoutes } from "./routes-admin-websocket"');
+    expect(adminSrc).toContain('import { registerAdminWebSocketRoutes } from "./routes-admin-websocket"');
   });
 
   it("calls registerAdminWebSocketRoutes(app)", () => {
-    expect(routesSrc).toContain("registerAdminWebSocketRoutes(app)");
+    expect(adminSrc).toContain("registerAdminWebSocketRoutes(app)");
   });
 
   it("websocket-manager.ts imports crypto for connection IDs", () => {

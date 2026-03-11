@@ -234,7 +234,7 @@ describe("routes.ts — module registration", () => {
 
   it("still registers existing extracted routes", () => {
     expect(routesSrc).toContain("registerDishRoutes(app)");
-    expect(routesSrc).toContain("registerAdminRoutes(app)");
+    expect(routesSrc).toContain("registerAllAdminRoutes(app)");
     expect(routesSrc).toContain("registerPaymentRoutes(app)");
     expect(routesSrc).toContain("registerBadgeRoutes(app)");
     expect(routesSrc).toContain("registerExperimentRoutes(app)");

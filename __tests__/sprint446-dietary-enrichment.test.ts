@@ -153,18 +153,23 @@ describe("Admin dietary routes — validation", () => {
 // 5. Routes.ts wiring
 // ---------------------------------------------------------------------------
 describe("Routes.ts — dietary wiring", () => {
-  const src = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes.ts");
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("imports registerAdminDietaryRoutes", () => {
-    expect(src).toContain("registerAdminDietaryRoutes");
+  it("routes.ts delegates to registerAllAdminRoutes", () => {
+    expect(routesSrc).toContain("registerAllAdminRoutes(app)");
   });
 
-  it("imports from routes-admin-dietary", () => {
-    expect(src).toContain("./routes-admin-dietary");
+  it("admin routes imports registerAdminDietaryRoutes", () => {
+    expect(adminSrc).toContain("registerAdminDietaryRoutes");
   });
 
-  it("calls registerAdminDietaryRoutes(app)", () => {
-    expect(src).toContain("registerAdminDietaryRoutes(app)");
+  it("admin routes imports from routes-admin-dietary", () => {
+    expect(adminSrc).toContain("./routes-admin-dietary");
+  });
+
+  it("admin routes calls registerAdminDietaryRoutes(app)", () => {
+    expect(adminSrc).toContain("registerAdminDietaryRoutes(app)");
   });
 });
 

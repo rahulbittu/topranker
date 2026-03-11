@@ -195,19 +195,19 @@ describe("Admin photo routes — server/routes-admin-photos.ts (static)", () => 
 // ---------------------------------------------------------------------------
 // 4. Integration wiring (4 tests)
 // ---------------------------------------------------------------------------
-describe("Integration — routes.ts wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+describe("Integration — routes-admin.ts wiring", () => {
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("routes.ts imports registerAdminPhotoRoutes", () => {
-    expect(routesSrc).toContain("registerAdminPhotoRoutes");
+  it("routes-admin.ts imports registerAdminPhotoRoutes", () => {
+    expect(adminSrc).toContain("registerAdminPhotoRoutes");
   });
 
-  it("routes.ts imports from routes-admin-photos", () => {
-    expect(routesSrc).toContain("./routes-admin-photos");
+  it("routes-admin.ts imports from routes-admin-photos", () => {
+    expect(adminSrc).toContain("./routes-admin-photos");
   });
 
-  it("routes.ts calls registerAdminPhotoRoutes(app)", () => {
-    expect(routesSrc).toContain("registerAdminPhotoRoutes(app)");
+  it("routes-admin.ts calls registerAdminPhotoRoutes(app)", () => {
+    expect(adminSrc).toContain("registerAdminPhotoRoutes(app)");
   });
 
   it("photo-moderation module uses crypto.randomUUID for IDs", () => {

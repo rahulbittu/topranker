@@ -4064,6 +4064,377 @@ var init_analytics2 = __esm({
   }
 });
 
+// server/email-tracking.ts
+import crypto4 from "crypto";
+function findEvent(eventId) {
+  return events.find((e) => e.id === eventId);
+}
+function trackEmailSent(to, template, metadata) {
+  const id = crypto4.randomUUID();
+  const event = {
+    id,
+    to,
+    template,
+    sentAt: /* @__PURE__ */ new Date(),
+    status: "sent",
+    metadata
+  };
+  events.push(event);
+  if (events.length > MAX_EVENTS) {
+    events.splice(0, events.length - MAX_EVENTS);
+  }
+  log(`Email sent to=${to} template=${template} id=${id}`);
+  return id;
+}
+function trackEmailOpened(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "opened";
+  event.openedAt = /* @__PURE__ */ new Date();
+  log(`Email opened id=${eventId}`);
+}
+function trackEmailClicked(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "clicked";
+  event.clickedAt = /* @__PURE__ */ new Date();
+  log(`Email clicked id=${eventId}`);
+}
+function trackEmailFailed(eventId, reason) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "failed";
+  event.metadata = { ...event.metadata, failureReason: reason };
+  log(`Email failed id=${eventId} reason=${reason}`);
+}
+function trackEmailBounced(eventId) {
+  const event = findEvent(eventId);
+  if (!event) return;
+  event.status = "bounced";
+  log(`Email bounced id=${eventId}`);
+}
+function getEmailStats() {
+  const total = events.length;
+  const count17 = (s) => events.filter((e) => e.status === s).length;
+  const sent = count17("sent");
+  const delivered = count17("delivered");
+  const opened = count17("opened");
+  const clicked = count17("clicked");
+  const bounced = count17("bounced");
+  const failed = count17("failed");
+  const openRate = total > 0 ? (opened + clicked) / total : 0;
+  const clickRate = total > 0 ? clicked / total : 0;
+  return { total, sent, delivered, opened, clicked, bounced, failed, openRate, clickRate };
+}
+var MAX_EVENTS, events;
+var init_email_tracking = __esm({
+  "server/email-tracking.ts"() {
+    "use strict";
+    init_logger();
+    MAX_EVENTS = 1e3;
+    events = [];
+  }
+});
+
+// server/experiment-tracker.ts
+function trackExposure(userId, experimentId, variant, context) {
+  const existing = exposures.find(
+    (e) => e.userId === userId && e.experimentId === experimentId
+  );
+  if (existing) {
+    trackerLog.info(
+      `Skipping duplicate exposure: user=${userId} experiment=${experimentId}`
+    );
+    return;
+  }
+  const exposure = {
+    userId,
+    experimentId,
+    variant,
+    exposedAt: Date.now(),
+    context
+  };
+  exposures.push(exposure);
+  trackerLog.info(
+    `Exposure recorded: user=${userId} experiment=${experimentId} variant=${variant} context=${context}`
+  );
+}
+function getExposureStats(experimentId) {
+  const filtered = exposures.filter((e) => e.experimentId === experimentId);
+  if (filtered.length === 0) {
+    return {
+      total: 0,
+      byVariant: {},
+      uniqueUsers: 0,
+      firstExposure: null,
+      lastExposure: null
+    };
+  }
+  const byVariant = {};
+  const userSet = /* @__PURE__ */ new Set();
+  let firstExposure = Infinity;
+  let lastExposure = -Infinity;
+  for (const e of filtered) {
+    byVariant[e.variant] = (byVariant[e.variant] || 0) + 1;
+    userSet.add(e.userId);
+    if (e.exposedAt < firstExposure) firstExposure = e.exposedAt;
+    if (e.exposedAt > lastExposure) lastExposure = e.exposedAt;
+  }
+  return {
+    total: filtered.length,
+    byVariant,
+    uniqueUsers: userSet.size,
+    firstExposure,
+    lastExposure
+  };
+}
+function trackOutcome(userId, experimentId, action, value) {
+  const exposure = exposures.find(
+    (e) => e.userId === userId && e.experimentId === experimentId
+  );
+  if (!exposure) {
+    trackerLog.info(
+      `No exposure found for user=${userId} experiment=${experimentId}, skipping outcome`
+    );
+    return;
+  }
+  const outcome = {
+    userId,
+    experimentId,
+    variant: exposure.variant,
+    action,
+    value,
+    recordedAt: Date.now()
+  };
+  outcomes.push(outcome);
+  trackerLog.info(
+    `Outcome recorded: user=${userId} experiment=${experimentId} variant=${exposure.variant} action=${action}`
+  );
+}
+function getOutcomeStats(experimentId) {
+  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
+  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
+  const byAction = {};
+  const byVariant = {};
+  for (const o of filteredOutcomes) {
+    byAction[o.action] = (byAction[o.action] || 0) + 1;
+    if (!byVariant[o.variant]) {
+      byVariant[o.variant] = { total: 0, byAction: {}, uniqueUsers: /* @__PURE__ */ new Set() };
+    }
+    byVariant[o.variant].total += 1;
+    byVariant[o.variant].byAction[o.action] = (byVariant[o.variant].byAction[o.action] || 0) + 1;
+    byVariant[o.variant].uniqueUsers.add(o.userId);
+  }
+  const byVariantSerialized = {};
+  for (const [variant, data] of Object.entries(byVariant)) {
+    byVariantSerialized[variant] = {
+      total: data.total,
+      byAction: data.byAction,
+      uniqueUsers: data.uniqueUsers.size
+    };
+  }
+  const conversionRates = {};
+  const allActions = Object.keys(byAction);
+  for (const variant of Object.keys(byVariant)) {
+    const variantExposureCount = filteredExposures.filter((e) => e.variant === variant).length;
+    if (variantExposureCount === 0) continue;
+    conversionRates[variant] = allActions.map((action) => ({
+      variant,
+      action,
+      rate: (byVariant[variant].byAction[action] || 0) / variantExposureCount * 100
+    }));
+  }
+  return {
+    total: filteredOutcomes.length,
+    byAction,
+    byVariant: byVariantSerialized,
+    conversionRates
+  };
+}
+function getUserExperiments(userId) {
+  return exposures.filter((e) => e.userId === userId).map((e) => e.experimentId);
+}
+function wilsonScore(successes, total, z2 = 1.96) {
+  if (total === 0) return { lower: 0, upper: 0, center: 0 };
+  const p = successes / total;
+  const denominator = 1 + z2 * z2 / total;
+  const center = (p + z2 * z2 / (2 * total)) / denominator;
+  const margin = z2 * Math.sqrt(p * (1 - p) / total + z2 * z2 / (4 * total * total)) / denominator;
+  return {
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+    center
+  };
+}
+function computeExperimentDashboard(experimentId) {
+  const expStats = getExposureStats(experimentId);
+  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
+  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
+  const variantMap = /* @__PURE__ */ new Map();
+  for (const e of filteredExposures) {
+    if (!variantMap.has(e.variant)) {
+      variantMap.set(e.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    variantMap.get(e.variant).exposures += 1;
+  }
+  for (const o of filteredOutcomes) {
+    if (!variantMap.has(o.variant)) {
+      variantMap.set(o.variant, { exposures: 0, outcomes: 0, byAction: {} });
+    }
+    const v = variantMap.get(o.variant);
+    v.outcomes += 1;
+    v.byAction[o.action] = (v.byAction[o.action] || 0) + 1;
+  }
+  const variants = [];
+  for (const [variant, data] of variantMap.entries()) {
+    const ci = wilsonScore(data.outcomes, data.exposures);
+    variants.push({
+      variant,
+      exposures: data.exposures,
+      outcomes: data.outcomes,
+      conversionRate: data.exposures > 0 ? data.outcomes / data.exposures * 100 : 0,
+      confidence: ci,
+      byAction: data.byAction
+    });
+  }
+  const totalExposures = expStats.total;
+  let confidence = "sufficient_data";
+  let recommendation = "inconclusive";
+  if (totalExposures < 100) {
+    confidence = "insufficient_data";
+    recommendation = "insufficient_data";
+  } else {
+    const controlVariant = variants.find((v) => v.variant === "control");
+    const treatmentVariant = variants.find((v) => v.variant === "treatment");
+    const controlCI = controlVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
+    const treatmentCI = treatmentVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
+    const controlExposures = controlVariant?.exposures ?? 0;
+    const treatmentExposures = treatmentVariant?.exposures ?? 0;
+    if (controlExposures < 100 || treatmentExposures < 100) {
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
+    } else {
+      if (treatmentCI.lower > controlCI.upper) {
+        recommendation = "treatment_winning";
+      } else if (controlCI.lower > treatmentCI.upper) {
+        recommendation = "control_winning";
+      } else {
+        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
+        if (Math.abs(centerDiff) > 5) {
+          recommendation = "promising";
+        } else {
+          recommendation = "inconclusive";
+        }
+      }
+    }
+  }
+  return {
+    experimentId,
+    totalExposures,
+    variants,
+    confidence,
+    recommendation
+  };
+}
+var trackerLog, exposures, outcomes;
+var init_experiment_tracker = __esm({
+  "server/experiment-tracker.ts"() {
+    "use strict";
+    init_logger();
+    trackerLog = log.tag("ExperimentTracker");
+    exposures = [];
+    outcomes = [];
+  }
+});
+
+// server/push-ab-testing.ts
+function djb2Hash(str) {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) + hash ^ str.charCodeAt(i);
+  }
+  return Math.abs(hash);
+}
+function assignVariant(memberId, experiment) {
+  const bucket = djb2Hash(`${memberId}:${experiment.id}`) % experiment.variants.length;
+  return experiment.variants[bucket];
+}
+function createPushExperiment(id, description, category, variants) {
+  if (experiments2.has(id)) {
+    pushAbLog.info(`Experiment already exists: ${id}`);
+    return null;
+  }
+  if (variants.length < 2) {
+    pushAbLog.info(`Experiment needs at least 2 variants: ${id}`);
+    return null;
+  }
+  const experiment = {
+    id,
+    description,
+    category,
+    variants,
+    active: true,
+    createdAt: Date.now()
+  };
+  experiments2.set(id, experiment);
+  pushAbLog.info(`Created push experiment: ${id} with ${variants.length} variants for ${category}`);
+  return experiment;
+}
+function getNotificationVariant(memberId, category) {
+  for (const experiment of experiments2.values()) {
+    if (experiment.active && experiment.category === category) {
+      const variant = assignVariant(memberId, experiment);
+      trackExposure(memberId, experiment.id, variant.name, `push:${category}`);
+      pushAbLog.info(
+        `Assigned variant: member=${memberId.slice(0, 8)} experiment=${experiment.id} variant=${variant.name}`
+      );
+      return { experimentId: experiment.id, variant };
+    }
+  }
+  return null;
+}
+function recordPushExperimentOpen(memberId, category) {
+  for (const experiment of experiments2.values()) {
+    if (experiment.category === category) {
+      trackOutcome(memberId, experiment.id, "notification_opened");
+      pushAbLog.info(`Outcome recorded: member=${memberId.slice(0, 8)} experiment=${experiment.id}`);
+    }
+  }
+}
+function deactivatePushExperiment(id) {
+  const experiment = experiments2.get(id);
+  if (!experiment) return false;
+  experiment.active = false;
+  pushAbLog.info(`Deactivated push experiment: ${id}`);
+  return true;
+}
+function listPushExperiments() {
+  return Array.from(experiments2.values());
+}
+function getPushExperiment(id) {
+  return experiments2.get(id);
+}
+var pushAbLog, experiments2;
+var init_push_ab_testing = __esm({
+  "server/push-ab-testing.ts"() {
+    "use strict";
+    init_experiment_tracker();
+    init_logger();
+    pushAbLog = log.tag("PushAB");
+    experiments2 = /* @__PURE__ */ new Map();
+  }
+});
+
 // shared/city-config.ts
 var city_config_exports = {};
 __export(city_config_exports, {
@@ -4233,6 +4604,905 @@ var init_city_config = __esm({
         minBusinesses: 30
       }
     };
+  }
+});
+
+// server/moderation-queue.ts
+var moderation_queue_exports = {};
+__export(moderation_queue_exports, {
+  MAX_QUEUE: () => MAX_QUEUE,
+  addToQueue: () => addToQueue,
+  approveItem: () => approveItem,
+  bulkApprove: () => bulkApprove,
+  bulkReject: () => bulkReject,
+  clearQueue: () => clearQueue,
+  getFilteredItems: () => getFilteredItems,
+  getItemsByBusiness: () => getItemsByBusiness,
+  getItemsByMember: () => getItemsByMember,
+  getPendingItems: () => getPendingItems,
+  getQueueStats: () => getQueueStats,
+  getResolvedItems: () => getResolvedItems,
+  rejectItem: () => rejectItem
+});
+import crypto5 from "crypto";
+function addToQueue(item) {
+  const modItem = {
+    ...item,
+    id: crypto5.randomUUID(),
+    status: "pending",
+    moderatorId: null,
+    moderatorNote: null,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    resolvedAt: null
+  };
+  queue.unshift(modItem);
+  if (queue.length > MAX_QUEUE) queue.pop();
+  modLog.info(`Added to moderation queue: ${item.contentType} from ${item.memberId}`);
+  return modItem;
+}
+function getPendingItems(limit) {
+  return queue.filter((i) => i.status === "pending").slice(0, limit || 50);
+}
+function getFilteredItems(opts) {
+  let items = [...queue];
+  if (opts.status) items = items.filter((i) => i.status === opts.status);
+  if (opts.contentType) items = items.filter((i) => i.contentType === opts.contentType);
+  if (opts.sortByViolations) items.sort((a, b) => b.violations.length - a.violations.length);
+  return items.slice(0, opts.limit || 50);
+}
+function bulkApprove(itemIds, moderatorId, note) {
+  let approved = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (approveItem(id, moderatorId, note)) approved++;
+    else notFound++;
+  }
+  return { approved, notFound };
+}
+function bulkReject(itemIds, moderatorId, note) {
+  let rejected = 0;
+  let notFound = 0;
+  for (const id of itemIds) {
+    if (rejectItem(id, moderatorId, note)) rejected++;
+    else notFound++;
+  }
+  return { rejected, notFound };
+}
+function getResolvedItems(limit) {
+  return queue.filter((i) => i.status === "approved" || i.status === "rejected").slice(0, limit || 50);
+}
+function approveItem(itemId, moderatorId, note) {
+  const item = queue.find((i) => i.id === itemId);
+  if (!item || item.status !== "pending") return false;
+  item.status = "approved";
+  item.moderatorId = moderatorId;
+  item.moderatorNote = note || null;
+  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
+  modLog.info(`Approved: ${itemId} by ${moderatorId}`);
+  return true;
+}
+function rejectItem(itemId, moderatorId, note) {
+  const item = queue.find((i) => i.id === itemId);
+  if (!item || item.status !== "pending") return false;
+  item.status = "rejected";
+  item.moderatorId = moderatorId;
+  item.moderatorNote = note || null;
+  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
+  modLog.info(`Rejected: ${itemId} by ${moderatorId}`);
+  return true;
+}
+function getQueueStats() {
+  return {
+    total: queue.length,
+    pending: queue.filter((i) => i.status === "pending").length,
+    approved: queue.filter((i) => i.status === "approved").length,
+    rejected: queue.filter((i) => i.status === "rejected").length
+  };
+}
+function getItemsByBusiness(businessId) {
+  return queue.filter((i) => i.businessId === businessId);
+}
+function getItemsByMember(memberId) {
+  return queue.filter((i) => i.memberId === memberId);
+}
+function clearQueue() {
+  queue.length = 0;
+}
+var modLog, queue, MAX_QUEUE;
+var init_moderation_queue = __esm({
+  "server/moderation-queue.ts"() {
+    "use strict";
+    init_logger();
+    modLog = log.tag("ModerationQueue");
+    queue = [];
+    MAX_QUEUE = 2e3;
+  }
+});
+
+// server/notification-templates.ts
+function detectVariables(title, body) {
+  const combined = `${title} ${body}`;
+  return SUPPORTED_VARIABLES.filter((v) => combined.includes(`{${v}}`));
+}
+function createTemplate2(input) {
+  if (templates2.has(input.id)) {
+    tmplLog2.info(`Template already exists: ${input.id}`);
+    return null;
+  }
+  const template = {
+    ...input,
+    variables: detectVariables(input.title, input.body),
+    active: true,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  templates2.set(input.id, template);
+  tmplLog2.info(`Created template: ${input.id} for ${input.category}`);
+  return template;
+}
+function updateTemplate(id, updates) {
+  const existing = templates2.get(id);
+  if (!existing) return null;
+  const updated = {
+    ...existing,
+    ...updates,
+    variables: detectVariables(
+      updates.title ?? existing.title,
+      updates.body ?? existing.body
+    ),
+    updatedAt: Date.now()
+  };
+  templates2.set(id, updated);
+  tmplLog2.info(`Updated template: ${id}`);
+  return updated;
+}
+function deleteTemplate(id) {
+  const existed = templates2.delete(id);
+  if (existed) tmplLog2.info(`Deleted template: ${id}`);
+  return existed;
+}
+function getTemplate2(id) {
+  return templates2.get(id);
+}
+function listTemplates() {
+  return Array.from(templates2.values());
+}
+function listTemplatesByCategory(category) {
+  return Array.from(templates2.values()).filter((t) => t.category === category);
+}
+function getActiveTemplateForCategory(category) {
+  return Array.from(templates2.values()).find((t) => t.category === category && t.active);
+}
+function applyTemplate(template, values) {
+  let title = template.title;
+  let body = template.body;
+  for (const [key2, val] of Object.entries(values)) {
+    const placeholder = `{${key2}}`;
+    title = title.replaceAll(placeholder, val);
+    body = body.replaceAll(placeholder, val);
+  }
+  return { title, body };
+}
+function getSupportedVariables() {
+  return [...SUPPORTED_VARIABLES];
+}
+var tmplLog2, templates2, SUPPORTED_VARIABLES;
+var init_notification_templates = __esm({
+  "server/notification-templates.ts"() {
+    "use strict";
+    init_logger();
+    tmplLog2 = log.tag("NotifTemplate");
+    templates2 = /* @__PURE__ */ new Map();
+    SUPPORTED_VARIABLES = [
+      "firstName",
+      "city",
+      "business",
+      "emoji",
+      "direction",
+      "newRank",
+      "oldRank",
+      "delta",
+      "rater",
+      "score",
+      "count"
+    ];
+  }
+});
+
+// server/push-analytics.ts
+function recordPushDelivery(category, city, tokenCount, successCount, errorCount) {
+  const record = {
+    category,
+    city,
+    tokenCount,
+    successCount,
+    errorCount,
+    timestamp: Date.now()
+  };
+  deliveryRecords.push(record);
+  if (deliveryRecords.length > MAX_RECORDS) {
+    deliveryRecords.splice(0, deliveryRecords.length - MAX_RECORDS);
+  }
+  analyticsLog2.info(
+    `Push delivery: ${category}/${city} \u2014 ${successCount}/${tokenCount} success, ${errorCount} errors`
+  );
+}
+function computePushAnalytics(daysBack = 7) {
+  const cutoff = Date.now() - daysBack * 864e5;
+  const filtered = deliveryRecords.filter((r) => r.timestamp >= cutoff);
+  let totalSent = 0;
+  let totalSuccess = 0;
+  let totalError = 0;
+  const byCategory = {};
+  const byCity = {};
+  const hourBuckets = {};
+  for (const r of filtered) {
+    totalSent += r.tokenCount;
+    totalSuccess += r.successCount;
+    totalError += r.errorCount;
+    if (!byCategory[r.category]) byCategory[r.category] = { sent: 0, success: 0, error: 0 };
+    byCategory[r.category].sent += r.tokenCount;
+    byCategory[r.category].success += r.successCount;
+    byCategory[r.category].error += r.errorCount;
+    if (!byCity[r.city]) byCity[r.city] = { sent: 0, success: 0, error: 0 };
+    byCity[r.city].sent += r.tokenCount;
+    byCity[r.city].success += r.successCount;
+    byCity[r.city].error += r.errorCount;
+    const hourKey = new Date(r.timestamp).toISOString().slice(0, 13);
+    hourBuckets[hourKey] = (hourBuckets[hourKey] || 0) + r.tokenCount;
+  }
+  const hourlyVolume = Object.entries(hourBuckets).sort(([a], [b]) => a.localeCompare(b)).map(([hour, count17]) => ({ hour, count: count17 }));
+  const recentDeliveries = filtered.slice(-20).reverse();
+  const successRate = totalSent > 0 ? Math.round(totalSuccess / totalSent * 1e3) / 10 : 0;
+  return {
+    totalSent,
+    totalSuccess,
+    totalError,
+    successRate,
+    byCategory,
+    byCity,
+    hourlyVolume,
+    recentDeliveries
+  };
+}
+function getPushRecordCount() {
+  return deliveryRecords.length;
+}
+function recordNotificationOpen(notificationId, category, memberId) {
+  const dedupKey = `${notificationId}:${memberId}`;
+  if (openDedupSet.has(dedupKey)) {
+    analyticsLog2.info(`Duplicate open skipped: ${category} by member ${memberId.slice(0, 8)}`);
+    return false;
+  }
+  openDedupSet.add(dedupKey);
+  if (openDedupSet.size > MAX_DEDUP_SIZE) {
+    const entries = Array.from(openDedupSet);
+    for (let i = 0; i < entries.length - MAX_DEDUP_SIZE; i++) {
+      openDedupSet.delete(entries[i]);
+    }
+  }
+  const record = {
+    notificationId,
+    category,
+    memberId,
+    openedAt: Date.now()
+  };
+  openRecords.push(record);
+  if (openRecords.length > MAX_OPEN_RECORDS) {
+    openRecords.splice(0, openRecords.length - MAX_OPEN_RECORDS);
+  }
+  analyticsLog2.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
+  return true;
+}
+function computeOpenAnalytics(daysBack = 7) {
+  const cutoff = Date.now() - daysBack * 864e5;
+  const filtered = openRecords.filter((r) => r.openedAt >= cutoff);
+  const byCategory = {};
+  const memberSet = /* @__PURE__ */ new Set();
+  for (const r of filtered) {
+    byCategory[r.category] = (byCategory[r.category] || 0) + 1;
+    memberSet.add(r.memberId);
+  }
+  return {
+    totalOpens: filtered.length,
+    byCategory,
+    uniqueMembers: memberSet.size,
+    recentOpens: filtered.slice(-20).reverse()
+  };
+}
+function getNotificationInsights(daysBack = 7) {
+  const delivery = computePushAnalytics(daysBack);
+  const opens = computeOpenAnalytics(daysBack);
+  const openRate = delivery.totalSent > 0 ? Math.round(opens.totalOpens / delivery.totalSent * 1e3) / 10 : 0;
+  return { delivery, opens, openRate };
+}
+var analyticsLog2, deliveryRecords, MAX_RECORDS, openRecords, MAX_OPEN_RECORDS, openDedupSet, MAX_DEDUP_SIZE;
+var init_push_analytics = __esm({
+  "server/push-analytics.ts"() {
+    "use strict";
+    init_logger();
+    analyticsLog2 = log.tag("PushAnalytics");
+    deliveryRecords = [];
+    MAX_RECORDS = 1e4;
+    openRecords = [];
+    MAX_OPEN_RECORDS = 1e4;
+    openDedupSet = /* @__PURE__ */ new Set();
+    MAX_DEDUP_SIZE = 5e4;
+  }
+});
+
+// server/photo-moderation.ts
+var photo_moderation_exports = {};
+__export(photo_moderation_exports, {
+  approvePhoto: () => approvePhoto,
+  getAllowedMimeTypes: () => getAllowedMimeTypes,
+  getCommunityPhotoCount: () => getCommunityPhotoCount,
+  getMaxFileSize: () => getMaxFileSize,
+  getPendingPhotos: () => getPendingPhotos,
+  getPhotoStats: () => getPhotoStats,
+  getPhotosByBusiness: () => getPhotosByBusiness,
+  rejectPhoto: () => rejectPhoto,
+  submitPhoto: () => submitPhoto
+});
+import { eq as eq22, desc as desc16, sql as sql14, and as and14, count as count15 } from "drizzle-orm";
+import crypto7 from "crypto";
+async function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
+  if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
+  if (fileSize > MAX_FILE_SIZE) return { error: "File too large (max 10MB)" };
+  if (caption.length > MAX_CAPTION_LENGTH) return { error: "Caption too long (max 500 chars)" };
+  const id = crypto7.randomUUID();
+  const [row] = await db.insert(photoSubmissions).values({
+    id,
+    businessId,
+    memberId,
+    url,
+    caption,
+    fileSize,
+    mimeType
+  }).returning();
+  photoModLog.info(`Photo submitted: ${row.id} for business ${businessId}`);
+  return row;
+}
+async function approvePhoto(photoId, moderatorId, note) {
+  const result = await db.update(photoSubmissions).set({
+    status: "approved",
+    moderatorId,
+    moderatorNote: note || null,
+    reviewedAt: /* @__PURE__ */ new Date()
+  }).where(and14(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  if (result.length === 0) return false;
+  const [submission] = await db.select({ businessId: photoSubmissions.businessId, url: photoSubmissions.url, memberId: photoSubmissions.memberId }).from(photoSubmissions).where(eq22(photoSubmissions.id, photoId));
+  if (submission) {
+    const [maxOrder] = await db.select({ max: sql14`COALESCE(MAX(${businessPhotos.sortOrder}), 0)` }).from(businessPhotos).where(eq22(businessPhotos.businessId, submission.businessId));
+    await db.insert(businessPhotos).values({
+      businessId: submission.businessId,
+      photoUrl: submission.url,
+      isHero: false,
+      sortOrder: (maxOrder?.max ?? 0) + 1,
+      uploadedBy: submission.memberId
+    });
+    photoModLog.info(`Photo ${photoId} added to gallery for business ${submission.businessId}`);
+  }
+  photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
+  return true;
+}
+async function rejectPhoto(photoId, moderatorId, reason, note) {
+  const result = await db.update(photoSubmissions).set({
+    status: "rejected",
+    rejectionReason: reason,
+    moderatorId,
+    moderatorNote: note || null,
+    reviewedAt: /* @__PURE__ */ new Date()
+  }).where(and14(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
+  if (result.length === 0) return false;
+  photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
+  return true;
+}
+async function getPendingPhotos(limit) {
+  const rows = await db.select().from(photoSubmissions).where(eq22(photoSubmissions.status, "pending")).orderBy(desc16(photoSubmissions.submittedAt)).limit(limit || 50);
+  return rows;
+}
+async function getPhotosByBusiness(businessId) {
+  const rows = await db.select().from(photoSubmissions).where(and14(eq22(photoSubmissions.businessId, businessId), eq22(photoSubmissions.status, "approved"))).orderBy(desc16(photoSubmissions.submittedAt));
+  return rows;
+}
+async function getPhotoStats() {
+  const allRows = await db.select().from(photoSubmissions);
+  const byReason = {};
+  for (const s of allRows) {
+    if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
+  }
+  return {
+    total: allRows.length,
+    pending: allRows.filter((s) => s.status === "pending").length,
+    approved: allRows.filter((s) => s.status === "approved").length,
+    rejected: allRows.filter((s) => s.status === "rejected").length,
+    byReason
+  };
+}
+async function getCommunityPhotoCount(businessId) {
+  const [result] = await db.select({ count: count15() }).from(businessPhotos).where(and14(
+    eq22(businessPhotos.businessId, businessId),
+    sql14`${businessPhotos.uploadedBy} IS NOT NULL`
+  ));
+  return result?.count ?? 0;
+}
+function getAllowedMimeTypes() {
+  return [...ALLOWED_MIME_TYPES];
+}
+function getMaxFileSize() {
+  return MAX_FILE_SIZE;
+}
+var photoModLog, ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_CAPTION_LENGTH;
+var init_photo_moderation = __esm({
+  "server/photo-moderation.ts"() {
+    "use strict";
+    init_logger();
+    init_db();
+    init_schema();
+    photoModLog = log.tag("PhotoModeration");
+    ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
+    MAX_FILE_SIZE = 10 * 1024 * 1024;
+    MAX_CAPTION_LENGTH = 500;
+  }
+});
+
+// server/photo-hash.ts
+var photo_hash_exports = {};
+__export(photo_hash_exports, {
+  checkDuplicate: () => checkDuplicate,
+  clearHashIndex: () => clearHashIndex,
+  computePhotoHash: () => computePhotoHash,
+  detectDuplicate: () => detectDuplicate,
+  getHashIndexSize: () => getHashIndexSize,
+  preloadHashIndex: () => preloadHashIndex,
+  registerPhotoHash: () => registerPhotoHash
+});
+import crypto8 from "crypto";
+import { isNotNull as isNotNull2, eq as eq23 } from "drizzle-orm";
+function computePhotoHash(buffer2) {
+  return crypto8.createHash("sha256").update(buffer2).digest("hex");
+}
+function checkDuplicate(hash) {
+  return hashIndex.get(hash) ?? null;
+}
+function registerPhotoHash(hash, ratingId, memberId, businessId, photoId) {
+  hashIndex.set(hash, {
+    ratingId,
+    memberId,
+    businessId,
+    photoId,
+    uploadedAt: Date.now()
+  });
+}
+function getHashIndexSize() {
+  return hashIndex.size;
+}
+function clearHashIndex() {
+  hashIndex.clear();
+}
+async function preloadHashIndex() {
+  const rows = await db.select({
+    id: ratingPhotos.id,
+    ratingId: ratingPhotos.ratingId,
+    contentHash: ratingPhotos.contentHash,
+    memberId: ratings.memberId,
+    businessId: ratings.businessId
+  }).from(ratingPhotos).innerJoin(ratings, eq23(ratingPhotos.ratingId, ratings.id)).where(isNotNull2(ratingPhotos.contentHash));
+  let loaded = 0;
+  for (const row of rows) {
+    if (row.contentHash && !hashIndex.has(row.contentHash)) {
+      hashIndex.set(row.contentHash, {
+        ratingId: row.ratingId,
+        memberId: row.memberId,
+        businessId: row.businessId,
+        photoId: row.id,
+        uploadedAt: 0
+      });
+      loaded++;
+    }
+  }
+  hashLog.info(`Preloaded ${loaded} photo hashes from DB`);
+  return loaded;
+}
+function detectDuplicate(buffer2, memberId) {
+  const hash = computePhotoHash(buffer2);
+  const existing = checkDuplicate(hash);
+  if (!existing) {
+    return { hash, isDuplicate: false, isCrossMember: false, original: null };
+  }
+  const isCrossMember = existing.memberId !== memberId;
+  if (isCrossMember) {
+    hashLog.warn("Cross-member duplicate photo detected", {
+      hash: hash.slice(0, 16),
+      originalMember: existing.memberId,
+      newMember: memberId,
+      originalRating: existing.ratingId
+    });
+  } else {
+    hashLog.info("Same-member duplicate photo", {
+      hash: hash.slice(0, 16),
+      memberId,
+      originalRating: existing.ratingId
+    });
+  }
+  return { hash, isDuplicate: true, isCrossMember, original: existing };
+}
+var hashLog, hashIndex;
+var init_photo_hash = __esm({
+  "server/photo-hash.ts"() {
+    "use strict";
+    init_logger();
+    init_db();
+    init_schema();
+    hashLog = log.tag("PhotoHash");
+    hashIndex = /* @__PURE__ */ new Map();
+  }
+});
+
+// server/phash.ts
+var phash_exports = {};
+__export(phash_exports, {
+  clearPHashIndex: () => clearPHashIndex,
+  computePerceptualHash: () => computePerceptualHash,
+  findNearDuplicates: () => findNearDuplicates,
+  getNearDuplicateThreshold: () => getNearDuplicateThreshold,
+  getPHashIndexSize: () => getPHashIndexSize,
+  hammingDistance: () => hammingDistance,
+  preloadPHashIndex: () => preloadPHashIndex,
+  registerPHash: () => registerPHash
+});
+import { isNotNull as isNotNull3, eq as eq24 } from "drizzle-orm";
+function computePerceptualHash(buffer2) {
+  const step = Math.max(1, Math.floor(buffer2.length / HASH_BITS));
+  const samples = [];
+  for (let i = 0; i < HASH_BITS; i++) {
+    const idx = Math.min(i * step, buffer2.length - 1);
+    samples.push(buffer2[idx]);
+  }
+  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
+  let hash = "";
+  for (let i = 0; i < HASH_BITS; i += 4) {
+    let nibble = 0;
+    for (let j = 0; j < 4 && i + j < HASH_BITS; j++) {
+      if (samples[i + j] >= mean) {
+        nibble |= 1 << 3 - j;
+      }
+    }
+    hash += nibble.toString(16);
+  }
+  return hash;
+}
+function hammingDistance(a, b) {
+  if (a.length !== b.length) return HASH_BITS;
+  let distance = 0;
+  for (let i = 0; i < a.length; i++) {
+    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
+    let bits = xor;
+    while (bits) {
+      bits &= bits - 1;
+      distance++;
+    }
+  }
+  return distance;
+}
+function registerPHash(pHash, ratingId, memberId, businessId, photoId) {
+  phashIndex.push({ pHash, ratingId, memberId, businessId, photoId });
+}
+function findNearDuplicates(pHash, memberId, threshold = NEAR_DUPLICATE_THRESHOLD) {
+  let bestMatch = null;
+  let bestDistance = threshold + 1;
+  for (const entry of phashIndex) {
+    const dist = hammingDistance(pHash, entry.pHash);
+    if (dist <= threshold && dist < bestDistance) {
+      bestMatch = entry;
+      bestDistance = dist;
+    }
+  }
+  if (!bestMatch) return null;
+  const isCrossMember = bestMatch.memberId !== memberId;
+  if (isCrossMember) {
+    phashLog.warn("Near-duplicate photo detected (cross-member)", {
+      distance: bestDistance,
+      threshold,
+      originalMember: bestMatch.memberId,
+      newMember: memberId
+    });
+  }
+  return { match: bestMatch, distance: bestDistance, isCrossMember };
+}
+function getPHashIndexSize() {
+  return phashIndex.length;
+}
+function clearPHashIndex() {
+  phashIndex.length = 0;
+}
+function getNearDuplicateThreshold() {
+  return NEAR_DUPLICATE_THRESHOLD;
+}
+async function preloadPHashIndex() {
+  const rows = await db.select({
+    id: ratingPhotos.id,
+    ratingId: ratingPhotos.ratingId,
+    perceptualHash: ratingPhotos.perceptualHash,
+    memberId: ratings.memberId,
+    businessId: ratings.businessId
+  }).from(ratingPhotos).innerJoin(ratings, eq24(ratingPhotos.ratingId, ratings.id)).where(isNotNull3(ratingPhotos.perceptualHash));
+  let loaded = 0;
+  for (const row of rows) {
+    if (row.perceptualHash) {
+      phashIndex.push({
+        pHash: row.perceptualHash,
+        ratingId: row.ratingId,
+        memberId: row.memberId,
+        businessId: row.businessId,
+        photoId: row.id
+      });
+      loaded++;
+    }
+  }
+  phashLog.info(`Preloaded ${loaded} perceptual hashes from DB`);
+  return loaded;
+}
+var phashLog, HASH_BITS, NEAR_DUPLICATE_THRESHOLD, phashIndex;
+var init_phash = __esm({
+  "server/phash.ts"() {
+    "use strict";
+    init_logger();
+    init_db();
+    init_schema();
+    phashLog = log.tag("PHash");
+    HASH_BITS = 64;
+    NEAR_DUPLICATE_THRESHOLD = 10;
+    phashIndex = [];
+  }
+});
+
+// server/receipt-analysis.ts
+var receipt_analysis_exports = {};
+__export(receipt_analysis_exports, {
+  getPendingReceipts: () => getPendingReceipts,
+  getReceiptAnalysisStats: () => getReceiptAnalysisStats,
+  processReceiptOCR: () => processReceiptOCR,
+  queueReceiptForAnalysis: () => queueReceiptForAnalysis,
+  rejectReceipt: () => rejectReceipt,
+  verifyReceipt: () => verifyReceipt
+});
+import { eq as eq25, desc as desc17, sql as sql15, count as count16 } from "drizzle-orm";
+async function queueReceiptForAnalysis(ratingPhotoId, ratingId, businessId) {
+  const [row] = await db.insert(receiptAnalysis).values({
+    ratingPhotoId,
+    ratingId,
+    businessId,
+    status: "pending"
+  }).returning({ id: receiptAnalysis.id });
+  receiptLog.info(`Receipt queued for analysis: ${row.id} (rating: ${ratingId})`);
+  return row.id;
+}
+async function getPendingReceipts(limit = 50) {
+  const rows = await db.select({
+    id: receiptAnalysis.id,
+    ratingPhotoId: receiptAnalysis.ratingPhotoId,
+    ratingId: receiptAnalysis.ratingId,
+    businessId: receiptAnalysis.businessId,
+    businessName: businesses.name,
+    photoUrl: ratingPhotos.photoUrl,
+    status: receiptAnalysis.status,
+    createdAt: receiptAnalysis.createdAt
+  }).from(receiptAnalysis).innerJoin(ratingPhotos, eq25(receiptAnalysis.ratingPhotoId, ratingPhotos.id)).innerJoin(businesses, eq25(receiptAnalysis.businessId, businesses.id)).where(eq25(receiptAnalysis.status, "pending")).orderBy(desc17(receiptAnalysis.createdAt)).limit(limit);
+  return rows;
+}
+async function verifyReceipt(analysisId, reviewerId, result, note) {
+  const [updated] = await db.update(receiptAnalysis).set({
+    status: "verified",
+    extractedBusinessName: result.businessName || null,
+    extractedAmount: result.amount?.toFixed(2) || null,
+    extractedDate: result.date || null,
+    extractedItems: result.items || null,
+    confidence: result.confidence.toFixed(3),
+    matchScore: result.matchScore.toFixed(3),
+    reviewedBy: reviewerId,
+    reviewedAt: /* @__PURE__ */ new Date(),
+    reviewNote: note || null
+  }).where(eq25(receiptAnalysis.id, analysisId)).returning({ id: receiptAnalysis.id });
+  if (!updated) return false;
+  receiptLog.info(`Receipt verified: ${analysisId} by ${reviewerId}`);
+  return true;
+}
+async function rejectReceipt(analysisId, reviewerId, note) {
+  const [updated] = await db.update(receiptAnalysis).set({
+    status: "rejected",
+    confidence: "0.000",
+    matchScore: "0.000",
+    reviewedBy: reviewerId,
+    reviewedAt: /* @__PURE__ */ new Date(),
+    reviewNote: note
+  }).where(eq25(receiptAnalysis.id, analysisId)).returning({ id: receiptAnalysis.id });
+  if (!updated) return false;
+  receiptLog.info(`Receipt rejected: ${analysisId} by ${reviewerId}`);
+  return true;
+}
+async function getReceiptAnalysisStats() {
+  const [stats2] = await db.select({
+    total: count16(),
+    pending: sql15`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'pending')`,
+    verified: sql15`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'verified')`,
+    rejected: sql15`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'rejected')`,
+    avgConfidence: sql15`COALESCE(AVG(${receiptAnalysis.confidence}::numeric) FILTER (WHERE ${receiptAnalysis.status} = 'verified'), 0)`
+  }).from(receiptAnalysis);
+  return {
+    total: stats2.total,
+    pending: stats2.pending,
+    verified: stats2.verified,
+    rejected: stats2.rejected,
+    avgConfidence: Number(stats2.avgConfidence)
+  };
+}
+async function processReceiptOCR(_analysisId, _imageUrl, _provider) {
+  receiptLog.info("OCR processing not yet implemented \u2014 receipt requires manual review");
+  return null;
+}
+var receiptLog;
+var init_receipt_analysis = __esm({
+  "server/receipt-analysis.ts"() {
+    "use strict";
+    init_db();
+    init_schema();
+    init_logger();
+    receiptLog = log.tag("ReceiptAnalysis");
+  }
+});
+
+// server/hours-utils.ts
+var hours_utils_exports = {};
+__export(hours_utils_exports, {
+  computeOpenStatus: () => computeOpenStatus,
+  isOpenLate: () => isOpenLate,
+  isOpenWeekends: () => isOpenWeekends,
+  periodsToWeekdayText: () => periodsToWeekdayText,
+  weekdayTextToPeriods: () => weekdayTextToPeriods
+});
+function computeOpenStatus(hours, now) {
+  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
+  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
+  const d = now || /* @__PURE__ */ new Date();
+  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const dayOfWeek = ct.getDay();
+  const currentTime = ct.getHours() * 100 + ct.getMinutes();
+  if (hours.periods.length === 1 && !hours.periods[0].close) {
+    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
+  }
+  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
+  for (const period of hours.periods) {
+    if (!period.close) continue;
+    const openDay = period.open.day;
+    const closeDay = period.close.day;
+    const openTime = parseInt(period.open.time, 10);
+    const closeTime = parseInt(period.close.time, 10);
+    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
+      if (currentTime >= openTime && currentTime < closeTime) {
+        return {
+          isOpen: true,
+          closingTime: formatTime(period.close.time),
+          nextOpenTime: null,
+          todayHours
+        };
+      }
+    }
+    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
+      return {
+        isOpen: true,
+        closingTime: formatTime(period.close.time),
+        nextOpenTime: null,
+        todayHours
+      };
+    }
+  }
+  let nextOpen = null;
+  for (const period of hours.periods) {
+    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
+      nextOpen = formatTime(period.open.time);
+      break;
+    }
+  }
+  if (!nextOpen) {
+    for (let offset = 1; offset <= 7; offset++) {
+      const checkDay = (dayOfWeek + offset) % 7;
+      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
+      if (nextPeriod) {
+        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
+        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
+        break;
+      }
+    }
+  }
+  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
+}
+function formatTime(time) {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  return `${h.toString().padStart(2, "0")}:${m}`;
+}
+function weekdayTextToPeriods(weekdayText) {
+  const dayMap = [1, 2, 3, 4, 5, 6, 0];
+  const periods = [];
+  for (let i = 0; i < weekdayText.length && i < 7; i++) {
+    const line = weekdayText[i];
+    const dayNum = dayMap[i];
+    const cleaned = line.replace(/^[A-Za-z]+:\s*/, "").trim();
+    if (/closed/i.test(cleaned)) continue;
+    if (/24\s*hours/i.test(cleaned)) {
+      periods.push({ open: { day: dayNum, time: "0000" } });
+      continue;
+    }
+    const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–\-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!match) continue;
+    const openH = to24(parseInt(match[1]), match[3].toUpperCase());
+    const openM = match[2];
+    const closeH = to24(parseInt(match[4]), match[6].toUpperCase());
+    const closeM = match[5];
+    periods.push({
+      open: { day: dayNum, time: `${pad2(openH)}${openM}` },
+      close: { day: closeH < openH ? (dayNum + 1) % 7 : dayNum, time: `${pad2(closeH)}${closeM}` }
+    });
+  }
+  return periods;
+}
+function to24(h, ampm) {
+  if (ampm === "AM" && h === 12) return 0;
+  if (ampm === "PM" && h !== 12) return h + 12;
+  return h;
+}
+function pad2(n) {
+  return n.toString().padStart(2, "0");
+}
+function periodsToWeekdayText(periods) {
+  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const dayMap = [6, 0, 1, 2, 3, 4, 5];
+  const result = dayNames.map((d) => `${d}: Closed`);
+  for (const p of periods) {
+    const idx = dayMap[p.open.day];
+    if (!p.close) {
+      result[idx] = `${dayNames[idx]}: Open 24 hours`;
+      continue;
+    }
+    const openStr = formatTime12(p.open.time);
+    const closeStr = formatTime12(p.close.time);
+    result[idx] = `${dayNames[idx]}: ${openStr} \u2013 ${closeStr}`;
+  }
+  return result;
+}
+function formatTime12(time) {
+  const h = parseInt(time.slice(0, 2), 10);
+  const m = time.slice(2);
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${h12}:${m} ${ampm}`;
+}
+function isOpenLate(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => {
+    if (!p.close) return true;
+    const closeTime = parseInt(p.close.time, 10);
+    return closeTime >= 2200 || closeTime <= 200;
+  });
+}
+function isOpenWeekends(hours) {
+  if (!hours || !hours.periods) return false;
+  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
+}
+var init_hours_utils = __esm({
+  "server/hours-utils.ts"() {
+    "use strict";
   }
 });
 
@@ -4418,78 +5688,6 @@ var init_seed_cities = __esm({
         process.exit(1);
       });
     }
-  }
-});
-
-// server/email-tracking.ts
-import crypto3 from "crypto";
-function findEvent(eventId) {
-  return events.find((e) => e.id === eventId);
-}
-function trackEmailSent(to, template, metadata) {
-  const id = crypto3.randomUUID();
-  const event = {
-    id,
-    to,
-    template,
-    sentAt: /* @__PURE__ */ new Date(),
-    status: "sent",
-    metadata
-  };
-  events.push(event);
-  if (events.length > MAX_EVENTS) {
-    events.splice(0, events.length - MAX_EVENTS);
-  }
-  log(`Email sent to=${to} template=${template} id=${id}`);
-  return id;
-}
-function trackEmailOpened(eventId) {
-  const event = findEvent(eventId);
-  if (!event) return;
-  event.status = "opened";
-  event.openedAt = /* @__PURE__ */ new Date();
-  log(`Email opened id=${eventId}`);
-}
-function trackEmailClicked(eventId) {
-  const event = findEvent(eventId);
-  if (!event) return;
-  event.status = "clicked";
-  event.clickedAt = /* @__PURE__ */ new Date();
-  log(`Email clicked id=${eventId}`);
-}
-function trackEmailFailed(eventId, reason) {
-  const event = findEvent(eventId);
-  if (!event) return;
-  event.status = "failed";
-  event.metadata = { ...event.metadata, failureReason: reason };
-  log(`Email failed id=${eventId} reason=${reason}`);
-}
-function trackEmailBounced(eventId) {
-  const event = findEvent(eventId);
-  if (!event) return;
-  event.status = "bounced";
-  log(`Email bounced id=${eventId}`);
-}
-function getEmailStats() {
-  const total = events.length;
-  const count17 = (s) => events.filter((e) => e.status === s).length;
-  const sent = count17("sent");
-  const delivered = count17("delivered");
-  const opened = count17("opened");
-  const clicked = count17("clicked");
-  const bounced = count17("bounced");
-  const failed = count17("failed");
-  const openRate = total > 0 ? (opened + clicked) / total : 0;
-  const clickRate = total > 0 ? clicked / total : 0;
-  return { total, sent, delivered, opened, clicked, bounced, failed, openRate, clickRate };
-}
-var MAX_EVENTS, events;
-var init_email_tracking = __esm({
-  "server/email-tracking.ts"() {
-    "use strict";
-    init_logger();
-    MAX_EVENTS = 1e3;
-    events = [];
   }
 });
 
@@ -5750,305 +6948,6 @@ var init_payments2 = __esm({
   }
 });
 
-// server/experiment-tracker.ts
-function trackExposure(userId, experimentId, variant, context) {
-  const existing = exposures.find(
-    (e) => e.userId === userId && e.experimentId === experimentId
-  );
-  if (existing) {
-    trackerLog.info(
-      `Skipping duplicate exposure: user=${userId} experiment=${experimentId}`
-    );
-    return;
-  }
-  const exposure = {
-    userId,
-    experimentId,
-    variant,
-    exposedAt: Date.now(),
-    context
-  };
-  exposures.push(exposure);
-  trackerLog.info(
-    `Exposure recorded: user=${userId} experiment=${experimentId} variant=${variant} context=${context}`
-  );
-}
-function getExposureStats(experimentId) {
-  const filtered = exposures.filter((e) => e.experimentId === experimentId);
-  if (filtered.length === 0) {
-    return {
-      total: 0,
-      byVariant: {},
-      uniqueUsers: 0,
-      firstExposure: null,
-      lastExposure: null
-    };
-  }
-  const byVariant = {};
-  const userSet = /* @__PURE__ */ new Set();
-  let firstExposure = Infinity;
-  let lastExposure = -Infinity;
-  for (const e of filtered) {
-    byVariant[e.variant] = (byVariant[e.variant] || 0) + 1;
-    userSet.add(e.userId);
-    if (e.exposedAt < firstExposure) firstExposure = e.exposedAt;
-    if (e.exposedAt > lastExposure) lastExposure = e.exposedAt;
-  }
-  return {
-    total: filtered.length,
-    byVariant,
-    uniqueUsers: userSet.size,
-    firstExposure,
-    lastExposure
-  };
-}
-function trackOutcome(userId, experimentId, action, value) {
-  const exposure = exposures.find(
-    (e) => e.userId === userId && e.experimentId === experimentId
-  );
-  if (!exposure) {
-    trackerLog.info(
-      `No exposure found for user=${userId} experiment=${experimentId}, skipping outcome`
-    );
-    return;
-  }
-  const outcome = {
-    userId,
-    experimentId,
-    variant: exposure.variant,
-    action,
-    value,
-    recordedAt: Date.now()
-  };
-  outcomes.push(outcome);
-  trackerLog.info(
-    `Outcome recorded: user=${userId} experiment=${experimentId} variant=${exposure.variant} action=${action}`
-  );
-}
-function getOutcomeStats(experimentId) {
-  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
-  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
-  const byAction = {};
-  const byVariant = {};
-  for (const o of filteredOutcomes) {
-    byAction[o.action] = (byAction[o.action] || 0) + 1;
-    if (!byVariant[o.variant]) {
-      byVariant[o.variant] = { total: 0, byAction: {}, uniqueUsers: /* @__PURE__ */ new Set() };
-    }
-    byVariant[o.variant].total += 1;
-    byVariant[o.variant].byAction[o.action] = (byVariant[o.variant].byAction[o.action] || 0) + 1;
-    byVariant[o.variant].uniqueUsers.add(o.userId);
-  }
-  const byVariantSerialized = {};
-  for (const [variant, data] of Object.entries(byVariant)) {
-    byVariantSerialized[variant] = {
-      total: data.total,
-      byAction: data.byAction,
-      uniqueUsers: data.uniqueUsers.size
-    };
-  }
-  const conversionRates = {};
-  const allActions = Object.keys(byAction);
-  for (const variant of Object.keys(byVariant)) {
-    const variantExposureCount = filteredExposures.filter((e) => e.variant === variant).length;
-    if (variantExposureCount === 0) continue;
-    conversionRates[variant] = allActions.map((action) => ({
-      variant,
-      action,
-      rate: (byVariant[variant].byAction[action] || 0) / variantExposureCount * 100
-    }));
-  }
-  return {
-    total: filteredOutcomes.length,
-    byAction,
-    byVariant: byVariantSerialized,
-    conversionRates
-  };
-}
-function getUserExperiments(userId) {
-  return exposures.filter((e) => e.userId === userId).map((e) => e.experimentId);
-}
-function wilsonScore(successes, total, z2 = 1.96) {
-  if (total === 0) return { lower: 0, upper: 0, center: 0 };
-  const p = successes / total;
-  const denominator = 1 + z2 * z2 / total;
-  const center = (p + z2 * z2 / (2 * total)) / denominator;
-  const margin = z2 * Math.sqrt(p * (1 - p) / total + z2 * z2 / (4 * total * total)) / denominator;
-  return {
-    lower: Math.max(0, center - margin),
-    upper: Math.min(1, center + margin),
-    center
-  };
-}
-function computeExperimentDashboard(experimentId) {
-  const expStats = getExposureStats(experimentId);
-  const filteredExposures = exposures.filter((e) => e.experimentId === experimentId);
-  const filteredOutcomes = outcomes.filter((o) => o.experimentId === experimentId);
-  const variantMap = /* @__PURE__ */ new Map();
-  for (const e of filteredExposures) {
-    if (!variantMap.has(e.variant)) {
-      variantMap.set(e.variant, { exposures: 0, outcomes: 0, byAction: {} });
-    }
-    variantMap.get(e.variant).exposures += 1;
-  }
-  for (const o of filteredOutcomes) {
-    if (!variantMap.has(o.variant)) {
-      variantMap.set(o.variant, { exposures: 0, outcomes: 0, byAction: {} });
-    }
-    const v = variantMap.get(o.variant);
-    v.outcomes += 1;
-    v.byAction[o.action] = (v.byAction[o.action] || 0) + 1;
-  }
-  const variants = [];
-  for (const [variant, data] of variantMap.entries()) {
-    const ci = wilsonScore(data.outcomes, data.exposures);
-    variants.push({
-      variant,
-      exposures: data.exposures,
-      outcomes: data.outcomes,
-      conversionRate: data.exposures > 0 ? data.outcomes / data.exposures * 100 : 0,
-      confidence: ci,
-      byAction: data.byAction
-    });
-  }
-  const totalExposures = expStats.total;
-  let confidence = "sufficient_data";
-  let recommendation = "inconclusive";
-  if (totalExposures < 100) {
-    confidence = "insufficient_data";
-    recommendation = "insufficient_data";
-  } else {
-    const controlVariant = variants.find((v) => v.variant === "control");
-    const treatmentVariant = variants.find((v) => v.variant === "treatment");
-    const controlCI = controlVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
-    const treatmentCI = treatmentVariant?.confidence ?? { lower: 0, upper: 0, center: 0 };
-    const controlExposures = controlVariant?.exposures ?? 0;
-    const treatmentExposures = treatmentVariant?.exposures ?? 0;
-    if (controlExposures < 100 || treatmentExposures < 100) {
-      if (treatmentCI.lower > controlCI.upper) {
-        recommendation = "treatment_winning";
-      } else if (controlCI.lower > treatmentCI.upper) {
-        recommendation = "control_winning";
-      } else {
-        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
-        if (Math.abs(centerDiff) > 5) {
-          recommendation = "promising";
-        } else {
-          recommendation = "inconclusive";
-        }
-      }
-    } else {
-      if (treatmentCI.lower > controlCI.upper) {
-        recommendation = "treatment_winning";
-      } else if (controlCI.lower > treatmentCI.upper) {
-        recommendation = "control_winning";
-      } else {
-        const centerDiff = (treatmentCI.center - controlCI.center) * 100;
-        if (Math.abs(centerDiff) > 5) {
-          recommendation = "promising";
-        } else {
-          recommendation = "inconclusive";
-        }
-      }
-    }
-  }
-  return {
-    experimentId,
-    totalExposures,
-    variants,
-    confidence,
-    recommendation
-  };
-}
-var trackerLog, exposures, outcomes;
-var init_experiment_tracker = __esm({
-  "server/experiment-tracker.ts"() {
-    "use strict";
-    init_logger();
-    trackerLog = log.tag("ExperimentTracker");
-    exposures = [];
-    outcomes = [];
-  }
-});
-
-// server/push-ab-testing.ts
-function djb2Hash(str) {
-  let hash = 5381;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) + hash ^ str.charCodeAt(i);
-  }
-  return Math.abs(hash);
-}
-function assignVariant2(memberId, experiment) {
-  const bucket = djb2Hash(`${memberId}:${experiment.id}`) % experiment.variants.length;
-  return experiment.variants[bucket];
-}
-function createPushExperiment(id, description, category, variants) {
-  if (experiments3.has(id)) {
-    pushAbLog.info(`Experiment already exists: ${id}`);
-    return null;
-  }
-  if (variants.length < 2) {
-    pushAbLog.info(`Experiment needs at least 2 variants: ${id}`);
-    return null;
-  }
-  const experiment = {
-    id,
-    description,
-    category,
-    variants,
-    active: true,
-    createdAt: Date.now()
-  };
-  experiments3.set(id, experiment);
-  pushAbLog.info(`Created push experiment: ${id} with ${variants.length} variants for ${category}`);
-  return experiment;
-}
-function getNotificationVariant(memberId, category) {
-  for (const experiment of experiments3.values()) {
-    if (experiment.active && experiment.category === category) {
-      const variant = assignVariant2(memberId, experiment);
-      trackExposure(memberId, experiment.id, variant.name, `push:${category}`);
-      pushAbLog.info(
-        `Assigned variant: member=${memberId.slice(0, 8)} experiment=${experiment.id} variant=${variant.name}`
-      );
-      return { experimentId: experiment.id, variant };
-    }
-  }
-  return null;
-}
-function recordPushExperimentOpen(memberId, category) {
-  for (const experiment of experiments3.values()) {
-    if (experiment.category === category) {
-      trackOutcome(memberId, experiment.id, "notification_opened");
-      pushAbLog.info(`Outcome recorded: member=${memberId.slice(0, 8)} experiment=${experiment.id}`);
-    }
-  }
-}
-function deactivatePushExperiment(id) {
-  const experiment = experiments3.get(id);
-  if (!experiment) return false;
-  experiment.active = false;
-  pushAbLog.info(`Deactivated push experiment: ${id}`);
-  return true;
-}
-function listPushExperiments() {
-  return Array.from(experiments3.values());
-}
-function getPushExperiment(id) {
-  return experiments3.get(id);
-}
-var pushAbLog, experiments3;
-var init_push_ab_testing = __esm({
-  "server/push-ab-testing.ts"() {
-    "use strict";
-    init_experiment_tracker();
-    init_logger();
-    pushAbLog = log.tag("PushAB");
-    experiments3 = /* @__PURE__ */ new Map();
-  }
-});
-
 // server/file-storage.ts
 var file_storage_exports = {};
 __export(file_storage_exports, {
@@ -6156,275 +7055,6 @@ var init_file_storage = __esm({
   }
 });
 
-// server/photo-moderation.ts
-var photo_moderation_exports = {};
-__export(photo_moderation_exports, {
-  approvePhoto: () => approvePhoto,
-  getAllowedMimeTypes: () => getAllowedMimeTypes,
-  getCommunityPhotoCount: () => getCommunityPhotoCount,
-  getMaxFileSize: () => getMaxFileSize,
-  getPendingPhotos: () => getPendingPhotos,
-  getPhotoStats: () => getPhotoStats,
-  getPhotosByBusiness: () => getPhotosByBusiness,
-  rejectPhoto: () => rejectPhoto,
-  submitPhoto: () => submitPhoto
-});
-import { eq as eq22, desc as desc16, sql as sql14, and as and15, count as count15 } from "drizzle-orm";
-import crypto6 from "crypto";
-async function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
-  if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
-  if (fileSize > MAX_FILE_SIZE) return { error: "File too large (max 10MB)" };
-  if (caption.length > MAX_CAPTION_LENGTH) return { error: "Caption too long (max 500 chars)" };
-  const id = crypto6.randomUUID();
-  const [row] = await db.insert(photoSubmissions).values({
-    id,
-    businessId,
-    memberId,
-    url,
-    caption,
-    fileSize,
-    mimeType
-  }).returning();
-  photoModLog.info(`Photo submitted: ${row.id} for business ${businessId}`);
-  return row;
-}
-async function approvePhoto(photoId, moderatorId, note) {
-  const result = await db.update(photoSubmissions).set({
-    status: "approved",
-    moderatorId,
-    moderatorNote: note || null,
-    reviewedAt: /* @__PURE__ */ new Date()
-  }).where(and15(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
-  if (result.length === 0) return false;
-  const [submission] = await db.select({ businessId: photoSubmissions.businessId, url: photoSubmissions.url, memberId: photoSubmissions.memberId }).from(photoSubmissions).where(eq22(photoSubmissions.id, photoId));
-  if (submission) {
-    const [maxOrder] = await db.select({ max: sql14`COALESCE(MAX(${businessPhotos.sortOrder}), 0)` }).from(businessPhotos).where(eq22(businessPhotos.businessId, submission.businessId));
-    await db.insert(businessPhotos).values({
-      businessId: submission.businessId,
-      photoUrl: submission.url,
-      isHero: false,
-      sortOrder: (maxOrder?.max ?? 0) + 1,
-      uploadedBy: submission.memberId
-    });
-    photoModLog.info(`Photo ${photoId} added to gallery for business ${submission.businessId}`);
-  }
-  photoModLog.info(`Photo approved: ${photoId} by ${moderatorId}`);
-  return true;
-}
-async function rejectPhoto(photoId, moderatorId, reason, note) {
-  const result = await db.update(photoSubmissions).set({
-    status: "rejected",
-    rejectionReason: reason,
-    moderatorId,
-    moderatorNote: note || null,
-    reviewedAt: /* @__PURE__ */ new Date()
-  }).where(and15(eq22(photoSubmissions.id, photoId), eq22(photoSubmissions.status, "pending"))).returning({ id: photoSubmissions.id });
-  if (result.length === 0) return false;
-  photoModLog.info(`Photo rejected: ${photoId} by ${moderatorId} (reason: ${reason})`);
-  return true;
-}
-async function getPendingPhotos(limit) {
-  const rows = await db.select().from(photoSubmissions).where(eq22(photoSubmissions.status, "pending")).orderBy(desc16(photoSubmissions.submittedAt)).limit(limit || 50);
-  return rows;
-}
-async function getPhotosByBusiness(businessId) {
-  const rows = await db.select().from(photoSubmissions).where(and15(eq22(photoSubmissions.businessId, businessId), eq22(photoSubmissions.status, "approved"))).orderBy(desc16(photoSubmissions.submittedAt));
-  return rows;
-}
-async function getPhotoStats() {
-  const allRows = await db.select().from(photoSubmissions);
-  const byReason = {};
-  for (const s of allRows) {
-    if (s.rejectionReason) byReason[s.rejectionReason] = (byReason[s.rejectionReason] || 0) + 1;
-  }
-  return {
-    total: allRows.length,
-    pending: allRows.filter((s) => s.status === "pending").length,
-    approved: allRows.filter((s) => s.status === "approved").length,
-    rejected: allRows.filter((s) => s.status === "rejected").length,
-    byReason
-  };
-}
-async function getCommunityPhotoCount(businessId) {
-  const [result] = await db.select({ count: count15() }).from(businessPhotos).where(and15(
-    eq22(businessPhotos.businessId, businessId),
-    sql14`${businessPhotos.uploadedBy} IS NOT NULL`
-  ));
-  return result?.count ?? 0;
-}
-function getAllowedMimeTypes() {
-  return [...ALLOWED_MIME_TYPES];
-}
-function getMaxFileSize() {
-  return MAX_FILE_SIZE;
-}
-var photoModLog, ALLOWED_MIME_TYPES, MAX_FILE_SIZE, MAX_CAPTION_LENGTH;
-var init_photo_moderation = __esm({
-  "server/photo-moderation.ts"() {
-    "use strict";
-    init_logger();
-    init_db();
-    init_schema();
-    photoModLog = log.tag("PhotoModeration");
-    ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
-    MAX_FILE_SIZE = 10 * 1024 * 1024;
-    MAX_CAPTION_LENGTH = 500;
-  }
-});
-
-// server/hours-utils.ts
-var hours_utils_exports = {};
-__export(hours_utils_exports, {
-  computeOpenStatus: () => computeOpenStatus,
-  isOpenLate: () => isOpenLate,
-  isOpenWeekends: () => isOpenWeekends,
-  periodsToWeekdayText: () => periodsToWeekdayText,
-  weekdayTextToPeriods: () => weekdayTextToPeriods
-});
-function computeOpenStatus(hours, now) {
-  const fallback = { isOpen: false, closingTime: null, nextOpenTime: null, todayHours: null };
-  if (!hours || !hours.periods || hours.periods.length === 0) return fallback;
-  const d = now || /* @__PURE__ */ new Date();
-  const ct = new Date(d.toLocaleString("en-US", { timeZone: "America/Chicago" }));
-  const dayOfWeek = ct.getDay();
-  const currentTime = ct.getHours() * 100 + ct.getMinutes();
-  if (hours.periods.length === 1 && !hours.periods[0].close) {
-    return { isOpen: true, closingTime: null, nextOpenTime: null, todayHours: "Open 24 hours" };
-  }
-  const todayHours = hours.weekday_text ? hours.weekday_text[dayOfWeek === 0 ? 6 : dayOfWeek - 1] || null : null;
-  for (const period of hours.periods) {
-    if (!period.close) continue;
-    const openDay = period.open.day;
-    const closeDay = period.close.day;
-    const openTime = parseInt(period.open.time, 10);
-    const closeTime = parseInt(period.close.time, 10);
-    if (openDay === dayOfWeek && closeDay === dayOfWeek) {
-      if (currentTime >= openTime && currentTime < closeTime) {
-        return {
-          isOpen: true,
-          closingTime: formatTime(period.close.time),
-          nextOpenTime: null,
-          todayHours
-        };
-      }
-    }
-    if (openDay === dayOfWeek && closeDay !== dayOfWeek && currentTime >= openTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-    const prevDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    if (openDay === prevDay && closeDay === dayOfWeek && currentTime < closeTime) {
-      return {
-        isOpen: true,
-        closingTime: formatTime(period.close.time),
-        nextOpenTime: null,
-        todayHours
-      };
-    }
-  }
-  let nextOpen = null;
-  for (const period of hours.periods) {
-    if (period.open.day === dayOfWeek && parseInt(period.open.time, 10) > currentTime) {
-      nextOpen = formatTime(period.open.time);
-      break;
-    }
-  }
-  if (!nextOpen) {
-    for (let offset = 1; offset <= 7; offset++) {
-      const checkDay = (dayOfWeek + offset) % 7;
-      const nextPeriod = hours.periods.find((p) => p.open.day === checkDay);
-      if (nextPeriod) {
-        const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][checkDay];
-        nextOpen = `${dayName} ${formatTime(nextPeriod.open.time)}`;
-        break;
-      }
-    }
-  }
-  return { isOpen: false, closingTime: null, nextOpenTime: nextOpen, todayHours };
-}
-function formatTime(time) {
-  const h = parseInt(time.slice(0, 2), 10);
-  const m = time.slice(2);
-  return `${h.toString().padStart(2, "0")}:${m}`;
-}
-function weekdayTextToPeriods(weekdayText) {
-  const dayMap = [1, 2, 3, 4, 5, 6, 0];
-  const periods = [];
-  for (let i = 0; i < weekdayText.length && i < 7; i++) {
-    const line = weekdayText[i];
-    const dayNum = dayMap[i];
-    const cleaned = line.replace(/^[A-Za-z]+:\s*/, "").trim();
-    if (/closed/i.test(cleaned)) continue;
-    if (/24\s*hours/i.test(cleaned)) {
-      periods.push({ open: { day: dayNum, time: "0000" } });
-      continue;
-    }
-    const match = cleaned.match(/(\d{1,2}):(\d{2})\s*(AM|PM)\s*[–\-]\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-    if (!match) continue;
-    const openH = to24(parseInt(match[1]), match[3].toUpperCase());
-    const openM = match[2];
-    const closeH = to24(parseInt(match[4]), match[6].toUpperCase());
-    const closeM = match[5];
-    periods.push({
-      open: { day: dayNum, time: `${pad2(openH)}${openM}` },
-      close: { day: closeH < openH ? (dayNum + 1) % 7 : dayNum, time: `${pad2(closeH)}${closeM}` }
-    });
-  }
-  return periods;
-}
-function to24(h, ampm) {
-  if (ampm === "AM" && h === 12) return 0;
-  if (ampm === "PM" && h !== 12) return h + 12;
-  return h;
-}
-function pad2(n) {
-  return n.toString().padStart(2, "0");
-}
-function periodsToWeekdayText(periods) {
-  const dayNames = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const dayMap = [6, 0, 1, 2, 3, 4, 5];
-  const result = dayNames.map((d) => `${d}: Closed`);
-  for (const p of periods) {
-    const idx = dayMap[p.open.day];
-    if (!p.close) {
-      result[idx] = `${dayNames[idx]}: Open 24 hours`;
-      continue;
-    }
-    const openStr = formatTime12(p.open.time);
-    const closeStr = formatTime12(p.close.time);
-    result[idx] = `${dayNames[idx]}: ${openStr} \u2013 ${closeStr}`;
-  }
-  return result;
-}
-function formatTime12(time) {
-  const h = parseInt(time.slice(0, 2), 10);
-  const m = time.slice(2);
-  const ampm = h >= 12 ? "PM" : "AM";
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return `${h12}:${m} ${ampm}`;
-}
-function isOpenLate(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => {
-    if (!p.close) return true;
-    const closeTime = parseInt(p.close.time, 10);
-    return closeTime >= 2200 || closeTime <= 200;
-  });
-}
-function isOpenWeekends(hours) {
-  if (!hours || !hours.periods) return false;
-  return hours.periods.some((p) => p.open.day === 0 || p.open.day === 6);
-}
-var init_hours_utils = __esm({
-  "server/hours-utils.ts"() {
-    "use strict";
-  }
-});
-
 // server/search-autocomplete.ts
 var search_autocomplete_exports = {};
 __export(search_autocomplete_exports, {
@@ -6508,636 +7138,6 @@ function buildDishSuggestions(query, dishes2) {
 var init_search_autocomplete = __esm({
   "server/search-autocomplete.ts"() {
     "use strict";
-  }
-});
-
-// server/push-analytics.ts
-function recordPushDelivery(category, city, tokenCount, successCount, errorCount) {
-  const record = {
-    category,
-    city,
-    tokenCount,
-    successCount,
-    errorCount,
-    timestamp: Date.now()
-  };
-  deliveryRecords.push(record);
-  if (deliveryRecords.length > MAX_RECORDS) {
-    deliveryRecords.splice(0, deliveryRecords.length - MAX_RECORDS);
-  }
-  analyticsLog2.info(
-    `Push delivery: ${category}/${city} \u2014 ${successCount}/${tokenCount} success, ${errorCount} errors`
-  );
-}
-function computePushAnalytics(daysBack = 7) {
-  const cutoff = Date.now() - daysBack * 864e5;
-  const filtered = deliveryRecords.filter((r) => r.timestamp >= cutoff);
-  let totalSent = 0;
-  let totalSuccess = 0;
-  let totalError = 0;
-  const byCategory = {};
-  const byCity = {};
-  const hourBuckets = {};
-  for (const r of filtered) {
-    totalSent += r.tokenCount;
-    totalSuccess += r.successCount;
-    totalError += r.errorCount;
-    if (!byCategory[r.category]) byCategory[r.category] = { sent: 0, success: 0, error: 0 };
-    byCategory[r.category].sent += r.tokenCount;
-    byCategory[r.category].success += r.successCount;
-    byCategory[r.category].error += r.errorCount;
-    if (!byCity[r.city]) byCity[r.city] = { sent: 0, success: 0, error: 0 };
-    byCity[r.city].sent += r.tokenCount;
-    byCity[r.city].success += r.successCount;
-    byCity[r.city].error += r.errorCount;
-    const hourKey = new Date(r.timestamp).toISOString().slice(0, 13);
-    hourBuckets[hourKey] = (hourBuckets[hourKey] || 0) + r.tokenCount;
-  }
-  const hourlyVolume = Object.entries(hourBuckets).sort(([a], [b]) => a.localeCompare(b)).map(([hour, count17]) => ({ hour, count: count17 }));
-  const recentDeliveries = filtered.slice(-20).reverse();
-  const successRate = totalSent > 0 ? Math.round(totalSuccess / totalSent * 1e3) / 10 : 0;
-  return {
-    totalSent,
-    totalSuccess,
-    totalError,
-    successRate,
-    byCategory,
-    byCity,
-    hourlyVolume,
-    recentDeliveries
-  };
-}
-function getPushRecordCount() {
-  return deliveryRecords.length;
-}
-function recordNotificationOpen(notificationId, category, memberId) {
-  const dedupKey = `${notificationId}:${memberId}`;
-  if (openDedupSet.has(dedupKey)) {
-    analyticsLog2.info(`Duplicate open skipped: ${category} by member ${memberId.slice(0, 8)}`);
-    return false;
-  }
-  openDedupSet.add(dedupKey);
-  if (openDedupSet.size > MAX_DEDUP_SIZE) {
-    const entries = Array.from(openDedupSet);
-    for (let i = 0; i < entries.length - MAX_DEDUP_SIZE; i++) {
-      openDedupSet.delete(entries[i]);
-    }
-  }
-  const record = {
-    notificationId,
-    category,
-    memberId,
-    openedAt: Date.now()
-  };
-  openRecords.push(record);
-  if (openRecords.length > MAX_OPEN_RECORDS) {
-    openRecords.splice(0, openRecords.length - MAX_OPEN_RECORDS);
-  }
-  analyticsLog2.info(`Notification opened: ${category} by member ${memberId.slice(0, 8)}`);
-  return true;
-}
-function computeOpenAnalytics(daysBack = 7) {
-  const cutoff = Date.now() - daysBack * 864e5;
-  const filtered = openRecords.filter((r) => r.openedAt >= cutoff);
-  const byCategory = {};
-  const memberSet = /* @__PURE__ */ new Set();
-  for (const r of filtered) {
-    byCategory[r.category] = (byCategory[r.category] || 0) + 1;
-    memberSet.add(r.memberId);
-  }
-  return {
-    totalOpens: filtered.length,
-    byCategory,
-    uniqueMembers: memberSet.size,
-    recentOpens: filtered.slice(-20).reverse()
-  };
-}
-function getNotificationInsights(daysBack = 7) {
-  const delivery = computePushAnalytics(daysBack);
-  const opens = computeOpenAnalytics(daysBack);
-  const openRate = delivery.totalSent > 0 ? Math.round(opens.totalOpens / delivery.totalSent * 1e3) / 10 : 0;
-  return { delivery, opens, openRate };
-}
-var analyticsLog2, deliveryRecords, MAX_RECORDS, openRecords, MAX_OPEN_RECORDS, openDedupSet, MAX_DEDUP_SIZE;
-var init_push_analytics = __esm({
-  "server/push-analytics.ts"() {
-    "use strict";
-    init_logger();
-    analyticsLog2 = log.tag("PushAnalytics");
-    deliveryRecords = [];
-    MAX_RECORDS = 1e4;
-    openRecords = [];
-    MAX_OPEN_RECORDS = 1e4;
-    openDedupSet = /* @__PURE__ */ new Set();
-    MAX_DEDUP_SIZE = 5e4;
-  }
-});
-
-// server/moderation-queue.ts
-var moderation_queue_exports = {};
-__export(moderation_queue_exports, {
-  MAX_QUEUE: () => MAX_QUEUE,
-  addToQueue: () => addToQueue,
-  approveItem: () => approveItem,
-  bulkApprove: () => bulkApprove,
-  bulkReject: () => bulkReject,
-  clearQueue: () => clearQueue,
-  getFilteredItems: () => getFilteredItems,
-  getItemsByBusiness: () => getItemsByBusiness,
-  getItemsByMember: () => getItemsByMember,
-  getPendingItems: () => getPendingItems,
-  getQueueStats: () => getQueueStats,
-  getResolvedItems: () => getResolvedItems,
-  rejectItem: () => rejectItem
-});
-import crypto9 from "crypto";
-function addToQueue(item) {
-  const modItem = {
-    ...item,
-    id: crypto9.randomUUID(),
-    status: "pending",
-    moderatorId: null,
-    moderatorNote: null,
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    resolvedAt: null
-  };
-  queue.unshift(modItem);
-  if (queue.length > MAX_QUEUE) queue.pop();
-  modLog.info(`Added to moderation queue: ${item.contentType} from ${item.memberId}`);
-  return modItem;
-}
-function getPendingItems(limit) {
-  return queue.filter((i) => i.status === "pending").slice(0, limit || 50);
-}
-function getFilteredItems(opts) {
-  let items = [...queue];
-  if (opts.status) items = items.filter((i) => i.status === opts.status);
-  if (opts.contentType) items = items.filter((i) => i.contentType === opts.contentType);
-  if (opts.sortByViolations) items.sort((a, b) => b.violations.length - a.violations.length);
-  return items.slice(0, opts.limit || 50);
-}
-function bulkApprove(itemIds, moderatorId, note) {
-  let approved = 0;
-  let notFound = 0;
-  for (const id of itemIds) {
-    if (approveItem(id, moderatorId, note)) approved++;
-    else notFound++;
-  }
-  return { approved, notFound };
-}
-function bulkReject(itemIds, moderatorId, note) {
-  let rejected = 0;
-  let notFound = 0;
-  for (const id of itemIds) {
-    if (rejectItem(id, moderatorId, note)) rejected++;
-    else notFound++;
-  }
-  return { rejected, notFound };
-}
-function getResolvedItems(limit) {
-  return queue.filter((i) => i.status === "approved" || i.status === "rejected").slice(0, limit || 50);
-}
-function approveItem(itemId, moderatorId, note) {
-  const item = queue.find((i) => i.id === itemId);
-  if (!item || item.status !== "pending") return false;
-  item.status = "approved";
-  item.moderatorId = moderatorId;
-  item.moderatorNote = note || null;
-  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
-  modLog.info(`Approved: ${itemId} by ${moderatorId}`);
-  return true;
-}
-function rejectItem(itemId, moderatorId, note) {
-  const item = queue.find((i) => i.id === itemId);
-  if (!item || item.status !== "pending") return false;
-  item.status = "rejected";
-  item.moderatorId = moderatorId;
-  item.moderatorNote = note || null;
-  item.resolvedAt = (/* @__PURE__ */ new Date()).toISOString();
-  modLog.info(`Rejected: ${itemId} by ${moderatorId}`);
-  return true;
-}
-function getQueueStats() {
-  return {
-    total: queue.length,
-    pending: queue.filter((i) => i.status === "pending").length,
-    approved: queue.filter((i) => i.status === "approved").length,
-    rejected: queue.filter((i) => i.status === "rejected").length
-  };
-}
-function getItemsByBusiness(businessId) {
-  return queue.filter((i) => i.businessId === businessId);
-}
-function getItemsByMember(memberId) {
-  return queue.filter((i) => i.memberId === memberId);
-}
-function clearQueue() {
-  queue.length = 0;
-}
-var modLog, queue, MAX_QUEUE;
-var init_moderation_queue = __esm({
-  "server/moderation-queue.ts"() {
-    "use strict";
-    init_logger();
-    modLog = log.tag("ModerationQueue");
-    queue = [];
-    MAX_QUEUE = 2e3;
-  }
-});
-
-// server/notification-templates.ts
-function detectVariables(title, body) {
-  const combined = `${title} ${body}`;
-  return SUPPORTED_VARIABLES.filter((v) => combined.includes(`{${v}}`));
-}
-function createTemplate2(input) {
-  if (templates2.has(input.id)) {
-    tmplLog2.info(`Template already exists: ${input.id}`);
-    return null;
-  }
-  const template = {
-    ...input,
-    variables: detectVariables(input.title, input.body),
-    active: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-  templates2.set(input.id, template);
-  tmplLog2.info(`Created template: ${input.id} for ${input.category}`);
-  return template;
-}
-function updateTemplate(id, updates) {
-  const existing = templates2.get(id);
-  if (!existing) return null;
-  const updated = {
-    ...existing,
-    ...updates,
-    variables: detectVariables(
-      updates.title ?? existing.title,
-      updates.body ?? existing.body
-    ),
-    updatedAt: Date.now()
-  };
-  templates2.set(id, updated);
-  tmplLog2.info(`Updated template: ${id}`);
-  return updated;
-}
-function deleteTemplate(id) {
-  const existed = templates2.delete(id);
-  if (existed) tmplLog2.info(`Deleted template: ${id}`);
-  return existed;
-}
-function getTemplate2(id) {
-  return templates2.get(id);
-}
-function listTemplates() {
-  return Array.from(templates2.values());
-}
-function listTemplatesByCategory(category) {
-  return Array.from(templates2.values()).filter((t) => t.category === category);
-}
-function getActiveTemplateForCategory(category) {
-  return Array.from(templates2.values()).find((t) => t.category === category && t.active);
-}
-function applyTemplate(template, values) {
-  let title = template.title;
-  let body = template.body;
-  for (const [key2, val] of Object.entries(values)) {
-    const placeholder = `{${key2}}`;
-    title = title.replaceAll(placeholder, val);
-    body = body.replaceAll(placeholder, val);
-  }
-  return { title, body };
-}
-function getSupportedVariables() {
-  return [...SUPPORTED_VARIABLES];
-}
-var tmplLog2, templates2, SUPPORTED_VARIABLES;
-var init_notification_templates = __esm({
-  "server/notification-templates.ts"() {
-    "use strict";
-    init_logger();
-    tmplLog2 = log.tag("NotifTemplate");
-    templates2 = /* @__PURE__ */ new Map();
-    SUPPORTED_VARIABLES = [
-      "firstName",
-      "city",
-      "business",
-      "emoji",
-      "direction",
-      "newRank",
-      "oldRank",
-      "delta",
-      "rater",
-      "score",
-      "count"
-    ];
-  }
-});
-
-// server/photo-hash.ts
-var photo_hash_exports = {};
-__export(photo_hash_exports, {
-  checkDuplicate: () => checkDuplicate,
-  clearHashIndex: () => clearHashIndex,
-  computePhotoHash: () => computePhotoHash,
-  detectDuplicate: () => detectDuplicate,
-  getHashIndexSize: () => getHashIndexSize,
-  preloadHashIndex: () => preloadHashIndex,
-  registerPhotoHash: () => registerPhotoHash
-});
-import crypto11 from "crypto";
-import { isNotNull as isNotNull2, eq as eq26 } from "drizzle-orm";
-function computePhotoHash(buffer2) {
-  return crypto11.createHash("sha256").update(buffer2).digest("hex");
-}
-function checkDuplicate(hash) {
-  return hashIndex.get(hash) ?? null;
-}
-function registerPhotoHash(hash, ratingId, memberId, businessId, photoId) {
-  hashIndex.set(hash, {
-    ratingId,
-    memberId,
-    businessId,
-    photoId,
-    uploadedAt: Date.now()
-  });
-}
-function getHashIndexSize() {
-  return hashIndex.size;
-}
-function clearHashIndex() {
-  hashIndex.clear();
-}
-async function preloadHashIndex() {
-  const rows = await db.select({
-    id: ratingPhotos.id,
-    ratingId: ratingPhotos.ratingId,
-    contentHash: ratingPhotos.contentHash,
-    memberId: ratings.memberId,
-    businessId: ratings.businessId
-  }).from(ratingPhotos).innerJoin(ratings, eq26(ratingPhotos.ratingId, ratings.id)).where(isNotNull2(ratingPhotos.contentHash));
-  let loaded = 0;
-  for (const row of rows) {
-    if (row.contentHash && !hashIndex.has(row.contentHash)) {
-      hashIndex.set(row.contentHash, {
-        ratingId: row.ratingId,
-        memberId: row.memberId,
-        businessId: row.businessId,
-        photoId: row.id,
-        uploadedAt: 0
-      });
-      loaded++;
-    }
-  }
-  hashLog.info(`Preloaded ${loaded} photo hashes from DB`);
-  return loaded;
-}
-function detectDuplicate(buffer2, memberId) {
-  const hash = computePhotoHash(buffer2);
-  const existing = checkDuplicate(hash);
-  if (!existing) {
-    return { hash, isDuplicate: false, isCrossMember: false, original: null };
-  }
-  const isCrossMember = existing.memberId !== memberId;
-  if (isCrossMember) {
-    hashLog.warn("Cross-member duplicate photo detected", {
-      hash: hash.slice(0, 16),
-      originalMember: existing.memberId,
-      newMember: memberId,
-      originalRating: existing.ratingId
-    });
-  } else {
-    hashLog.info("Same-member duplicate photo", {
-      hash: hash.slice(0, 16),
-      memberId,
-      originalRating: existing.ratingId
-    });
-  }
-  return { hash, isDuplicate: true, isCrossMember, original: existing };
-}
-var hashLog, hashIndex;
-var init_photo_hash = __esm({
-  "server/photo-hash.ts"() {
-    "use strict";
-    init_logger();
-    init_db();
-    init_schema();
-    hashLog = log.tag("PhotoHash");
-    hashIndex = /* @__PURE__ */ new Map();
-  }
-});
-
-// server/phash.ts
-var phash_exports = {};
-__export(phash_exports, {
-  clearPHashIndex: () => clearPHashIndex,
-  computePerceptualHash: () => computePerceptualHash,
-  findNearDuplicates: () => findNearDuplicates,
-  getNearDuplicateThreshold: () => getNearDuplicateThreshold,
-  getPHashIndexSize: () => getPHashIndexSize,
-  hammingDistance: () => hammingDistance,
-  preloadPHashIndex: () => preloadPHashIndex,
-  registerPHash: () => registerPHash
-});
-import { isNotNull as isNotNull3, eq as eq27 } from "drizzle-orm";
-function computePerceptualHash(buffer2) {
-  const step = Math.max(1, Math.floor(buffer2.length / HASH_BITS));
-  const samples = [];
-  for (let i = 0; i < HASH_BITS; i++) {
-    const idx = Math.min(i * step, buffer2.length - 1);
-    samples.push(buffer2[idx]);
-  }
-  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-  let hash = "";
-  for (let i = 0; i < HASH_BITS; i += 4) {
-    let nibble = 0;
-    for (let j = 0; j < 4 && i + j < HASH_BITS; j++) {
-      if (samples[i + j] >= mean) {
-        nibble |= 1 << 3 - j;
-      }
-    }
-    hash += nibble.toString(16);
-  }
-  return hash;
-}
-function hammingDistance(a, b) {
-  if (a.length !== b.length) return HASH_BITS;
-  let distance = 0;
-  for (let i = 0; i < a.length; i++) {
-    const xor = parseInt(a[i], 16) ^ parseInt(b[i], 16);
-    let bits = xor;
-    while (bits) {
-      bits &= bits - 1;
-      distance++;
-    }
-  }
-  return distance;
-}
-function registerPHash(pHash, ratingId, memberId, businessId, photoId) {
-  phashIndex.push({ pHash, ratingId, memberId, businessId, photoId });
-}
-function findNearDuplicates(pHash, memberId, threshold = NEAR_DUPLICATE_THRESHOLD) {
-  let bestMatch = null;
-  let bestDistance = threshold + 1;
-  for (const entry of phashIndex) {
-    const dist = hammingDistance(pHash, entry.pHash);
-    if (dist <= threshold && dist < bestDistance) {
-      bestMatch = entry;
-      bestDistance = dist;
-    }
-  }
-  if (!bestMatch) return null;
-  const isCrossMember = bestMatch.memberId !== memberId;
-  if (isCrossMember) {
-    phashLog.warn("Near-duplicate photo detected (cross-member)", {
-      distance: bestDistance,
-      threshold,
-      originalMember: bestMatch.memberId,
-      newMember: memberId
-    });
-  }
-  return { match: bestMatch, distance: bestDistance, isCrossMember };
-}
-function getPHashIndexSize() {
-  return phashIndex.length;
-}
-function clearPHashIndex() {
-  phashIndex.length = 0;
-}
-function getNearDuplicateThreshold() {
-  return NEAR_DUPLICATE_THRESHOLD;
-}
-async function preloadPHashIndex() {
-  const rows = await db.select({
-    id: ratingPhotos.id,
-    ratingId: ratingPhotos.ratingId,
-    perceptualHash: ratingPhotos.perceptualHash,
-    memberId: ratings.memberId,
-    businessId: ratings.businessId
-  }).from(ratingPhotos).innerJoin(ratings, eq27(ratingPhotos.ratingId, ratings.id)).where(isNotNull3(ratingPhotos.perceptualHash));
-  let loaded = 0;
-  for (const row of rows) {
-    if (row.perceptualHash) {
-      phashIndex.push({
-        pHash: row.perceptualHash,
-        ratingId: row.ratingId,
-        memberId: row.memberId,
-        businessId: row.businessId,
-        photoId: row.id
-      });
-      loaded++;
-    }
-  }
-  phashLog.info(`Preloaded ${loaded} perceptual hashes from DB`);
-  return loaded;
-}
-var phashLog, HASH_BITS, NEAR_DUPLICATE_THRESHOLD, phashIndex;
-var init_phash = __esm({
-  "server/phash.ts"() {
-    "use strict";
-    init_logger();
-    init_db();
-    init_schema();
-    phashLog = log.tag("PHash");
-    HASH_BITS = 64;
-    NEAR_DUPLICATE_THRESHOLD = 10;
-    phashIndex = [];
-  }
-});
-
-// server/receipt-analysis.ts
-var receipt_analysis_exports = {};
-__export(receipt_analysis_exports, {
-  getPendingReceipts: () => getPendingReceipts,
-  getReceiptAnalysisStats: () => getReceiptAnalysisStats,
-  processReceiptOCR: () => processReceiptOCR,
-  queueReceiptForAnalysis: () => queueReceiptForAnalysis,
-  rejectReceipt: () => rejectReceipt,
-  verifyReceipt: () => verifyReceipt
-});
-import { eq as eq28, desc as desc17, sql as sql16, count as count16 } from "drizzle-orm";
-async function queueReceiptForAnalysis(ratingPhotoId, ratingId, businessId) {
-  const [row] = await db.insert(receiptAnalysis).values({
-    ratingPhotoId,
-    ratingId,
-    businessId,
-    status: "pending"
-  }).returning({ id: receiptAnalysis.id });
-  receiptLog.info(`Receipt queued for analysis: ${row.id} (rating: ${ratingId})`);
-  return row.id;
-}
-async function getPendingReceipts(limit = 50) {
-  const rows = await db.select({
-    id: receiptAnalysis.id,
-    ratingPhotoId: receiptAnalysis.ratingPhotoId,
-    ratingId: receiptAnalysis.ratingId,
-    businessId: receiptAnalysis.businessId,
-    businessName: businesses.name,
-    photoUrl: ratingPhotos.photoUrl,
-    status: receiptAnalysis.status,
-    createdAt: receiptAnalysis.createdAt
-  }).from(receiptAnalysis).innerJoin(ratingPhotos, eq28(receiptAnalysis.ratingPhotoId, ratingPhotos.id)).innerJoin(businesses, eq28(receiptAnalysis.businessId, businesses.id)).where(eq28(receiptAnalysis.status, "pending")).orderBy(desc17(receiptAnalysis.createdAt)).limit(limit);
-  return rows;
-}
-async function verifyReceipt(analysisId, reviewerId, result, note) {
-  const [updated] = await db.update(receiptAnalysis).set({
-    status: "verified",
-    extractedBusinessName: result.businessName || null,
-    extractedAmount: result.amount?.toFixed(2) || null,
-    extractedDate: result.date || null,
-    extractedItems: result.items || null,
-    confidence: result.confidence.toFixed(3),
-    matchScore: result.matchScore.toFixed(3),
-    reviewedBy: reviewerId,
-    reviewedAt: /* @__PURE__ */ new Date(),
-    reviewNote: note || null
-  }).where(eq28(receiptAnalysis.id, analysisId)).returning({ id: receiptAnalysis.id });
-  if (!updated) return false;
-  receiptLog.info(`Receipt verified: ${analysisId} by ${reviewerId}`);
-  return true;
-}
-async function rejectReceipt(analysisId, reviewerId, note) {
-  const [updated] = await db.update(receiptAnalysis).set({
-    status: "rejected",
-    confidence: "0.000",
-    matchScore: "0.000",
-    reviewedBy: reviewerId,
-    reviewedAt: /* @__PURE__ */ new Date(),
-    reviewNote: note
-  }).where(eq28(receiptAnalysis.id, analysisId)).returning({ id: receiptAnalysis.id });
-  if (!updated) return false;
-  receiptLog.info(`Receipt rejected: ${analysisId} by ${reviewerId}`);
-  return true;
-}
-async function getReceiptAnalysisStats() {
-  const [stats2] = await db.select({
-    total: count16(),
-    pending: sql16`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'pending')`,
-    verified: sql16`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'verified')`,
-    rejected: sql16`COUNT(*) FILTER (WHERE ${receiptAnalysis.status} = 'rejected')`,
-    avgConfidence: sql16`COALESCE(AVG(${receiptAnalysis.confidence}::numeric) FILTER (WHERE ${receiptAnalysis.status} = 'verified'), 0)`
-  }).from(receiptAnalysis);
-  return {
-    total: stats2.total,
-    pending: stats2.pending,
-    verified: stats2.verified,
-    rejected: stats2.rejected,
-    avgConfidence: Number(stats2.avgConfidence)
-  };
-}
-async function processReceiptOCR(_analysisId, _imageUrl, _provider) {
-  receiptLog.info("OCR processing not yet implemented \u2014 receipt requires manual review");
-  return null;
-}
-var receiptLog;
-var init_receipt_analysis = __esm({
-  "server/receipt-analysis.ts"() {
-    "use strict";
-    init_db();
-    init_schema();
-    init_logger();
-    receiptLog = log.tag("ReceiptAnalysis");
   }
 });
 
@@ -9666,6 +9666,2088 @@ function registerAdminAnalyticsRoutes(app2) {
   }));
 }
 
+// server/email-ab-testing.ts
+init_logger();
+import crypto3 from "crypto";
+var abLog = log.tag("EmailAB");
+var experiments = [];
+var assignments = /* @__PURE__ */ new Map();
+var MAX_EXPERIMENTS = 50;
+function createExperiment(name, variants) {
+  if (experiments.length >= MAX_EXPERIMENTS) {
+    experiments.shift();
+  }
+  const experiment = {
+    id: crypto3.randomUUID(),
+    name,
+    variants: variants.map((v) => ({
+      ...v,
+      id: crypto3.randomUUID(),
+      weight: v.weight || 1
+    })),
+    createdAt: /* @__PURE__ */ new Date(),
+    status: "active"
+  };
+  experiments.push(experiment);
+  abLog.info(`Created email experiment "${name}" with ${variants.length} variants`);
+  return experiment;
+}
+function getExperiment(experimentId) {
+  return experiments.find((e) => e.id === experimentId);
+}
+function completeExperiment(experimentId, winnerVariantId) {
+  const experiment = getExperiment(experimentId);
+  if (!experiment) return;
+  experiment.status = "completed";
+  experiment.winnerVariantId = winnerVariantId;
+  abLog.info(`Experiment "${experiment.name}" completed \u2014 winner: ${winnerVariantId}`);
+}
+function getExperimentStats(experimentId) {
+  const experiment = getExperiment(experimentId);
+  if (!experiment) return null;
+  return experiment.variants.map((v) => ({
+    variantId: v.id,
+    name: v.name,
+    assignedCount: [...assignments.entries()].filter(([key2, val]) => key2.startsWith(`${experimentId}:`) && val === v.id).length
+  }));
+}
+function getActiveExperiments() {
+  return experiments.filter((e) => e.status === "active");
+}
+
+// server/routes-admin-experiments.ts
+init_email_tracking();
+init_push_ab_testing();
+init_experiment_tracker();
+
+// server/digest-copy-variants.ts
+init_push_ab_testing();
+init_logger();
+var digestLog = log.tag("DigestCopy");
+var DIGEST_EXPERIMENT_ID = "weekly-digest-copy-v1";
+var digestCopyVariants = [
+  {
+    name: "control",
+    title: "Your weekly rankings update",
+    body: "Hey {firstName}, check what's changed in your city's rankings this week."
+  },
+  {
+    name: "urgency",
+    title: "Rankings just shifted \u2014 see who moved",
+    body: "{firstName}, this week's rankings are in. Some favorites dropped. See the new order before everyone else."
+  },
+  {
+    name: "curiosity",
+    title: "Did your top pick hold its spot?",
+    body: "{firstName}, rankings moved this week. Tap to see if your favorite is still #1."
+  },
+  {
+    name: "social",
+    title: "Your city is rating \u2014 join the conversation",
+    body: "{firstName}, new ratings are shaping your city's leaderboard. See what the community thinks."
+  }
+];
+function seedDigestCopyTest() {
+  const existing = getPushExperiment(DIGEST_EXPERIMENT_ID);
+  if (existing && existing.active) {
+    digestLog.info("Digest copy test already active");
+    return { created: false, experimentId: DIGEST_EXPERIMENT_ID };
+  }
+  if (existing) {
+    deactivatePushExperiment(DIGEST_EXPERIMENT_ID);
+  }
+  const experiment = createPushExperiment(
+    DIGEST_EXPERIMENT_ID,
+    "Weekly digest copy test: control vs urgency vs curiosity vs social",
+    "weeklyDigest",
+    digestCopyVariants
+  );
+  if (experiment) {
+    digestLog.info("Digest copy test seeded with 4 variants");
+    return { created: true, experimentId: DIGEST_EXPERIMENT_ID };
+  }
+  digestLog.error("Failed to seed digest copy test");
+  return { created: false, experimentId: DIGEST_EXPERIMENT_ID };
+}
+function stopDigestCopyTest() {
+  return deactivatePushExperiment(DIGEST_EXPERIMENT_ID);
+}
+function getDigestCopyTestStatus() {
+  const exp = getPushExperiment(DIGEST_EXPERIMENT_ID);
+  return {
+    active: exp?.active ?? false,
+    experimentId: DIGEST_EXPERIMENT_ID,
+    variantCount: exp?.variants.length ?? 0
+  };
+}
+
+// server/routes-admin-experiments.ts
+function requireAdmin2(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminExperimentRoutes(app2) {
+  app2.get("/api/admin/experiments", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const experiments4 = getActiveExperiments();
+    const experimentsWithStats = experiments4.map((exp) => ({
+      ...exp,
+      stats: getExperimentStats(exp.id)
+    }));
+    return res.json({
+      data: {
+        experiments: experimentsWithStats,
+        emailStats: getEmailStats()
+      }
+    });
+  }));
+  app2.get("/api/admin/experiments/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const experiment = getExperiment(req.params.id);
+    if (!experiment) {
+      return res.status(404).json({ error: "Experiment not found" });
+    }
+    const stats2 = getExperimentStats(req.params.id);
+    return res.json({ data: { experiment, stats: stats2 } });
+  }));
+  app2.post("/api/admin/experiments", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { name, variants } = req.body;
+    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
+      return res.status(400).json({ error: "name and variants[] are required" });
+    }
+    const experiment = createExperiment(name, variants);
+    return res.json({ data: experiment });
+  }));
+  app2.post("/api/admin/experiments/:id/complete", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const experiment = getExperiment(req.params.id);
+    if (!experiment) {
+      return res.status(404).json({ error: "Experiment not found" });
+    }
+    const { winnerVariantId } = req.body;
+    completeExperiment(req.params.id, winnerVariantId);
+    return res.json({ data: { completed: true } });
+  }));
+  app2.get("/api/admin/push-experiments", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const pushExperiments = listPushExperiments();
+    const withDashboards = pushExperiments.map((exp) => ({
+      ...exp,
+      dashboard: computeExperimentDashboard(exp.id)
+    }));
+    return res.json({ data: withDashboards });
+  }));
+  app2.get("/api/admin/push-experiments/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const exp = getPushExperiment(req.params.id);
+    if (!exp) return res.status(404).json({ error: "Push experiment not found" });
+    return res.json({ data: { ...exp, dashboard: computeExperimentDashboard(exp.id) } });
+  }));
+  app2.post("/api/admin/push-experiments", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const { id, description, category, variants } = req.body;
+    if (!id || !description || !category || !variants || variants.length < 2) {
+      return res.status(400).json({ error: "id, description, category, and 2+ variants required" });
+    }
+    const exp = createPushExperiment(id, description, category, variants);
+    if (!exp) return res.status(409).json({ error: "Experiment already exists or invalid" });
+    return res.json({ data: exp });
+  }));
+  app2.post("/api/admin/push-experiments/:id/deactivate", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+    const success = deactivatePushExperiment(req.params.id);
+    if (!success) return res.status(404).json({ error: "Push experiment not found" });
+    return res.json({ data: { deactivated: true } });
+  }));
+  app2.post("/api/admin/digest-copy-test/seed", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const result = seedDigestCopyTest();
+    return res.json({ data: result });
+  }));
+  app2.post("/api/admin/digest-copy-test/stop", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const stopped = stopDigestCopyTest();
+    return res.json({ data: { stopped } });
+  }));
+  app2.get("/api/admin/digest-copy-test/status", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+    const status = getDigestCopyTestStatus();
+    const dashboard = status.active ? computeExperimentDashboard(status.experimentId) : null;
+    return res.json({ data: { ...status, dashboard } });
+  }));
+}
+
+// server/routes-admin-promotion.ts
+init_logger();
+
+// server/city-promotion.ts
+init_logger();
+init_city_config();
+
+// server/city-engagement.ts
+init_logger();
+init_db();
+init_schema();
+init_city_config();
+import { sql as sql13, eq as eq20, count as count14 } from "drizzle-orm";
+var engLog = log.tag("CityEngagement");
+async function getCityEngagement(city) {
+  engLog.debug(`Fetching engagement for city: ${city}`);
+  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
+  const totalMembers = memberResult?.total ?? 0;
+  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq20(businesses.city, city));
+  const totalBusinesses = bizResult?.total ?? 0;
+  const ratingsResult = await db.execute(sql13`
+    SELECT COUNT(r.id)::int AS total
+    FROM ratings r
+    JOIN businesses b ON r.business_id = b.id
+    WHERE b.city = ${city}
+  `);
+  const totalRatings = ratingsResult.rows[0]?.total ?? 0;
+  const avgRatingsPerMember = totalMembers > 0 ? Math.round(totalRatings / totalMembers * 100) / 100 : 0;
+  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq20(businesses.city, city)).groupBy(businesses.category).orderBy(sql13`count(*) DESC`).limit(1);
+  const topCategory = categoryResult[0]?.category ?? "N/A";
+  engLog.info(`City engagement for ${city}: ${totalMembers} members, ${totalBusinesses} businesses, ${totalRatings} ratings`);
+  return {
+    city,
+    totalMembers,
+    totalBusinesses,
+    totalRatings,
+    avgRatingsPerMember,
+    topCategory,
+    status: isCityActive(city) ? "active" : "beta"
+  };
+}
+async function getAllCityEngagement() {
+  const activeCities = getActiveCities();
+  const betaCities = getBetaCities();
+  const allCities = [...activeCities, ...betaCities];
+  engLog.info(`Fetching engagement for ${allCities.length} cities (${activeCities.length} active, ${betaCities.length} beta)`);
+  const results = await Promise.all(allCities.map((city) => getCityEngagement(city)));
+  results.sort((a, b) => b.totalMembers - a.totalMembers);
+  return results;
+}
+
+// server/city-promotion.ts
+var promoLog = log.tag("CityPromotion");
+var promotionHistory = [];
+var thresholds = {
+  minBusinesses: 50,
+  minMembers: 100,
+  minRatings: 200,
+  minDaysInBeta: 30
+};
+function getPromotionThresholds() {
+  return { ...thresholds };
+}
+function setPromotionThresholds(t) {
+  thresholds = { ...thresholds, ...t };
+  promoLog.info("Promotion thresholds updated", thresholds);
+  return { ...thresholds };
+}
+async function getPromotionStatus(city) {
+  const config2 = getCityConfig(city);
+  if (!config2 || config2.status !== "beta") return null;
+  const engagement = await getCityEngagement(city);
+  const launchDate = config2.launchDate ? new Date(config2.launchDate) : /* @__PURE__ */ new Date();
+  const daysInBeta = Math.floor(
+    (Date.now() - launchDate.getTime()) / (1e3 * 60 * 60 * 24)
+  );
+  const missing = [];
+  if (engagement.totalBusinesses < thresholds.minBusinesses) missing.push("businesses");
+  if (engagement.totalMembers < thresholds.minMembers) missing.push("members");
+  if (engagement.totalRatings < thresholds.minRatings) missing.push("ratings");
+  if (daysInBeta < thresholds.minDaysInBeta) missing.push("daysInBeta");
+  const pctBiz = Math.min(100, Math.round(engagement.totalBusinesses / thresholds.minBusinesses * 100));
+  const pctMem = Math.min(100, Math.round(engagement.totalMembers / thresholds.minMembers * 100));
+  const pctRat = Math.min(100, Math.round(engagement.totalRatings / thresholds.minRatings * 100));
+  const pctDays = Math.min(100, Math.round(daysInBeta / thresholds.minDaysInBeta * 100));
+  const overall = Math.round((pctBiz + pctMem + pctRat + pctDays) / 4);
+  return {
+    city,
+    eligible: missing.length === 0,
+    currentMetrics: {
+      businesses: engagement.totalBusinesses,
+      members: engagement.totalMembers,
+      ratings: engagement.totalRatings,
+      daysInBeta
+    },
+    progress: { businesses: pctBiz, members: pctMem, ratings: pctRat, daysInBeta: pctDays, overall },
+    thresholds: { ...thresholds },
+    missingCriteria: missing
+  };
+}
+function promoteCity(city, metrics) {
+  const config2 = getCityConfig(city);
+  if (!config2 || config2.status !== "beta") {
+    promoLog.warn(`Cannot promote ${city}: not a beta city`);
+    return false;
+  }
+  CITY_REGISTRY[city].status = "active";
+  CITY_REGISTRY[city].launchDate = CITY_REGISTRY[city].launchDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  promotionHistory.push({
+    city,
+    promotedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    metricsAtPromotion: metrics || { businesses: 0, members: 0, ratings: 0, daysInBeta: 0 }
+  });
+  promoLog.info(`Promoted ${city} from beta to active`);
+  return true;
+}
+async function getAllBetaPromotionStatus() {
+  const { getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
+  const betaCities = getBetaCities2();
+  const results = await Promise.all(betaCities.map((c) => getPromotionStatus(c)));
+  return results.filter((r) => r !== null);
+}
+function getPromotionHistory() {
+  return [...promotionHistory];
+}
+
+// server/routes-admin-promotion.ts
+var adminPromoLog = log.tag("AdminPromotion");
+function registerAdminPromotionRoutes(app2) {
+  app2.get(
+    "/api/admin/promotion-status/:city",
+    wrapAsync(async (req, res) => {
+      const status = await getPromotionStatus(req.params.city);
+      if (!status) {
+        return res.status(404).json({ error: "City not found or not in beta" });
+      }
+      res.json(status);
+    })
+  );
+  app2.post(
+    "/api/admin/promote/:city",
+    wrapAsync(async (req, res) => {
+      const status = await getPromotionStatus(req.params.city);
+      const result = promoteCity(req.params.city, status?.currentMetrics);
+      if (!result) {
+        return res.status(400).json({ error: "Cannot promote city" });
+      }
+      adminPromoLog.info(`Admin promoted ${req.params.city}`);
+      res.json({ success: true, city: req.params.city, newStatus: "active" });
+    })
+  );
+  app2.get("/api/admin/promotion-thresholds", (_req, res) => {
+    res.json(getPromotionThresholds());
+  });
+  app2.put("/api/admin/promotion-thresholds", (req, res) => {
+    const updated = setPromotionThresholds(req.body);
+    adminPromoLog.info("Promotion thresholds updated");
+    res.json(updated);
+  });
+  app2.get(
+    "/api/admin/promotion-status",
+    wrapAsync(async (_req, res) => {
+      const statuses = await getAllBetaPromotionStatus();
+      res.json({ cities: statuses, count: statuses.length });
+    })
+  );
+  app2.get("/api/admin/promotion-history", (_req, res) => {
+    res.json(getPromotionHistory());
+  });
+}
+
+// server/routes-admin-ratelimit.ts
+init_logger();
+
+// server/rate-limit-dashboard.ts
+init_logger();
+var rlDashLog = log.tag("RateLimitDash");
+var events2 = [];
+function getRateLimitStats(limit) {
+  const recentLimit = limit ?? 50;
+  const totalRequests = events2.length;
+  const blockedRequests = events2.filter((e) => e.blocked).length;
+  const blockRate = totalRequests > 0 ? blockedRequests / totalRequests : 0;
+  const ipCounts = /* @__PURE__ */ new Map();
+  for (const e of events2) {
+    ipCounts.set(e.ip, (ipCounts.get(e.ip) || 0) + 1);
+  }
+  const topOffenders = Array.from(ipCounts.entries()).map(([ip, count17]) => ({ ip, count: count17 })).sort((a, b) => b.count - a.count).slice(0, 10);
+  const pathCounts = /* @__PURE__ */ new Map();
+  for (const e of events2) {
+    pathCounts.set(e.path, (pathCounts.get(e.path) || 0) + 1);
+  }
+  const topPaths = Array.from(pathCounts.entries()).map(([path3, count17]) => ({ path: path3, count: count17 })).sort((a, b) => b.count - a.count).slice(0, 10);
+  const recentEvents = events2.slice(-recentLimit);
+  return {
+    totalRequests,
+    blockedRequests,
+    blockRate,
+    topOffenders,
+    topPaths,
+    recentEvents
+  };
+}
+function getBlockedIPs(minHits) {
+  const threshold = minHits ?? 5;
+  const blockedEvents = events2.filter((e) => e.blocked);
+  const ipData = /* @__PURE__ */ new Map();
+  for (const e of blockedEvents) {
+    const existing = ipData.get(e.ip);
+    if (!existing || e.timestamp > existing.lastSeen) {
+      ipData.set(e.ip, {
+        count: (existing?.count || 0) + 1,
+        lastSeen: e.timestamp
+      });
+    } else {
+      existing.count++;
+    }
+  }
+  return Array.from(ipData.entries()).map(([ip, data]) => ({ ip, count: data.count, lastSeen: data.lastSeen })).filter((entry) => entry.count >= threshold).sort((a, b) => b.count - a.count);
+}
+
+// server/abuse-detection.ts
+init_logger();
+var abuseLog = log.tag("AbuseDetection");
+var incidents = [];
+function getActiveIncidents() {
+  return incidents.filter((i) => !i.resolved);
+}
+function resolveIncident(id) {
+  const incident = incidents.find((i) => i.id === id);
+  if (!incident) {
+    return false;
+  }
+  incident.resolved = true;
+  abuseLog.info(`Resolved abuse incident ${id} (${incident.pattern} from ${incident.source})`);
+  return true;
+}
+function getAbuseStats() {
+  const byType = {};
+  for (const i of incidents) {
+    byType[i.pattern] = (byType[i.pattern] || 0) + 1;
+  }
+  return {
+    total: incidents.length,
+    active: incidents.filter((i) => !i.resolved).length,
+    byType
+  };
+}
+
+// server/routes-admin-ratelimit.ts
+var adminRLLog = log.tag("AdminRateLimit");
+function registerAdminRateLimitRoutes(app2) {
+  app2.get("/api/admin/rate-limits", (_req, res) => {
+    adminRLLog.info("Fetching rate limit stats");
+    res.json(getRateLimitStats());
+  });
+  app2.get("/api/admin/rate-limits/blocked", (req, res) => {
+    const minHits = parseInt(req.query.minHits) || 5;
+    adminRLLog.info(`Fetching blocked IPs (minHits: ${minHits})`);
+    res.json(getBlockedIPs(minHits));
+  });
+  app2.get("/api/admin/abuse/incidents", (_req, res) => {
+    adminRLLog.info("Fetching active abuse incidents");
+    res.json(getActiveIncidents());
+  });
+  app2.get("/api/admin/abuse/stats", (_req, res) => {
+    adminRLLog.info("Fetching abuse stats");
+    res.json(getAbuseStats());
+  });
+  app2.post("/api/admin/abuse/resolve/:id", (req, res) => {
+    const result = resolveIncident(req.params.id);
+    if (!result) {
+      return res.status(404).json({ error: "Incident not found" });
+    }
+    adminRLLog.info(`Resolved abuse incident ${req.params.id}`);
+    res.json({ success: true });
+  });
+}
+
+// server/routes-admin-claims-verification.ts
+init_logger();
+
+// server/claim-verification.ts
+init_logger();
+var claimLog = log.tag("ClaimVerification");
+var claims = /* @__PURE__ */ new Map();
+function getClaimStatus(claimId) {
+  return claims.get(claimId) || null;
+}
+function getPendingClaims2() {
+  return Array.from(claims.values()).filter((c) => c.status === "pending");
+}
+function getClaimsByBusiness(businessId) {
+  return Array.from(claims.values()).filter((c) => c.businessId === businessId);
+}
+function rejectClaim(claimId, reason) {
+  const claim = claims.get(claimId);
+  if (!claim || claim.status !== "pending") return false;
+  claim.status = "rejected";
+  claim.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  claimLog.info(`Claim ${claimId} rejected: ${reason || "no reason"}`);
+  return true;
+}
+function getClaimStats() {
+  const all = Array.from(claims.values());
+  return {
+    total: all.length,
+    pending: all.filter((c) => c.status === "pending").length,
+    verified: all.filter((c) => c.status === "verified").length,
+    rejected: all.filter((c) => c.status === "rejected").length,
+    expired: all.filter((c) => c.status === "expired").length
+  };
+}
+
+// server/claim-verification-v2.ts
+init_logger();
+
+// server/storage/claim-evidences.ts
+init_db();
+init_schema();
+import { eq as eq21 } from "drizzle-orm";
+async function getClaimEvidenceByClaimId(claimId) {
+  const [row] = await db.select().from(claimEvidence).where(eq21(claimEvidence.claimId, claimId));
+  return row ?? null;
+}
+async function getAllClaimEvidence() {
+  return db.select().from(claimEvidence);
+}
+async function upsertClaimEvidence(data) {
+  const [row] = await db.insert(claimEvidence).values({
+    claimId: data.claimId,
+    documents: data.documents,
+    businessNameMatch: data.businessNameMatch,
+    addressMatch: data.addressMatch,
+    phoneMatch: data.phoneMatch,
+    verificationScore: data.verificationScore,
+    autoApproved: data.autoApproved,
+    reviewNotes: data.reviewNotes,
+    scoredAt: /* @__PURE__ */ new Date()
+  }).onConflictDoUpdate({
+    target: claimEvidence.claimId,
+    set: {
+      documents: data.documents,
+      businessNameMatch: data.businessNameMatch,
+      addressMatch: data.addressMatch,
+      phoneMatch: data.phoneMatch,
+      verificationScore: data.verificationScore,
+      autoApproved: data.autoApproved,
+      reviewNotes: data.reviewNotes,
+      scoredAt: /* @__PURE__ */ new Date()
+    }
+  }).returning();
+  return row ?? null;
+}
+async function addDocumentToClaimEvidence(claimId, document) {
+  const existing = await getClaimEvidenceByClaimId(claimId);
+  const docs = existing ? [...existing.documents, document] : [document];
+  const [row] = await db.insert(claimEvidence).values({
+    claimId,
+    documents: docs
+  }).onConflictDoUpdate({
+    target: claimEvidence.claimId,
+    set: { documents: docs }
+  }).returning();
+  return row ?? null;
+}
+
+// server/claim-verification-v2.ts
+var claimV2Log = log.tag("ClaimV2");
+var evidenceStore = /* @__PURE__ */ new Map();
+var SCORE_WEIGHTS = {
+  documentUploaded: 25,
+  businessNameMatch: 30,
+  addressMatch: 20,
+  phoneMatch: 15,
+  multipleDocuments: 10
+};
+var AUTO_APPROVE_THRESHOLD = 70;
+function computeVerificationScore(hasDocument, businessNameMatch, addressMatch, phoneMatch, documentCount) {
+  let score = 0;
+  if (hasDocument) score += SCORE_WEIGHTS.documentUploaded;
+  if (businessNameMatch) score += SCORE_WEIGHTS.businessNameMatch;
+  if (addressMatch) score += SCORE_WEIGHTS.addressMatch;
+  if (phoneMatch) score += SCORE_WEIGHTS.phoneMatch;
+  if (documentCount > 1) score += SCORE_WEIGHTS.multipleDocuments;
+  return Math.min(score, 100);
+}
+function shouldAutoApprove(score) {
+  return score >= AUTO_APPROVE_THRESHOLD;
+}
+function addDocumentToEvidence(claimId, document) {
+  let evidence = evidenceStore.get(claimId);
+  if (!evidence) {
+    evidence = {
+      claimId,
+      documents: [],
+      businessNameMatch: false,
+      addressMatch: false,
+      phoneMatch: false,
+      verificationScore: 0,
+      autoApproved: false,
+      reviewNotes: [],
+      scoredAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    evidenceStore.set(claimId, evidence);
+  }
+  evidence.documents.push(document);
+  claimV2Log.info(`Document added to claim ${claimId}: ${document.fileName} (${document.documentType})`);
+  addDocumentToClaimEvidence(claimId, document).catch(() => {
+  });
+  return evidence;
+}
+function scoreClaimEvidence(claimId, businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone) {
+  const evidence = evidenceStore.get(claimId) || {
+    claimId,
+    documents: [],
+    businessNameMatch: false,
+    addressMatch: false,
+    phoneMatch: false,
+    verificationScore: 0,
+    autoApproved: false,
+    reviewNotes: [],
+    scoredAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  const bizNameLower = businessName.toLowerCase();
+  const claimantLower = claimantName.toLowerCase();
+  evidence.businessNameMatch = bizNameLower.includes(claimantLower) || claimantLower.includes(bizNameLower) || levenshteinSimilar(bizNameLower, claimantLower, 3);
+  if (claimantAddress && businessAddress) {
+    evidence.addressMatch = normalizeAddress(claimantAddress) === normalizeAddress(businessAddress);
+  }
+  if (claimantPhone && businessPhone) {
+    evidence.phoneMatch = normalizePhone(claimantPhone) === normalizePhone(businessPhone);
+  }
+  evidence.verificationScore = computeVerificationScore(
+    evidence.documents.length > 0,
+    evidence.businessNameMatch,
+    evidence.addressMatch,
+    evidence.phoneMatch,
+    evidence.documents.length
+  );
+  evidence.autoApproved = shouldAutoApprove(evidence.verificationScore);
+  evidence.scoredAt = (/* @__PURE__ */ new Date()).toISOString();
+  evidence.reviewNotes = [];
+  if (evidence.businessNameMatch) evidence.reviewNotes.push("Business name matches claimant");
+  if (evidence.addressMatch) evidence.reviewNotes.push("Address verified");
+  if (evidence.phoneMatch) evidence.reviewNotes.push("Phone number matches");
+  if (evidence.documents.length > 0) evidence.reviewNotes.push(`${evidence.documents.length} document(s) uploaded`);
+  if (evidence.autoApproved) evidence.reviewNotes.push("Auto-approved: score >= threshold");
+  evidenceStore.set(claimId, evidence);
+  upsertClaimEvidence({
+    claimId,
+    documents: evidence.documents,
+    businessNameMatch: evidence.businessNameMatch,
+    addressMatch: evidence.addressMatch,
+    phoneMatch: evidence.phoneMatch,
+    verificationScore: evidence.verificationScore,
+    autoApproved: evidence.autoApproved,
+    reviewNotes: evidence.reviewNotes
+  }).catch(() => {
+  });
+  claimV2Log.info(`Claim ${claimId} scored: ${evidence.verificationScore}/100, autoApproved=${evidence.autoApproved}`);
+  return evidence;
+}
+function getClaimEvidence(claimId) {
+  return evidenceStore.get(claimId) || null;
+}
+function getAllEvidence() {
+  return Array.from(evidenceStore.values());
+}
+function normalizeAddress(addr) {
+  return addr.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+}
+function normalizePhone(phone) {
+  return phone.replace(/[^0-9]/g, "").slice(-10);
+}
+function levenshteinSimilar(a, b, maxDist) {
+  if (Math.abs(a.length - b.length) > maxDist) return false;
+  const la = a.length;
+  const lb = b.length;
+  const dp = Array.from({ length: la + 1 }, () => Array(lb + 1).fill(0));
+  for (let i = 0; i <= la; i++) dp[i][0] = i;
+  for (let j = 0; j <= lb; j++) dp[0][j] = j;
+  for (let i = 1; i <= la; i++) {
+    for (let j = 1; j <= lb; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
+    }
+  }
+  return dp[la][lb] <= maxDist;
+}
+
+// server/routes-admin-claims-verification.ts
+var adminClaimLog = log.tag("AdminClaimVerify");
+function registerAdminClaimVerificationRoutes(app2) {
+  app2.get("/api/admin/claims/pending", (_req, res) => {
+    res.json(getPendingClaims2());
+  });
+  app2.get("/api/admin/claims/stats", (_req, res) => {
+    res.json(getClaimStats());
+  });
+  app2.get("/api/admin/claims/:id", (req, res) => {
+    const claim = getClaimStatus(req.params.id);
+    if (!claim) return res.status(404).json({ error: "Claim not found" });
+    res.json(claim);
+  });
+  app2.get("/api/admin/claims/business/:businessId", (req, res) => {
+    res.json(getClaimsByBusiness(req.params.businessId));
+  });
+  app2.post("/api/admin/claims/:id/reject", (req, res) => {
+    const result = rejectClaim(req.params.id, req.body?.reason);
+    if (!result) return res.status(400).json({ error: "Cannot reject claim" });
+    adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
+    res.json({ success: true });
+  });
+  app2.post("/api/admin/claims/:id/document", (req, res) => {
+    const { fileName, fileType, fileSize, documentType } = req.body;
+    if (!fileName || !fileType || !fileSize || !documentType) {
+      return res.status(400).json({ error: "fileName, fileType, fileSize, documentType required" });
+    }
+    const evidence = addDocumentToEvidence(req.params.id, {
+      fileName: String(fileName).slice(0, 200),
+      fileType: String(fileType).slice(0, 50),
+      fileSize: Number(fileSize),
+      uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      documentType
+    });
+    adminClaimLog.info(`Document uploaded for claim ${req.params.id}: ${fileName}`);
+    res.json({ data: evidence });
+  });
+  app2.post("/api/admin/claims/:id/score", (req, res) => {
+    const { businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone } = req.body;
+    if (!businessName || !claimantName) {
+      return res.status(400).json({ error: "businessName and claimantName required" });
+    }
+    const evidence = scoreClaimEvidence(
+      req.params.id,
+      businessName,
+      claimantName,
+      claimantAddress,
+      businessAddress,
+      claimantPhone,
+      businessPhone
+    );
+    adminClaimLog.info(`Claim ${req.params.id} scored: ${evidence.verificationScore}/100, auto=${evidence.autoApproved}`);
+    res.json({ data: evidence });
+  });
+  app2.get("/api/admin/claims/:id/evidence", async (req, res) => {
+    const evidence = getClaimEvidence(req.params.id);
+    if (evidence) return res.json({ data: evidence });
+    const dbEvidence = await getClaimEvidenceByClaimId(req.params.id).catch(() => null);
+    if (!dbEvidence) return res.status(404).json({ error: "No evidence for this claim" });
+    res.json({ data: dbEvidence });
+  });
+  app2.get("/api/admin/claims/evidence/all", async (_req, res) => {
+    const memEvidence = getAllEvidence();
+    const dbRows = await getAllClaimEvidence().catch(() => []);
+    const merged = /* @__PURE__ */ new Map();
+    for (const row of dbRows) merged.set(row.claimId, row);
+    for (const ev of memEvidence) merged.set(ev.claimId, ev);
+    res.json({ data: Array.from(merged.values()) });
+  });
+}
+
+// server/routes-admin-reputation.ts
+init_logger();
+
+// server/reputation-v2.ts
+init_logger();
+var repLog = log.tag("ReputationV2");
+var reputationCache = /* @__PURE__ */ new Map();
+function getReputation(memberId) {
+  return reputationCache.get(memberId) || null;
+}
+function getTierThresholds() {
+  return {
+    newcomer: { min: 0, max: 19 },
+    contributor: { min: 20, max: 39 },
+    trusted: { min: 40, max: 59 },
+    expert: { min: 60, max: 79 },
+    authority: { min: 80, max: 100 }
+  };
+}
+function getReputationLeaderboard(limit) {
+  return Array.from(reputationCache.values()).sort((a, b) => b.score - a.score).slice(0, limit || 10);
+}
+function getReputationStats() {
+  const all = Array.from(reputationCache.values());
+  const avg = all.length > 0 ? all.reduce((sum2, r) => sum2 + r.score, 0) / all.length : 0;
+  const byTier = { newcomer: 0, contributor: 0, trusted: 0, expert: 0, authority: 0 };
+  for (const r of all) byTier[r.tier]++;
+  return { totalScored: all.length, averageScore: Math.round(avg * 100) / 100, byTier };
+}
+
+// server/routes-admin-reputation.ts
+var adminRepLog = log.tag("AdminReputation");
+function registerAdminReputationRoutes(app2) {
+  app2.get("/api/admin/reputation/stats", (_req, res) => {
+    adminRepLog.info("Fetching reputation stats");
+    res.json(getReputationStats());
+  });
+  app2.get("/api/admin/reputation/leaderboard", (req, res) => {
+    const limit = parseInt(req.query.limit) || 10;
+    adminRepLog.info(`Fetching reputation leaderboard (limit: ${limit})`);
+    res.json(getReputationLeaderboard(limit));
+  });
+  app2.get("/api/admin/reputation/:memberId", (req, res) => {
+    const { memberId } = req.params;
+    adminRepLog.info(`Fetching reputation for member ${memberId}`);
+    const reputation = getReputation(memberId);
+    if (!reputation) {
+      return res.status(404).json({ error: "Member reputation not found" });
+    }
+    res.json(reputation);
+  });
+  app2.get("/api/admin/reputation/tiers", (_req, res) => {
+    adminRepLog.info("Fetching tier thresholds");
+    res.json(getTierThresholds());
+  });
+}
+
+// server/routes-admin-moderation.ts
+init_logger();
+init_moderation_queue();
+var adminModLog = log.tag("AdminModeration");
+function registerAdminModerationRoutes(app2) {
+  app2.get("/api/admin/moderation/queue", (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminModLog.info(`Fetching moderation queue (limit: ${limit})`);
+    res.json(getPendingItems(limit));
+  });
+  app2.get("/api/admin/moderation/stats", (_req, res) => {
+    adminModLog.info("Fetching moderation stats");
+    res.json(getQueueStats());
+  });
+  app2.post("/api/admin/moderation/:id/approve", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminModLog.info(`Approving moderation item ${id}`);
+    const success = approveItem(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Item not found or already resolved" });
+    }
+    res.json({ success: true });
+  });
+  app2.post("/api/admin/moderation/:id/reject", (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminModLog.info(`Rejecting moderation item ${id}`);
+    const success = rejectItem(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Item not found or already resolved" });
+    }
+    res.json({ success: true });
+  });
+  app2.get("/api/admin/moderation/business/:businessId", (req, res) => {
+    const { businessId } = req.params;
+    adminModLog.info(`Fetching moderation items for business ${businessId}`);
+    res.json(getItemsByBusiness(businessId));
+  });
+  app2.get("/api/admin/moderation/member/:memberId", (req, res) => {
+    const { memberId } = req.params;
+    adminModLog.info(`Fetching moderation items for member ${memberId}`);
+    res.json(getItemsByMember(memberId));
+  });
+  app2.get("/api/admin/moderation/filtered", (req, res) => {
+    const status = req.query.status;
+    const contentType = req.query.contentType;
+    const limit = parseInt(req.query.limit) || 50;
+    const sortByViolations = req.query.sort === "violations";
+    adminModLog.info(`Filtered queue: status=${status}, type=${contentType}, sort=${sortByViolations}`);
+    res.json(getFilteredItems({
+      status,
+      contentType,
+      limit,
+      sortByViolations
+    }));
+  });
+  app2.get("/api/admin/moderation/resolved", (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminModLog.info(`Fetching resolved items (limit: ${limit})`);
+    res.json(getResolvedItems(limit));
+  });
+  app2.post("/api/admin/moderation/bulk-approve", (req, res) => {
+    const { ids, note } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array required" });
+    }
+    if (ids.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
+    }
+    const moderatorId = req.user?.id || "admin";
+    adminModLog.info(`Bulk approving ${ids.length} items`);
+    const result = bulkApprove(ids, moderatorId, note);
+    res.json(result);
+  });
+  app2.post("/api/admin/moderation/bulk-reject", (req, res) => {
+    const { ids, note } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "ids array required" });
+    }
+    if (ids.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
+    }
+    const moderatorId = req.user?.id || "admin";
+    adminModLog.info(`Bulk rejecting ${ids.length} items`);
+    const result = bulkReject(ids, moderatorId, note);
+    res.json(result);
+  });
+}
+
+// server/routes-admin-ranking.ts
+init_logger();
+
+// server/search-ranking-v2.ts
+init_logger();
+var rankLog = log.tag("SearchRankingV2");
+var weights = {
+  reputationWeight: 0.6,
+  recencyBoost: 0.15,
+  ratingCountFloor: 10,
+  bayesianPrior: 3.5,
+  bayesianStrength: 5
+};
+function getRankingWeights() {
+  return { ...weights };
+}
+function setRankingWeights(w) {
+  weights = { ...weights, ...w };
+  rankLog.info("Ranking weights updated", weights);
+  return { ...weights };
+}
+var SEARCH_STOP_WORDS = /* @__PURE__ */ new Set([
+  "best",
+  "top",
+  "good",
+  "great",
+  "most",
+  "popular",
+  "famous",
+  "in",
+  "the",
+  "a",
+  "of",
+  "for",
+  "near",
+  "around",
+  "at"
+]);
+function parseQueryIntent(query, city) {
+  const tokens2 = query.toLowerCase().trim().split(/\s+/).filter((t) => t.length > 0);
+  const cityLower = city?.toLowerCase();
+  const filtered = tokens2.filter((t) => {
+    if (SEARCH_STOP_WORDS.has(t)) return false;
+    if (cityLower && t === cityLower) return false;
+    return true;
+  });
+  return filtered.join(" ");
+}
+function dishRelevance(dishNames, query) {
+  if (!query || !query.trim() || !dishNames || dishNames.length === 0) return 0;
+  const q = query.toLowerCase().trim();
+  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
+  let bestScore = 0;
+  for (const dish of dishNames) {
+    const d = dish.toLowerCase();
+    if (d === q) return 1;
+    if (d.includes(q) || q.includes(d)) {
+      bestScore = Math.max(bestScore, 0.8);
+      continue;
+    }
+    for (const token of queryTokens) {
+      if (token.length < 3) continue;
+      const s = wordScore(d, token);
+      if (s > bestScore) bestScore = s;
+    }
+  }
+  return bestScore;
+}
+function levenshtein(a, b, maxDist = 3) {
+  if (Math.abs(a.length - b.length) > maxDist) return Infinity;
+  const m = a.length;
+  const n = b.length;
+  const dp = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    let prev = dp[0];
+    dp[0] = i;
+    let rowMin = dp[0];
+    for (let j = 1; j <= n; j++) {
+      const temp = dp[j];
+      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
+      prev = temp;
+      if (dp[j] < rowMin) rowMin = dp[j];
+    }
+    if (rowMin > maxDist) return Infinity;
+  }
+  return dp[n];
+}
+function wordScore(target, token) {
+  if (target === token) return 1;
+  if (target.startsWith(token)) return 0.8;
+  if (target.includes(token)) return 0.6;
+  if (token.length >= 4) {
+    const dist = levenshtein(target, token, 2);
+    if (dist === 1) return 0.3;
+    if (dist === 2) return 0.15;
+  }
+  return 0;
+}
+function textRelevance(name, query) {
+  if (!query || !query.trim()) return 0;
+  const q = query.toLowerCase().trim();
+  const n = name.toLowerCase();
+  if (n === q) return 1;
+  if (n.startsWith(q)) return 0.9;
+  if (n.includes(q)) return 0.7;
+  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
+  const nameWords = n.split(/\s+/).filter((w) => w.length > 0);
+  if (queryTokens.length === 0 || nameWords.length === 0) return 0;
+  let totalScore = 0;
+  for (const token of queryTokens) {
+    let bestMatch = 0;
+    for (const word of nameWords) {
+      const score = wordScore(word, token);
+      if (score > bestMatch) bestMatch = score;
+    }
+    totalScore += bestMatch;
+  }
+  return Math.min(totalScore / queryTokens.length, 1);
+}
+function categoryRelevance(ctx) {
+  if (!ctx.query) return 0;
+  const tokens2 = ctx.query.toLowerCase().trim().split(/\s+/);
+  let best = 0;
+  for (const token of tokens2) {
+    if (token.length < 3) continue;
+    if (ctx.cuisine) {
+      const c = ctx.cuisine.toLowerCase();
+      if (c === token) {
+        best = Math.max(best, 1);
+        continue;
+      }
+      if (c.startsWith(token) || c.includes(token)) {
+        best = Math.max(best, 0.7);
+        continue;
+      }
+      if (token.length >= 4 && levenshtein(c, token, 2) <= 1) {
+        best = Math.max(best, 0.4);
+        continue;
+      }
+    }
+    if (ctx.category) {
+      const cat = ctx.category.toLowerCase();
+      if (cat === token) {
+        best = Math.max(best, 0.8);
+        continue;
+      }
+      if (cat.startsWith(token) || cat.includes(token)) {
+        best = Math.max(best, 0.5);
+        continue;
+      }
+    }
+    if (ctx.neighborhood) {
+      const nb = ctx.neighborhood.toLowerCase();
+      if (nb === token || nb.includes(token)) {
+        best = Math.max(best, 0.6);
+        continue;
+      }
+    }
+  }
+  return best;
+}
+function ratingVolumeSignal(ratingCount) {
+  if (!ratingCount || ratingCount <= 0) return 0;
+  return Math.min(Math.log10(ratingCount) / Math.log10(50), 1);
+}
+function profileCompleteness(ctx) {
+  let score = 0;
+  let total = 0;
+  if (ctx.hasPhotos !== void 0) {
+    total++;
+    if (ctx.hasPhotos) score++;
+  }
+  if (ctx.hasHours !== void 0) {
+    total++;
+    if (ctx.hasHours) score++;
+  }
+  if (ctx.hasCuisine !== void 0) {
+    total++;
+    if (ctx.hasCuisine) score++;
+  }
+  if (ctx.hasDescription !== void 0) {
+    total++;
+    if (ctx.hasDescription) score++;
+  }
+  return total > 0 ? score / total : 0;
+}
+function combinedRelevance(name, ctx) {
+  const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
+  const intentCtx = { ...ctx, query: intentQuery || ctx.query };
+  const text2 = textRelevance(name, intentCtx.query);
+  const category = categoryRelevance(intentCtx);
+  const dish = dishRelevance(ctx.dishNames, intentCtx.query);
+  const completeness = profileCompleteness(ctx);
+  const volume = ratingVolumeSignal(ctx.ratingCount);
+  return text2 * 0.4 + category * 0.2 + dish * 0.15 + completeness * 0.1 + volume * 0.15;
+}
+
+// server/routes-admin-ranking.ts
+var adminRankLog = log.tag("AdminRanking");
+function registerAdminRankingRoutes(app2) {
+  app2.get("/api/admin/ranking/weights", (_req, res) => {
+    adminRankLog.info("Fetching ranking weights");
+    res.json(getRankingWeights());
+  });
+  app2.put("/api/admin/ranking/weights", (req, res) => {
+    adminRankLog.info("Updating ranking weights", req.body);
+    const updated = setRankingWeights(req.body);
+    res.json(updated);
+  });
+  app2.get("/api/admin/ranking/confidence-levels", (_req, res) => {
+    adminRankLog.info("Fetching confidence level definitions");
+    const weights2 = getRankingWeights();
+    res.json({
+      levels: [
+        { level: "low", description: `Fewer than ${Math.floor(weights2.ratingCountFloor / 2)} ratings`, minRatings: 0 },
+        { level: "medium", description: `${Math.floor(weights2.ratingCountFloor / 2)}\u2013${weights2.ratingCountFloor - 1} ratings`, minRatings: Math.floor(weights2.ratingCountFloor / 2) },
+        { level: "high", description: `${weights2.ratingCountFloor}+ ratings`, minRatings: weights2.ratingCountFloor }
+      ]
+    });
+  });
+}
+
+// server/routes-admin-templates.ts
+init_logger();
+
+// server/email-templates.ts
+init_logger();
+import crypto6 from "crypto";
+var tmplLog = log.tag("EmailTemplates");
+var templates = /* @__PURE__ */ new Map();
+var MAX_TEMPLATES = 200;
+var BUILT_IN_TEMPLATES = [
+  {
+    name: "welcome",
+    subject: "Welcome to TrustMe, {{memberName}}!",
+    htmlBody: "<h1>Welcome, {{memberName}}!</h1><p>You've joined the most trusted ranking platform in {{city}}.</p>",
+    textBody: "Welcome, {{memberName}}! You've joined the most trusted ranking platform in {{city}}.",
+    variables: ["memberName", "city"],
+    category: "transactional"
+  },
+  {
+    name: "claim_approved",
+    subject: "Your claim for {{businessName}} has been approved",
+    htmlBody: "<h1>Congratulations!</h1><p>Your claim for {{businessName}} in {{city}} has been verified.</p>",
+    textBody: "Congratulations! Your claim for {{businessName}} in {{city}} has been verified.",
+    variables: ["businessName", "city"],
+    category: "transactional"
+  },
+  {
+    name: "weekly_digest",
+    subject: "Your weekly {{city}} food scene update",
+    htmlBody: "<h1>{{city}} This Week</h1><p>Hey {{memberName}}, here's what's trending in {{city}}.</p><p>Top rated: {{topBusiness}}</p>",
+    textBody: "Hey {{memberName}}, here's what's trending in {{city}}. Top rated: {{topBusiness}}",
+    variables: ["memberName", "city", "topBusiness"],
+    category: "digest"
+  },
+  {
+    name: "pro_upgrade",
+    subject: "Unlock Pro features for {{businessName}}",
+    htmlBody: "<h1>Go Pro</h1><p>{{businessName}} could reach more customers with TrustMe Pro.</p>",
+    textBody: "{{businessName}} could reach more customers with TrustMe Pro.",
+    variables: ["businessName"],
+    category: "outreach"
+  },
+  {
+    name: "tier_promotion",
+    subject: "You've been promoted to {{tierName}}!",
+    htmlBody: "<h1>Level Up!</h1><p>Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.</p>",
+    textBody: "Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.",
+    variables: ["memberName", "tierName"],
+    category: "transactional"
+  }
+];
+function initBuiltInTemplates() {
+  for (const t of BUILT_IN_TEMPLATES) {
+    const tmpl = {
+      ...t,
+      id: crypto6.randomUUID(),
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    templates.set(tmpl.name, tmpl);
+  }
+  tmplLog.info(`Initialized ${BUILT_IN_TEMPLATES.length} built-in templates`);
+}
+initBuiltInTemplates();
+function getTemplate(name) {
+  return templates.get(name) || null;
+}
+function getAllTemplates() {
+  return Array.from(templates.values());
+}
+function createTemplate(tmpl) {
+  if (templates.size >= MAX_TEMPLATES) {
+    const oldest = Array.from(templates.values()).filter((t) => !BUILT_IN_TEMPLATES.some((b) => b.name === t.name)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
+    if (oldest) templates.delete(oldest.name);
+  }
+  const created = {
+    ...tmpl,
+    id: crypto6.randomUUID(),
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  templates.set(created.name, created);
+  tmplLog.info(`Template created: ${created.name}`);
+  return created;
+}
+function renderTemplate(name, vars) {
+  const tmpl = templates.get(name);
+  if (!tmpl) return null;
+  let subject = tmpl.subject;
+  let html = tmpl.htmlBody;
+  let text2 = tmpl.textBody;
+  for (const [key2, value] of Object.entries(vars)) {
+    const pattern = new RegExp(`\\{\\{${key2}\\}\\}`, "g");
+    subject = subject.replace(pattern, value);
+    html = html.replace(pattern, value);
+    text2 = text2.replace(pattern, value);
+  }
+  return { subject, html, text: text2 };
+}
+function previewTemplate(name) {
+  const tmpl = templates.get(name);
+  if (!tmpl) return null;
+  const vars = {};
+  for (const v of tmpl.variables) {
+    vars[v] = `[${v}]`;
+  }
+  return renderTemplate(name, vars);
+}
+
+// server/routes-admin-templates.ts
+var adminTmplLog = log.tag("AdminTemplates");
+function registerAdminTemplateRoutes(app2) {
+  app2.get("/api/admin/templates", (_req, res) => {
+    adminTmplLog.info("Fetching all email templates");
+    res.json(getAllTemplates());
+  });
+  app2.get("/api/admin/templates/:name", (req, res) => {
+    const { name } = req.params;
+    adminTmplLog.info(`Fetching template: ${name}`);
+    const tmpl = getTemplate(name);
+    if (!tmpl) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(tmpl);
+  });
+  app2.post("/api/admin/templates", (req, res) => {
+    const { name, subject, htmlBody, textBody, variables, category } = req.body;
+    if (!name || !subject || !htmlBody || !textBody || !category) {
+      res.status(400).json({ error: "Missing required fields: name, subject, htmlBody, textBody, category" });
+      return;
+    }
+    adminTmplLog.info(`Creating template: ${name}`);
+    const created = createTemplate({
+      name,
+      subject,
+      htmlBody,
+      textBody,
+      variables: variables || [],
+      category
+    });
+    res.status(201).json(created);
+  });
+  app2.get("/api/admin/templates/:name/preview", (req, res) => {
+    const { name } = req.params;
+    adminTmplLog.info(`Previewing template: ${name}`);
+    const result = previewTemplate(name);
+    if (!result) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(result);
+  });
+  app2.post("/api/admin/templates/:name/render", (req, res) => {
+    const { name } = req.params;
+    const vars = req.body.variables || req.body;
+    adminTmplLog.info(`Rendering template: ${name}`, vars);
+    const result = renderTemplate(name, vars);
+    if (!result) {
+      res.status(404).json({ error: `Template '${name}' not found` });
+      return;
+    }
+    res.json(result);
+  });
+}
+
+// server/routes-admin-push-templates.ts
+init_notification_templates();
+function requireAdmin3(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminPushTemplateRoutes(app2) {
+  app2.get("/api/admin/notification-templates", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const category = req.query.category;
+    const data = category ? listTemplatesByCategory(category) : listTemplates();
+    return res.json({ data });
+  }));
+  app2.get("/api/admin/notification-templates/variables", requireAuth, requireAdmin3, wrapAsync(async (_req, res) => {
+    return res.json({ data: getSupportedVariables() });
+  }));
+  app2.get("/api/admin/notification-templates/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const template = getTemplate2(req.params.id);
+    if (!template) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: template });
+  }));
+  app2.post("/api/admin/notification-templates", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const { id, name, category, title, body } = req.body;
+    if (!id || !name || !category || !title || !body) {
+      return res.status(400).json({ error: "id, name, category, title, and body are required" });
+    }
+    const template = createTemplate2({ id, name, category, title, body });
+    if (!template) return res.status(409).json({ error: "Template already exists" });
+    return res.json({ data: template });
+  }));
+  app2.put("/api/admin/notification-templates/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const { name, category, title, body, active } = req.body;
+    const template = updateTemplate(req.params.id, { name, category, title, body, active });
+    if (!template) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: template });
+  }));
+  app2.delete("/api/admin/notification-templates/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
+    const deleted = deleteTemplate(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "Template not found" });
+    return res.json({ data: { deleted: true } });
+  }));
+}
+
+// server/routes-admin-tier-limits.ts
+init_logger();
+
+// server/tiered-rate-limiter.ts
+init_logger();
+var tierRLLog = log.tag("TieredRateLimit");
+var TIER_LIMITS = {
+  free: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5e3, burstLimit: 10 },
+  pro: { requestsPerMinute: 120, requestsPerHour: 3e3, requestsPerDay: 5e4, burstLimit: 30 },
+  enterprise: { requestsPerMinute: 600, requestsPerHour: 2e4, requestsPerDay: 5e5, burstLimit: 100 },
+  admin: { requestsPerMinute: 1e3, requestsPerHour: 5e4, requestsPerDay: 1e6, burstLimit: 200 }
+};
+var usage = /* @__PURE__ */ new Map();
+function getUsage(key2) {
+  return usage.get(key2) || null;
+}
+function getTierLimits(tier) {
+  return { ...TIER_LIMITS[tier] };
+}
+function getAllTierLimits() {
+  return JSON.parse(JSON.stringify(TIER_LIMITS));
+}
+function getUsageStats() {
+  const byTier = { free: 0, pro: 0, enterprise: 0, admin: 0 };
+  for (const record of usage.values()) {
+    byTier[record.tier] = (byTier[record.tier] || 0) + 1;
+  }
+  return { totalTracked: usage.size, byTier };
+}
+
+// server/routes-admin-tier-limits.ts
+var adminTierLog = log.tag("AdminTierLimits");
+function registerAdminTierLimitRoutes(app2) {
+  app2.get("/api/admin/tier-limits", (_req, res) => {
+    adminTierLog.info("Fetching all tier limits");
+    res.json(getAllTierLimits());
+  });
+  app2.get("/api/admin/tier-limits/usage/stats", (_req, res) => {
+    adminTierLog.info("Fetching tier usage stats");
+    res.json(getUsageStats());
+  });
+  app2.get("/api/admin/tier-limits/usage/:key", (req, res) => {
+    const record = getUsage(req.params.key);
+    if (!record) {
+      return res.status(404).json({ error: "No usage record found for key" });
+    }
+    adminTierLog.info(`Fetching usage for key: ${req.params.key}`);
+    res.json(record);
+  });
+  app2.get("/api/admin/tier-limits/:tier", (req, res) => {
+    const tier = req.params.tier;
+    const validTiers = ["free", "pro", "enterprise", "admin"];
+    if (!validTiers.includes(tier)) {
+      return res.status(400).json({ error: `Invalid tier: ${tier}. Must be one of: ${validTiers.join(", ")}` });
+    }
+    adminTierLog.info(`Fetching limits for tier: ${tier}`);
+    res.json(getTierLimits(tier));
+  });
+}
+
+// server/routes-admin-websocket.ts
+init_logger();
+
+// server/websocket-manager.ts
+init_logger();
+var wsLog = log.tag("WebSocketManager");
+var connections = /* @__PURE__ */ new Map();
+var memberConnections = /* @__PURE__ */ new Map();
+var messageLog = [];
+var MAX_MESSAGE_LOG = 1e3;
+function getActiveConnections() {
+  return Array.from(connections.values());
+}
+function broadcastToAll(message) {
+  messageLog.unshift(message);
+  if (messageLog.length > MAX_MESSAGE_LOG) messageLog.pop();
+  return connections.size;
+}
+function getConnectionStats() {
+  return {
+    totalConnections: connections.size,
+    uniqueMembers: memberConnections.size,
+    messagesSent: messageLog.length
+  };
+}
+function getRecentMessages(limit) {
+  return messageLog.slice(0, limit || 20);
+}
+
+// server/routes-admin-websocket.ts
+var adminWSLog = log.tag("AdminWebSocket");
+function registerAdminWebSocketRoutes(app2) {
+  app2.get("/api/admin/websocket/connections", (_req, res) => {
+    adminWSLog.info("Fetching active WebSocket connections");
+    res.json({ data: getActiveConnections() });
+  });
+  app2.get("/api/admin/websocket/stats", (_req, res) => {
+    adminWSLog.info("Fetching WebSocket stats");
+    res.json({ data: getConnectionStats() });
+  });
+  app2.get("/api/admin/websocket/messages", (req, res) => {
+    const limit = parseInt(req.query.limit) || 20;
+    adminWSLog.info(`Fetching recent messages (limit: ${limit})`);
+    res.json({ data: getRecentMessages(limit) });
+  });
+  app2.post("/api/admin/websocket/broadcast", (req, res) => {
+    const { message } = req.body;
+    if (!message || typeof message !== "string") {
+      return res.status(400).json({ error: "message (string) is required" });
+    }
+    const wsMessage = {
+      type: "system",
+      payload: { message },
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    };
+    const count17 = broadcastToAll(wsMessage);
+    adminWSLog.info(`Broadcast system message to ${count17} connections`);
+    res.json({ data: { delivered: count17, message } });
+  });
+}
+
+// server/city-health-monitor.ts
+init_logger();
+var healthLog = log.tag("CityHealth");
+var healthData = /* @__PURE__ */ new Map();
+function getCityHealth(city) {
+  return healthData.get(city) || null;
+}
+function getAllCityHealth() {
+  return Array.from(healthData.values());
+}
+function getHealthySummary() {
+  const all = Array.from(healthData.values());
+  return {
+    total: all.length,
+    healthy: all.filter((c) => c.status === "healthy").length,
+    degraded: all.filter((c) => c.status === "degraded").length,
+    critical: all.filter((c) => c.status === "critical").length
+  };
+}
+
+// server/routes-admin-health.ts
+init_push_analytics();
+function registerAdminHealthRoutes(app2) {
+  app2.get(
+    "/api/admin/city-health/summary",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const summary = getHealthySummary();
+      return res.json({ data: summary });
+    })
+  );
+  app2.get(
+    "/api/admin/city-health",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const all = getAllCityHealth();
+      return res.json({ data: all });
+    })
+  );
+  app2.get(
+    "/api/admin/city-health/:city",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const city = req.params.city;
+      const health = getCityHealth(city);
+      if (!health) {
+        return res.status(404).json({ error: `No health data for city: ${city}` });
+      }
+      return res.json({ data: health });
+    })
+  );
+  app2.get(
+    "/api/admin/push-analytics",
+    requireAuth,
+    wrapAsync(async (req, res) => {
+      const days = Math.min(30, Math.max(1, parseInt(req.query.days) || 7));
+      const summary = computePushAnalytics(days);
+      return res.json({
+        data: {
+          ...summary,
+          recordCount: getPushRecordCount(),
+          daysBack: days
+        }
+      });
+    })
+  );
+}
+
+// server/routes-admin-photos.ts
+init_logger();
+init_photo_moderation();
+init_photo_hash();
+init_phash();
+var adminPhotoLog = log.tag("AdminPhotos");
+function registerAdminPhotoRoutes(app2) {
+  app2.get("/api/admin/photos/pending", async (req, res) => {
+    const limit = parseInt(req.query.limit) || 50;
+    adminPhotoLog.info(`Fetching pending photos (limit: ${limit})`);
+    res.json(await getPendingPhotos(limit));
+  });
+  app2.get("/api/admin/photos/stats", async (_req, res) => {
+    adminPhotoLog.info("Fetching photo stats");
+    res.json(await getPhotoStats());
+  });
+  app2.post("/api/admin/photos/:id/approve", async (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const note = req.body?.note;
+    adminPhotoLog.info(`Approving photo ${id}`);
+    const success = await approvePhoto(id, moderatorId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Photo not found or already reviewed" });
+    }
+    res.json({ success: true });
+  });
+  app2.post("/api/admin/photos/:id/reject", async (req, res) => {
+    const { id } = req.params;
+    const moderatorId = req.user?.id || "admin";
+    const { reason, note } = req.body || {};
+    if (!reason) {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+    adminPhotoLog.info(`Rejecting photo ${id} (reason: ${reason})`);
+    const success = await rejectPhoto(id, moderatorId, reason, note);
+    if (!success) {
+      return res.status(404).json({ error: "Photo not found or already reviewed" });
+    }
+    res.json({ success: true });
+  });
+  app2.get("/api/admin/photos/hash-stats", async (_req, res) => {
+    adminPhotoLog.info("Fetching photo hash index stats");
+    res.json({ trackedHashes: getHashIndexSize(), trackedPHashes: getPHashIndexSize() });
+  });
+  app2.post("/api/admin/photos/hash-reset", async (_req, res) => {
+    adminPhotoLog.info("Clearing photo hash indexes");
+    clearHashIndex();
+    clearPHashIndex();
+    res.json({ success: true, trackedHashes: 0, trackedPHashes: 0 });
+  });
+  app2.get("/api/photos/business/:businessId", async (req, res) => {
+    const { businessId } = req.params;
+    adminPhotoLog.info(`Fetching approved photos for business ${businessId}`);
+    res.json(await getPhotosByBusiness(businessId));
+  });
+}
+
+// server/routes-admin-receipts.ts
+init_receipt_analysis();
+init_logger();
+function requireAdmin4(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+var adminReceiptLog = log.tag("AdminReceipts");
+function registerAdminReceiptRoutes(app2) {
+  app2.get("/api/admin/receipts/pending", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const receipts = await getPendingReceipts(limit);
+    adminReceiptLog.info(`Fetched ${receipts.length} pending receipts`);
+    return res.json({ data: receipts });
+  }));
+  app2.get("/api/admin/receipts/stats", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const stats2 = await getReceiptAnalysisStats();
+    return res.json({ data: stats2 });
+  }));
+  app2.post("/api/admin/receipts/:id/verify", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const analysisId = req.params.id;
+    const reviewerId = req.user.id;
+    const { businessName, amount, date: date2, items, confidence, matchScore, note } = req.body;
+    const result = {
+      businessName: businessName || void 0,
+      amount: amount ? parseFloat(amount) : void 0,
+      date: date2 ? new Date(date2) : void 0,
+      items: items || void 0,
+      confidence: parseFloat(confidence) || 0.5,
+      matchScore: parseFloat(matchScore) || 0.5
+    };
+    const success = await verifyReceipt(analysisId, reviewerId, result, note);
+    if (!success) {
+      return res.status(404).json({ error: "Receipt analysis not found or already reviewed" });
+    }
+    adminReceiptLog.info(`Receipt ${analysisId} verified by ${reviewerId}`);
+    return res.json({ data: { id: analysisId, status: "verified" } });
+  }));
+  app2.post("/api/admin/receipts/:id/reject", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
+    const analysisId = req.params.id;
+    const reviewerId = req.user.id;
+    const { note } = req.body;
+    if (!note || typeof note !== "string") {
+      return res.status(400).json({ error: "Rejection note is required" });
+    }
+    const success = await rejectReceipt(analysisId, reviewerId, note);
+    if (!success) {
+      return res.status(404).json({ error: "Receipt analysis not found or already reviewed" });
+    }
+    adminReceiptLog.info(`Receipt ${analysisId} rejected by ${reviewerId}`);
+    return res.json({ data: { id: analysisId, status: "rejected" } });
+  }));
+}
+
+// server/routes-admin-dietary.ts
+init_logger();
+init_db();
+init_schema();
+import { eq as eq26, and as and16, isNotNull as isNotNull4 } from "drizzle-orm";
+var dietaryLog = log.tag("AdminDietary");
+var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
+var CUISINE_TAG_SUGGESTIONS = {
+  indian: ["vegetarian"],
+  thai: ["gluten_free"],
+  middle_eastern: ["halal"],
+  mediterranean: ["vegetarian"],
+  japanese: ["gluten_free"],
+  mexican: ["gluten_free"],
+  vegan: ["vegan", "vegetarian"],
+  vegetarian: ["vegetarian"]
+};
+function registerAdminDietaryRoutes(app2) {
+  app2.get("/api/admin/dietary/stats", async (_req, res) => {
+    dietaryLog.info("Fetching dietary tag stats");
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq26(businesses.isActive, true));
+    const tagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    const untagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    const tagCounts = {};
+    for (const b of tagged) {
+      for (const tag of b.dietaryTags) {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+    res.json({
+      total: allBiz.length,
+      tagged: tagged.length,
+      untagged: untagged.length,
+      coveragePct: allBiz.length > 0 ? Math.round(tagged.length / allBiz.length * 100) : 0,
+      tagCounts,
+      validTags: [...VALID_TAGS]
+    });
+  });
+  app2.put("/api/admin/dietary/:businessId", async (req, res) => {
+    const { businessId } = req.params;
+    const { tags } = req.body || {};
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: "tags must be an array" });
+    }
+    const invalidTags = tags.filter((t) => !VALID_TAGS.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}. Valid: ${VALID_TAGS.join(", ")}` });
+    }
+    const result = await db.update(businesses).set({ dietaryTags: tags }).where(eq26(businesses.id, businessId)).returning({ id: businesses.id, name: businesses.name });
+    if (result.length === 0) {
+      return res.status(404).json({ error: "Business not found" });
+    }
+    dietaryLog.info(`Updated dietary tags for ${result[0].name}: [${tags.join(", ")}]`);
+    res.json({ success: true, business: result[0].name, tags });
+  });
+  app2.post("/api/admin/dietary/auto-enrich", async (req, res) => {
+    const { dryRun = true } = req.body || {};
+    dietaryLog.info(`Auto-enrichment ${dryRun ? "(dry run)" : "(applying)"}`);
+    const untagged = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(
+      and16(
+        eq26(businesses.isActive, true),
+        isNotNull4(businesses.cuisine)
+      )
+    );
+    const suggestions = [];
+    for (const biz of untagged) {
+      const currentTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const cuisineLower = (biz.cuisine || "").toLowerCase().replace(/[^a-z_]/g, "_");
+      const suggested = CUISINE_TAG_SUGGESTIONS[cuisineLower] || [];
+      const newTags = suggested.filter((t) => !currentTags.includes(t));
+      if (newTags.length > 0) {
+        const merged = [.../* @__PURE__ */ new Set([...currentTags, ...newTags])];
+        suggestions.push({
+          id: biz.id,
+          name: biz.name,
+          cuisine: biz.cuisine || "",
+          suggestedTags: newTags
+        });
+        if (!dryRun) {
+          await db.update(businesses).set({ dietaryTags: merged }).where(eq26(businesses.id, biz.id));
+        }
+      }
+    }
+    dietaryLog.info(`Auto-enrichment: ${suggestions.length} businesses ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      updated: suggestions.length,
+      suggestions
+    });
+  });
+  app2.get("/api/admin/dietary/businesses", async (req, res) => {
+    const filter = req.query.filter;
+    dietaryLog.info(`Listing businesses (filter: ${filter || "all"})`);
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      city: businesses.city,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq26(businesses.isActive, true));
+    let filtered = allBiz;
+    if (filter === "tagged") {
+      filtered = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    } else if (filter === "untagged") {
+      filtered = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    }
+    res.json({ data: filtered, total: filtered.length });
+  });
+}
+
+// server/routes-admin-enrichment.ts
+init_logger();
+init_db();
+init_schema();
+init_hours_utils();
+import { eq as eq27 } from "drizzle-orm";
+init_admin();
+var enrichLog = log.tag("AdminEnrichment");
+function requireAdmin5(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+function registerAdminEnrichmentRoutes(app2) {
+  app2.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin5, async (_req, res) => {
+    enrichLog.info("Generating enrichment dashboard");
+    const allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags,
+      openingHours: businesses.openingHours
+    }).from(businesses).where(eq27(businesses.isActive, true));
+    const dietaryTagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+    const dietaryUntagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
+    const tagCounts = {};
+    for (const b of dietaryTagged) {
+      for (const tag of b.dietaryTags) {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      }
+    }
+    const hasHours = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return h && h.periods && h.periods.length > 0;
+    });
+    const missingHours = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return !h || !h.periods || h.periods.length === 0;
+    });
+    let openLateCount = 0;
+    let openWeekendsCount = 0;
+    let has24Hour = 0;
+    let avgPeriodsPerBiz = 0;
+    let totalPeriods = 0;
+    for (const b of hasHours) {
+      const h = b.openingHours;
+      if (isOpenLate(h)) openLateCount++;
+      if (isOpenWeekends(h)) openWeekendsCount++;
+      if (h.periods && h.periods.length === 1 && !h.periods[0].close) has24Hour++;
+      totalPeriods += h.periods?.length || 0;
+    }
+    avgPeriodsPerBiz = hasHours.length > 0 ? Math.round(totalPeriods / hasHours.length * 10) / 10 : 0;
+    const cities = [...new Set(allBiz.map((b) => b.city).filter(Boolean))];
+    const cityBreakdown = cities.map((city) => {
+      const cityBiz = allBiz.filter((b) => b.city === city);
+      const cityDietary = cityBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
+      const cityHours = cityBiz.filter((b) => {
+        const h = b.openingHours;
+        return h && h.periods && h.periods.length > 0;
+      });
+      return {
+        city,
+        total: cityBiz.length,
+        dietaryTagged: cityDietary.length,
+        dietaryCoveragePct: cityBiz.length > 0 ? Math.round(cityDietary.length / cityBiz.length * 100) : 0,
+        hoursPresent: cityHours.length,
+        hoursCoveragePct: cityBiz.length > 0 ? Math.round(cityHours.length / cityBiz.length * 100) : 0
+      };
+    }).sort((a, b) => b.total - a.total);
+    const missingBoth = allBiz.filter((b) => {
+      const noDietary = !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
+      const noHours = !b.openingHours?.periods?.length;
+      return noDietary && noHours;
+    }).map((b) => ({ id: b.id, name: b.name, city: b.city, cuisine: b.cuisine }));
+    res.json({
+      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      total: allBiz.length,
+      dietary: {
+        tagged: dietaryTagged.length,
+        untagged: dietaryUntagged.length,
+        coveragePct: allBiz.length > 0 ? Math.round(dietaryTagged.length / allBiz.length * 100) : 0,
+        tagCounts
+      },
+      hours: {
+        present: hasHours.length,
+        missing: missingHours.length,
+        coveragePct: allBiz.length > 0 ? Math.round(hasHours.length / allBiz.length * 100) : 0,
+        openLateCount,
+        openWeekendsCount,
+        has24Hour,
+        avgPeriodsPerBiz
+      },
+      missingBoth: {
+        count: missingBoth.length,
+        businesses: missingBoth.slice(0, 50)
+        // cap at 50 for response size
+      },
+      cityBreakdown
+    });
+  });
+  app2.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin5, async (req, res) => {
+    const city = req.query.city;
+    enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      openingHours: businesses.openingHours
+    }).from(businesses).where(eq27(businesses.isActive, true));
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const gaps = allBiz.filter((b) => {
+      const h = b.openingHours;
+      return !h || !h.periods || h.periods.length === 0;
+    }).map((b) => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      cuisine: b.cuisine,
+      hasWeekdayText: !!b.openingHours?.weekday_text?.length
+    }));
+    res.json({
+      total: allBiz.length,
+      missingHours: gaps.length,
+      gaps
+    });
+  });
+  app2.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin5, async (req, res) => {
+    const city = req.query.city;
+    enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      city: businesses.city,
+      cuisine: businesses.cuisine,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq27(businesses.isActive, true));
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const gaps = allBiz.filter((b) => {
+      return !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
+    }).map((b) => ({
+      id: b.id,
+      name: b.name,
+      city: b.city,
+      cuisine: b.cuisine
+    }));
+    res.json({
+      total: allBiz.length,
+      missingDietary: gaps.length,
+      gaps
+    });
+  });
+}
+
+// server/routes-admin-enrichment-bulk.ts
+init_logger();
+init_db();
+init_schema();
+import { eq as eq28 } from "drizzle-orm";
+init_admin();
+var bulkLog = log.tag("AdminEnrichmentBulk");
+function requireAdmin6(req, res, next) {
+  if (!isAdminEmail(req.user?.email)) {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+  next();
+}
+var VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
+function registerAdminEnrichmentBulkRoutes(app2) {
+  app2.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin6, async (req, res) => {
+    const { businessIds, tags, mode = "merge" } = req.body || {};
+    if (!Array.isArray(businessIds) || businessIds.length === 0) {
+      return res.status(400).json({ error: "businessIds must be a non-empty array" });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ error: "tags must be a non-empty array" });
+    }
+    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
+    }
+    if (businessIds.length > 100) {
+      return res.status(400).json({ error: "Maximum 100 businesses per batch" });
+    }
+    bulkLog.info(`Bulk dietary: ${businessIds.length} businesses, tags=[${tags}], mode=${mode}`);
+    const results = [];
+    for (const bizId of businessIds) {
+      const [biz] = await db.select({
+        id: businesses.id,
+        name: businesses.name,
+        dietaryTags: businesses.dietaryTags
+      }).from(businesses).where(eq28(businesses.id, bizId));
+      if (!biz) continue;
+      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const newTags = mode === "replace" ? [...tags] : [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
+      await db.update(businesses).set({ dietaryTags: newTags }).where(eq28(businesses.id, bizId));
+      results.push({ id: biz.id, name: biz.name, previousTags, newTags });
+    }
+    bulkLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
+    res.json({ updated: results.length, requested: businessIds.length, mode, results });
+  });
+  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin6, async (req, res) => {
+    const { cuisine, tags, city, dryRun = true } = req.body || {};
+    if (!cuisine || typeof cuisine !== "string") {
+      return res.status(400).json({ error: "cuisine is required" });
+    }
+    if (!Array.isArray(tags) || tags.length === 0) {
+      return res.status(400).json({ error: "tags must be a non-empty array" });
+    }
+    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
+    if (invalidTags.length > 0) {
+      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
+    }
+    bulkLog.info(`Bulk dietary by cuisine: ${cuisine}, tags=[${tags}], city=${city || "all"}, dryRun=${dryRun}`);
+    let allBiz = await db.select({
+      id: businesses.id,
+      name: businesses.name,
+      cuisine: businesses.cuisine,
+      city: businesses.city,
+      dietaryTags: businesses.dietaryTags
+    }).from(businesses).where(eq28(businesses.isActive, true));
+    allBiz = allBiz.filter((b) => b.cuisine?.toLowerCase() === cuisine.toLowerCase());
+    if (city) {
+      allBiz = allBiz.filter((b) => b.city === city);
+    }
+    const updates = [];
+    for (const biz of allBiz) {
+      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
+      const newTags = [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
+      if (newTags.length === previousTags.length && newTags.every((t) => previousTags.includes(t))) {
+        continue;
+      }
+      if (!dryRun) {
+        await db.update(businesses).set({ dietaryTags: newTags }).where(eq28(businesses.id, biz.id));
+      }
+      updates.push({ id: biz.id, name: biz.name, previousTags, newTags });
+    }
+    bulkLog.info(`Bulk by cuisine ${dryRun ? "(dry run)" : ""}: ${updates.length}/${allBiz.length} ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      cuisine,
+      city: city || "all",
+      matched: allBiz.length,
+      updated: updates.length,
+      updates: updates.slice(0, 50)
+      // cap for response size
+    });
+  });
+  app2.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin6, async (req, res) => {
+    const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
+    if (!Array.isArray(businessIds) || businessIds.length === 0) {
+      return res.status(400).json({ error: "businessIds must be a non-empty array" });
+    }
+    if (!hoursData || typeof hoursData !== "object") {
+      return res.status(400).json({ error: "hoursData must be a valid hours object" });
+    }
+    if (businessIds.length > 50) {
+      return res.status(400).json({ error: "Maximum 50 businesses per hours batch" });
+    }
+    const VALID_SOURCES = ["manual", "google_places", "import"];
+    if (!VALID_SOURCES.includes(source)) {
+      return res.status(400).json({ error: `Invalid source: ${source}. Must be one of: ${VALID_SOURCES.join(", ")}` });
+    }
+    const periods = hoursData.periods;
+    if (periods && !Array.isArray(periods)) {
+      return res.status(400).json({ error: "hoursData.periods must be an array" });
+    }
+    if (periods) {
+      for (const p of periods) {
+        if (!p.open || typeof p.open.day !== "number" || typeof p.open.time !== "string") {
+          return res.status(400).json({ error: "Each period must have open.day (number) and open.time (string)" });
+        }
+      }
+    }
+    bulkLog.info(`Bulk hours: ${businessIds.length} businesses, source=${source}, dryRun=${dryRun}`);
+    const results = [];
+    for (const bizId of businessIds) {
+      const [biz] = await db.select({
+        id: businesses.id,
+        name: businesses.name,
+        openingHours: businesses.openingHours
+      }).from(businesses).where(eq28(businesses.id, bizId));
+      if (!biz) continue;
+      const prevHours = biz.openingHours;
+      const hadHours = !!(prevHours && prevHours.periods && prevHours.periods.length > 0);
+      if (!dryRun) {
+        await db.update(businesses).set({ openingHours: hoursData }).where(eq28(businesses.id, bizId));
+      }
+      results.push({
+        id: biz.id,
+        name: biz.name,
+        hadHours,
+        periodsCount: periods?.length || 0
+      });
+    }
+    bulkLog.info(`Bulk hours ${dryRun ? "(dry run)" : ""}: ${results.length}/${businessIds.length} ${dryRun ? "would be" : "were"} updated`);
+    res.json({
+      dryRun,
+      source,
+      requested: businessIds.length,
+      updated: results.length,
+      results: results.slice(0, 50)
+    });
+  });
+}
+
 // server/request-logger.ts
 var requestLogs = [];
 function getRequestLogs(limit) {
@@ -9819,53 +11901,7 @@ var adminRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: 
 
 // server/routes-admin.ts
 init_tier_staleness();
-
-// server/city-engagement.ts
-init_logger();
-init_db();
-init_schema();
-init_city_config();
-import { sql as sql13, eq as eq20, count as count14 } from "drizzle-orm";
-var engLog = log.tag("CityEngagement");
-async function getCityEngagement(city) {
-  engLog.debug(`Fetching engagement for city: ${city}`);
-  const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
-  const totalMembers = memberResult?.total ?? 0;
-  const [bizResult] = await db.select({ total: count14() }).from(businesses).where(eq20(businesses.city, city));
-  const totalBusinesses = bizResult?.total ?? 0;
-  const ratingsResult = await db.execute(sql13`
-    SELECT COUNT(r.id)::int AS total
-    FROM ratings r
-    JOIN businesses b ON r.business_id = b.id
-    WHERE b.city = ${city}
-  `);
-  const totalRatings = ratingsResult.rows[0]?.total ?? 0;
-  const avgRatingsPerMember = totalMembers > 0 ? Math.round(totalRatings / totalMembers * 100) / 100 : 0;
-  const categoryResult = await db.select({ category: businesses.category, total: count14() }).from(businesses).where(eq20(businesses.city, city)).groupBy(businesses.category).orderBy(sql13`count(*) DESC`).limit(1);
-  const topCategory = categoryResult[0]?.category ?? "N/A";
-  engLog.info(`City engagement for ${city}: ${totalMembers} members, ${totalBusinesses} businesses, ${totalRatings} ratings`);
-  return {
-    city,
-    totalMembers,
-    totalBusinesses,
-    totalRatings,
-    avgRatingsPerMember,
-    topCategory,
-    status: isCityActive(city) ? "active" : "beta"
-  };
-}
-async function getAllCityEngagement() {
-  const activeCities = getActiveCities();
-  const betaCities = getBetaCities();
-  const allCities = [...activeCities, ...betaCities];
-  engLog.info(`Fetching engagement for ${allCities.length} cities (${activeCities.length} active, ${betaCities.length} beta)`);
-  const results = await Promise.all(allCities.map((city) => getCityEngagement(city)));
-  results.sort((a, b) => b.totalMembers - a.totalMembers);
-  return results;
-}
-
-// server/routes-admin.ts
-function requireAdmin2(req, res, next) {
+function requireAdmin7(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
   }
@@ -9873,7 +11909,7 @@ function requireAdmin2(req, res, next) {
 }
 function registerAdminRoutes(app2) {
   app2.use("/api/admin", adminRateLimiter);
-  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/category-suggestions/:id", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
@@ -9885,12 +11921,12 @@ function registerAdminRoutes(app2) {
     }
     return res.json({ data: updated });
   }));
-  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/seed-cities", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { seedCities: seedCities2 } = await Promise.resolve().then(() => (init_seed_cities(), seed_cities_exports));
     await seedCities2();
     return res.json({ data: { message: "Cities seeded successfully" } });
   }));
-  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/fetch-photos", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const city = sanitizeString(req.body.city, 100) || void 0;
     const limit = Math.min(50, parseInt(req.body.limit) || 20);
     const businesses2 = await getBusinessesWithoutPhotos(city, limit);
@@ -9912,7 +11948,7 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.post("/api/admin/import-restaurants", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/import-restaurants", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const city = sanitizeString(req.body.city, 100);
     const category = sanitizeString(req.body.category, 50) || "restaurant";
     if (!city) {
@@ -9958,16 +11994,16 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/import-stats", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/import-stats", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { getImportStats: getImportStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const stats2 = await getImportStats2();
     return res.json({ data: stats2 });
   }));
-  app2.get("/api/admin/claims", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/claims", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const data = await getPendingClaims();
     return res.json({ data });
   }));
-  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/claims/:id", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'approved' or 'rejected'" });
@@ -10022,15 +12058,15 @@ function registerAdminRoutes(app2) {
     }
     return res.json({ data: updated });
   }));
-  app2.get("/api/admin/claims/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/claims/count", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const count17 = await getClaimCount();
     return res.json({ data: { count: count17 } });
   }));
-  app2.get("/api/admin/flags", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/flags", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const data = await getPendingFlags();
     return res.json({ data });
   }));
-  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/flags/:id", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { status } = req.body;
     if (!["confirmed", "dismissed"].includes(status)) {
       return res.status(400).json({ error: "Status must be 'confirmed' or 'dismissed'" });
@@ -10039,11 +12075,11 @@ function registerAdminRoutes(app2) {
     if (!updated) return res.status(404).json({ error: "Flag not found" });
     return res.json({ data: updated });
   }));
-  app2.get("/api/admin/flags/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/flags/count", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const count17 = await getFlagCount();
     return res.json({ data: { count: count17 } });
   }));
-  app2.get("/api/admin/members", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/members", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const data = await getAdminMemberList(limit);
     const freshData = data.map((m) => ({
@@ -10052,17 +12088,17 @@ function registerAdminRoutes(app2) {
     }));
     return res.json({ data: freshData });
   }));
-  app2.get("/api/admin/members/count", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/members/count", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const count17 = await getMemberCount();
     return res.json({ data: { count: count17 } });
   }));
-  app2.get("/api/admin/webhooks", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/webhooks", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const source = sanitizeString(req.query.source, 50) || "stripe";
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const events3 = await getRecentWebhookEvents(source, limit);
     return res.json({ data: events3 });
   }));
-  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/webhooks/:id/replay", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const event = await getWebhookEventById(req.params.id);
     if (!event) return res.status(404).json({ error: "Webhook event not found" });
     const { processStripeEvent: processStripeEvent2 } = await Promise.resolve().then(() => (init_stripe_webhook(), stripe_webhook_exports));
@@ -10073,7 +12109,7 @@ function registerAdminRoutes(app2) {
     }
     return res.status(400).json({ error: `Unsupported webhook source: ${event.source}` });
   }));
-  app2.get("/api/admin/perf", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/perf", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const { getCacheStats: getCacheStats2 } = await Promise.resolve().then(() => (init_redis(), redis_exports));
     const { getErrorStats: getErrorStats2 } = await Promise.resolve().then(() => (init_error_tracking(), error_tracking_exports));
     const data = {
@@ -10083,16 +12119,16 @@ function registerAdminRoutes(app2) {
     };
     return res.json({ data });
   }));
-  app2.get("/api/admin/perf/validate", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/perf/validate", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const validation = getPerformanceValidation();
     return res.json({ data: validation });
   }));
-  app2.get("/api/admin/analytics/active-users-db", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/analytics/active-users-db", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const { getActiveUserStatsDb: getActiveUserStatsDb2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const stats2 = await getActiveUserStatsDb2();
     return res.json({ data: stats2 });
   }));
-  app2.get("/api/admin/city-engagement", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/city-engagement", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const city = req.query.city;
     if (city) {
       const engagement = await getCityEngagement(city);
@@ -10101,19 +12137,19 @@ function registerAdminRoutes(app2) {
     const all = await getAllCityEngagement();
     return res.json({ data: all });
   }));
-  app2.get("/api/admin/errors", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/errors", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { getRecentServerErrors: getRecentServerErrors2 } = await Promise.resolve().then(() => (init_error_tracking(), error_tracking_exports));
     const limit = Math.min(100, parseInt(req.query.limit) || 20);
     const data = getRecentServerErrors2(limit);
     return res.json({ data });
   }));
-  app2.get("/api/admin/revenue", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/revenue", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { getRevenueMetrics: getRevenueMetrics2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const metrics = await getRevenueMetrics2();
     return res.json({ data: metrics });
   }));
   registerAdminAnalyticsRoutes(app2);
-  app2.get("/api/admin/feedback", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/feedback", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { getRecentFeedback: getRecentFeedback2, getFeedbackStats: getFeedbackStats2 } = await Promise.resolve().then(() => (init_feedback(), feedback_exports));
     const limit = Math.min(100, parseInt(req.query.limit) || 50);
     const [recent, stats2] = await Promise.all([
@@ -10122,7 +12158,7 @@ function registerAdminRoutes(app2) {
     ]);
     return res.json({ data: { recent, stats: stats2 } });
   }));
-  app2.get("/api/admin/moderation-queue", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/moderation-queue", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { getAutoFlaggedRatings: getAutoFlaggedRatings2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const perPage = Math.min(50, Math.max(1, parseInt(req.query.perPage) || 20));
@@ -10132,7 +12168,7 @@ function registerAdminRoutes(app2) {
       pagination: { page, perPage, total: result.total, totalPages: Math.ceil(result.total / perPage) }
     });
   }));
-  app2.patch("/api/admin/moderation/:id", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.patch("/api/admin/moderation/:id", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { reviewAutoFlaggedRating: reviewAutoFlaggedRating2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
     const action = req.body.action;
     if (action !== "confirm" && action !== "dismiss") {
@@ -10141,11 +12177,11 @@ function registerAdminRoutes(app2) {
     await reviewAutoFlaggedRating2(req.params.id, action, req.user.id);
     return res.json({ data: { reviewed: true, action } });
   }));
-  app2.get("/api/admin/rate-gate-stats", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/rate-gate-stats", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const stats2 = getRateGateStats();
     return res.json({ data: stats2 });
   }));
-  app2.get("/api/admin/metrics", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/metrics", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const uptime = process.uptime();
     const memoryUsage = process.memoryUsage().heapUsed;
     const nodeVersion = process.version;
@@ -10161,7 +12197,7 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/health/detailed", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const mem = process.memoryUsage();
     const cpu = process.cpuUsage();
     const flags = getAllFlags();
@@ -10193,7 +12229,7 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/confidence-thresholds", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     return res.json({
       data: {
         thresholds: CATEGORY_CONFIDENCE_THRESHOLDS,
@@ -10201,13 +12237,13 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
-  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/revenue/monthly", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const months = Math.min(24, Math.max(1, parseInt(req.query.months) || 6));
     const { getRevenueByMonth: getRevenueByMonth2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const data = await getRevenueByMonth2(months);
     return res.json({ data });
   }));
-  app2.post("/api/admin/beta-invite", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/beta-invite", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { sendBetaInviteEmail: sendBetaInviteEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
     const { getMemberByEmail: getMemberByEmail2, createBetaInvite: createBetaInvite2, getBetaInviteByEmail: getBetaInviteByEmail2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const email = sanitizeString(req.body.email, 254);
@@ -10235,26 +12271,26 @@ function registerAdminRoutes(app2) {
     trackEvent2("beta_invite_sent", req.user?.id, { email });
     return res.json({ data: { sent: true, email } });
   }));
-  app2.get("/api/admin/beta-invites", requireAuth, requireAdmin2, wrapAsync(async (_req, res) => {
+  app2.get("/api/admin/beta-invites", requireAuth, requireAdmin7, wrapAsync(async (_req, res) => {
     const { getBetaInviteStats: getBetaInviteStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const stats2 = await getBetaInviteStats2();
     return res.json({ data: stats2 });
   }));
-  app2.get("/api/admin/alerts", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.get("/api/admin/alerts", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const limit = Math.min(100, parseInt(req.query.limit) || 50);
     const alerts2 = getRecentAlerts(limit);
     const stats2 = getAlertStats();
     const rules = getAlertRules();
     return res.json({ data: { alerts: alerts2, stats: stats2, rules } });
   }));
-  app2.post("/api/admin/alerts/:id/acknowledge", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/alerts/:id/acknowledge", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const result = acknowledgeAlert(req.params.id);
     if (!result) {
       return res.status(404).json({ error: "Alert not found" });
     }
     return res.json({ data: { acknowledged: true } });
   }));
-  app2.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin2, wrapAsync(async (req, res) => {
+  app2.post("/api/admin/beta-invite/batch", requireAuth, requireAdmin7, wrapAsync(async (req, res) => {
     const { sendBetaInviteEmail: sendBetaInviteEmail2 } = await Promise.resolve().then(() => (init_email(), email_exports));
     const { getMemberByEmail: getMemberByEmail2, createBetaInvite: createBetaInvite2, getBetaInviteByEmail: getBetaInviteByEmail2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const invites = req.body.invites;
@@ -10331,6 +12367,26 @@ function registerAdminRoutes(app2) {
       }
     });
   }));
+}
+function registerAllAdminRoutes(app2) {
+  registerAdminRoutes(app2);
+  registerAdminExperimentRoutes(app2);
+  registerAdminPromotionRoutes(app2);
+  registerAdminRateLimitRoutes(app2);
+  registerAdminClaimVerificationRoutes(app2);
+  registerAdminReputationRoutes(app2);
+  registerAdminModerationRoutes(app2);
+  registerAdminRankingRoutes(app2);
+  registerAdminTemplateRoutes(app2);
+  registerAdminPushTemplateRoutes(app2);
+  registerAdminTierLimitRoutes(app2);
+  registerAdminWebSocketRoutes(app2);
+  registerAdminHealthRoutes(app2);
+  registerAdminPhotoRoutes(app2);
+  registerAdminReceiptRoutes(app2);
+  registerAdminDietaryRoutes(app2);
+  registerAdminEnrichmentRoutes(app2);
+  registerAdminEnrichmentBulkRoutes(app2);
 }
 
 // server/routes-payments.ts
@@ -10592,7 +12648,7 @@ function hashString(str) {
 init_experiment_tracker();
 init_admin();
 var expLog = log.tag("Experiments");
-var experiments = {
+var experiments3 = {
   confidence_tooltip: {
     id: "confidence_tooltip",
     description: "Show info icon tooltip on confidence badge vs no tooltip",
@@ -10621,8 +12677,8 @@ var experiments = {
     ]
   }
 };
-function assignVariant(userId, experimentId) {
-  const experiment = experiments[experimentId];
+function assignVariant2(userId, experimentId) {
+  const experiment = experiments3[experimentId];
   if (!experiment || !experiment.active) {
     return { variant: "control", isDefault: true };
   }
@@ -10639,7 +12695,7 @@ function assignVariant(userId, experimentId) {
 }
 function registerExperimentRoutes(app2) {
   app2.get("/api/experiments", apiRateLimiter, wrapAsync(async (_req, res) => {
-    const active = Object.values(experiments).filter((exp) => exp.active).map((exp) => ({
+    const active = Object.values(experiments3).filter((exp) => exp.active).map((exp) => ({
       id: exp.id,
       description: exp.description,
       variants: exp.variants.map((v) => v.id)
@@ -10662,7 +12718,7 @@ function registerExperimentRoutes(app2) {
         }
       });
     }
-    const { variant, isDefault } = assignVariant(String(userId), experimentId);
+    const { variant, isDefault } = assignVariant2(String(userId), experimentId);
     const context = req.query.context || "api";
     trackExposure(String(userId), experimentId, variant, context);
     expLog.info(`Assigned ${experimentId}=${variant} for user ${userId}`);
@@ -10680,7 +12736,7 @@ function registerExperimentRoutes(app2) {
     }
     const experimentId = req.query.experimentId;
     if (!experimentId) {
-      const allStats = Object.values(experiments).filter((exp) => exp.active).map((exp) => ({
+      const allStats = Object.values(experiments3).filter((exp) => exp.active).map((exp) => ({
         experimentId: exp.id,
         description: exp.description,
         exposure: getExposureStats(exp.id),
@@ -10689,7 +12745,7 @@ function registerExperimentRoutes(app2) {
       }));
       return res.json({ data: allStats });
     }
-    const experiment = experiments[experimentId];
+    const experiment = experiments3[experimentId];
     if (!experiment) {
       return res.status(404).json({ error: `Experiment '${experimentId}' not found` });
     }
@@ -10706,209 +12762,6 @@ function registerExperimentRoutes(app2) {
   }));
 }
 
-// server/email-ab-testing.ts
-init_logger();
-import crypto4 from "crypto";
-var abLog = log.tag("EmailAB");
-var experiments2 = [];
-var assignments = /* @__PURE__ */ new Map();
-var MAX_EXPERIMENTS = 50;
-function createExperiment(name, variants) {
-  if (experiments2.length >= MAX_EXPERIMENTS) {
-    experiments2.shift();
-  }
-  const experiment = {
-    id: crypto4.randomUUID(),
-    name,
-    variants: variants.map((v) => ({
-      ...v,
-      id: crypto4.randomUUID(),
-      weight: v.weight || 1
-    })),
-    createdAt: /* @__PURE__ */ new Date(),
-    status: "active"
-  };
-  experiments2.push(experiment);
-  abLog.info(`Created email experiment "${name}" with ${variants.length} variants`);
-  return experiment;
-}
-function getExperiment(experimentId) {
-  return experiments2.find((e) => e.id === experimentId);
-}
-function completeExperiment(experimentId, winnerVariantId) {
-  const experiment = getExperiment(experimentId);
-  if (!experiment) return;
-  experiment.status = "completed";
-  experiment.winnerVariantId = winnerVariantId;
-  abLog.info(`Experiment "${experiment.name}" completed \u2014 winner: ${winnerVariantId}`);
-}
-function getExperimentStats(experimentId) {
-  const experiment = getExperiment(experimentId);
-  if (!experiment) return null;
-  return experiment.variants.map((v) => ({
-    variantId: v.id,
-    name: v.name,
-    assignedCount: [...assignments.entries()].filter(([key2, val]) => key2.startsWith(`${experimentId}:`) && val === v.id).length
-  }));
-}
-function getActiveExperiments() {
-  return experiments2.filter((e) => e.status === "active");
-}
-
-// server/routes-admin-experiments.ts
-init_email_tracking();
-init_push_ab_testing();
-init_experiment_tracker();
-
-// server/digest-copy-variants.ts
-init_push_ab_testing();
-init_logger();
-var digestLog = log.tag("DigestCopy");
-var DIGEST_EXPERIMENT_ID = "weekly-digest-copy-v1";
-var digestCopyVariants = [
-  {
-    name: "control",
-    title: "Your weekly rankings update",
-    body: "Hey {firstName}, check what's changed in your city's rankings this week."
-  },
-  {
-    name: "urgency",
-    title: "Rankings just shifted \u2014 see who moved",
-    body: "{firstName}, this week's rankings are in. Some favorites dropped. See the new order before everyone else."
-  },
-  {
-    name: "curiosity",
-    title: "Did your top pick hold its spot?",
-    body: "{firstName}, rankings moved this week. Tap to see if your favorite is still #1."
-  },
-  {
-    name: "social",
-    title: "Your city is rating \u2014 join the conversation",
-    body: "{firstName}, new ratings are shaping your city's leaderboard. See what the community thinks."
-  }
-];
-function seedDigestCopyTest() {
-  const existing = getPushExperiment(DIGEST_EXPERIMENT_ID);
-  if (existing && existing.active) {
-    digestLog.info("Digest copy test already active");
-    return { created: false, experimentId: DIGEST_EXPERIMENT_ID };
-  }
-  if (existing) {
-    deactivatePushExperiment(DIGEST_EXPERIMENT_ID);
-  }
-  const experiment = createPushExperiment(
-    DIGEST_EXPERIMENT_ID,
-    "Weekly digest copy test: control vs urgency vs curiosity vs social",
-    "weeklyDigest",
-    digestCopyVariants
-  );
-  if (experiment) {
-    digestLog.info("Digest copy test seeded with 4 variants");
-    return { created: true, experimentId: DIGEST_EXPERIMENT_ID };
-  }
-  digestLog.error("Failed to seed digest copy test");
-  return { created: false, experimentId: DIGEST_EXPERIMENT_ID };
-}
-function stopDigestCopyTest() {
-  return deactivatePushExperiment(DIGEST_EXPERIMENT_ID);
-}
-function getDigestCopyTestStatus() {
-  const exp = getPushExperiment(DIGEST_EXPERIMENT_ID);
-  return {
-    active: exp?.active ?? false,
-    experimentId: DIGEST_EXPERIMENT_ID,
-    variantCount: exp?.variants.length ?? 0
-  };
-}
-
-// server/routes-admin-experiments.ts
-function requireAdmin3(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-function registerAdminExperimentRoutes(app2) {
-  app2.get("/api/admin/experiments", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const experiments4 = getActiveExperiments();
-    const experimentsWithStats = experiments4.map((exp) => ({
-      ...exp,
-      stats: getExperimentStats(exp.id)
-    }));
-    return res.json({
-      data: {
-        experiments: experimentsWithStats,
-        emailStats: getEmailStats()
-      }
-    });
-  }));
-  app2.get("/api/admin/experiments/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const experiment = getExperiment(req.params.id);
-    if (!experiment) {
-      return res.status(404).json({ error: "Experiment not found" });
-    }
-    const stats2 = getExperimentStats(req.params.id);
-    return res.json({ data: { experiment, stats: stats2 } });
-  }));
-  app2.post("/api/admin/experiments", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const { name, variants } = req.body;
-    if (!name || !variants || !Array.isArray(variants) || variants.length === 0) {
-      return res.status(400).json({ error: "name and variants[] are required" });
-    }
-    const experiment = createExperiment(name, variants);
-    return res.json({ data: experiment });
-  }));
-  app2.post("/api/admin/experiments/:id/complete", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const experiment = getExperiment(req.params.id);
-    if (!experiment) {
-      return res.status(404).json({ error: "Experiment not found" });
-    }
-    const { winnerVariantId } = req.body;
-    completeExperiment(req.params.id, winnerVariantId);
-    return res.json({ data: { completed: true } });
-  }));
-  app2.get("/api/admin/push-experiments", requireAuth, requireAdmin3, wrapAsync(async (_req, res) => {
-    const pushExperiments = listPushExperiments();
-    const withDashboards = pushExperiments.map((exp) => ({
-      ...exp,
-      dashboard: computeExperimentDashboard(exp.id)
-    }));
-    return res.json({ data: withDashboards });
-  }));
-  app2.get("/api/admin/push-experiments/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const exp = getPushExperiment(req.params.id);
-    if (!exp) return res.status(404).json({ error: "Push experiment not found" });
-    return res.json({ data: { ...exp, dashboard: computeExperimentDashboard(exp.id) } });
-  }));
-  app2.post("/api/admin/push-experiments", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const { id, description, category, variants } = req.body;
-    if (!id || !description || !category || !variants || variants.length < 2) {
-      return res.status(400).json({ error: "id, description, category, and 2+ variants required" });
-    }
-    const exp = createPushExperiment(id, description, category, variants);
-    if (!exp) return res.status(409).json({ error: "Experiment already exists or invalid" });
-    return res.json({ data: exp });
-  }));
-  app2.post("/api/admin/push-experiments/:id/deactivate", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const success = deactivatePushExperiment(req.params.id);
-    if (!success) return res.status(404).json({ error: "Push experiment not found" });
-    return res.json({ data: { deactivated: true } });
-  }));
-  app2.post("/api/admin/digest-copy-test/seed", requireAuth, requireAdmin3, wrapAsync(async (_req, res) => {
-    const result = seedDigestCopyTest();
-    return res.json({ data: result });
-  }));
-  app2.post("/api/admin/digest-copy-test/stop", requireAuth, requireAdmin3, wrapAsync(async (_req, res) => {
-    const stopped = stopDigestCopyTest();
-    return res.json({ data: { stopped } });
-  }));
-  app2.get("/api/admin/digest-copy-test/status", requireAuth, requireAdmin3, wrapAsync(async (_req, res) => {
-    const status = getDigestCopyTestStatus();
-    const dashboard = status.active ? computeExperimentDashboard(status.experimentId) : null;
-    return res.json({ data: { ...status, dashboard } });
-  }));
-}
-
 // server/routes-auth.ts
 import passport2 from "passport";
 init_email();
@@ -10920,11 +12773,11 @@ init_tier_staleness();
 // server/gdpr.ts
 init_db();
 init_schema();
-import { eq as eq21, and as and14, lte as lte3 } from "drizzle-orm";
+import { eq as eq29, and as and17, lte as lte3 } from "drizzle-orm";
 async function scheduleDeletion(userId, gracePeriodDays) {
   const now = /* @__PURE__ */ new Date();
   const deleteAt = new Date(now.getTime() + gracePeriodDays * 24 * 60 * 60 * 1e3);
-  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending")));
+  await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and17(eq29(deletionRequests.memberId, userId), eq29(deletionRequests.status, "pending")));
   const [row] = await db.insert(deletionRequests).values({
     memberId: userId,
     requestedAt: now,
@@ -10940,11 +12793,11 @@ async function scheduleDeletion(userId, gracePeriodDays) {
 }
 async function cancelDeletion(userId) {
   const now = /* @__PURE__ */ new Date();
-  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and14(eq21(deletionRequests.memberId, userId), eq21(deletionRequests.status, "pending"))).returning();
+  const result = await db.update(deletionRequests).set({ status: "cancelled", cancelledAt: now }).where(and17(eq29(deletionRequests.memberId, userId), eq29(deletionRequests.status, "pending"))).returning();
   return result.length > 0;
 }
 async function getDeletionStatus(userId) {
-  const rows = await db.select().from(deletionRequests).where(eq21(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
+  const rows = await db.select().from(deletionRequests).where(eq29(deletionRequests.memberId, userId)).orderBy(deletionRequests.requestedAt).limit(1);
   if (rows.length === 0) return null;
   const row = rows[0];
   return {
@@ -11233,7 +13086,7 @@ init_logger();
 init_storage();
 init_tier_staleness();
 init_file_storage();
-import crypto5 from "node:crypto";
+import crypto9 from "node:crypto";
 function registerMemberRoutes(app2) {
   app2.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req, res) => {
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -11261,7 +13114,7 @@ function registerMemberRoutes(app2) {
     const fileBuffer = file.buffer;
     const contentType = file.mimetype;
     const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
-    const uniqueId = crypto5.randomBytes(8).toString("hex");
+    const uniqueId = crypto9.randomBytes(8).toString("hex");
     const key2 = `avatars/${req.user.id}-${uniqueId}.${ext}`;
     const avatarUrl = await fileStorage.upload(key2, fileBuffer, contentType);
     const { updateMemberAvatar: updateMemberAvatar2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
@@ -11472,200 +13325,6 @@ init_storage();
 init_photo_moderation();
 init_google_places();
 init_hours_utils();
-
-// server/search-ranking-v2.ts
-init_logger();
-var rankLog = log.tag("SearchRankingV2");
-var weights = {
-  reputationWeight: 0.6,
-  recencyBoost: 0.15,
-  ratingCountFloor: 10,
-  bayesianPrior: 3.5,
-  bayesianStrength: 5
-};
-function getRankingWeights() {
-  return { ...weights };
-}
-function setRankingWeights(w) {
-  weights = { ...weights, ...w };
-  rankLog.info("Ranking weights updated", weights);
-  return { ...weights };
-}
-var SEARCH_STOP_WORDS = /* @__PURE__ */ new Set([
-  "best",
-  "top",
-  "good",
-  "great",
-  "most",
-  "popular",
-  "famous",
-  "in",
-  "the",
-  "a",
-  "of",
-  "for",
-  "near",
-  "around",
-  "at"
-]);
-function parseQueryIntent(query, city) {
-  const tokens2 = query.toLowerCase().trim().split(/\s+/).filter((t) => t.length > 0);
-  const cityLower = city?.toLowerCase();
-  const filtered = tokens2.filter((t) => {
-    if (SEARCH_STOP_WORDS.has(t)) return false;
-    if (cityLower && t === cityLower) return false;
-    return true;
-  });
-  return filtered.join(" ");
-}
-function dishRelevance(dishNames, query) {
-  if (!query || !query.trim() || !dishNames || dishNames.length === 0) return 0;
-  const q = query.toLowerCase().trim();
-  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
-  let bestScore = 0;
-  for (const dish of dishNames) {
-    const d = dish.toLowerCase();
-    if (d === q) return 1;
-    if (d.includes(q) || q.includes(d)) {
-      bestScore = Math.max(bestScore, 0.8);
-      continue;
-    }
-    for (const token of queryTokens) {
-      if (token.length < 3) continue;
-      const s = wordScore(d, token);
-      if (s > bestScore) bestScore = s;
-    }
-  }
-  return bestScore;
-}
-function levenshtein(a, b, maxDist = 3) {
-  if (Math.abs(a.length - b.length) > maxDist) return Infinity;
-  const m = a.length;
-  const n = b.length;
-  const dp = Array.from({ length: n + 1 }, (_, i) => i);
-  for (let i = 1; i <= m; i++) {
-    let prev = dp[0];
-    dp[0] = i;
-    let rowMin = dp[0];
-    for (let j = 1; j <= n; j++) {
-      const temp = dp[j];
-      dp[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, dp[j], dp[j - 1]);
-      prev = temp;
-      if (dp[j] < rowMin) rowMin = dp[j];
-    }
-    if (rowMin > maxDist) return Infinity;
-  }
-  return dp[n];
-}
-function wordScore(target, token) {
-  if (target === token) return 1;
-  if (target.startsWith(token)) return 0.8;
-  if (target.includes(token)) return 0.6;
-  if (token.length >= 4) {
-    const dist = levenshtein(target, token, 2);
-    if (dist === 1) return 0.3;
-    if (dist === 2) return 0.15;
-  }
-  return 0;
-}
-function textRelevance(name, query) {
-  if (!query || !query.trim()) return 0;
-  const q = query.toLowerCase().trim();
-  const n = name.toLowerCase();
-  if (n === q) return 1;
-  if (n.startsWith(q)) return 0.9;
-  if (n.includes(q)) return 0.7;
-  const queryTokens = q.split(/\s+/).filter((t) => t.length > 0);
-  const nameWords = n.split(/\s+/).filter((w) => w.length > 0);
-  if (queryTokens.length === 0 || nameWords.length === 0) return 0;
-  let totalScore = 0;
-  for (const token of queryTokens) {
-    let bestMatch = 0;
-    for (const word of nameWords) {
-      const score = wordScore(word, token);
-      if (score > bestMatch) bestMatch = score;
-    }
-    totalScore += bestMatch;
-  }
-  return Math.min(totalScore / queryTokens.length, 1);
-}
-function categoryRelevance(ctx) {
-  if (!ctx.query) return 0;
-  const tokens2 = ctx.query.toLowerCase().trim().split(/\s+/);
-  let best = 0;
-  for (const token of tokens2) {
-    if (token.length < 3) continue;
-    if (ctx.cuisine) {
-      const c = ctx.cuisine.toLowerCase();
-      if (c === token) {
-        best = Math.max(best, 1);
-        continue;
-      }
-      if (c.startsWith(token) || c.includes(token)) {
-        best = Math.max(best, 0.7);
-        continue;
-      }
-      if (token.length >= 4 && levenshtein(c, token, 2) <= 1) {
-        best = Math.max(best, 0.4);
-        continue;
-      }
-    }
-    if (ctx.category) {
-      const cat = ctx.category.toLowerCase();
-      if (cat === token) {
-        best = Math.max(best, 0.8);
-        continue;
-      }
-      if (cat.startsWith(token) || cat.includes(token)) {
-        best = Math.max(best, 0.5);
-        continue;
-      }
-    }
-    if (ctx.neighborhood) {
-      const nb = ctx.neighborhood.toLowerCase();
-      if (nb === token || nb.includes(token)) {
-        best = Math.max(best, 0.6);
-        continue;
-      }
-    }
-  }
-  return best;
-}
-function ratingVolumeSignal(ratingCount) {
-  if (!ratingCount || ratingCount <= 0) return 0;
-  return Math.min(Math.log10(ratingCount) / Math.log10(50), 1);
-}
-function profileCompleteness(ctx) {
-  let score = 0;
-  let total = 0;
-  if (ctx.hasPhotos !== void 0) {
-    total++;
-    if (ctx.hasPhotos) score++;
-  }
-  if (ctx.hasHours !== void 0) {
-    total++;
-    if (ctx.hasHours) score++;
-  }
-  if (ctx.hasCuisine !== void 0) {
-    total++;
-    if (ctx.hasCuisine) score++;
-  }
-  if (ctx.hasDescription !== void 0) {
-    total++;
-    if (ctx.hasDescription) score++;
-  }
-  return total > 0 ? score / total : 0;
-}
-function combinedRelevance(name, ctx) {
-  const intentQuery = ctx.query ? parseQueryIntent(ctx.query, ctx.city) : ctx.query;
-  const intentCtx = { ...ctx, query: intentQuery || ctx.query };
-  const text2 = textRelevance(name, intentCtx.query);
-  const category = categoryRelevance(intentCtx);
-  const dish = dishRelevance(ctx.dishNames, intentCtx.query);
-  const completeness = profileCompleteness(ctx);
-  const volume = ratingVolumeSignal(ctx.ratingCount);
-  return text2 * 0.4 + category * 0.2 + dish * 0.15 + completeness * 0.1 + volume * 0.15;
-}
 
 // server/search-result-processor.ts
 init_hours_utils();
@@ -12067,7 +13726,7 @@ function computeDimensionBreakdown(ratings6) {
 // server/city-dimension-averages.ts
 init_db();
 init_schema();
-import { eq as eq23, and as and16, sql as sql15 } from "drizzle-orm";
+import { eq as eq30, and as and18, sql as sql17 } from "drizzle-orm";
 var CACHE_TTL_MS2 = 5 * 60 * 1e3;
 var cache2 = /* @__PURE__ */ new Map();
 function round1(n) {
@@ -12079,18 +13738,18 @@ async function computeCityDimensionAverages(city) {
   const cached = cache2.get(key2);
   if (cached && cached.expiresAt > now) return cached.data;
   const rows = await db.select({
-    foodAvg: sql15`AVG(${ratings.foodScore})`,
-    serviceAvg: sql15`AVG(${ratings.serviceScore})`,
-    vibeAvg: sql15`AVG(${ratings.vibeScore})`,
-    packagingAvg: sql15`AVG(${ratings.packagingScore})`,
-    waitTimeAvg: sql15`AVG(${ratings.waitTimeScore})`,
-    valueAvg: sql15`AVG(${ratings.valueScore})`,
-    totalRatings: sql15`COUNT(*)`,
-    totalBusinesses: sql15`COUNT(DISTINCT ${ratings.businessId})`
-  }).from(ratings).innerJoin(businesses, eq23(ratings.businessId, businesses.id)).where(and16(
-    sql15`LOWER(${businesses.city}) = LOWER(${city})`,
-    eq23(businesses.isActive, true),
-    eq23(ratings.isFlagged, false)
+    foodAvg: sql17`AVG(${ratings.foodScore})`,
+    serviceAvg: sql17`AVG(${ratings.serviceScore})`,
+    vibeAvg: sql17`AVG(${ratings.vibeScore})`,
+    packagingAvg: sql17`AVG(${ratings.packagingScore})`,
+    waitTimeAvg: sql17`AVG(${ratings.waitTimeScore})`,
+    valueAvg: sql17`AVG(${ratings.valueScore})`,
+    totalRatings: sql17`COUNT(*)`,
+    totalBusinesses: sql17`COUNT(DISTINCT ${ratings.businessId})`
+  }).from(ratings).innerJoin(businesses, eq30(ratings.businessId, businesses.id)).where(and18(
+    sql17`LOWER(${businesses.city}) = LOWER(${city})`,
+    eq30(businesses.isActive, true),
+    eq30(ratings.isFlagged, false)
   ));
   const r = rows[0];
   const result = {
@@ -12638,13 +14297,13 @@ function registerReferralRoutes(app2) {
 init_db();
 init_schema();
 init_logger();
-import { eq as eq24 } from "drizzle-orm";
+import { eq as eq31 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
-import crypto7 from "crypto";
+import crypto10 from "crypto";
 var SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
 function hmac(data) {
-  return crypto7.createHmac("sha256", SECRET).update(data).digest("base64url");
+  return crypto10.createHmac("sha256", SECRET).update(data).digest("base64url");
 }
 function verifyUnsubscribeToken(token) {
   const parts = token.split(".");
@@ -12653,7 +14312,7 @@ function verifyUnsubscribeToken(token) {
   const type = parts.pop();
   const memberId = parts.join(".");
   const expected = hmac(`${memberId}.${type}`);
-  if (!crypto7.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  if (!crypto10.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
   }
   return { memberId, type };
@@ -12699,13 +14358,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq24(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq31(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, false) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq24(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq31(members.id, memberId));
     log.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
@@ -12729,13 +14388,13 @@ function registerUnsubscribeRoutes(app2) {
         return res.status(400).send(htmlPage("Invalid Request", "<p>Missing or invalid parameters.</p>"));
       }
     }
-    const [member] = await db.select().from(members).where(eq24(members.id, memberId)).limit(1);
+    const [member] = await db.select().from(members).where(eq31(members.id, memberId)).limit(1);
     if (!member) {
       return res.status(404).send(htmlPage("Not Found", "<p>We couldn't find that account.</p>"));
     }
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, true) };
-    await db.update(members).set({ notificationPrefs: updated }).where(eq24(members.id, memberId));
+    await db.update(members).set({ notificationPrefs: updated }).where(eq31(members.id, memberId));
     log.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
@@ -12744,7 +14403,7 @@ function registerUnsubscribeRoutes(app2) {
 
 // server/routes-webhooks.ts
 init_logger();
-import crypto8 from "node:crypto";
+import crypto11 from "node:crypto";
 init_email_tracking();
 
 // server/email-id-mapping.ts
@@ -12757,8 +14416,8 @@ function getTrackingIdFromResend(resendId) {
 
 // server/routes-webhooks.ts
 function verifySignature2(payload, signature, secret) {
-  const expected = crypto8.createHmac("sha256", secret).update(payload).digest("hex");
-  return crypto8.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const expected = crypto11.createHmac("sha256", secret).update(payload).digest("hex");
+  return crypto11.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 function registerWebhookRoutes(app2) {
   app2.post("/api/webhooks/resend", wrapAsync(async (req, res) => {
@@ -12798,1643 +14457,6 @@ function registerWebhookRoutes(app2) {
     }
     return res.json({ received: true });
   }));
-}
-
-// server/routes-admin-promotion.ts
-init_logger();
-
-// server/city-promotion.ts
-init_logger();
-init_city_config();
-var promoLog = log.tag("CityPromotion");
-var promotionHistory = [];
-var thresholds = {
-  minBusinesses: 50,
-  minMembers: 100,
-  minRatings: 200,
-  minDaysInBeta: 30
-};
-function getPromotionThresholds() {
-  return { ...thresholds };
-}
-function setPromotionThresholds(t) {
-  thresholds = { ...thresholds, ...t };
-  promoLog.info("Promotion thresholds updated", thresholds);
-  return { ...thresholds };
-}
-async function getPromotionStatus(city) {
-  const config2 = getCityConfig(city);
-  if (!config2 || config2.status !== "beta") return null;
-  const engagement = await getCityEngagement(city);
-  const launchDate = config2.launchDate ? new Date(config2.launchDate) : /* @__PURE__ */ new Date();
-  const daysInBeta = Math.floor(
-    (Date.now() - launchDate.getTime()) / (1e3 * 60 * 60 * 24)
-  );
-  const missing = [];
-  if (engagement.totalBusinesses < thresholds.minBusinesses) missing.push("businesses");
-  if (engagement.totalMembers < thresholds.minMembers) missing.push("members");
-  if (engagement.totalRatings < thresholds.minRatings) missing.push("ratings");
-  if (daysInBeta < thresholds.minDaysInBeta) missing.push("daysInBeta");
-  const pctBiz = Math.min(100, Math.round(engagement.totalBusinesses / thresholds.minBusinesses * 100));
-  const pctMem = Math.min(100, Math.round(engagement.totalMembers / thresholds.minMembers * 100));
-  const pctRat = Math.min(100, Math.round(engagement.totalRatings / thresholds.minRatings * 100));
-  const pctDays = Math.min(100, Math.round(daysInBeta / thresholds.minDaysInBeta * 100));
-  const overall = Math.round((pctBiz + pctMem + pctRat + pctDays) / 4);
-  return {
-    city,
-    eligible: missing.length === 0,
-    currentMetrics: {
-      businesses: engagement.totalBusinesses,
-      members: engagement.totalMembers,
-      ratings: engagement.totalRatings,
-      daysInBeta
-    },
-    progress: { businesses: pctBiz, members: pctMem, ratings: pctRat, daysInBeta: pctDays, overall },
-    thresholds: { ...thresholds },
-    missingCriteria: missing
-  };
-}
-function promoteCity(city, metrics) {
-  const config2 = getCityConfig(city);
-  if (!config2 || config2.status !== "beta") {
-    promoLog.warn(`Cannot promote ${city}: not a beta city`);
-    return false;
-  }
-  CITY_REGISTRY[city].status = "active";
-  CITY_REGISTRY[city].launchDate = CITY_REGISTRY[city].launchDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  promotionHistory.push({
-    city,
-    promotedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    metricsAtPromotion: metrics || { businesses: 0, members: 0, ratings: 0, daysInBeta: 0 }
-  });
-  promoLog.info(`Promoted ${city} from beta to active`);
-  return true;
-}
-async function getAllBetaPromotionStatus() {
-  const { getBetaCities: getBetaCities2 } = await Promise.resolve().then(() => (init_city_config(), city_config_exports));
-  const betaCities = getBetaCities2();
-  const results = await Promise.all(betaCities.map((c) => getPromotionStatus(c)));
-  return results.filter((r) => r !== null);
-}
-function getPromotionHistory() {
-  return [...promotionHistory];
-}
-
-// server/routes-admin-promotion.ts
-var adminPromoLog = log.tag("AdminPromotion");
-function registerAdminPromotionRoutes(app2) {
-  app2.get(
-    "/api/admin/promotion-status/:city",
-    wrapAsync(async (req, res) => {
-      const status = await getPromotionStatus(req.params.city);
-      if (!status) {
-        return res.status(404).json({ error: "City not found or not in beta" });
-      }
-      res.json(status);
-    })
-  );
-  app2.post(
-    "/api/admin/promote/:city",
-    wrapAsync(async (req, res) => {
-      const status = await getPromotionStatus(req.params.city);
-      const result = promoteCity(req.params.city, status?.currentMetrics);
-      if (!result) {
-        return res.status(400).json({ error: "Cannot promote city" });
-      }
-      adminPromoLog.info(`Admin promoted ${req.params.city}`);
-      res.json({ success: true, city: req.params.city, newStatus: "active" });
-    })
-  );
-  app2.get("/api/admin/promotion-thresholds", (_req, res) => {
-    res.json(getPromotionThresholds());
-  });
-  app2.put("/api/admin/promotion-thresholds", (req, res) => {
-    const updated = setPromotionThresholds(req.body);
-    adminPromoLog.info("Promotion thresholds updated");
-    res.json(updated);
-  });
-  app2.get(
-    "/api/admin/promotion-status",
-    wrapAsync(async (_req, res) => {
-      const statuses = await getAllBetaPromotionStatus();
-      res.json({ cities: statuses, count: statuses.length });
-    })
-  );
-  app2.get("/api/admin/promotion-history", (_req, res) => {
-    res.json(getPromotionHistory());
-  });
-}
-
-// server/routes-admin-ratelimit.ts
-init_logger();
-
-// server/rate-limit-dashboard.ts
-init_logger();
-var rlDashLog = log.tag("RateLimitDash");
-var events2 = [];
-function getRateLimitStats(limit) {
-  const recentLimit = limit ?? 50;
-  const totalRequests = events2.length;
-  const blockedRequests = events2.filter((e) => e.blocked).length;
-  const blockRate = totalRequests > 0 ? blockedRequests / totalRequests : 0;
-  const ipCounts = /* @__PURE__ */ new Map();
-  for (const e of events2) {
-    ipCounts.set(e.ip, (ipCounts.get(e.ip) || 0) + 1);
-  }
-  const topOffenders = Array.from(ipCounts.entries()).map(([ip, count17]) => ({ ip, count: count17 })).sort((a, b) => b.count - a.count).slice(0, 10);
-  const pathCounts = /* @__PURE__ */ new Map();
-  for (const e of events2) {
-    pathCounts.set(e.path, (pathCounts.get(e.path) || 0) + 1);
-  }
-  const topPaths = Array.from(pathCounts.entries()).map(([path3, count17]) => ({ path: path3, count: count17 })).sort((a, b) => b.count - a.count).slice(0, 10);
-  const recentEvents = events2.slice(-recentLimit);
-  return {
-    totalRequests,
-    blockedRequests,
-    blockRate,
-    topOffenders,
-    topPaths,
-    recentEvents
-  };
-}
-function getBlockedIPs(minHits) {
-  const threshold = minHits ?? 5;
-  const blockedEvents = events2.filter((e) => e.blocked);
-  const ipData = /* @__PURE__ */ new Map();
-  for (const e of blockedEvents) {
-    const existing = ipData.get(e.ip);
-    if (!existing || e.timestamp > existing.lastSeen) {
-      ipData.set(e.ip, {
-        count: (existing?.count || 0) + 1,
-        lastSeen: e.timestamp
-      });
-    } else {
-      existing.count++;
-    }
-  }
-  return Array.from(ipData.entries()).map(([ip, data]) => ({ ip, count: data.count, lastSeen: data.lastSeen })).filter((entry) => entry.count >= threshold).sort((a, b) => b.count - a.count);
-}
-
-// server/abuse-detection.ts
-init_logger();
-var abuseLog = log.tag("AbuseDetection");
-var incidents = [];
-function getActiveIncidents() {
-  return incidents.filter((i) => !i.resolved);
-}
-function resolveIncident(id) {
-  const incident = incidents.find((i) => i.id === id);
-  if (!incident) {
-    return false;
-  }
-  incident.resolved = true;
-  abuseLog.info(`Resolved abuse incident ${id} (${incident.pattern} from ${incident.source})`);
-  return true;
-}
-function getAbuseStats() {
-  const byType = {};
-  for (const i of incidents) {
-    byType[i.pattern] = (byType[i.pattern] || 0) + 1;
-  }
-  return {
-    total: incidents.length,
-    active: incidents.filter((i) => !i.resolved).length,
-    byType
-  };
-}
-
-// server/routes-admin-ratelimit.ts
-var adminRLLog = log.tag("AdminRateLimit");
-function registerAdminRateLimitRoutes(app2) {
-  app2.get("/api/admin/rate-limits", (_req, res) => {
-    adminRLLog.info("Fetching rate limit stats");
-    res.json(getRateLimitStats());
-  });
-  app2.get("/api/admin/rate-limits/blocked", (req, res) => {
-    const minHits = parseInt(req.query.minHits) || 5;
-    adminRLLog.info(`Fetching blocked IPs (minHits: ${minHits})`);
-    res.json(getBlockedIPs(minHits));
-  });
-  app2.get("/api/admin/abuse/incidents", (_req, res) => {
-    adminRLLog.info("Fetching active abuse incidents");
-    res.json(getActiveIncidents());
-  });
-  app2.get("/api/admin/abuse/stats", (_req, res) => {
-    adminRLLog.info("Fetching abuse stats");
-    res.json(getAbuseStats());
-  });
-  app2.post("/api/admin/abuse/resolve/:id", (req, res) => {
-    const result = resolveIncident(req.params.id);
-    if (!result) {
-      return res.status(404).json({ error: "Incident not found" });
-    }
-    adminRLLog.info(`Resolved abuse incident ${req.params.id}`);
-    res.json({ success: true });
-  });
-}
-
-// server/routes-admin-claims-verification.ts
-init_logger();
-
-// server/claim-verification.ts
-init_logger();
-var claimLog = log.tag("ClaimVerification");
-var claims = /* @__PURE__ */ new Map();
-function getClaimStatus(claimId) {
-  return claims.get(claimId) || null;
-}
-function getPendingClaims2() {
-  return Array.from(claims.values()).filter((c) => c.status === "pending");
-}
-function getClaimsByBusiness(businessId) {
-  return Array.from(claims.values()).filter((c) => c.businessId === businessId);
-}
-function rejectClaim(claimId, reason) {
-  const claim = claims.get(claimId);
-  if (!claim || claim.status !== "pending") return false;
-  claim.status = "rejected";
-  claim.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
-  claimLog.info(`Claim ${claimId} rejected: ${reason || "no reason"}`);
-  return true;
-}
-function getClaimStats() {
-  const all = Array.from(claims.values());
-  return {
-    total: all.length,
-    pending: all.filter((c) => c.status === "pending").length,
-    verified: all.filter((c) => c.status === "verified").length,
-    rejected: all.filter((c) => c.status === "rejected").length,
-    expired: all.filter((c) => c.status === "expired").length
-  };
-}
-
-// server/claim-verification-v2.ts
-init_logger();
-
-// server/storage/claim-evidences.ts
-init_db();
-init_schema();
-import { eq as eq25 } from "drizzle-orm";
-async function getClaimEvidenceByClaimId(claimId) {
-  const [row] = await db.select().from(claimEvidence).where(eq25(claimEvidence.claimId, claimId));
-  return row ?? null;
-}
-async function getAllClaimEvidence() {
-  return db.select().from(claimEvidence);
-}
-async function upsertClaimEvidence(data) {
-  const [row] = await db.insert(claimEvidence).values({
-    claimId: data.claimId,
-    documents: data.documents,
-    businessNameMatch: data.businessNameMatch,
-    addressMatch: data.addressMatch,
-    phoneMatch: data.phoneMatch,
-    verificationScore: data.verificationScore,
-    autoApproved: data.autoApproved,
-    reviewNotes: data.reviewNotes,
-    scoredAt: /* @__PURE__ */ new Date()
-  }).onConflictDoUpdate({
-    target: claimEvidence.claimId,
-    set: {
-      documents: data.documents,
-      businessNameMatch: data.businessNameMatch,
-      addressMatch: data.addressMatch,
-      phoneMatch: data.phoneMatch,
-      verificationScore: data.verificationScore,
-      autoApproved: data.autoApproved,
-      reviewNotes: data.reviewNotes,
-      scoredAt: /* @__PURE__ */ new Date()
-    }
-  }).returning();
-  return row ?? null;
-}
-async function addDocumentToClaimEvidence(claimId, document) {
-  const existing = await getClaimEvidenceByClaimId(claimId);
-  const docs = existing ? [...existing.documents, document] : [document];
-  const [row] = await db.insert(claimEvidence).values({
-    claimId,
-    documents: docs
-  }).onConflictDoUpdate({
-    target: claimEvidence.claimId,
-    set: { documents: docs }
-  }).returning();
-  return row ?? null;
-}
-
-// server/claim-verification-v2.ts
-var claimV2Log = log.tag("ClaimV2");
-var evidenceStore = /* @__PURE__ */ new Map();
-var SCORE_WEIGHTS = {
-  documentUploaded: 25,
-  businessNameMatch: 30,
-  addressMatch: 20,
-  phoneMatch: 15,
-  multipleDocuments: 10
-};
-var AUTO_APPROVE_THRESHOLD = 70;
-function computeVerificationScore(hasDocument, businessNameMatch, addressMatch, phoneMatch, documentCount) {
-  let score = 0;
-  if (hasDocument) score += SCORE_WEIGHTS.documentUploaded;
-  if (businessNameMatch) score += SCORE_WEIGHTS.businessNameMatch;
-  if (addressMatch) score += SCORE_WEIGHTS.addressMatch;
-  if (phoneMatch) score += SCORE_WEIGHTS.phoneMatch;
-  if (documentCount > 1) score += SCORE_WEIGHTS.multipleDocuments;
-  return Math.min(score, 100);
-}
-function shouldAutoApprove(score) {
-  return score >= AUTO_APPROVE_THRESHOLD;
-}
-function addDocumentToEvidence(claimId, document) {
-  let evidence = evidenceStore.get(claimId);
-  if (!evidence) {
-    evidence = {
-      claimId,
-      documents: [],
-      businessNameMatch: false,
-      addressMatch: false,
-      phoneMatch: false,
-      verificationScore: 0,
-      autoApproved: false,
-      reviewNotes: [],
-      scoredAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    evidenceStore.set(claimId, evidence);
-  }
-  evidence.documents.push(document);
-  claimV2Log.info(`Document added to claim ${claimId}: ${document.fileName} (${document.documentType})`);
-  addDocumentToClaimEvidence(claimId, document).catch(() => {
-  });
-  return evidence;
-}
-function scoreClaimEvidence(claimId, businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone) {
-  const evidence = evidenceStore.get(claimId) || {
-    claimId,
-    documents: [],
-    businessNameMatch: false,
-    addressMatch: false,
-    phoneMatch: false,
-    verificationScore: 0,
-    autoApproved: false,
-    reviewNotes: [],
-    scoredAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  const bizNameLower = businessName.toLowerCase();
-  const claimantLower = claimantName.toLowerCase();
-  evidence.businessNameMatch = bizNameLower.includes(claimantLower) || claimantLower.includes(bizNameLower) || levenshteinSimilar(bizNameLower, claimantLower, 3);
-  if (claimantAddress && businessAddress) {
-    evidence.addressMatch = normalizeAddress(claimantAddress) === normalizeAddress(businessAddress);
-  }
-  if (claimantPhone && businessPhone) {
-    evidence.phoneMatch = normalizePhone(claimantPhone) === normalizePhone(businessPhone);
-  }
-  evidence.verificationScore = computeVerificationScore(
-    evidence.documents.length > 0,
-    evidence.businessNameMatch,
-    evidence.addressMatch,
-    evidence.phoneMatch,
-    evidence.documents.length
-  );
-  evidence.autoApproved = shouldAutoApprove(evidence.verificationScore);
-  evidence.scoredAt = (/* @__PURE__ */ new Date()).toISOString();
-  evidence.reviewNotes = [];
-  if (evidence.businessNameMatch) evidence.reviewNotes.push("Business name matches claimant");
-  if (evidence.addressMatch) evidence.reviewNotes.push("Address verified");
-  if (evidence.phoneMatch) evidence.reviewNotes.push("Phone number matches");
-  if (evidence.documents.length > 0) evidence.reviewNotes.push(`${evidence.documents.length} document(s) uploaded`);
-  if (evidence.autoApproved) evidence.reviewNotes.push("Auto-approved: score >= threshold");
-  evidenceStore.set(claimId, evidence);
-  upsertClaimEvidence({
-    claimId,
-    documents: evidence.documents,
-    businessNameMatch: evidence.businessNameMatch,
-    addressMatch: evidence.addressMatch,
-    phoneMatch: evidence.phoneMatch,
-    verificationScore: evidence.verificationScore,
-    autoApproved: evidence.autoApproved,
-    reviewNotes: evidence.reviewNotes
-  }).catch(() => {
-  });
-  claimV2Log.info(`Claim ${claimId} scored: ${evidence.verificationScore}/100, autoApproved=${evidence.autoApproved}`);
-  return evidence;
-}
-function getClaimEvidence(claimId) {
-  return evidenceStore.get(claimId) || null;
-}
-function getAllEvidence() {
-  return Array.from(evidenceStore.values());
-}
-function normalizeAddress(addr) {
-  return addr.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
-}
-function normalizePhone(phone) {
-  return phone.replace(/[^0-9]/g, "").slice(-10);
-}
-function levenshteinSimilar(a, b, maxDist) {
-  if (Math.abs(a.length - b.length) > maxDist) return false;
-  const la = a.length;
-  const lb = b.length;
-  const dp = Array.from({ length: la + 1 }, () => Array(lb + 1).fill(0));
-  for (let i = 0; i <= la; i++) dp[i][0] = i;
-  for (let j = 0; j <= lb; j++) dp[0][j] = j;
-  for (let i = 1; i <= la; i++) {
-    for (let j = 1; j <= lb; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-    }
-  }
-  return dp[la][lb] <= maxDist;
-}
-
-// server/routes-admin-claims-verification.ts
-var adminClaimLog = log.tag("AdminClaimVerify");
-function registerAdminClaimVerificationRoutes(app2) {
-  app2.get("/api/admin/claims/pending", (_req, res) => {
-    res.json(getPendingClaims2());
-  });
-  app2.get("/api/admin/claims/stats", (_req, res) => {
-    res.json(getClaimStats());
-  });
-  app2.get("/api/admin/claims/:id", (req, res) => {
-    const claim = getClaimStatus(req.params.id);
-    if (!claim) return res.status(404).json({ error: "Claim not found" });
-    res.json(claim);
-  });
-  app2.get("/api/admin/claims/business/:businessId", (req, res) => {
-    res.json(getClaimsByBusiness(req.params.businessId));
-  });
-  app2.post("/api/admin/claims/:id/reject", (req, res) => {
-    const result = rejectClaim(req.params.id, req.body?.reason);
-    if (!result) return res.status(400).json({ error: "Cannot reject claim" });
-    adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
-    res.json({ success: true });
-  });
-  app2.post("/api/admin/claims/:id/document", (req, res) => {
-    const { fileName, fileType, fileSize, documentType } = req.body;
-    if (!fileName || !fileType || !fileSize || !documentType) {
-      return res.status(400).json({ error: "fileName, fileType, fileSize, documentType required" });
-    }
-    const evidence = addDocumentToEvidence(req.params.id, {
-      fileName: String(fileName).slice(0, 200),
-      fileType: String(fileType).slice(0, 50),
-      fileSize: Number(fileSize),
-      uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      documentType
-    });
-    adminClaimLog.info(`Document uploaded for claim ${req.params.id}: ${fileName}`);
-    res.json({ data: evidence });
-  });
-  app2.post("/api/admin/claims/:id/score", (req, res) => {
-    const { businessName, claimantName, claimantAddress, businessAddress, claimantPhone, businessPhone } = req.body;
-    if (!businessName || !claimantName) {
-      return res.status(400).json({ error: "businessName and claimantName required" });
-    }
-    const evidence = scoreClaimEvidence(
-      req.params.id,
-      businessName,
-      claimantName,
-      claimantAddress,
-      businessAddress,
-      claimantPhone,
-      businessPhone
-    );
-    adminClaimLog.info(`Claim ${req.params.id} scored: ${evidence.verificationScore}/100, auto=${evidence.autoApproved}`);
-    res.json({ data: evidence });
-  });
-  app2.get("/api/admin/claims/:id/evidence", async (req, res) => {
-    const evidence = getClaimEvidence(req.params.id);
-    if (evidence) return res.json({ data: evidence });
-    const dbEvidence = await getClaimEvidenceByClaimId(req.params.id).catch(() => null);
-    if (!dbEvidence) return res.status(404).json({ error: "No evidence for this claim" });
-    res.json({ data: dbEvidence });
-  });
-  app2.get("/api/admin/claims/evidence/all", async (_req, res) => {
-    const memEvidence = getAllEvidence();
-    const dbRows = await getAllClaimEvidence().catch(() => []);
-    const merged = /* @__PURE__ */ new Map();
-    for (const row of dbRows) merged.set(row.claimId, row);
-    for (const ev of memEvidence) merged.set(ev.claimId, ev);
-    res.json({ data: Array.from(merged.values()) });
-  });
-}
-
-// server/routes-admin-reputation.ts
-init_logger();
-
-// server/reputation-v2.ts
-init_logger();
-var repLog = log.tag("ReputationV2");
-var reputationCache = /* @__PURE__ */ new Map();
-function getReputation(memberId) {
-  return reputationCache.get(memberId) || null;
-}
-function getTierThresholds() {
-  return {
-    newcomer: { min: 0, max: 19 },
-    contributor: { min: 20, max: 39 },
-    trusted: { min: 40, max: 59 },
-    expert: { min: 60, max: 79 },
-    authority: { min: 80, max: 100 }
-  };
-}
-function getReputationLeaderboard(limit) {
-  return Array.from(reputationCache.values()).sort((a, b) => b.score - a.score).slice(0, limit || 10);
-}
-function getReputationStats() {
-  const all = Array.from(reputationCache.values());
-  const avg = all.length > 0 ? all.reduce((sum2, r) => sum2 + r.score, 0) / all.length : 0;
-  const byTier = { newcomer: 0, contributor: 0, trusted: 0, expert: 0, authority: 0 };
-  for (const r of all) byTier[r.tier]++;
-  return { totalScored: all.length, averageScore: Math.round(avg * 100) / 100, byTier };
-}
-
-// server/routes-admin-reputation.ts
-var adminRepLog = log.tag("AdminReputation");
-function registerAdminReputationRoutes(app2) {
-  app2.get("/api/admin/reputation/stats", (_req, res) => {
-    adminRepLog.info("Fetching reputation stats");
-    res.json(getReputationStats());
-  });
-  app2.get("/api/admin/reputation/leaderboard", (req, res) => {
-    const limit = parseInt(req.query.limit) || 10;
-    adminRepLog.info(`Fetching reputation leaderboard (limit: ${limit})`);
-    res.json(getReputationLeaderboard(limit));
-  });
-  app2.get("/api/admin/reputation/:memberId", (req, res) => {
-    const { memberId } = req.params;
-    adminRepLog.info(`Fetching reputation for member ${memberId}`);
-    const reputation = getReputation(memberId);
-    if (!reputation) {
-      return res.status(404).json({ error: "Member reputation not found" });
-    }
-    res.json(reputation);
-  });
-  app2.get("/api/admin/reputation/tiers", (_req, res) => {
-    adminRepLog.info("Fetching tier thresholds");
-    res.json(getTierThresholds());
-  });
-}
-
-// server/routes-admin-moderation.ts
-init_logger();
-init_moderation_queue();
-var adminModLog = log.tag("AdminModeration");
-function registerAdminModerationRoutes(app2) {
-  app2.get("/api/admin/moderation/queue", (req, res) => {
-    const limit = parseInt(req.query.limit) || 50;
-    adminModLog.info(`Fetching moderation queue (limit: ${limit})`);
-    res.json(getPendingItems(limit));
-  });
-  app2.get("/api/admin/moderation/stats", (_req, res) => {
-    adminModLog.info("Fetching moderation stats");
-    res.json(getQueueStats());
-  });
-  app2.post("/api/admin/moderation/:id/approve", (req, res) => {
-    const { id } = req.params;
-    const moderatorId = req.user?.id || "admin";
-    const note = req.body?.note;
-    adminModLog.info(`Approving moderation item ${id}`);
-    const success = approveItem(id, moderatorId, note);
-    if (!success) {
-      return res.status(404).json({ error: "Item not found or already resolved" });
-    }
-    res.json({ success: true });
-  });
-  app2.post("/api/admin/moderation/:id/reject", (req, res) => {
-    const { id } = req.params;
-    const moderatorId = req.user?.id || "admin";
-    const note = req.body?.note;
-    adminModLog.info(`Rejecting moderation item ${id}`);
-    const success = rejectItem(id, moderatorId, note);
-    if (!success) {
-      return res.status(404).json({ error: "Item not found or already resolved" });
-    }
-    res.json({ success: true });
-  });
-  app2.get("/api/admin/moderation/business/:businessId", (req, res) => {
-    const { businessId } = req.params;
-    adminModLog.info(`Fetching moderation items for business ${businessId}`);
-    res.json(getItemsByBusiness(businessId));
-  });
-  app2.get("/api/admin/moderation/member/:memberId", (req, res) => {
-    const { memberId } = req.params;
-    adminModLog.info(`Fetching moderation items for member ${memberId}`);
-    res.json(getItemsByMember(memberId));
-  });
-  app2.get("/api/admin/moderation/filtered", (req, res) => {
-    const status = req.query.status;
-    const contentType = req.query.contentType;
-    const limit = parseInt(req.query.limit) || 50;
-    const sortByViolations = req.query.sort === "violations";
-    adminModLog.info(`Filtered queue: status=${status}, type=${contentType}, sort=${sortByViolations}`);
-    res.json(getFilteredItems({
-      status,
-      contentType,
-      limit,
-      sortByViolations
-    }));
-  });
-  app2.get("/api/admin/moderation/resolved", (req, res) => {
-    const limit = parseInt(req.query.limit) || 50;
-    adminModLog.info(`Fetching resolved items (limit: ${limit})`);
-    res.json(getResolvedItems(limit));
-  });
-  app2.post("/api/admin/moderation/bulk-approve", (req, res) => {
-    const { ids, note } = req.body || {};
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: "ids array required" });
-    }
-    if (ids.length > 100) {
-      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
-    }
-    const moderatorId = req.user?.id || "admin";
-    adminModLog.info(`Bulk approving ${ids.length} items`);
-    const result = bulkApprove(ids, moderatorId, note);
-    res.json(result);
-  });
-  app2.post("/api/admin/moderation/bulk-reject", (req, res) => {
-    const { ids, note } = req.body || {};
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: "ids array required" });
-    }
-    if (ids.length > 100) {
-      return res.status(400).json({ error: "Maximum 100 items per bulk action" });
-    }
-    const moderatorId = req.user?.id || "admin";
-    adminModLog.info(`Bulk rejecting ${ids.length} items`);
-    const result = bulkReject(ids, moderatorId, note);
-    res.json(result);
-  });
-}
-
-// server/routes-admin-ranking.ts
-init_logger();
-var adminRankLog = log.tag("AdminRanking");
-function registerAdminRankingRoutes(app2) {
-  app2.get("/api/admin/ranking/weights", (_req, res) => {
-    adminRankLog.info("Fetching ranking weights");
-    res.json(getRankingWeights());
-  });
-  app2.put("/api/admin/ranking/weights", (req, res) => {
-    adminRankLog.info("Updating ranking weights", req.body);
-    const updated = setRankingWeights(req.body);
-    res.json(updated);
-  });
-  app2.get("/api/admin/ranking/confidence-levels", (_req, res) => {
-    adminRankLog.info("Fetching confidence level definitions");
-    const weights2 = getRankingWeights();
-    res.json({
-      levels: [
-        { level: "low", description: `Fewer than ${Math.floor(weights2.ratingCountFloor / 2)} ratings`, minRatings: 0 },
-        { level: "medium", description: `${Math.floor(weights2.ratingCountFloor / 2)}\u2013${weights2.ratingCountFloor - 1} ratings`, minRatings: Math.floor(weights2.ratingCountFloor / 2) },
-        { level: "high", description: `${weights2.ratingCountFloor}+ ratings`, minRatings: weights2.ratingCountFloor }
-      ]
-    });
-  });
-}
-
-// server/routes-admin-templates.ts
-init_logger();
-
-// server/email-templates.ts
-init_logger();
-import crypto10 from "crypto";
-var tmplLog = log.tag("EmailTemplates");
-var templates = /* @__PURE__ */ new Map();
-var MAX_TEMPLATES = 200;
-var BUILT_IN_TEMPLATES = [
-  {
-    name: "welcome",
-    subject: "Welcome to TrustMe, {{memberName}}!",
-    htmlBody: "<h1>Welcome, {{memberName}}!</h1><p>You've joined the most trusted ranking platform in {{city}}.</p>",
-    textBody: "Welcome, {{memberName}}! You've joined the most trusted ranking platform in {{city}}.",
-    variables: ["memberName", "city"],
-    category: "transactional"
-  },
-  {
-    name: "claim_approved",
-    subject: "Your claim for {{businessName}} has been approved",
-    htmlBody: "<h1>Congratulations!</h1><p>Your claim for {{businessName}} in {{city}} has been verified.</p>",
-    textBody: "Congratulations! Your claim for {{businessName}} in {{city}} has been verified.",
-    variables: ["businessName", "city"],
-    category: "transactional"
-  },
-  {
-    name: "weekly_digest",
-    subject: "Your weekly {{city}} food scene update",
-    htmlBody: "<h1>{{city}} This Week</h1><p>Hey {{memberName}}, here's what's trending in {{city}}.</p><p>Top rated: {{topBusiness}}</p>",
-    textBody: "Hey {{memberName}}, here's what's trending in {{city}}. Top rated: {{topBusiness}}",
-    variables: ["memberName", "city", "topBusiness"],
-    category: "digest"
-  },
-  {
-    name: "pro_upgrade",
-    subject: "Unlock Pro features for {{businessName}}",
-    htmlBody: "<h1>Go Pro</h1><p>{{businessName}} could reach more customers with TrustMe Pro.</p>",
-    textBody: "{{businessName}} could reach more customers with TrustMe Pro.",
-    variables: ["businessName"],
-    category: "outreach"
-  },
-  {
-    name: "tier_promotion",
-    subject: "You've been promoted to {{tierName}}!",
-    htmlBody: "<h1>Level Up!</h1><p>Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.</p>",
-    textBody: "Congratulations {{memberName}}, you're now a {{tierName}} on TrustMe.",
-    variables: ["memberName", "tierName"],
-    category: "transactional"
-  }
-];
-function initBuiltInTemplates() {
-  for (const t of BUILT_IN_TEMPLATES) {
-    const tmpl = {
-      ...t,
-      id: crypto10.randomUUID(),
-      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    templates.set(tmpl.name, tmpl);
-  }
-  tmplLog.info(`Initialized ${BUILT_IN_TEMPLATES.length} built-in templates`);
-}
-initBuiltInTemplates();
-function getTemplate(name) {
-  return templates.get(name) || null;
-}
-function getAllTemplates() {
-  return Array.from(templates.values());
-}
-function createTemplate(tmpl) {
-  if (templates.size >= MAX_TEMPLATES) {
-    const oldest = Array.from(templates.values()).filter((t) => !BUILT_IN_TEMPLATES.some((b) => b.name === t.name)).sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0];
-    if (oldest) templates.delete(oldest.name);
-  }
-  const created = {
-    ...tmpl,
-    id: crypto10.randomUUID(),
-    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-    updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  templates.set(created.name, created);
-  tmplLog.info(`Template created: ${created.name}`);
-  return created;
-}
-function renderTemplate(name, vars) {
-  const tmpl = templates.get(name);
-  if (!tmpl) return null;
-  let subject = tmpl.subject;
-  let html = tmpl.htmlBody;
-  let text2 = tmpl.textBody;
-  for (const [key2, value] of Object.entries(vars)) {
-    const pattern = new RegExp(`\\{\\{${key2}\\}\\}`, "g");
-    subject = subject.replace(pattern, value);
-    html = html.replace(pattern, value);
-    text2 = text2.replace(pattern, value);
-  }
-  return { subject, html, text: text2 };
-}
-function previewTemplate(name) {
-  const tmpl = templates.get(name);
-  if (!tmpl) return null;
-  const vars = {};
-  for (const v of tmpl.variables) {
-    vars[v] = `[${v}]`;
-  }
-  return renderTemplate(name, vars);
-}
-
-// server/routes-admin-templates.ts
-var adminTmplLog = log.tag("AdminTemplates");
-function registerAdminTemplateRoutes(app2) {
-  app2.get("/api/admin/templates", (_req, res) => {
-    adminTmplLog.info("Fetching all email templates");
-    res.json(getAllTemplates());
-  });
-  app2.get("/api/admin/templates/:name", (req, res) => {
-    const { name } = req.params;
-    adminTmplLog.info(`Fetching template: ${name}`);
-    const tmpl = getTemplate(name);
-    if (!tmpl) {
-      res.status(404).json({ error: `Template '${name}' not found` });
-      return;
-    }
-    res.json(tmpl);
-  });
-  app2.post("/api/admin/templates", (req, res) => {
-    const { name, subject, htmlBody, textBody, variables, category } = req.body;
-    if (!name || !subject || !htmlBody || !textBody || !category) {
-      res.status(400).json({ error: "Missing required fields: name, subject, htmlBody, textBody, category" });
-      return;
-    }
-    adminTmplLog.info(`Creating template: ${name}`);
-    const created = createTemplate({
-      name,
-      subject,
-      htmlBody,
-      textBody,
-      variables: variables || [],
-      category
-    });
-    res.status(201).json(created);
-  });
-  app2.get("/api/admin/templates/:name/preview", (req, res) => {
-    const { name } = req.params;
-    adminTmplLog.info(`Previewing template: ${name}`);
-    const result = previewTemplate(name);
-    if (!result) {
-      res.status(404).json({ error: `Template '${name}' not found` });
-      return;
-    }
-    res.json(result);
-  });
-  app2.post("/api/admin/templates/:name/render", (req, res) => {
-    const { name } = req.params;
-    const vars = req.body.variables || req.body;
-    adminTmplLog.info(`Rendering template: ${name}`, vars);
-    const result = renderTemplate(name, vars);
-    if (!result) {
-      res.status(404).json({ error: `Template '${name}' not found` });
-      return;
-    }
-    res.json(result);
-  });
-}
-
-// server/routes-admin-push-templates.ts
-init_notification_templates();
-function requireAdmin4(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-function registerAdminPushTemplateRoutes(app2) {
-  app2.get("/api/admin/notification-templates", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
-    const category = req.query.category;
-    const data = category ? listTemplatesByCategory(category) : listTemplates();
-    return res.json({ data });
-  }));
-  app2.get("/api/admin/notification-templates/variables", requireAuth, requireAdmin4, wrapAsync(async (_req, res) => {
-    return res.json({ data: getSupportedVariables() });
-  }));
-  app2.get("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
-    const template = getTemplate2(req.params.id);
-    if (!template) return res.status(404).json({ error: "Template not found" });
-    return res.json({ data: template });
-  }));
-  app2.post("/api/admin/notification-templates", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
-    const { id, name, category, title, body } = req.body;
-    if (!id || !name || !category || !title || !body) {
-      return res.status(400).json({ error: "id, name, category, title, and body are required" });
-    }
-    const template = createTemplate2({ id, name, category, title, body });
-    if (!template) return res.status(409).json({ error: "Template already exists" });
-    return res.json({ data: template });
-  }));
-  app2.put("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
-    const { name, category, title, body, active } = req.body;
-    const template = updateTemplate(req.params.id, { name, category, title, body, active });
-    if (!template) return res.status(404).json({ error: "Template not found" });
-    return res.json({ data: template });
-  }));
-  app2.delete("/api/admin/notification-templates/:id", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
-    const deleted = deleteTemplate(req.params.id);
-    if (!deleted) return res.status(404).json({ error: "Template not found" });
-    return res.json({ data: { deleted: true } });
-  }));
-}
-
-// server/routes-admin-tier-limits.ts
-init_logger();
-
-// server/tiered-rate-limiter.ts
-init_logger();
-var tierRLLog = log.tag("TieredRateLimit");
-var TIER_LIMITS = {
-  free: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5e3, burstLimit: 10 },
-  pro: { requestsPerMinute: 120, requestsPerHour: 3e3, requestsPerDay: 5e4, burstLimit: 30 },
-  enterprise: { requestsPerMinute: 600, requestsPerHour: 2e4, requestsPerDay: 5e5, burstLimit: 100 },
-  admin: { requestsPerMinute: 1e3, requestsPerHour: 5e4, requestsPerDay: 1e6, burstLimit: 200 }
-};
-var usage = /* @__PURE__ */ new Map();
-function getUsage(key2) {
-  return usage.get(key2) || null;
-}
-function getTierLimits(tier) {
-  return { ...TIER_LIMITS[tier] };
-}
-function getAllTierLimits() {
-  return JSON.parse(JSON.stringify(TIER_LIMITS));
-}
-function getUsageStats() {
-  const byTier = { free: 0, pro: 0, enterprise: 0, admin: 0 };
-  for (const record of usage.values()) {
-    byTier[record.tier] = (byTier[record.tier] || 0) + 1;
-  }
-  return { totalTracked: usage.size, byTier };
-}
-
-// server/routes-admin-tier-limits.ts
-var adminTierLog = log.tag("AdminTierLimits");
-function registerAdminTierLimitRoutes(app2) {
-  app2.get("/api/admin/tier-limits", (_req, res) => {
-    adminTierLog.info("Fetching all tier limits");
-    res.json(getAllTierLimits());
-  });
-  app2.get("/api/admin/tier-limits/usage/stats", (_req, res) => {
-    adminTierLog.info("Fetching tier usage stats");
-    res.json(getUsageStats());
-  });
-  app2.get("/api/admin/tier-limits/usage/:key", (req, res) => {
-    const record = getUsage(req.params.key);
-    if (!record) {
-      return res.status(404).json({ error: "No usage record found for key" });
-    }
-    adminTierLog.info(`Fetching usage for key: ${req.params.key}`);
-    res.json(record);
-  });
-  app2.get("/api/admin/tier-limits/:tier", (req, res) => {
-    const tier = req.params.tier;
-    const validTiers = ["free", "pro", "enterprise", "admin"];
-    if (!validTiers.includes(tier)) {
-      return res.status(400).json({ error: `Invalid tier: ${tier}. Must be one of: ${validTiers.join(", ")}` });
-    }
-    adminTierLog.info(`Fetching limits for tier: ${tier}`);
-    res.json(getTierLimits(tier));
-  });
-}
-
-// server/routes-admin-websocket.ts
-init_logger();
-
-// server/websocket-manager.ts
-init_logger();
-var wsLog = log.tag("WebSocketManager");
-var connections = /* @__PURE__ */ new Map();
-var memberConnections = /* @__PURE__ */ new Map();
-var messageLog = [];
-var MAX_MESSAGE_LOG = 1e3;
-function getActiveConnections() {
-  return Array.from(connections.values());
-}
-function broadcastToAll(message) {
-  messageLog.unshift(message);
-  if (messageLog.length > MAX_MESSAGE_LOG) messageLog.pop();
-  return connections.size;
-}
-function getConnectionStats() {
-  return {
-    totalConnections: connections.size,
-    uniqueMembers: memberConnections.size,
-    messagesSent: messageLog.length
-  };
-}
-function getRecentMessages(limit) {
-  return messageLog.slice(0, limit || 20);
-}
-
-// server/routes-admin-websocket.ts
-var adminWSLog = log.tag("AdminWebSocket");
-function registerAdminWebSocketRoutes(app2) {
-  app2.get("/api/admin/websocket/connections", (_req, res) => {
-    adminWSLog.info("Fetching active WebSocket connections");
-    res.json({ data: getActiveConnections() });
-  });
-  app2.get("/api/admin/websocket/stats", (_req, res) => {
-    adminWSLog.info("Fetching WebSocket stats");
-    res.json({ data: getConnectionStats() });
-  });
-  app2.get("/api/admin/websocket/messages", (req, res) => {
-    const limit = parseInt(req.query.limit) || 20;
-    adminWSLog.info(`Fetching recent messages (limit: ${limit})`);
-    res.json({ data: getRecentMessages(limit) });
-  });
-  app2.post("/api/admin/websocket/broadcast", (req, res) => {
-    const { message } = req.body;
-    if (!message || typeof message !== "string") {
-      return res.status(400).json({ error: "message (string) is required" });
-    }
-    const wsMessage = {
-      type: "system",
-      payload: { message },
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
-    };
-    const count17 = broadcastToAll(wsMessage);
-    adminWSLog.info(`Broadcast system message to ${count17} connections`);
-    res.json({ data: { delivered: count17, message } });
-  });
-}
-
-// server/city-health-monitor.ts
-init_logger();
-var healthLog = log.tag("CityHealth");
-var healthData = /* @__PURE__ */ new Map();
-function getCityHealth(city) {
-  return healthData.get(city) || null;
-}
-function getAllCityHealth() {
-  return Array.from(healthData.values());
-}
-function getHealthySummary() {
-  const all = Array.from(healthData.values());
-  return {
-    total: all.length,
-    healthy: all.filter((c) => c.status === "healthy").length,
-    degraded: all.filter((c) => c.status === "degraded").length,
-    critical: all.filter((c) => c.status === "critical").length
-  };
-}
-
-// server/routes-admin-health.ts
-init_push_analytics();
-function registerAdminHealthRoutes(app2) {
-  app2.get(
-    "/api/admin/city-health/summary",
-    requireAuth,
-    wrapAsync(async (req, res) => {
-      const summary = getHealthySummary();
-      return res.json({ data: summary });
-    })
-  );
-  app2.get(
-    "/api/admin/city-health",
-    requireAuth,
-    wrapAsync(async (req, res) => {
-      const all = getAllCityHealth();
-      return res.json({ data: all });
-    })
-  );
-  app2.get(
-    "/api/admin/city-health/:city",
-    requireAuth,
-    wrapAsync(async (req, res) => {
-      const city = req.params.city;
-      const health = getCityHealth(city);
-      if (!health) {
-        return res.status(404).json({ error: `No health data for city: ${city}` });
-      }
-      return res.json({ data: health });
-    })
-  );
-  app2.get(
-    "/api/admin/push-analytics",
-    requireAuth,
-    wrapAsync(async (req, res) => {
-      const days = Math.min(30, Math.max(1, parseInt(req.query.days) || 7));
-      const summary = computePushAnalytics(days);
-      return res.json({
-        data: {
-          ...summary,
-          recordCount: getPushRecordCount(),
-          daysBack: days
-        }
-      });
-    })
-  );
-}
-
-// server/routes-admin-photos.ts
-init_logger();
-init_photo_moderation();
-init_photo_hash();
-init_phash();
-var adminPhotoLog = log.tag("AdminPhotos");
-function registerAdminPhotoRoutes(app2) {
-  app2.get("/api/admin/photos/pending", async (req, res) => {
-    const limit = parseInt(req.query.limit) || 50;
-    adminPhotoLog.info(`Fetching pending photos (limit: ${limit})`);
-    res.json(await getPendingPhotos(limit));
-  });
-  app2.get("/api/admin/photos/stats", async (_req, res) => {
-    adminPhotoLog.info("Fetching photo stats");
-    res.json(await getPhotoStats());
-  });
-  app2.post("/api/admin/photos/:id/approve", async (req, res) => {
-    const { id } = req.params;
-    const moderatorId = req.user?.id || "admin";
-    const note = req.body?.note;
-    adminPhotoLog.info(`Approving photo ${id}`);
-    const success = await approvePhoto(id, moderatorId, note);
-    if (!success) {
-      return res.status(404).json({ error: "Photo not found or already reviewed" });
-    }
-    res.json({ success: true });
-  });
-  app2.post("/api/admin/photos/:id/reject", async (req, res) => {
-    const { id } = req.params;
-    const moderatorId = req.user?.id || "admin";
-    const { reason, note } = req.body || {};
-    if (!reason) {
-      return res.status(400).json({ error: "Rejection reason is required" });
-    }
-    adminPhotoLog.info(`Rejecting photo ${id} (reason: ${reason})`);
-    const success = await rejectPhoto(id, moderatorId, reason, note);
-    if (!success) {
-      return res.status(404).json({ error: "Photo not found or already reviewed" });
-    }
-    res.json({ success: true });
-  });
-  app2.get("/api/admin/photos/hash-stats", async (_req, res) => {
-    adminPhotoLog.info("Fetching photo hash index stats");
-    res.json({ trackedHashes: getHashIndexSize(), trackedPHashes: getPHashIndexSize() });
-  });
-  app2.post("/api/admin/photos/hash-reset", async (_req, res) => {
-    adminPhotoLog.info("Clearing photo hash indexes");
-    clearHashIndex();
-    clearPHashIndex();
-    res.json({ success: true, trackedHashes: 0, trackedPHashes: 0 });
-  });
-  app2.get("/api/photos/business/:businessId", async (req, res) => {
-    const { businessId } = req.params;
-    adminPhotoLog.info(`Fetching approved photos for business ${businessId}`);
-    res.json(await getPhotosByBusiness(businessId));
-  });
-}
-
-// server/routes-admin-receipts.ts
-init_receipt_analysis();
-init_logger();
-function requireAdmin5(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-var adminReceiptLog = log.tag("AdminReceipts");
-function registerAdminReceiptRoutes(app2) {
-  app2.get("/api/admin/receipts/pending", requireAuth, requireAdmin5, wrapAsync(async (req, res) => {
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
-    const receipts = await getPendingReceipts(limit);
-    adminReceiptLog.info(`Fetched ${receipts.length} pending receipts`);
-    return res.json({ data: receipts });
-  }));
-  app2.get("/api/admin/receipts/stats", requireAuth, requireAdmin5, wrapAsync(async (req, res) => {
-    const stats2 = await getReceiptAnalysisStats();
-    return res.json({ data: stats2 });
-  }));
-  app2.post("/api/admin/receipts/:id/verify", requireAuth, requireAdmin5, wrapAsync(async (req, res) => {
-    const analysisId = req.params.id;
-    const reviewerId = req.user.id;
-    const { businessName, amount, date: date2, items, confidence, matchScore, note } = req.body;
-    const result = {
-      businessName: businessName || void 0,
-      amount: amount ? parseFloat(amount) : void 0,
-      date: date2 ? new Date(date2) : void 0,
-      items: items || void 0,
-      confidence: parseFloat(confidence) || 0.5,
-      matchScore: parseFloat(matchScore) || 0.5
-    };
-    const success = await verifyReceipt(analysisId, reviewerId, result, note);
-    if (!success) {
-      return res.status(404).json({ error: "Receipt analysis not found or already reviewed" });
-    }
-    adminReceiptLog.info(`Receipt ${analysisId} verified by ${reviewerId}`);
-    return res.json({ data: { id: analysisId, status: "verified" } });
-  }));
-  app2.post("/api/admin/receipts/:id/reject", requireAuth, requireAdmin5, wrapAsync(async (req, res) => {
-    const analysisId = req.params.id;
-    const reviewerId = req.user.id;
-    const { note } = req.body;
-    if (!note || typeof note !== "string") {
-      return res.status(400).json({ error: "Rejection note is required" });
-    }
-    const success = await rejectReceipt(analysisId, reviewerId, note);
-    if (!success) {
-      return res.status(404).json({ error: "Receipt analysis not found or already reviewed" });
-    }
-    adminReceiptLog.info(`Receipt ${analysisId} rejected by ${reviewerId}`);
-    return res.json({ data: { id: analysisId, status: "rejected" } });
-  }));
-}
-
-// server/routes-admin-dietary.ts
-init_logger();
-init_db();
-init_schema();
-import { eq as eq29, and as and18, isNotNull as isNotNull4 } from "drizzle-orm";
-var dietaryLog = log.tag("AdminDietary");
-var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
-var CUISINE_TAG_SUGGESTIONS = {
-  indian: ["vegetarian"],
-  thai: ["gluten_free"],
-  middle_eastern: ["halal"],
-  mediterranean: ["vegetarian"],
-  japanese: ["gluten_free"],
-  mexican: ["gluten_free"],
-  vegan: ["vegan", "vegetarian"],
-  vegetarian: ["vegetarian"]
-};
-function registerAdminDietaryRoutes(app2) {
-  app2.get("/api/admin/dietary/stats", async (_req, res) => {
-    dietaryLog.info("Fetching dietary tag stats");
-    const allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      cuisine: businesses.cuisine,
-      dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq29(businesses.isActive, true));
-    const tagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
-    const untagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
-    const tagCounts = {};
-    for (const b of tagged) {
-      for (const tag of b.dietaryTags) {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
-    res.json({
-      total: allBiz.length,
-      tagged: tagged.length,
-      untagged: untagged.length,
-      coveragePct: allBiz.length > 0 ? Math.round(tagged.length / allBiz.length * 100) : 0,
-      tagCounts,
-      validTags: [...VALID_TAGS]
-    });
-  });
-  app2.put("/api/admin/dietary/:businessId", async (req, res) => {
-    const { businessId } = req.params;
-    const { tags } = req.body || {};
-    if (!Array.isArray(tags)) {
-      return res.status(400).json({ error: "tags must be an array" });
-    }
-    const invalidTags = tags.filter((t) => !VALID_TAGS.includes(t));
-    if (invalidTags.length > 0) {
-      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}. Valid: ${VALID_TAGS.join(", ")}` });
-    }
-    const result = await db.update(businesses).set({ dietaryTags: tags }).where(eq29(businesses.id, businessId)).returning({ id: businesses.id, name: businesses.name });
-    if (result.length === 0) {
-      return res.status(404).json({ error: "Business not found" });
-    }
-    dietaryLog.info(`Updated dietary tags for ${result[0].name}: [${tags.join(", ")}]`);
-    res.json({ success: true, business: result[0].name, tags });
-  });
-  app2.post("/api/admin/dietary/auto-enrich", async (req, res) => {
-    const { dryRun = true } = req.body || {};
-    dietaryLog.info(`Auto-enrichment ${dryRun ? "(dry run)" : "(applying)"}`);
-    const untagged = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      cuisine: businesses.cuisine,
-      dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(
-      and18(
-        eq29(businesses.isActive, true),
-        isNotNull4(businesses.cuisine)
-      )
-    );
-    const suggestions = [];
-    for (const biz of untagged) {
-      const currentTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
-      const cuisineLower = (biz.cuisine || "").toLowerCase().replace(/[^a-z_]/g, "_");
-      const suggested = CUISINE_TAG_SUGGESTIONS[cuisineLower] || [];
-      const newTags = suggested.filter((t) => !currentTags.includes(t));
-      if (newTags.length > 0) {
-        const merged = [.../* @__PURE__ */ new Set([...currentTags, ...newTags])];
-        suggestions.push({
-          id: biz.id,
-          name: biz.name,
-          cuisine: biz.cuisine || "",
-          suggestedTags: newTags
-        });
-        if (!dryRun) {
-          await db.update(businesses).set({ dietaryTags: merged }).where(eq29(businesses.id, biz.id));
-        }
-      }
-    }
-    dietaryLog.info(`Auto-enrichment: ${suggestions.length} businesses ${dryRun ? "would be" : "were"} updated`);
-    res.json({
-      dryRun,
-      updated: suggestions.length,
-      suggestions
-    });
-  });
-  app2.get("/api/admin/dietary/businesses", async (req, res) => {
-    const filter = req.query.filter;
-    dietaryLog.info(`Listing businesses (filter: ${filter || "all"})`);
-    const allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      cuisine: businesses.cuisine,
-      city: businesses.city,
-      dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq29(businesses.isActive, true));
-    let filtered = allBiz;
-    if (filter === "tagged") {
-      filtered = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
-    } else if (filter === "untagged") {
-      filtered = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
-    }
-    res.json({ data: filtered, total: filtered.length });
-  });
-}
-
-// server/routes-admin-enrichment.ts
-init_logger();
-init_db();
-init_schema();
-init_hours_utils();
-import { eq as eq30 } from "drizzle-orm";
-init_admin();
-var enrichLog = log.tag("AdminEnrichment");
-function requireAdmin6(req, res, next) {
-  if (!isAdminEmail(req.user?.email)) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-function registerAdminEnrichmentRoutes(app2) {
-  app2.get("/api/admin/enrichment/dashboard", requireAuth, requireAdmin6, async (_req, res) => {
-    enrichLog.info("Generating enrichment dashboard");
-    const allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      city: businesses.city,
-      cuisine: businesses.cuisine,
-      dietaryTags: businesses.dietaryTags,
-      openingHours: businesses.openingHours
-    }).from(businesses).where(eq30(businesses.isActive, true));
-    const dietaryTagged = allBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
-    const dietaryUntagged = allBiz.filter((b) => !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0);
-    const tagCounts = {};
-    for (const b of dietaryTagged) {
-      for (const tag of b.dietaryTags) {
-        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-      }
-    }
-    const hasHours = allBiz.filter((b) => {
-      const h = b.openingHours;
-      return h && h.periods && h.periods.length > 0;
-    });
-    const missingHours = allBiz.filter((b) => {
-      const h = b.openingHours;
-      return !h || !h.periods || h.periods.length === 0;
-    });
-    let openLateCount = 0;
-    let openWeekendsCount = 0;
-    let has24Hour = 0;
-    let avgPeriodsPerBiz = 0;
-    let totalPeriods = 0;
-    for (const b of hasHours) {
-      const h = b.openingHours;
-      if (isOpenLate(h)) openLateCount++;
-      if (isOpenWeekends(h)) openWeekendsCount++;
-      if (h.periods && h.periods.length === 1 && !h.periods[0].close) has24Hour++;
-      totalPeriods += h.periods?.length || 0;
-    }
-    avgPeriodsPerBiz = hasHours.length > 0 ? Math.round(totalPeriods / hasHours.length * 10) / 10 : 0;
-    const cities = [...new Set(allBiz.map((b) => b.city).filter(Boolean))];
-    const cityBreakdown = cities.map((city) => {
-      const cityBiz = allBiz.filter((b) => b.city === city);
-      const cityDietary = cityBiz.filter((b) => Array.isArray(b.dietaryTags) && b.dietaryTags.length > 0);
-      const cityHours = cityBiz.filter((b) => {
-        const h = b.openingHours;
-        return h && h.periods && h.periods.length > 0;
-      });
-      return {
-        city,
-        total: cityBiz.length,
-        dietaryTagged: cityDietary.length,
-        dietaryCoveragePct: cityBiz.length > 0 ? Math.round(cityDietary.length / cityBiz.length * 100) : 0,
-        hoursPresent: cityHours.length,
-        hoursCoveragePct: cityBiz.length > 0 ? Math.round(cityHours.length / cityBiz.length * 100) : 0
-      };
-    }).sort((a, b) => b.total - a.total);
-    const missingBoth = allBiz.filter((b) => {
-      const noDietary = !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
-      const noHours = !b.openingHours?.periods?.length;
-      return noDietary && noHours;
-    }).map((b) => ({ id: b.id, name: b.name, city: b.city, cuisine: b.cuisine }));
-    res.json({
-      generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      total: allBiz.length,
-      dietary: {
-        tagged: dietaryTagged.length,
-        untagged: dietaryUntagged.length,
-        coveragePct: allBiz.length > 0 ? Math.round(dietaryTagged.length / allBiz.length * 100) : 0,
-        tagCounts
-      },
-      hours: {
-        present: hasHours.length,
-        missing: missingHours.length,
-        coveragePct: allBiz.length > 0 ? Math.round(hasHours.length / allBiz.length * 100) : 0,
-        openLateCount,
-        openWeekendsCount,
-        has24Hour,
-        avgPeriodsPerBiz
-      },
-      missingBoth: {
-        count: missingBoth.length,
-        businesses: missingBoth.slice(0, 50)
-        // cap at 50 for response size
-      },
-      cityBreakdown
-    });
-  });
-  app2.get("/api/admin/enrichment/hours-gaps", requireAuth, requireAdmin6, async (req, res) => {
-    const city = req.query.city;
-    enrichLog.info(`Fetching hours gaps${city ? ` for ${city}` : ""}`);
-    let allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      city: businesses.city,
-      cuisine: businesses.cuisine,
-      openingHours: businesses.openingHours
-    }).from(businesses).where(eq30(businesses.isActive, true));
-    if (city) {
-      allBiz = allBiz.filter((b) => b.city === city);
-    }
-    const gaps = allBiz.filter((b) => {
-      const h = b.openingHours;
-      return !h || !h.periods || h.periods.length === 0;
-    }).map((b) => ({
-      id: b.id,
-      name: b.name,
-      city: b.city,
-      cuisine: b.cuisine,
-      hasWeekdayText: !!b.openingHours?.weekday_text?.length
-    }));
-    res.json({
-      total: allBiz.length,
-      missingHours: gaps.length,
-      gaps
-    });
-  });
-  app2.get("/api/admin/enrichment/dietary-gaps", requireAuth, requireAdmin6, async (req, res) => {
-    const city = req.query.city;
-    enrichLog.info(`Fetching dietary gaps${city ? ` for ${city}` : ""}`);
-    let allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      city: businesses.city,
-      cuisine: businesses.cuisine,
-      dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq30(businesses.isActive, true));
-    if (city) {
-      allBiz = allBiz.filter((b) => b.city === city);
-    }
-    const gaps = allBiz.filter((b) => {
-      return !Array.isArray(b.dietaryTags) || b.dietaryTags.length === 0;
-    }).map((b) => ({
-      id: b.id,
-      name: b.name,
-      city: b.city,
-      cuisine: b.cuisine
-    }));
-    res.json({
-      total: allBiz.length,
-      missingDietary: gaps.length,
-      gaps
-    });
-  });
-}
-
-// server/routes-admin-enrichment-bulk.ts
-init_logger();
-init_db();
-init_schema();
-import { eq as eq31 } from "drizzle-orm";
-init_admin();
-var bulkLog = log.tag("AdminEnrichmentBulk");
-function requireAdmin7(req, res, next) {
-  if (!isAdminEmail(req.user?.email)) {
-    return res.status(403).json({ error: "Admin access required" });
-  }
-  next();
-}
-var VALID_TAGS2 = ["vegetarian", "vegan", "halal", "gluten_free"];
-function registerAdminEnrichmentBulkRoutes(app2) {
-  app2.post("/api/admin/enrichment/bulk-dietary", requireAuth, requireAdmin7, async (req, res) => {
-    const { businessIds, tags, mode = "merge" } = req.body || {};
-    if (!Array.isArray(businessIds) || businessIds.length === 0) {
-      return res.status(400).json({ error: "businessIds must be a non-empty array" });
-    }
-    if (!Array.isArray(tags) || tags.length === 0) {
-      return res.status(400).json({ error: "tags must be a non-empty array" });
-    }
-    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
-    if (invalidTags.length > 0) {
-      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
-    }
-    if (businessIds.length > 100) {
-      return res.status(400).json({ error: "Maximum 100 businesses per batch" });
-    }
-    bulkLog.info(`Bulk dietary: ${businessIds.length} businesses, tags=[${tags}], mode=${mode}`);
-    const results = [];
-    for (const bizId of businessIds) {
-      const [biz] = await db.select({
-        id: businesses.id,
-        name: businesses.name,
-        dietaryTags: businesses.dietaryTags
-      }).from(businesses).where(eq31(businesses.id, bizId));
-      if (!biz) continue;
-      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
-      const newTags = mode === "replace" ? [...tags] : [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
-      await db.update(businesses).set({ dietaryTags: newTags }).where(eq31(businesses.id, bizId));
-      results.push({ id: biz.id, name: biz.name, previousTags, newTags });
-    }
-    bulkLog.info(`Bulk dietary complete: ${results.length}/${businessIds.length} updated`);
-    res.json({ updated: results.length, requested: businessIds.length, mode, results });
-  });
-  app2.post("/api/admin/enrichment/bulk-dietary-by-cuisine", requireAuth, requireAdmin7, async (req, res) => {
-    const { cuisine, tags, city, dryRun = true } = req.body || {};
-    if (!cuisine || typeof cuisine !== "string") {
-      return res.status(400).json({ error: "cuisine is required" });
-    }
-    if (!Array.isArray(tags) || tags.length === 0) {
-      return res.status(400).json({ error: "tags must be a non-empty array" });
-    }
-    const invalidTags = tags.filter((t) => !VALID_TAGS2.includes(t));
-    if (invalidTags.length > 0) {
-      return res.status(400).json({ error: `Invalid tags: ${invalidTags.join(", ")}` });
-    }
-    bulkLog.info(`Bulk dietary by cuisine: ${cuisine}, tags=[${tags}], city=${city || "all"}, dryRun=${dryRun}`);
-    let allBiz = await db.select({
-      id: businesses.id,
-      name: businesses.name,
-      cuisine: businesses.cuisine,
-      city: businesses.city,
-      dietaryTags: businesses.dietaryTags
-    }).from(businesses).where(eq31(businesses.isActive, true));
-    allBiz = allBiz.filter((b) => b.cuisine?.toLowerCase() === cuisine.toLowerCase());
-    if (city) {
-      allBiz = allBiz.filter((b) => b.city === city);
-    }
-    const updates = [];
-    for (const biz of allBiz) {
-      const previousTags = Array.isArray(biz.dietaryTags) ? biz.dietaryTags : [];
-      const newTags = [.../* @__PURE__ */ new Set([...previousTags, ...tags])];
-      if (newTags.length === previousTags.length && newTags.every((t) => previousTags.includes(t))) {
-        continue;
-      }
-      if (!dryRun) {
-        await db.update(businesses).set({ dietaryTags: newTags }).where(eq31(businesses.id, biz.id));
-      }
-      updates.push({ id: biz.id, name: biz.name, previousTags, newTags });
-    }
-    bulkLog.info(`Bulk by cuisine ${dryRun ? "(dry run)" : ""}: ${updates.length}/${allBiz.length} ${dryRun ? "would be" : "were"} updated`);
-    res.json({
-      dryRun,
-      cuisine,
-      city: city || "all",
-      matched: allBiz.length,
-      updated: updates.length,
-      updates: updates.slice(0, 50)
-      // cap for response size
-    });
-  });
-  app2.post("/api/admin/enrichment/bulk-hours", requireAuth, requireAdmin7, async (req, res) => {
-    const { businessIds, hoursData, source = "manual", dryRun = true } = req.body || {};
-    if (!Array.isArray(businessIds) || businessIds.length === 0) {
-      return res.status(400).json({ error: "businessIds must be a non-empty array" });
-    }
-    if (!hoursData || typeof hoursData !== "object") {
-      return res.status(400).json({ error: "hoursData must be a valid hours object" });
-    }
-    if (businessIds.length > 50) {
-      return res.status(400).json({ error: "Maximum 50 businesses per hours batch" });
-    }
-    const VALID_SOURCES = ["manual", "google_places", "import"];
-    if (!VALID_SOURCES.includes(source)) {
-      return res.status(400).json({ error: `Invalid source: ${source}. Must be one of: ${VALID_SOURCES.join(", ")}` });
-    }
-    const periods = hoursData.periods;
-    if (periods && !Array.isArray(periods)) {
-      return res.status(400).json({ error: "hoursData.periods must be an array" });
-    }
-    if (periods) {
-      for (const p of periods) {
-        if (!p.open || typeof p.open.day !== "number" || typeof p.open.time !== "string") {
-          return res.status(400).json({ error: "Each period must have open.day (number) and open.time (string)" });
-        }
-      }
-    }
-    bulkLog.info(`Bulk hours: ${businessIds.length} businesses, source=${source}, dryRun=${dryRun}`);
-    const results = [];
-    for (const bizId of businessIds) {
-      const [biz] = await db.select({
-        id: businesses.id,
-        name: businesses.name,
-        openingHours: businesses.openingHours
-      }).from(businesses).where(eq31(businesses.id, bizId));
-      if (!biz) continue;
-      const prevHours = biz.openingHours;
-      const hadHours = !!(prevHours && prevHours.periods && prevHours.periods.length > 0);
-      if (!dryRun) {
-        await db.update(businesses).set({ openingHours: hoursData }).where(eq31(businesses.id, bizId));
-      }
-      results.push({
-        id: biz.id,
-        name: biz.name,
-        hadHours,
-        periodsCount: periods?.length || 0
-      });
-    }
-    bulkLog.info(`Bulk hours ${dryRun ? "(dry run)" : ""}: ${results.length}/${businessIds.length} ${dryRun ? "would be" : "were"} updated`);
-    res.json({
-      dryRun,
-      source,
-      requested: businessIds.length,
-      updated: results.length,
-      results: results.slice(0, 50)
-    });
-  });
 }
 
 // server/routes-city-stats.ts
@@ -15837,34 +15859,17 @@ async function registerRoutes(app2) {
     return res.status(201).json({ data: feedback });
   }));
   registerBadgeRoutes(app2);
-  registerAdminRoutes(app2);
   registerExperimentRoutes(app2);
-  registerAdminExperimentRoutes(app2);
   registerUnsubscribeRoutes(app2);
   registerWebhookRoutes(app2);
-  registerAdminPromotionRoutes(app2);
-  registerAdminRateLimitRoutes(app2);
-  registerAdminClaimVerificationRoutes(app2);
-  registerAdminReputationRoutes(app2);
-  registerAdminModerationRoutes(app2);
-  registerAdminRankingRoutes(app2);
   registerOwnerDashboardRoutes(app2);
-  registerAdminTemplateRoutes(app2);
-  registerAdminPushTemplateRoutes(app2);
-  registerAdminTierLimitRoutes(app2);
-  registerAdminWebSocketRoutes(app2);
-  registerAdminHealthRoutes(app2);
-  registerAdminPhotoRoutes(app2);
-  registerAdminReceiptRoutes(app2);
-  registerAdminDietaryRoutes(app2);
-  registerAdminEnrichmentRoutes(app2);
-  registerAdminEnrichmentBulkRoutes(app2);
   registerCityStatsRoutes(app2);
   registerPushRoutes(app2);
   registerSearchRoutes(app2);
   registerBestInRoutes(app2);
   registerRatingPhotoRoutes(app2);
   registerScoreBreakdownRoutes(app2);
+  registerAllAdminRoutes(app2);
   const httpServer = createServer(app2);
   return httpServer;
 }

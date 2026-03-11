@@ -302,13 +302,13 @@ describe("Admin health routes — server/routes-admin-health.ts (static)", () =>
 // 5. Integration wiring (4 tests)
 // ---------------------------------------------------------------------------
 describe("Integration — Sprint 252", () => {
-  it("routes.ts imports registerAdminHealthRoutes", () => {
-    const src = readFile("server/routes.ts");
+  it("routes-admin.ts imports registerAdminHealthRoutes", () => {
+    const src = readFile("server/routes-admin.ts");
     expect(src).toContain("registerAdminHealthRoutes");
   });
 
-  it("routes.ts calls registerAdminHealthRoutes(app)", () => {
-    const src = readFile("server/routes.ts");
+  it("routes-admin.ts calls registerAdminHealthRoutes(app)", () => {
+    const src = readFile("server/routes-admin.ts");
     expect(src).toContain("registerAdminHealthRoutes(app)");
   });
 

@@ -84,18 +84,23 @@ describe("Enrichment dashboard — routes-admin-enrichment.ts", () => {
 // 3. Route registration
 // ---------------------------------------------------------------------------
 describe("Enrichment — route registration", () => {
-  const src = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes.ts");
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("imports registerAdminEnrichmentBulkRoutes", () => {
-    expect(src).toContain("registerAdminEnrichmentBulkRoutes");
+  it("routes.ts delegates to registerAllAdminRoutes", () => {
+    expect(routesSrc).toContain("registerAllAdminRoutes(app)");
   });
 
-  it("calls registerAdminEnrichmentBulkRoutes", () => {
-    expect(src).toContain("registerAdminEnrichmentBulkRoutes(app)");
+  it("admin routes imports registerAdminEnrichmentBulkRoutes", () => {
+    expect(adminSrc).toContain("registerAdminEnrichmentBulkRoutes");
   });
 
-  it("still calls registerAdminEnrichmentRoutes", () => {
-    expect(src).toContain("registerAdminEnrichmentRoutes(app)");
+  it("admin routes calls registerAdminEnrichmentBulkRoutes", () => {
+    expect(adminSrc).toContain("registerAdminEnrichmentBulkRoutes(app)");
+  });
+
+  it("admin routes still calls registerAdminEnrichmentRoutes", () => {
+    expect(adminSrc).toContain("registerAdminEnrichmentRoutes(app)");
   });
 });
 

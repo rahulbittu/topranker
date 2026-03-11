@@ -310,20 +310,20 @@ describe("Admin rate limit routes — static (server/routes-admin-ratelimit.ts)"
 // ---------------------------------------------------------------------------
 // 6. Integration — routes.ts wiring
 // ---------------------------------------------------------------------------
-describe("Integration — routes.ts wiring", () => {
-  const src = readFile("server/routes.ts");
+describe("Integration — routes-admin.ts wiring", () => {
+  const adminSrc = readFile("server/routes-admin.ts");
 
   it("imports registerAdminRateLimitRoutes", () => {
-    expect(src).toContain('import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit"');
+    expect(adminSrc).toContain('import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit"');
   });
 
   it("calls registerAdminRateLimitRoutes(app)", () => {
-    expect(src).toContain("registerAdminRateLimitRoutes(app)");
+    expect(adminSrc).toContain("registerAdminRateLimitRoutes(app)");
   });
 
   it("registerAdminRateLimitRoutes is called after registerAdminPromotionRoutes", () => {
-    const promoIdx = src.indexOf("registerAdminPromotionRoutes(app)");
-    const rlIdx = src.indexOf("registerAdminRateLimitRoutes(app)");
+    const promoIdx = adminSrc.indexOf("registerAdminPromotionRoutes(app)");
+    const rlIdx = adminSrc.indexOf("registerAdminRateLimitRoutes(app)");
     expect(promoIdx).toBeGreaterThan(-1);
     expect(rlIdx).toBeGreaterThan(promoIdx);
   });

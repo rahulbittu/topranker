@@ -139,13 +139,13 @@ describe('Admin experiment routes (server/routes-admin-experiments.ts)', () => {
 // Integration tests
 // ---------------------------------------------------------------------------
 describe('Integration — wiring between routes, webhooks, and email-id-mapping', () => {
-  it('routes.ts imports routes-admin-experiments', () => {
-    const src = readFile('server/routes.ts');
+  it('routes-admin.ts imports routes-admin-experiments', () => {
+    const src = readFile('server/routes-admin.ts');
     expect(src).toContain('routes-admin-experiments');
   });
 
-  it('routes.ts registers registerAdminExperimentRoutes', () => {
-    const src = readFile('server/routes.ts');
+  it('routes-admin.ts registers registerAdminExperimentRoutes', () => {
+    const src = readFile('server/routes-admin.ts');
     expect(src).toContain('registerAdminExperimentRoutes');
   });
 

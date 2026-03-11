@@ -122,14 +122,19 @@ describe("routes-admin-enrichment — gap endpoints", () => {
 // 4. routes.ts wiring
 // ---------------------------------------------------------------------------
 describe("routes.ts — enrichment wiring", () => {
-  const src = readFile("server/routes.ts");
+  const routesSrc = readFile("server/routes.ts");
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("imports registerAdminEnrichmentRoutes", () => {
-    expect(src).toContain("registerAdminEnrichmentRoutes");
+  it("routes.ts delegates to registerAllAdminRoutes", () => {
+    expect(routesSrc).toContain("registerAllAdminRoutes(app)");
   });
 
-  it("calls registerAdminEnrichmentRoutes(app)", () => {
-    expect(src).toContain("registerAdminEnrichmentRoutes(app)");
+  it("admin routes imports registerAdminEnrichmentRoutes", () => {
+    expect(adminSrc).toContain("registerAdminEnrichmentRoutes");
+  });
+
+  it("admin routes calls registerAdminEnrichmentRoutes(app)", () => {
+    expect(adminSrc).toContain("registerAdminEnrichmentRoutes(app)");
   });
 });
 

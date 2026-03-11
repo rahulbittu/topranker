@@ -226,15 +226,15 @@ describe("Admin tier limit routes — static analysis", () => {
 // ---------------------------------------------------------------------------
 // 4. Integration — Wiring
 // ---------------------------------------------------------------------------
-describe("Integration — routes.ts wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+describe("Integration — routes-admin.ts wiring", () => {
+  const adminSrc = readFile("server/routes-admin.ts");
 
   it("imports registerAdminTierLimitRoutes", () => {
-    expect(routesSrc).toContain('import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits"');
+    expect(adminSrc).toContain('import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits"');
   });
 
   it("calls registerAdminTierLimitRoutes(app)", () => {
-    expect(routesSrc).toContain("registerAdminTierLimitRoutes(app)");
+    expect(adminSrc).toContain("registerAdminTierLimitRoutes(app)");
   });
 
   it("tiered-rate-limiter.ts imports logger", () => {

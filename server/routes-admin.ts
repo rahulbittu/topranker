@@ -23,6 +23,23 @@ import { fetchAndStorePhotos, searchNearbyRestaurants, normalizeCategory } from 
 import { getPerfStats, getPerformanceValidation } from "./perf-monitor";
 import { getRateGateStats } from "./analytics";
 import { registerAdminAnalyticsRoutes } from "./routes-admin-analytics";
+import { registerAdminExperimentRoutes } from "./routes-admin-experiments";
+import { registerAdminPromotionRoutes } from "./routes-admin-promotion";
+import { registerAdminRateLimitRoutes } from "./routes-admin-ratelimit";
+import { registerAdminClaimVerificationRoutes } from "./routes-admin-claims-verification";
+import { registerAdminReputationRoutes } from "./routes-admin-reputation";
+import { registerAdminModerationRoutes } from "./routes-admin-moderation";
+import { registerAdminRankingRoutes } from "./routes-admin-ranking";
+import { registerAdminTemplateRoutes } from "./routes-admin-templates";
+import { registerAdminPushTemplateRoutes } from "./routes-admin-push-templates";
+import { registerAdminTierLimitRoutes } from "./routes-admin-tier-limits";
+import { registerAdminWebSocketRoutes } from "./routes-admin-websocket";
+import { registerAdminHealthRoutes } from "./routes-admin-health";
+import { registerAdminPhotoRoutes } from "./routes-admin-photos";
+import { registerAdminReceiptRoutes } from "./routes-admin-receipts";
+import { registerAdminDietaryRoutes } from "./routes-admin-dietary";
+import { registerAdminEnrichmentRoutes } from "./routes-admin-enrichment";
+import { registerAdminEnrichmentBulkRoutes } from "./routes-admin-enrichment-bulk";
 import { getRecentAlerts, getAlertStats, acknowledgeAlert, getAlertRules } from "./alerting";
 import { getRequestLogs } from "./request-logger";
 import { getRecentErrors } from "../lib/error-reporting";
@@ -601,4 +618,25 @@ export function registerAdminRoutes(app: Express) {
       },
     });
   }));
+}
+
+export function registerAllAdminRoutes(app: Express) {
+  registerAdminRoutes(app);
+  registerAdminExperimentRoutes(app);
+  registerAdminPromotionRoutes(app);
+  registerAdminRateLimitRoutes(app);
+  registerAdminClaimVerificationRoutes(app);
+  registerAdminReputationRoutes(app);
+  registerAdminModerationRoutes(app);
+  registerAdminRankingRoutes(app);
+  registerAdminTemplateRoutes(app);
+  registerAdminPushTemplateRoutes(app);
+  registerAdminTierLimitRoutes(app);
+  registerAdminWebSocketRoutes(app);
+  registerAdminHealthRoutes(app);
+  registerAdminPhotoRoutes(app);
+  registerAdminReceiptRoutes(app);
+  registerAdminDietaryRoutes(app);
+  registerAdminEnrichmentRoutes(app);
+  registerAdminEnrichmentBulkRoutes(app);
 }

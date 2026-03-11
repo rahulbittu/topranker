@@ -217,14 +217,14 @@ describe('Admin promotion routes (server/routes-admin-promotion.ts) — static',
 // 5. Integration — wiring
 // ---------------------------------------------------------------------------
 describe('Integration wiring', () => {
-  it('routes.ts imports routes-admin-promotion', () => {
-    const routesSrc = readFile('server/routes.ts');
-    expect(routesSrc).toContain('routes-admin-promotion');
+  it('routes-admin.ts imports routes-admin-promotion', () => {
+    const adminSrc = readFile('server/routes-admin.ts');
+    expect(adminSrc).toContain('routes-admin-promotion');
   });
 
-  it('routes.ts calls registerAdminPromotionRoutes', () => {
-    const routesSrc = readFile('server/routes.ts');
-    expect(routesSrc).toContain('registerAdminPromotionRoutes(app)');
+  it('routes-admin.ts calls registerAdminPromotionRoutes', () => {
+    const adminSrc = readFile('server/routes-admin.ts');
+    expect(adminSrc).toContain('registerAdminPromotionRoutes(app)');
   });
 
   it('city-promotion imports getCityEngagement from city-engagement', () => {

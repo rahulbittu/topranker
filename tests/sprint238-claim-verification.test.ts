@@ -261,16 +261,16 @@ describe("Admin claim routes — static checks", () => {
 // 4. Integration
 // ---------------------------------------------------------------------------
 describe("Integration — claim verification wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const adminRoutesSrc = readFile("server/routes-admin.ts");
   const claimSrc = readFile("server/claim-verification.ts");
   const adminSrc = readFile("server/routes-admin-claims-verification.ts");
 
-  it("routes.ts imports routes-admin-claims-verification", () => {
-    expect(routesSrc).toContain('from "./routes-admin-claims-verification"');
+  it("routes-admin.ts imports routes-admin-claims-verification", () => {
+    expect(adminRoutesSrc).toContain('from "./routes-admin-claims-verification"');
   });
 
-  it("routes.ts calls registerAdminClaimVerificationRoutes", () => {
-    expect(routesSrc).toContain("registerAdminClaimVerificationRoutes(app)");
+  it("routes-admin.ts calls registerAdminClaimVerificationRoutes", () => {
+    expect(adminRoutesSrc).toContain("registerAdminClaimVerificationRoutes(app)");
   });
 
   it("claim-verification.ts imports logger", () => {

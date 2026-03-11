@@ -315,14 +315,14 @@ describe("Admin ranking routes — static analysis", () => {
 // 4. Integration
 // ---------------------------------------------------------------------------
 describe("Search ranking v2 — integration", () => {
-  it("routes.ts imports registerAdminRankingRoutes", () => {
-    const routesSrc = readFile("server/routes.ts");
-    expect(routesSrc).toContain('import { registerAdminRankingRoutes } from "./routes-admin-ranking"');
+  it("routes-admin.ts imports registerAdminRankingRoutes", () => {
+    const adminSrc = readFile("server/routes-admin.ts");
+    expect(adminSrc).toContain('import { registerAdminRankingRoutes } from "./routes-admin-ranking"');
   });
 
-  it("routes.ts calls registerAdminRankingRoutes(app)", () => {
-    const routesSrc = readFile("server/routes.ts");
-    expect(routesSrc).toContain("registerAdminRankingRoutes(app)");
+  it("routes-admin.ts calls registerAdminRankingRoutes(app)", () => {
+    const adminSrc = readFile("server/routes-admin.ts");
+    expect(adminSrc).toContain("registerAdminRankingRoutes(app)");
   });
 
   it("search-ranking-v2.ts does not import db", () => {

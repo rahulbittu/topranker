@@ -280,16 +280,16 @@ describe("Admin reputation routes — static checks", () => {
 // 4. Integration
 // ---------------------------------------------------------------------------
 describe("Integration — reputation v2 wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const adminRoutesSrc = readFile("server/routes-admin.ts");
   const repSrc = readFile("server/reputation-v2.ts");
   const adminSrc = readFile("server/routes-admin-reputation.ts");
 
-  it("routes.ts imports routes-admin-reputation", () => {
-    expect(routesSrc).toContain('from "./routes-admin-reputation"');
+  it("routes-admin.ts imports routes-admin-reputation", () => {
+    expect(adminRoutesSrc).toContain('from "./routes-admin-reputation"');
   });
 
-  it("routes.ts calls registerAdminReputationRoutes", () => {
-    expect(routesSrc).toContain("registerAdminReputationRoutes(app)");
+  it("routes-admin.ts calls registerAdminReputationRoutes", () => {
+    expect(adminRoutesSrc).toContain("registerAdminReputationRoutes(app)");
   });
 
   it("reputation-v2.ts imports logger", () => {

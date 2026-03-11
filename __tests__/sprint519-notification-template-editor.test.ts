@@ -183,15 +183,20 @@ describe("Sprint 519: Notification Template Editor", () => {
   });
 
   describe("server/routes.ts — route registration", () => {
-    const src = readFile("server/routes.ts");
+    const routesSrc = readFile("server/routes.ts");
+    const adminSrc = readFile("server/routes-admin.ts");
 
-    it("imports registerAdminPushTemplateRoutes", () => {
-      expect(src).toContain("registerAdminPushTemplateRoutes");
-      expect(src).toContain("routes-admin-push-templates");
+    it("routes.ts delegates to registerAllAdminRoutes", () => {
+      expect(routesSrc).toContain("registerAllAdminRoutes(app)");
     });
 
-    it("calls registerAdminPushTemplateRoutes(app)", () => {
-      expect(src).toContain("registerAdminPushTemplateRoutes(app)");
+    it("admin routes imports registerAdminPushTemplateRoutes", () => {
+      expect(adminSrc).toContain("registerAdminPushTemplateRoutes");
+      expect(adminSrc).toContain("routes-admin-push-templates");
+    });
+
+    it("admin routes calls registerAdminPushTemplateRoutes(app)", () => {
+      expect(adminSrc).toContain("registerAdminPushTemplateRoutes(app)");
     });
   });
 });

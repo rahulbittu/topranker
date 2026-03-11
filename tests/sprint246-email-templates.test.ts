@@ -273,14 +273,14 @@ describe("Admin template routes — static analysis", () => {
 // 4. Integration — Wiring
 // ---------------------------------------------------------------------------
 describe("Email templates — integration wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("routes.ts imports registerAdminTemplateRoutes", () => {
-    expect(routesSrc).toContain('import { registerAdminTemplateRoutes } from "./routes-admin-templates"');
+  it("routes-admin.ts imports registerAdminTemplateRoutes", () => {
+    expect(adminSrc).toContain('import { registerAdminTemplateRoutes } from "./routes-admin-templates"');
   });
 
-  it("routes.ts calls registerAdminTemplateRoutes(app)", () => {
-    expect(routesSrc).toContain("registerAdminTemplateRoutes(app)");
+  it("routes-admin.ts calls registerAdminTemplateRoutes(app)", () => {
+    expect(adminSrc).toContain("registerAdminTemplateRoutes(app)");
   });
 
   it("email-templates.ts imports logger", () => {

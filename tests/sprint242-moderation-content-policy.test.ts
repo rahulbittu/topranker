@@ -371,14 +371,14 @@ describe("Admin moderation routes — static analysis", () => {
 // 6. Integration
 // ---------------------------------------------------------------------------
 describe("Integration — Sprint 242 wiring", () => {
-  const routesSrc = readFile("server/routes.ts");
+  const adminSrc = readFile("server/routes-admin.ts");
 
-  it("routes.ts imports registerAdminModerationRoutes", () => {
-    expect(routesSrc).toContain("registerAdminModerationRoutes");
+  it("routes-admin.ts imports registerAdminModerationRoutes", () => {
+    expect(adminSrc).toContain("registerAdminModerationRoutes");
   });
 
-  it("routes.ts calls registerAdminModerationRoutes(app)", () => {
-    expect(routesSrc).toContain("registerAdminModerationRoutes(app)");
+  it("routes-admin.ts calls registerAdminModerationRoutes(app)", () => {
+    expect(adminSrc).toContain("registerAdminModerationRoutes(app)");
   });
 
   it("content policy check feeds into moderation queue", () => {

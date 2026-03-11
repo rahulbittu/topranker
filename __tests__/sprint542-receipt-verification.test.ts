@@ -199,15 +199,20 @@ describe("Sprint 542: Receipt Verification OCR Prep", () => {
   });
 
   describe("Route Registration", () => {
-    const src = readFile("server/routes.ts");
+    const routesSrc = readFile("server/routes.ts");
+    const adminSrc = readFile("server/routes-admin.ts");
 
-    it("imports registerAdminReceiptRoutes", () => {
-      expect(src).toContain("registerAdminReceiptRoutes");
-      expect(src).toContain("./routes-admin-receipts");
+    it("routes.ts delegates to registerAllAdminRoutes", () => {
+      expect(routesSrc).toContain("registerAllAdminRoutes(app)");
     });
 
-    it("registers admin receipt routes", () => {
-      expect(src).toContain("registerAdminReceiptRoutes(app)");
+    it("admin routes imports registerAdminReceiptRoutes", () => {
+      expect(adminSrc).toContain("registerAdminReceiptRoutes");
+      expect(adminSrc).toContain("./routes-admin-receipts");
+    });
+
+    it("admin routes registers admin receipt routes", () => {
+      expect(adminSrc).toContain("registerAdminReceiptRoutes(app)");
     });
   });
 });
