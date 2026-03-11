@@ -143,6 +143,13 @@ var init_schema = __esm({
         openingHours: jsonb("opening_hours"),
         isOpenNow: boolean("is_open_now").notNull().default(false),
         hoursLastUpdated: timestamp("hours_last_updated"),
+        // Sprint 626: Decision-to-Action fields
+        menuUrl: text("menu_url"),
+        orderUrl: text("order_url"),
+        pickupUrl: text("pickup_url"),
+        doordashUrl: text("doordash_url"),
+        uberEatsUrl: text("uber_eats_url"),
+        reservationUrl: text("reservation_url"),
         dataSource: text("data_source").default("google_import"),
         photoUrl: text("photo_url"),
         weightedScore: numeric("weighted_score", { precision: 6, scale: 3 }).notNull().default("0"),
@@ -1567,6 +1574,7 @@ __export(businesses_exports, {
   recalculateBusinessScore: () => recalculateBusinessScore,
   recalculateRanks: () => recalculateRanks,
   searchBusinesses: () => searchBusinesses,
+  updateBusinessActions: () => updateBusinessActions,
   updateBusinessHours: () => updateBusinessHours,
   updateBusinessSubscription: () => updateBusinessSubscription
 });
@@ -1931,6 +1939,10 @@ async function getImportStats() {
     count: count2(businesses.id)
   }).from(businesses).where(eq4(businesses.isActive, true)).groupBy(businesses.city, businesses.dataSource).orderBy(businesses.city);
   return rows.map((r) => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
+}
+async function updateBusinessActions(businessId, updates) {
+  const [updated] = await db.update(businesses).set({ ...updates, updatedAt: /* @__PURE__ */ new Date() }).where(eq4(businesses.id, businessId)).returning();
+  return updated;
 }
 var init_businesses = __esm({
   "server/storage/businesses.ts"() {
@@ -12945,6 +12957,31 @@ function registerBusinessRoutes(app2) {
         message: "Photo submitted for review"
       }
     });
+  }));
+  app2.put("/api/businesses/:slug/actions", requireAuth, wrapAsync(async (req, res) => {
+    const biz = await getBusinessBySlug(req.params.slug);
+    if (!biz) return res.status(404).json({ error: "Business not found" });
+    const memberId = req.user.id;
+    if (biz.ownerId !== memberId && !req.user.isAdmin) {
+      return res.status(403).json({ error: "Only the business owner can update action links" });
+    }
+    const ACTION_FIELDS = ["menuUrl", "orderUrl", "pickupUrl", "doordashUrl", "uberEatsUrl", "reservationUrl"];
+    const updates = {};
+    for (const field of ACTION_FIELDS) {
+      if (req.body[field] !== void 0) {
+        const val = req.body[field];
+        if (val !== null && (typeof val !== "string" || val.length > 500)) {
+          return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
+        }
+        updates[field] = val;
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid action fields to update" });
+    }
+    const { updateBusinessActions: updateBusinessActions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const updated = await updateBusinessActions2(biz.id, updates);
+    return res.json({ data: updated });
   }));
 }
 

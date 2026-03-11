@@ -621,4 +621,17 @@ export async function getImportStats(): Promise<Array<{ city: string; dataSource
   return rows.map(r => ({ city: r.city, dataSource: r.dataSource || "unknown", count: Number(r.count) }));
 }
 
+// Sprint 626: Update action fields (menu, order, pickup, delivery URLs)
+export async function updateBusinessActions(
+  businessId: string,
+  updates: Record<string, string | null>,
+): Promise<any> {
+  const [updated] = await db
+    .update(businesses)
+    .set({ ...updates, updatedAt: new Date() })
+    .where(eq(businesses.id, businessId))
+    .returning();
+  return updated;
+}
+
 // Sprint 498: getTopDishesForAutocomplete moved to storage/dishes.ts

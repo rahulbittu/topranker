@@ -33,6 +33,13 @@ export interface ApiBusiness {
   googleRating: string | null;
   googleMapsUrl: string | null;
   openingHours: { weekday_text?: string[]; periods?: any[] } | null;
+  // Sprint 626: Decision-to-Action fields
+  menuUrl?: string | null;
+  orderUrl?: string | null;
+  pickupUrl?: string | null;
+  doordashUrl?: string | null;
+  uberEatsUrl?: string | null;
+  reservationUrl?: string | null;
 }
 
 export interface ApiRating {
@@ -193,6 +200,13 @@ export function mapApiBusiness(biz: ApiBusiness) {
     googleRating: biz.googleRating ? parseFloat(biz.googleRating) : undefined,
     googleMapsUrl: biz.googleMapsUrl || undefined,
     openingHours: biz.openingHours || undefined,
+    // Sprint 626: Decision-to-Action fields
+    menuUrl: biz.menuUrl || undefined,
+    orderUrl: biz.orderUrl || undefined,
+    pickupUrl: biz.pickupUrl || undefined,
+    doordashUrl: biz.doordashUrl || undefined,
+    uberEatsUrl: biz.uberEatsUrl || undefined,
+    reservationUrl: biz.reservationUrl || undefined,
   };
 }
 

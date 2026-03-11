@@ -269,4 +269,32 @@ export function registerBusinessRoutes(app: Express) {
     });
   }));
 
+  // Sprint 626: Update action fields (owner or admin)
+  app.put("/api/businesses/:slug/actions", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+    const biz = await getBusinessBySlug(req.params.slug);
+    if (!biz) return res.status(404).json({ error: "Business not found" });
+    // Only owner or admin can update action fields
+    const memberId = req.user!.id;
+    if (biz.ownerId !== memberId && !(req.user as any).isAdmin) {
+      return res.status(403).json({ error: "Only the business owner can update action links" });
+    }
+    const ACTION_FIELDS = ["menuUrl", "orderUrl", "pickupUrl", "doordashUrl", "uberEatsUrl", "reservationUrl"] as const;
+    const updates: Record<string, string | null> = {};
+    for (const field of ACTION_FIELDS) {
+      if (req.body[field] !== undefined) {
+        const val = req.body[field];
+        if (val !== null && (typeof val !== "string" || val.length > 500)) {
+          return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
+        }
+        updates[field] = val;
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid action fields to update" });
+    }
+    const { updateBusinessActions } = await import("./storage");
+    const updated = await updateBusinessActions(biz.id, updates);
+    return res.json({ data: updated });
+  }));
+
 }

@@ -1,12 +1,12 @@
 {
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
-    "shared/schema.ts": { "maxLOC": 960, "current": 898, "notes": "Sprint 625: +firstName/lastName columns (896→898)" },
+    "shared/schema.ts": { "maxLOC": 960, "current": 905, "notes": "Sprint 626: +action URL fields (898→905)" },
     "server/routes.ts": { "maxLOC": 400, "current": 377, "notes": "Sprint 623: +/api/google-places-fallback (367→377)" },
-    "server/storage/businesses.ts": { "maxLOC": 650, "current": 624, "notes": "Sprint 617: +getJustRatedBusinesses (600→624)" },
+    "server/storage/businesses.ts": { "maxLOC": 650, "current": 637, "notes": "Sprint 626: +updateBusinessActions (624→637)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 560, "current": 544, "notes": "Sprint 623: +fetchGooglePlacesFallback (525→544)" },
+    "lib/api.ts": { "maxLOC": 570, "current": 558, "notes": "Sprint 626: +action fields in ApiBusiness + mapApiBusiness (544→558)" },
     "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
@@ -34,10 +34,10 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 628.1
+    "currentSizeKb": 629.9
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11547
+    "currentCount": 11583
   }
 }

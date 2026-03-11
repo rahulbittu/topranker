@@ -24,4 +24,14 @@ export interface MappedBusiness {
   googleRating?: number;
   isClaimed?: boolean;
   relevanceScore?: number;
+  // Sprint 626: Decision-to-Action fields
+  phone?: string | null;
+  website?: string | null;
+  googleMapsUrl?: string | null;
+  menuUrl?: string | null;
+  orderUrl?: string | null;
+  pickupUrl?: string | null;
+  doordashUrl?: string | null;
+  uberEatsUrl?: string | null;
+  reservationUrl?: string | null;
 }

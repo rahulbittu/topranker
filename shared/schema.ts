@@ -81,6 +81,13 @@ export const businesses = pgTable(
     openingHours: jsonb("opening_hours"),
     isOpenNow: boolean("is_open_now").notNull().default(false),
     hoursLastUpdated: timestamp("hours_last_updated"),
+    // Sprint 626: Decision-to-Action fields
+    menuUrl: text("menu_url"),
+    orderUrl: text("order_url"),
+    pickupUrl: text("pickup_url"),
+    doordashUrl: text("doordash_url"),
+    uberEatsUrl: text("uber_eats_url"),
+    reservationUrl: text("reservation_url"),
     dataSource: text("data_source").default("google_import"),
     photoUrl: text("photo_url"),
     weightedScore: numeric("weighted_score", { precision: 6, scale: 3 })
