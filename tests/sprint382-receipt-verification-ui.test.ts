@@ -24,16 +24,16 @@ describe("Sprint 382 — receipt upload UI", () => {
     expect(extrasSrc).toContain("setReceiptUri");
   });
 
-  it("has receipt-outline icon", () => {
-    expect(extrasSrc).toContain("receipt-outline");
+  it("has shield-checkmark icon for receipt verification", () => {
+    expect(extrasSrc).toContain("shield-checkmark");
   });
 
-  it("shows Upload Receipt title", () => {
-    expect(extrasSrc).toContain("Upload Receipt");
+  it("shows Verify with Receipt title", () => {
+    expect(extrasSrc).toContain("Verify with Receipt");
   });
 
   it("shows +25% boost badge", () => {
-    expect(extrasSrc).toContain("+25% boost");
+    expect(extrasSrc).toContain("+25%");
   });
 
   it("has Verified Purchase badge on receipt preview", () => {

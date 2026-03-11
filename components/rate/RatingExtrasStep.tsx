@@ -335,16 +335,35 @@ export function RatingExtrasStep({
         {photos.length > 0 && photos.length < MAX_PHOTOS && <PhotoTips />}
       </View>
 
-      {/* Receipt Upload — Sprint 382: +25% verification boost */}
+      {/* Receipt Upload — highest single verification boost */}
       {setReceiptUri && (
         <View style={s.receiptSection}>
           <View style={s.receiptHeader}>
-            <Ionicons name="receipt-outline" size={16} color={Colors.gold} />
-            <Text style={s.receiptTitle}>Upload Receipt</Text>
+            <Ionicons name="shield-checkmark" size={18} color={Colors.gold} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.receiptTitle}>Verify with Receipt</Text>
+              <Text style={s.receiptSubtitle}>Highest verification boost available</Text>
+            </View>
             <View style={s.receiptBoostBadge}>
-              <Text style={s.receiptBoostText}>+25% boost</Text>
+              <Text style={s.receiptBoostText}>+25%</Text>
             </View>
           </View>
+          {!receiptUri && (
+            <View style={s.receiptProofList}>
+              <View style={s.receiptProofItem}>
+                <Ionicons name="checkmark-circle" size={14} color={Colors.green} />
+                <Text style={s.receiptProofText}>Proves you visited this restaurant</Text>
+              </View>
+              <View style={s.receiptProofItem}>
+                <Ionicons name="checkmark-circle" size={14} color={Colors.green} />
+                <Text style={s.receiptProofText}>Confirms the date of your experience</Text>
+              </View>
+              <View style={s.receiptProofItem}>
+                <Ionicons name="checkmark-circle" size={14} color={Colors.green} />
+                <Text style={s.receiptProofText}>Your rating gets 25% more weight in rankings</Text>
+              </View>
+            </View>
+          )}
           <Text style={s.receiptHint}>
             {getReceiptHint(visitType)}
           </Text>
@@ -555,8 +574,12 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: 14, padding: 14, gap: 10,
     borderWidth: 1, borderColor: "rgba(196,154,26,0.15)",
   },
-  receiptHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  receiptTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold", flex: 1 },
+  receiptHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  receiptTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
+  receiptSubtitle: { fontSize: 11, color: Colors.textSecondary, fontFamily: "DMSans_400Regular" },
+  receiptProofList: { gap: 6 },
+  receiptProofItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  receiptProofText: { fontSize: 12, color: Colors.text, fontFamily: "DMSans_400Regular" },
   receiptBoostBadge: {
     backgroundColor: "rgba(196,154,26,0.12)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
   },
