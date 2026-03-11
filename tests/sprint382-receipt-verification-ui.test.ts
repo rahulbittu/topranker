@@ -11,10 +11,11 @@ import * as path from "path";
 const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");
 
-// ── 1. RatingExtrasStep — receipt upload section ─────────────────────
+// ── 1. Receipt upload UI — Sprint 606: extracted to ReceiptUploadCard ────────
 
 describe("Sprint 382 — receipt upload UI", () => {
   const extrasSrc = readFile("components/rate/RatingExtrasStep.tsx");
+  const receiptCardSrc = readFile("components/rate/ReceiptUploadCard.tsx");
 
   it("accepts receiptUri prop", () => {
     expect(extrasSrc).toContain("receiptUri");
@@ -25,56 +26,55 @@ describe("Sprint 382 — receipt upload UI", () => {
   });
 
   it("has shield-checkmark icon for receipt verification", () => {
-    expect(extrasSrc).toContain("shield-checkmark");
+    expect(receiptCardSrc).toContain("shield-checkmark");
   });
 
   it("shows Verify with Receipt title", () => {
-    expect(extrasSrc).toContain("Verify with Receipt");
+    expect(receiptCardSrc).toContain("Verify with Receipt");
   });
 
   it("shows +25% boost badge", () => {
-    expect(extrasSrc).toContain("+25%");
+    expect(receiptCardSrc).toContain("+25%");
   });
 
   it("has Verified Purchase badge on receipt preview", () => {
-    expect(extrasSrc).toContain("Verified Purchase");
+    expect(receiptCardSrc).toContain("Verified Purchase");
   });
 
   it("has visit-type-aware receipt hint", () => {
-    // Sprint 462→466: receipt hints extracted to RatingPrompts.tsx
-    expect(extrasSrc).toContain("getReceiptHint");
+    expect(receiptCardSrc).toContain("getReceiptHint");
   });
 
   it("has pickReceipt function", () => {
-    expect(extrasSrc).toContain("pickReceipt");
+    expect(receiptCardSrc).toContain("pickReceipt");
   });
 
   it("has captureReceipt function for camera", () => {
-    expect(extrasSrc).toContain("captureReceipt");
+    expect(receiptCardSrc).toContain("captureReceipt");
   });
 
   it("has remove receipt button", () => {
-    expect(extrasSrc).toContain("Remove receipt");
+    expect(receiptCardSrc).toContain("Remove receipt");
   });
 
   it("has receiptSection style", () => {
-    expect(extrasSrc).toContain("receiptSection");
+    expect(receiptCardSrc).toContain("receiptSection");
   });
 
   it("has receiptPreview style", () => {
-    expect(extrasSrc).toContain("receiptPreview");
+    expect(receiptCardSrc).toContain("receiptPreview");
   });
 
   it("has receiptVerifiedBadge style", () => {
-    expect(extrasSrc).toContain("receiptVerifiedBadge");
+    expect(receiptCardSrc).toContain("receiptVerifiedBadge");
   });
 
   it("conditionally renders receipt section when setReceiptUri is provided", () => {
     expect(extrasSrc).toContain("setReceiptUri && (");
   });
 
-  it("uses shield-checkmark icon for verified receipt", () => {
-    expect(extrasSrc).toContain("shield-checkmark");
+  it("imports ReceiptUploadCard component", () => {
+    expect(extrasSrc).toContain("ReceiptUploadCard");
   });
 });
 

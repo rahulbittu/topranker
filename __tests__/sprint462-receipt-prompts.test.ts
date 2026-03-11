@@ -54,14 +54,17 @@ describe("Receipt prompts — getReceiptHint", () => {
 // 2. Dynamic receipt hint rendering
 // ---------------------------------------------------------------------------
 describe("Receipt prompts — dynamic rendering", () => {
-  const src = readFile("components/rate/RatingExtrasStep.tsx");
+  // Sprint 606: receipt section extracted to ReceiptUploadCard
+  const receiptCardSrc = readFile("components/rate/ReceiptUploadCard.tsx");
+  const extrasSrc = readFile("components/rate/RatingExtrasStep.tsx");
 
   it("calls getReceiptHint with visitType", () => {
-    expect(src).toContain("getReceiptHint(visitType)");
+    expect(receiptCardSrc).toContain("getReceiptHint(visitType)");
   });
 
   it("no longer uses static receipt hint text", () => {
-    expect(src).not.toContain("Upload your receipt or order confirmation for a Verified Purchase badge");
+    expect(extrasSrc).not.toContain("Upload your receipt or order confirmation for a Verified Purchase badge");
+    expect(receiptCardSrc).not.toContain("Upload your receipt or order confirmation for a Verified Purchase badge");
   });
 });
 
