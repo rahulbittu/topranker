@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, Alert,
+  Platform, Alert, Linking,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -71,6 +71,15 @@ export default function EnterDashboardProScreen() {
       if (!res.ok) {
         Alert.alert("Payment Error", json.error || "Payment failed");
         setProcessing(false);
+        return;
+      }
+      // Sprint 653: Redirect to Stripe Checkout in production, confirm in dev (mock)
+      if (json.data?.url) {
+        if (Platform.OS === "web") {
+          window.location.href = json.data.url;
+        } else {
+          await Linking.openURL(json.data.url);
+        }
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
