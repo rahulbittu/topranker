@@ -15989,7 +15989,7 @@ function securityHeaders(req, res, next) {
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com https://places.googleapis.com",
-    "frame-src 'self' https://accounts.google.com",
+    "frame-src 'self' https://accounts.google.com https://www.google.com https://maps.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'"
@@ -16171,7 +16171,7 @@ function configureExpoAndLanding(app2) {
   let distIndexHtml = "";
   if (hasDistBuild) {
     distIndexHtml = fs2.readFileSync(path2.join(distPath, "index.html"), "utf-8");
-    const CORRECT_BUNDLE = "entry-8624eb1277770ccc5ccf061e5c355054.js";
+    const CORRECT_BUNDLE = "entry-6334f29bbc7b5a586c4541760bb0bee2.js";
     if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
       log2(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
       distIndexHtml = distIndexHtml.replace(
@@ -16181,7 +16181,7 @@ function configureExpoAndLanding(app2) {
     }
   }
   if (hasDistBuild) {
-    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-8624eb1277770ccc5ccf061e5c355054.js");
+    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-6334f29bbc7b5a586c4541760bb0bee2.js");
     const oldBundlePath = path2.join(distPath, "_expo/static/js/web/entry-f0d81efe56c6a797345dce3e0af6b1c3.js");
     if (!fs2.existsSync(correctBundlePath) && fs2.existsSync(oldBundlePath)) {
       const oldBundleContent = fs2.readFileSync(oldBundlePath, "utf-8");

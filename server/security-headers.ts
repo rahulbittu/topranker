@@ -124,7 +124,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
     "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com https://places.googleapis.com",
-    "frame-src 'self' https://accounts.google.com",
+    "frame-src 'self' https://accounts.google.com https://www.google.com https://maps.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

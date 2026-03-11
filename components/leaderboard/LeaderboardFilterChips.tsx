@@ -23,7 +23,7 @@ export function LeaderboardFilterChips({
 }: LeaderboardFilterChipsProps) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.row} contentContainerStyle={s.content}>
-      {neighborhoods.length > 0 && neighborhoods.slice(0, 8).map((n) => (
+      {neighborhoods.length > 0 && neighborhoods.map((n) => (
         <TouchableOpacity
           key={n}
           style={[s.chip, neighborhoodFilter === n && s.chipActive]}
