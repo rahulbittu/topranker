@@ -106,7 +106,11 @@ export type AnalyticsEvent =
   | "beta_join_page_view"
   | "beta_join_cta_tap"
   | "beta_signup_with_referral"
-  | "beta_referral_share";
+  | "beta_referral_share"
+  // Sprint 630: Decision-to-Action attribution
+  | "action_cta_tap"
+  | "action_cta_impression"
+  | "action_cta_conversion";
 
 interface EventProperties {
   [key: string]: string | number | boolean | undefined;
@@ -303,4 +307,11 @@ export const Analytics = {
   // Sprint 627: Decision-to-Action CTA tracking
   actionCTATap: (slug: string, actionType: string) =>
     track("action_cta_tap", { business_slug: slug, action_type: actionType }),
+
+  // Sprint 630: Decision-to-Action attribution
+  actionCTAImpression: (slug: string, surface: "business_detail" | "discover_card" | "ranked_card", actionTypes: string[]) =>
+    track("action_cta_impression", { business_slug: slug, surface, action_count: actionTypes.length, action_types: actionTypes.join(",") }),
+
+  actionCTAConversion: (slug: string, actionType: string, surface: "business_detail" | "discover_card" | "ranked_card") =>
+    track("action_cta_conversion", { business_slug: slug, action_type: actionType, surface }),
 };

@@ -2,7 +2,7 @@
  * Sprint 381: Extracted action bar from business detail.
  * Contains Call, Website, Maps, Share, Copy Link action buttons.
  */
-import React from "react";
+import React, { useEffect } from "react";
 import { View, StyleSheet, Platform, Linking, Share } from "react-native";
 import * as Haptics from "expo-haptics";
 import { ActionButton } from "./ActionButton";
@@ -70,14 +70,28 @@ export function BusinessActionBar({
   };
 
   // Sprint 627: Decision-to-Action CTA handlers
-  const handleMenu = () => { if (menuUrl) { Haptics.selectionAsync(); Linking.openURL(menuUrl); Analytics.actionCTATap(slug, "menu"); } };
-  const handleOrder = () => { if (orderUrl) { Haptics.selectionAsync(); Linking.openURL(orderUrl); Analytics.actionCTATap(slug, "order"); } };
-  const handlePickup = () => { if (pickupUrl) { Haptics.selectionAsync(); Linking.openURL(pickupUrl); Analytics.actionCTATap(slug, "pickup"); } };
-  const handleDoordash = () => { if (doordashUrl) { Haptics.selectionAsync(); Linking.openURL(doordashUrl); Analytics.actionCTATap(slug, "doordash"); } };
-  const handleUberEats = () => { if (uberEatsUrl) { Haptics.selectionAsync(); Linking.openURL(uberEatsUrl); Analytics.actionCTATap(slug, "ubereats"); } };
-  const handleReservation = () => { if (reservationUrl) { Haptics.selectionAsync(); Linking.openURL(reservationUrl); Analytics.actionCTATap(slug, "reservation"); } };
+  const handleMenu = () => { if (menuUrl) { Haptics.selectionAsync(); Linking.openURL(menuUrl); Analytics.actionCTATap(slug, "menu"); Analytics.actionCTAConversion(slug, "menu", "business_detail"); } };
+  const handleOrder = () => { if (orderUrl) { Haptics.selectionAsync(); Linking.openURL(orderUrl); Analytics.actionCTATap(slug, "order"); Analytics.actionCTAConversion(slug, "order", "business_detail"); } };
+  const handlePickup = () => { if (pickupUrl) { Haptics.selectionAsync(); Linking.openURL(pickupUrl); Analytics.actionCTATap(slug, "pickup"); Analytics.actionCTAConversion(slug, "pickup", "business_detail"); } };
+  const handleDoordash = () => { if (doordashUrl) { Haptics.selectionAsync(); Linking.openURL(doordashUrl); Analytics.actionCTATap(slug, "doordash"); Analytics.actionCTAConversion(slug, "doordash", "business_detail"); } };
+  const handleUberEats = () => { if (uberEatsUrl) { Haptics.selectionAsync(); Linking.openURL(uberEatsUrl); Analytics.actionCTATap(slug, "ubereats"); Analytics.actionCTAConversion(slug, "ubereats", "business_detail"); } };
+  const handleReservation = () => { if (reservationUrl) { Haptics.selectionAsync(); Linking.openURL(reservationUrl); Analytics.actionCTATap(slug, "reservation"); Analytics.actionCTAConversion(slug, "reservation", "business_detail"); } };
 
   const hasActionCTAs = menuUrl || orderUrl || pickupUrl || doordashUrl || uberEatsUrl || reservationUrl;
+
+  // Sprint 630: Track action CTA impressions on business detail
+  useEffect(() => {
+    if (hasActionCTAs) {
+      const types: string[] = [];
+      if (menuUrl) types.push("menu");
+      if (orderUrl) types.push("order");
+      if (pickupUrl) types.push("pickup");
+      if (doordashUrl) types.push("doordash");
+      if (uberEatsUrl) types.push("ubereats");
+      if (reservationUrl) types.push("reservation");
+      Analytics.actionCTAImpression(slug, "business_detail", types);
+    }
+  }, [slug, hasActionCTAs]);
 
   // Sprint 539: WhatsApp share with "Best In" format
   const handleWhatsApp = async () => {
