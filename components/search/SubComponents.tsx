@@ -247,22 +247,42 @@ export const BusinessCard = React.memo(function BusinessCard({
           )}
         </View>
         {/* Sprint 609: Rate CTA — direct rating from discover card */}
-        <TouchableOpacity
-          style={s.rateCta}
-          onPress={(e) => {
-            e.stopPropagation();
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            Analytics.rateCtaDiscoverTap(item.slug, "card");
-            router.push({ pathname: "/rate/[id]", params: { id: item.slug } });
-          }}
-          hitSlop={4}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel={`Rate ${item.name}`}
-        >
-          <Ionicons name="star-outline" size={12} color={AMBER} />
-          <Text style={s.rateCtaText}>Rate this</Text>
-        </TouchableOpacity>
+        <View style={s.cardActionsRow}>
+          <TouchableOpacity
+            style={s.rateCta}
+            onPress={(e) => {
+              e.stopPropagation();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Analytics.rateCtaDiscoverTap(item.slug, "card");
+              router.push({ pathname: "/rate/[id]", params: { id: item.slug } });
+            }}
+            hitSlop={4}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Rate ${item.name}`}
+          >
+            <Ionicons name="star-outline" size={12} color={AMBER} />
+            <Text style={s.rateCtaText}>Rate this</Text>
+          </TouchableOpacity>
+          {/* Sprint 628: Compact action quick-links */}
+          <View style={s.quickActions}>
+            {item.phone && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); Analytics.actionCTATap(item.slug, "call_card"); }} hitSlop={6} accessibilityLabel="Call">
+                <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {(item.lat && item.lng) && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); const url = Platform.OS === "web" ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : Platform.OS === "ios" ? `maps:?q=${item.lat},${item.lng}` : `geo:${item.lat},${item.lng}`; Linking.openURL(url); Analytics.actionCTATap(item.slug, "directions_card"); }} hitSlop={6} accessibilityLabel="Directions">
+                <Ionicons name="navigate-outline" size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {(item.orderUrl || item.menuUrl) && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); Linking.openURL((item.orderUrl || item.menuUrl)!); Analytics.actionCTATap(item.slug, item.orderUrl ? "order_card" : "menu_card"); }} hitSlop={6} accessibilityLabel={item.orderUrl ? "Order" : "Menu"}>
+                <Ionicons name={item.orderUrl ? "bag-handle-outline" : "restaurant-outline"} size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
         {showConfTooltip && (() => {
           const conf = getRankConfidence(item.ratingCount ?? 0, item.category);
           return (
@@ -435,6 +455,12 @@ const s = StyleSheet.create({
   },
   rateCtaText: {
     fontSize: 11, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold",
+  },
+  cardActionsRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  quickActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+  quickActionBtn: {
+    width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    backgroundColor: `${Colors.textTertiary}10`,
   },
 
   mapCard: {

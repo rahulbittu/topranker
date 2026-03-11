@@ -5,7 +5,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  Animated, useWindowDimensions, Share,
+  Animated, useWindowDimensions, Share, Linking, Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -237,6 +237,26 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
             </View>
           );
         })()}
+        {/* Sprint 628: Compact action quick-links on ranked cards */}
+        {(item.phone || (item.lat && item.lng) || item.orderUrl || item.menuUrl) && (
+          <View style={s.quickActionsRow}>
+            {item.phone && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); Linking.openURL(`tel:${item.phone}`); Analytics.actionCTATap(item.slug, "call_ranked"); }} hitSlop={6} accessibilityLabel="Call">
+                <Ionicons name="call-outline" size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {(item.lat && item.lng) && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); const url = Platform.OS === "web" ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}` : Platform.OS === "ios" ? `maps:?q=${item.lat},${item.lng}` : `geo:${item.lat},${item.lng}`; Linking.openURL(url); Analytics.actionCTATap(item.slug, "directions_ranked"); }} hitSlop={6} accessibilityLabel="Directions">
+                <Ionicons name="navigate-outline" size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+            {(item.orderUrl || item.menuUrl) && (
+              <TouchableOpacity style={s.quickActionBtn} onPress={(e) => { e.stopPropagation(); Linking.openURL((item.orderUrl || item.menuUrl)!); Analytics.actionCTATap(item.slug, item.orderUrl ? "order_ranked" : "menu_ranked"); }} hitSlop={6} accessibilityLabel={item.orderUrl ? "Order" : "Menu"}>
+                <Ionicons name={item.orderUrl ? "bag-handle-outline" : "restaurant-outline"} size={14} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </View>
     </TouchableOpacity>
     </Animated.View>
@@ -317,5 +337,10 @@ const s = StyleSheet.create({
   confTooltipText: {
     fontSize: 11, color: Colors.textSecondary,
     fontFamily: "DMSans_400Regular", lineHeight: 14,
+  },
+  quickActionsRow: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 6 },
+  quickActionBtn: {
+    width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    backgroundColor: `${Colors.textTertiary}10`,
   },
 });
