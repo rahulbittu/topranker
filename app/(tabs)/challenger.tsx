@@ -51,9 +51,13 @@ export default function ChallengerScreen() {
     <View style={[styles.container, { paddingTop: topPad }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Live Challenges</Text>
+        <View style={styles.liveBadge}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>LIVE</Text>
+        </View>
       </View>
       <Text style={styles.headerSub}>
-        30-day head-to-head competitions. Weighted votes decide the winner.
+        Head-to-head battles. Community-weighted votes. Real winners.
       </Text>
 
       {isLoading ? (
@@ -84,9 +88,11 @@ export default function ChallengerScreen() {
 
           {challenges.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="flash-outline" size={32} color={Colors.textTertiary} />
+              <View style={styles.emptyIcon}>
+                <Ionicons name="flash" size={28} color={BRAND.colors.amber} />
+              </View>
               <Text style={styles.emptyText}>No active challenges</Text>
-              <Text style={styles.emptySubtext}>Check back soon for new head-to-head matchups</Text>
+              <Text style={styles.emptySubtext}>New head-to-head matchups drop weekly.{"\n"}Rate more businesses to unlock challengers!</Text>
             </View>
           ) : (
             challenges.map((ch: ApiChallenger) => (
@@ -124,8 +130,24 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     marginTop: 2,
   },
+  liveBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(231,76,60,0.1)", paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 10,
+  },
+  liveDot: {
+    width: 6, height: 6, borderRadius: 3, backgroundColor: "#E74C3C",
+  },
+  liveText: {
+    fontSize: 10, fontWeight: "800", color: "#E74C3C", fontFamily: "DMSans_700Bold",
+    letterSpacing: 1,
+  },
   content: { paddingHorizontal: 16, gap: 16 },
-  emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
+  emptyState: { alignItems: "center", paddingTop: 60, gap: 10 },
+  emptyIcon: {
+    width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center",
+    backgroundColor: `${BRAND.colors.amber}10`, marginBottom: 4,
+  },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
   errorState: { alignItems: "center", paddingTop: 60, gap: 8 },
