@@ -167,19 +167,6 @@ function configureExpoAndLanding(app: express.Application) {
     res.status(200).send("ok");
   });
 
-  // Temporary debug endpoint — remove after deploy fix
-  app.get("/api/debug-dist", (_req: Request, res: Response) => {
-    const cwd = process.cwd();
-    const distDir = path.resolve(cwd, "dist");
-    const backupDir = path.resolve(cwd, "dist-web-backup");
-    const info: Record<string, unknown> = { cwd };
-    try { info.distFiles = fs.readdirSync(distDir); } catch { info.distFiles = "NOT FOUND"; }
-    try { info.distJsFiles = fs.readdirSync(path.join(distDir, "_expo/static/js/web")); } catch { info.distJsFiles = "NOT FOUND"; }
-    try { info.backupFiles = fs.readdirSync(backupDir); } catch { info.backupFiles = "NOT FOUND"; }
-    try { info.distHtml = fs.readFileSync(path.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.distHtml = "NOT FOUND"; }
-    res.json(info);
-  });
-
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith("/api")) {
       return next();
@@ -394,6 +381,21 @@ function setupErrorHandler(app: express.Application) {
   // Sprint 180: SSR prerender middleware for bot traffic
   const { prerenderMiddleware } = await import("./prerender");
   app.use(prerenderMiddleware);
+
+  // Temporary debug endpoint — before registerRoutes to avoid catch-all
+  app.get("/api/debug-dist", (_req: Request, res: Response) => {
+    const cwd = process.cwd();
+    const distDir = path.resolve(process.cwd(), "dist");
+    const backupDir = path.resolve(process.cwd(), "dist-web-backup");
+    const info: Record<string, unknown> = { cwd };
+    try { info.distFiles = fs.readdirSync(distDir); } catch { info.distFiles = "NOT FOUND"; }
+    try { info.distJsFiles = fs.readdirSync(path.join(distDir, "_expo/static/js/web")); } catch { info.distJsFiles = "NOT FOUND"; }
+    try { info.backupFiles = fs.readdirSync(backupDir); } catch { info.backupFiles = "NOT FOUND"; }
+    try { info.backupJsFiles = fs.readdirSync(path.join(backupDir, "_expo/static/js/web")); } catch { info.backupJsFiles = "NOT FOUND"; }
+    try { info.distHtml = fs.readFileSync(path.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.distHtml = "NOT FOUND"; }
+    try { info.backupHtml = fs.readFileSync(path.join(backupDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0]; } catch { info.backupHtml = "NOT FOUND"; }
+    res.json(info);
+  });
 
   const server = await registerRoutes(app);
 

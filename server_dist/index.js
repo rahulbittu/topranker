@@ -16151,33 +16151,6 @@ function configureExpoAndLanding(app2) {
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
-  app2.get("/api/debug-dist", (_req, res) => {
-    const cwd = process.cwd();
-    const distDir = path2.resolve(cwd, "dist");
-    const backupDir = path2.resolve(cwd, "dist-web-backup");
-    const info = { cwd };
-    try {
-      info.distFiles = fs2.readdirSync(distDir);
-    } catch {
-      info.distFiles = "NOT FOUND";
-    }
-    try {
-      info.distJsFiles = fs2.readdirSync(path2.join(distDir, "_expo/static/js/web"));
-    } catch {
-      info.distJsFiles = "NOT FOUND";
-    }
-    try {
-      info.backupFiles = fs2.readdirSync(backupDir);
-    } catch {
-      info.backupFiles = "NOT FOUND";
-    }
-    try {
-      info.distHtml = fs2.readFileSync(path2.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
-    } catch {
-      info.distHtml = "NOT FOUND";
-    }
-    res.json(info);
-  });
   app2.use((req, res, next) => {
     if (req.path.startsWith("/api")) {
       return next();
@@ -16351,6 +16324,43 @@ function setupErrorHandler(app2) {
   setupRequestLogging(app);
   const { prerenderMiddleware: prerenderMiddleware2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
   app.use(prerenderMiddleware2);
+  app.get("/api/debug-dist", (_req, res) => {
+    const cwd = process.cwd();
+    const distDir = path2.resolve(process.cwd(), "dist");
+    const backupDir = path2.resolve(process.cwd(), "dist-web-backup");
+    const info = { cwd };
+    try {
+      info.distFiles = fs2.readdirSync(distDir);
+    } catch {
+      info.distFiles = "NOT FOUND";
+    }
+    try {
+      info.distJsFiles = fs2.readdirSync(path2.join(distDir, "_expo/static/js/web"));
+    } catch {
+      info.distJsFiles = "NOT FOUND";
+    }
+    try {
+      info.backupFiles = fs2.readdirSync(backupDir);
+    } catch {
+      info.backupFiles = "NOT FOUND";
+    }
+    try {
+      info.backupJsFiles = fs2.readdirSync(path2.join(backupDir, "_expo/static/js/web"));
+    } catch {
+      info.backupJsFiles = "NOT FOUND";
+    }
+    try {
+      info.distHtml = fs2.readFileSync(path2.join(distDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
+    } catch {
+      info.distHtml = "NOT FOUND";
+    }
+    try {
+      info.backupHtml = fs2.readFileSync(path2.join(backupDir, "index.html"), "utf-8").match(/entry-[a-f0-9]+\.js/)?.[0];
+    } catch {
+      info.backupHtml = "NOT FOUND";
+    }
+    res.json(info);
+  });
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);
