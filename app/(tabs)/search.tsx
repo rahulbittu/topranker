@@ -2,19 +2,18 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Analytics } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Platform, RefreshControl, Share,
+  TextInput, Platform, RefreshControl,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams, router } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch, fetchTrending, fetchJustRated, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
-import { buildSearchUrl } from "@/lib/search-url-params";
-import { copyShareLink, getSearchShareText } from "@/lib/sharing";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
+import { useSearchActions } from "@/lib/hooks/useSearchActions";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
 import { SearchResultsSkeleton } from "@/components/search/SearchResultsSkeleton";
@@ -32,7 +31,7 @@ import { AutocompleteDropdown, RecentSearchesPanel, PopularQueriesPanel } from "
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { decodeSearchParams, encodeSearchParams, type SearchFilterState } from "@/lib/search-url-params";
+import { decodeSearchParams } from "@/lib/search-url-params";
 import { PresetChips } from "@/components/search/PresetChips";
 import { DiscoverSections } from "@/components/search/DiscoverSections";
 import type { FilterPreset } from "@/lib/search-filter-presets";
@@ -79,17 +78,6 @@ export default function SearchScreen() {
     if (decoded.sort) setSortBy(decoded.sort);
     if (decoded.filter) setActiveFilter(decoded.filter as any);
   }, []);
-
-  // Sprint 647: Sync filter state to URL for browser back/forward + bookmarkable searches
-  useEffect(() => {
-    if (Platform.OS !== "web" || !urlParamsRead.current) return;
-    const params = encodeSearchParams({ ...currentFilters, query: debouncedQuery || undefined });
-    const qs = Object.entries(params).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
-    const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
-    if (window.location.search !== (qs ? `?${qs}` : "")) {
-      window.history.replaceState(null, "", newUrl);
-    }
-  }, [debouncedQuery, currentFilters]);
 
   // Autocomplete: fast 150ms debounce for typeahead
   useEffect(() => {
@@ -220,16 +208,6 @@ export default function SearchScreen() {
     }
   }, [userLocation]);
 
-  const currentFilters = useMemo((): SearchFilterState => ({
-    cuisine: selectedCuisine || undefined,
-    dietary: dietaryTags.length > 0 ? dietaryTags : undefined,
-    distance: distanceFilter,
-    hours: hoursFilters.length > 0 ? hoursFilters : undefined,
-    price: priceFilter || undefined,
-    sort: sortBy,
-    filter: activeFilter !== "All" ? activeFilter : undefined,
-  }), [selectedCuisine, dietaryTags, distanceFilter, hoursFilters, priceFilter, sortBy, activeFilter]);
-
   const handleApplyPreset = useCallback((preset: FilterPreset) => {
     const f = preset.filters;
     if (f.cuisine) setSelectedCuisine(f.cuisine); else setSelectedCuisine(null);
@@ -252,19 +230,6 @@ export default function SearchScreen() {
     setActiveFilter("All" as any);
     setActivePresetId(null);
   }, []);
-
-  // Sprint 644/646: Share search results — native share sheet
-  const handleShareSearch = useCallback(async () => {
-    Haptics.selectionAsync();
-    const url = buildSearchUrl("https://topranker.com/search", currentFilters);
-    const text = getSearchShareText(query, city, filtered.length, url);
-    Analytics.searchShare(query, city, filtered.length);
-    try {
-      await Share.share({ message: text, url });
-    } catch {
-      await copyShareLink(url, "Search results");
-    }
-  }, [query, city, filtered.length, currentFilters]);
 
   const filtered = useMemo(() => {
     let list = allBusinesses;
@@ -296,6 +261,12 @@ export default function SearchScreen() {
     if (sortBy === "trending") return list.sort((a: MappedBusiness, b: MappedBusiness) => (b.rankDelta || 0) - (a.rankDelta || 0));
     return list.sort((a: MappedBusiness, b: MappedBusiness) => b.weightedScore - a.weightedScore);
   }, [allBusinesses, activeFilter, priceFilter, sortBy, userLocation, mapSearchCenter, viewMode]);
+
+  // Sprint 651: Extracted URL sync + share to useSearchActions hook
+  const { currentFilters, handleShareSearch } = useSearchActions({
+    selectedCuisine, dietaryTags, distanceFilter, hoursFilters, priceFilter, sortBy, activeFilter,
+    debouncedQuery, query, city, resultCount: filtered.length, urlParamsRead,
+  });
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 

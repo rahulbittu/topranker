@@ -189,8 +189,8 @@ describe("search.tsx — URL param wiring", () => {
     expect(src).toContain("decodeSearchParams");
   });
 
-  it("imports encodeSearchParams", () => {
-    expect(src).toContain("encodeSearchParams");
+  it("uses useSearchActions hook for URL sync + share", () => {
+    expect(src).toContain("useSearchActions");
   });
 
   it("imports useLocalSearchParams", () => {

@@ -10,7 +10,7 @@
     "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
-    "app/(tabs)/search.tsx": { "maxLOC": 610, "current": 596, "notes": "Sprint 647: +URL sync for browser back/forward (583→596)" },
+    "app/(tabs)/search.tsx": { "maxLOC": 610, "current": 567, "notes": "Sprint 651: extracted URL sync + share to useSearchActions hook (596→567)" },
     "app/business/dashboard.tsx": { "maxLOC": 520, "current": 397, "notes": "Sprint 599: extracted ReviewCard + removed dead MiniChart (503→397)" },
     "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 112, "notes": "Sprint 561: extracted from dashboard.tsx" },
     "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 170, "notes": "Sprint 567: velocity widget" },

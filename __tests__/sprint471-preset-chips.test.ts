@@ -128,7 +128,7 @@ describe("Sprint 471: Filter Preset Chips UI", () => {
     });
 
     it("computes currentFilters for save functionality", () => {
-      expect(src).toContain("currentFilters = useMemo");
+      expect(src).toContain("useSearchActions");
       expect(src).toContain("currentFilters={currentFilters}");
     });
   });
