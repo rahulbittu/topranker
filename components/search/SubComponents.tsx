@@ -21,6 +21,7 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import { MappedBusiness } from "@/types/business";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import { useExperiment } from "@/lib/use-experiment";
+import { Analytics } from "@/lib/analytics";
 // Sprint 426: MapView, haversineKm, CITY_COORDS extracted to ./MapView.tsx — re-export for backward compatibility
 export { MapView, haversineKm, CITY_COORDS } from "@/components/search/MapView";
 
@@ -251,6 +252,7 @@ export const BusinessCard = React.memo(function BusinessCard({
           onPress={(e) => {
             e.stopPropagation();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            Analytics.rateCtaDiscoverTap(item.slug, "card");
             router.push({ pathname: "/rate/[id]", params: { id: item.slug } });
           }}
           hitSlop={4}
@@ -313,11 +315,27 @@ export function MapBusinessCard({ item }: { item: MappedBusiness }) {
       </View>
       <View style={s.mapCardRight}>
         <Text style={s.mapCardScore}>{item.weightedScore.toFixed(1)}</Text>
-        {item.lat && item.lng ? (
-          <TouchableOpacity onPress={openInMaps} style={s.mapPinBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="navigate" size={14} color={AMBER} />
+        <View style={s.mapCardActions}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              Analytics.rateCtaDiscoverTap(item.slug, "map_card");
+              router.push({ pathname: "/rate/[id]", params: { id: item.slug } });
+            }}
+            style={s.mapRateBtn}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel={`Rate ${item.name}`}
+          >
+            <Ionicons name="star-outline" size={12} color={AMBER} />
           </TouchableOpacity>
-        ) : null}
+          {item.lat && item.lng ? (
+            <TouchableOpacity onPress={openInMaps} style={s.mapPinBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="navigate" size={14} color={AMBER} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -436,6 +454,11 @@ const s = StyleSheet.create({
   mapCardClosed: { color: Colors.red, fontWeight: "600" },
   mapCardRight: { alignItems: "center", gap: 4 },
   mapCardScore: { fontSize: 16, fontWeight: "900", color: AMBER, fontFamily: "PlayfairDisplay_900Black" },
+  mapCardActions: { flexDirection: "row", gap: 6 },
+  mapRateBtn: {
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: `${AMBER}12`, alignItems: "center", justifyContent: "center",
+  },
   mapPinBtn: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: `${AMBER}12`, alignItems: "center", justifyContent: "center",

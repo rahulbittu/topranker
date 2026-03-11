@@ -47,6 +47,10 @@ export type AnalyticsEvent =
   | "rate_complete"
   | "rate_abandon"
   | "rate_photo_add"
+  | "rate_cta_discover_tap"
+
+  // Sharing
+  | "share_whatsapp_tap"
 
   // Challenger
   | "view_challenger"
@@ -256,6 +260,13 @@ export const Analytics = {
 
   betaReferralShare: (method: string) =>
     track("beta_referral_share", { method }),
+
+  // Sprint 611: Rate CTA + sharing analytics
+  rateCtaDiscoverTap: (slug: string, surface: "card" | "map_card") =>
+    track("rate_cta_discover_tap", { slug, surface }),
+
+  shareWhatsAppTap: (slug: string, context: "confirmation" | "business_detail" | "dish_leaderboard") =>
+    track("share_whatsapp_tap", { slug, context }),
 
   // Sprint 302: Cuisine analytics
   cuisineFilterSelect: (cuisine: string, surface: "rankings" | "discover") =>

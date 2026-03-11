@@ -24,6 +24,7 @@ import {
 import { searchCategories, getBestInTitle } from "@/shared/best-in-categories";
 import { getShareUrl, getShareText, shareToWhatsApp, getRatingShareText } from "@/lib/sharing";
 import { useCity } from "@/lib/city-context";
+import { Analytics } from "@/lib/analytics";
 
 export function RatingConfirmation({
   business,
@@ -97,6 +98,7 @@ export function RatingConfirmation({
 
   const handleWhatsAppShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Analytics.shareWhatsAppTap(businessSlug || "", "confirmation");
     const text = getRatingShareText(business.name, dishContext || null, city, newRank, shareUrl);
     await shareToWhatsApp(text);
   };
