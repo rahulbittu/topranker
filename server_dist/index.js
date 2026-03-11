@@ -12856,7 +12856,12 @@ function enrichSearchResults(bizList, photoMap, opts) {
       city: b.city || opts.city,
       // Sprint 633: Action URL presence + city match signals
       hasActionUrls: !!b.menuUrl || !!b.orderUrl || !!b.doordashUrl,
-      businessCity: b.city || void 0
+      businessCity: b.city || void 0,
+      // Sprint 641: Pass coordinates for proximity signal
+      userLat: opts.userLat ?? void 0,
+      userLng: opts.userLng ?? void 0,
+      bizLat: b.lat ? parseFloat(b.lat) : void 0,
+      bizLng: b.lng ? parseFloat(b.lng) : void 0
     };
     const relevanceScore = opts.query ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100 : 0;
     let distanceKm = null;

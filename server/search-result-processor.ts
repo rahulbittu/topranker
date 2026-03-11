@@ -58,6 +58,11 @@ export function enrichSearchResults(
       // Sprint 633: Action URL presence + city match signals
       hasActionUrls: !!(b as any).menuUrl || !!(b as any).orderUrl || !!(b as any).doordashUrl,
       businessCity: (b as any).city || undefined,
+      // Sprint 641: Pass coordinates for proximity signal
+      userLat: opts.userLat ?? undefined,
+      userLng: opts.userLng ?? undefined,
+      bizLat: b.lat ? parseFloat(b.lat) : undefined,
+      bizLng: b.lng ? parseFloat(b.lng) : undefined,
     };
     const relevanceScore = opts.query
       ? Math.round(combinedRelevance(b.name, searchCtx) * 100) / 100
