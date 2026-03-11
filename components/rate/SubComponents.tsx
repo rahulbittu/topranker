@@ -67,11 +67,29 @@ const STEP_DESCRIPTIONS = [
 ];
 
 export function ProgressBar({ step, total }: { step: number; total: number }) {
-  const pct = ((step + 1) / total) * 100;
   return (
-    <View style={s.progressOuter}>
-      <View style={s.progressContainer} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`} accessibilityValue={{ min: 0, max: total, now: step + 1, text: `${pct}% complete` }}>
-        <View style={[s.progressFill, { width: pctDim(((step + 1) / total) * 100) }]} />
+    <View style={s.progressOuter} accessibilityRole="progressbar" accessibilityLabel={`Step ${step + 1} of ${total}`} accessibilityValue={{ min: 0, max: total, now: step + 1 }}>
+      <View style={s.progressDotRow}>
+        {Array.from({ length: total }, (_, i) => {
+          const completed = i < step;
+          const current = i === step;
+          return (
+            <React.Fragment key={i}>
+              {i > 0 && (
+                <View style={s.progressLine}>
+                  <View style={[s.progressLineFill, i <= step && s.progressLineFilled]} />
+                </View>
+              )}
+              <View style={[s.progressDot, completed && s.progressDotCompleted, current && s.progressDotCurrent]}>
+                {completed ? (
+                  <Ionicons name="checkmark" size={10} color="#fff" />
+                ) : (
+                  <Text style={[s.progressDotNum, current && s.progressDotNumCurrent]}>{i + 1}</Text>
+                )}
+              </View>
+            </React.Fragment>
+          );
+        })}
       </View>
       <View style={s.progressLabels}>
         {Array.from({ length: total }, (_, i) => (
@@ -79,7 +97,7 @@ export function ProgressBar({ step, total }: { step: number; total: number }) {
             key={i}
             style={[
               s.progressLabel,
-              i <= step && s.progressLabelActive,
+              i < step && s.progressLabelActive,
               i === step && s.progressLabelCurrent,
             ]}
           >
@@ -162,17 +180,34 @@ const s = StyleSheet.create({
   },
 
   progressOuter: { paddingHorizontal: 20, marginTop: 8, gap: 6 },
-  progressContainer: {
-    height: 4, borderRadius: 2, backgroundColor: Colors.border, overflow: "hidden" as const,
+  progressDotRow: {
+    flexDirection: "row" as const, alignItems: "center" as const, justifyContent: "center" as const,
   },
-  progressFill: {
-    height: pctDim(100), borderRadius: 2, backgroundColor: Colors.gold,
+  progressDot: {
+    width: 24, height: 24, borderRadius: 12, alignItems: "center" as const, justifyContent: "center" as const,
+    backgroundColor: Colors.surfaceRaised, borderWidth: 2, borderColor: Colors.border,
   },
+  progressDotCompleted: {
+    backgroundColor: Colors.gold, borderColor: Colors.gold,
+  },
+  progressDotCurrent: {
+    borderColor: Colors.gold, borderWidth: 2,
+    shadowColor: Colors.gold, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 2,
+  },
+  progressDotNum: {
+    fontSize: 11, fontWeight: "700" as const, color: Colors.textTertiary, fontFamily: "DMSans_700Bold",
+  },
+  progressDotNumCurrent: { color: Colors.gold },
+  progressLine: {
+    flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 2,
+  },
+  progressLineFill: { height: 2 },
+  progressLineFilled: { backgroundColor: Colors.gold },
   progressLabels: {
-    flexDirection: "row" as const, justifyContent: "space-between" as const,
+    flexDirection: "row" as const, justifyContent: "space-between" as const, marginTop: 4,
   },
   progressLabel: {
-    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    fontSize: 10, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", textAlign: "center" as const,
   },
   progressLabelActive: {
     color: Colors.textSecondary,

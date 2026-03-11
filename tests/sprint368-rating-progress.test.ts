@@ -61,8 +61,9 @@ describe("Sprint 368: Rating flow UX polish (progress indicator)", () => {
       expect(subSrc).toContain("((step + 1) / total) * 100");
     });
 
-    it("should have continuous fill bar", () => {
-      expect(subSrc).toContain("progressFill");
+    it("should have step dots with connecting lines", () => {
+      expect(subSrc).toContain("progressDot");
+      expect(subSrc).toContain("progressLine");
     });
 
     it("should show step labels below progress bar", () => {
@@ -79,8 +80,8 @@ describe("Sprint 368: Rating flow UX polish (progress indicator)", () => {
       expect(subSrc).toContain("progressOuter");
     });
 
-    it("should use overflow hidden for bar", () => {
-      expect(subSrc).toContain('overflow: "hidden"');
+    it("should have checkmark for completed steps", () => {
+      expect(subSrc).toContain("checkmark");
     });
   });
 

@@ -39,9 +39,8 @@ describe("Sprint 409 — Rating Flow Accessibility Audit", () => {
       expect(subSrc).toContain('accessibilityRole="progressbar"');
     });
 
-    it("has accessibilityValue with min, max, now, text", () => {
+    it("has accessibilityValue with min, max, now", () => {
       expect(subSrc).toContain("accessibilityValue={{ min: 0, max: total, now: step + 1");
-      expect(subSrc).toContain("text: `${pct}% complete`");
     });
   });
 
