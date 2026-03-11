@@ -16171,7 +16171,7 @@ function configureExpoAndLanding(app2) {
   let distIndexHtml = "";
   if (hasDistBuild) {
     distIndexHtml = fs2.readFileSync(path2.join(distPath, "index.html"), "utf-8");
-    const CORRECT_BUNDLE = "entry-6334f29bbc7b5a586c4541760bb0bee2.js";
+    const CORRECT_BUNDLE = "entry-bcc24f737c1cc2ba01769716d068e92d.js";
     if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
       log2(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
       distIndexHtml = distIndexHtml.replace(
@@ -16181,8 +16181,8 @@ function configureExpoAndLanding(app2) {
     }
   }
   if (hasDistBuild) {
-    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-6334f29bbc7b5a586c4541760bb0bee2.js");
-    const oldBundlePath = path2.join(distPath, "_expo/static/js/web/entry-f0d81efe56c6a797345dce3e0af6b1c3.js");
+    const correctBundlePath = path2.join(distPath, "_expo/static/js/web/entry-bcc24f737c1cc2ba01769716d068e92d.js");
+    const oldBundlePath = path2.join(distPath, "_expo/static/js/web/entry-bcc24f737c1cc2ba01769716d068e92d.js");
     if (!fs2.existsSync(correctBundlePath) && fs2.existsSync(oldBundlePath)) {
       const oldBundleContent = fs2.readFileSync(oldBundlePath, "utf-8");
       const patchedBundle = oldBundleContent.replace(/http:\/\/localhost:5001/g, "").replace(/localhost:5001/g, "");

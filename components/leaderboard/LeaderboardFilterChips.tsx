@@ -62,7 +62,7 @@ export function LeaderboardFilterChips({
 }
 
 const s = StyleSheet.create({
-  row: { maxHeight: 36, marginBottom: 4 },
+  row: { marginBottom: 4 },
   content: { paddingHorizontal: 16, gap: 6, alignItems: "center" as const },
   chip: {
     flexDirection: "row" as const, alignItems: "center" as const, gap: 3,
