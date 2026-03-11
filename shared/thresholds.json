@@ -18,7 +18,7 @@
     "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 71, "notes": "Sprint 563: extracted" },
     "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 115, "current": 107, "notes": "Sprint 593: web flexbox row" },
     "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 415, "notes": "Sprint 546: dedup" },
-    "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" },
+    "lib/sharing.ts": { "maxLOC": 150, "current": 136, "notes": "Sprint 608: +getRatingShareText for post-rating share prompt" },
     "components/search/CityComparisonOverlay.tsx": { "maxLOC": 210, "current": 194, "notes": "Sprint 595: raised ceiling 200→210" },
     "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 155, "notes": "Sprint 571: extracted from search.tsx" },
     "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 220, "current": 202, "notes": "Sprint 595: raised ceiling 210→220" },
@@ -26,7 +26,7 @@
     "components/profile/TierProgressNotification.tsx": { "maxLOC": 220, "current": 208, "notes": "Sprint 595: raised ceiling 210→220" },
     "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 170, "current": 153, "notes": "Sprint 595: raised ceiling 160→170" },
     "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 501, "notes": "Sprint 606: receipt extraction (629→501)" },
-    "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 154, "notes": "Sprint 606: extracted from RatingExtrasStep" }
+    "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" }
   },
   "build": {
     "maxSizeKb": 750,
@@ -34,6 +34,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11325
+    "currentCount": 11327
   }
 }

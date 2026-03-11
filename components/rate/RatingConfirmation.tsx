@@ -22,7 +22,8 @@ import {
   type CredibilityTier,
 } from "@/lib/data";
 import { searchCategories, getBestInTitle } from "@/shared/best-in-categories";
-import { getShareUrl, getShareText } from "@/lib/sharing";
+import { getShareUrl, getShareText, shareToWhatsApp, getRatingShareText } from "@/lib/sharing";
+import { useCity } from "@/lib/city-context";
 
 export function RatingConfirmation({
   business,
@@ -71,6 +72,7 @@ export function RatingConfirmation({
   businessSlug?: string;
   onRateAnother?: () => void;
 }) {
+  const { city } = useCity();
   // Sprint 398: Compute verification boosts earned
   const boosts: { label: string; pct: string; icon: string }[] = [];
   if (hasPhoto) boosts.push({ label: "Photo attached", pct: "+15%", icon: "camera" });
@@ -79,17 +81,24 @@ export function RatingConfirmation({
   if (timeOnPageMs && timeOnPageMs >= 30000) boosts.push({ label: "Time plausibility", pct: "+5%", icon: "time" });
   const totalBoostPct = boosts.reduce((sum, b) => sum + parseInt(b.pct), 0);
 
+  const shareUrl = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.com";
+
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const url = businessSlug ? getShareUrl("business", businessSlug) : "https://topranker.com";
     const text = getShareText(business.name, rawScore);
     try {
       await Share.share(
-        Platform.OS === "ios" ? { url, message: text } : { message: `${text}\n${url}` },
+        Platform.OS === "ios" ? { url: shareUrl, message: text } : { message: `${text}\n${shareUrl}` },
       );
     } catch {
       // User cancelled share
     }
+  };
+
+  const handleWhatsAppShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const text = getRatingShareText(business.name, dishContext || null, city, newRank, shareUrl);
+    await shareToWhatsApp(text);
   };
 
   return (
@@ -210,18 +219,39 @@ export function RatingConfirmation({
         </Text>
       </Animated.View>
 
-      {/* Sprint 398: Share + Rate another CTAs */}
-      <Animated.View entering={FadeInUp.delay(800).duration(400)} style={s.confirmActions}>
-        <TouchableOpacity
-          style={s.shareButton}
-          onPress={handleShare}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel="Share your rating"
-        >
-          <Ionicons name="share-outline" size={18} color={Colors.text} />
-          <Text style={s.shareButtonText}>Share</Text>
-        </TouchableOpacity>
+      {/* Sprint 608: Share prompt — WhatsApp-first */}
+      <Animated.View entering={FadeInUp.delay(800).duration(400)} style={s.sharePromptCard}>
+        <Text style={s.sharePromptTitle}>Spread the word</Text>
+        <Text style={s.sharePromptHint}>
+          {dishContext
+            ? `Think ${business.name} has the best ${dishContext} in ${city.charAt(0).toUpperCase() + city.slice(1)}? Let your friends decide.`
+            : `Let your friends know about ${business.name} — see if they agree with your rating.`}
+        </Text>
+        <View style={s.sharePromptActions}>
+          <TouchableOpacity
+            style={s.whatsappBtn}
+            onPress={handleWhatsAppShare}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Share on WhatsApp"
+          >
+            <Ionicons name="logo-whatsapp" size={18} color="#FFFFFF" />
+            <Text style={s.whatsappBtnText}>WhatsApp</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.shareButton}
+            onPress={handleShare}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Share your rating"
+          >
+            <Ionicons name="share-outline" size={18} color={Colors.text} />
+            <Text style={s.shareButtonText}>More</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+
+      <Animated.View entering={FadeInUp.delay(900).duration(400)} style={s.confirmActions}>
         <TouchableOpacity
           style={[s.doneButton, { flex: 1 }]}
           onPress={onDone}
@@ -374,13 +404,32 @@ const s = StyleSheet.create({
   confirmActions: {
     flexDirection: "row", width: "100%", gap: 10, marginTop: 4,
   },
+  sharePromptCard: {
+    width: "100%", backgroundColor: Colors.surface, borderRadius: 14,
+    padding: 16, gap: 10, ...Colors.cardShadow,
+    borderWidth: 1, borderColor: "rgba(37,211,102,0.15)",
+  },
+  sharePromptTitle: {
+    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+  },
+  sharePromptHint: {
+    fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 17,
+  },
+  sharePromptActions: { flexDirection: "row", gap: 10 },
+  whatsappBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    backgroundColor: "#25D366", borderRadius: 12, paddingVertical: 14,
+  },
+  whatsappBtnText: {
+    fontSize: 14, fontWeight: "600", color: "#FFFFFF", fontFamily: "DMSans_600SemiBold",
+  },
   shareButton: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingHorizontal: 20, paddingVertical: 16, borderRadius: 14,
+    paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12,
     backgroundColor: Colors.surfaceRaised, borderWidth: 1, borderColor: Colors.border,
   },
   shareButtonText: {
-    fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
+    fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold",
   },
   rateAnotherBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,

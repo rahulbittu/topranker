@@ -96,6 +96,25 @@ export function getDishLeaderboardShareText(
 }
 
 /**
+ * Sprint 608: Generate post-rating share text for WhatsApp.
+ * "Best [dish] in [city]" format — controversy-driven engagement.
+ */
+export function getRatingShareText(
+  businessName: string,
+  dishName: string | null,
+  city: string,
+  rank: number,
+  url: string,
+): string {
+  const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+  const emoji = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : "🔥";
+  if (dishName) {
+    return `${emoji} I just rated ${businessName} for ${dishName} in ${cityTitle}!\n\nThink you know better? Rate it yourself:\n${url}`;
+  }
+  return `${emoji} I just rated ${businessName} in ${cityTitle}!\n\nAgree or disagree? Rate it yourself:\n${url}`;
+}
+
+/**
  * Parse a TopRanker URL and extract the type and slug.
  * Returns null if the URL doesn't match expected patterns.
  */
