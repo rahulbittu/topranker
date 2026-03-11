@@ -89,9 +89,9 @@ describe("Sprint 572: Rating Photo Gallery Grid", () => {
       expect(src).toContain("return null");
     });
 
-    it("is under 200 LOC", () => {
+    it("is under 230 LOC", () => {
       const loc = src.split("\n").length;
-      expect(loc).toBeLessThan(200);
+      expect(loc).toBeLessThan(230); // Sprint 612: +verifiedPhotoBadge
     });
   });
 

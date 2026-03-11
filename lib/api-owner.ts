@@ -167,6 +167,7 @@ export interface RatingPhotoData {
   photoUrl: string;
   cdnKey: string;
   isVerifiedReceipt: boolean;
+  isPhotoVerified?: boolean; // Sprint 612: true when contentHash exists (passed duplicate check)
 }
 
 export async function fetchRatingPhotos(ratingId: string): Promise<RatingPhotoData[]> {

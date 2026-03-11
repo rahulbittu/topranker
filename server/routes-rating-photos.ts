@@ -198,6 +198,8 @@ export function registerRatingPhotoRoutes(app: Express): void {
     const { eq } = await import("drizzle-orm");
 
     const photos = await db.select().from(ratingPhotos).where(eq(ratingPhotos.ratingId, ratingId));
-    return res.json({ data: photos });
+    // Sprint 612: Add isPhotoVerified (true when contentHash exists — passed duplicate check)
+    const mapped = photos.map(p => ({ ...p, isPhotoVerified: !!p.contentHash }));
+    return res.json({ data: mapped });
   }));
 }

@@ -56,6 +56,11 @@ export function RatingPhotoGallery({ photos, category = "restaurant", maxVisible
             <Ionicons name="receipt-outline" size={10} color="#fff" />
           </View>
         )}
+        {item.isPhotoVerified && !item.isVerifiedReceipt && (
+          <View style={s.verifiedPhotoBadge}>
+            <Ionicons name="shield-checkmark" size={9} color="#fff" />
+          </View>
+        )}
         {isLastVisible && (
           <View style={s.overflowOverlay}>
             <Text style={s.overflowText}>+{overflowCount}</Text>
@@ -173,6 +178,17 @@ const s = StyleSheet.create({
     top: 4,
     right: 4,
     backgroundColor: "rgba(34,197,94,0.85)",
+    borderRadius: 6,
+    width: 18,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  verifiedPhotoBadge: {
+    position: "absolute" as const,
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(59,130,246,0.85)",
     borderRadius: 6,
     width: 18,
     height: 18,

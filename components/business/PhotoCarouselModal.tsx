@@ -40,6 +40,12 @@ export function PhotoCarouselModal({ visible, photos, loading, onClose }: {
                     <Text style={s.carouselReceiptText}>Receipt</Text>
                   </View>
                 )}
+                {item.isPhotoVerified && !item.isVerifiedReceipt && (
+                  <View style={s.carouselVerifiedBadge}>
+                    <Ionicons name="shield-checkmark" size={14} color="#fff" />
+                    <Text style={s.carouselReceiptText}>Verified</Text>
+                  </View>
+                )}
               </View>
             )}
           />
@@ -65,6 +71,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4,
   },
   carouselReceiptText: { fontSize: 11, color: "#fff", fontWeight: "600" as const },
+  carouselVerifiedBadge: {
+    position: "absolute" as const, bottom: 16, left: 32,
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 4,
+    backgroundColor: "rgba(59,130,246,0.85)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
   carouselEmpty: { fontSize: 14, color: "#fff", fontFamily: "DMSans_400Regular" },
   carouselCount: { position: "absolute" as const, bottom: 40, fontSize: 12, color: "rgba(255,255,255,0.6)" },
 });

@@ -15246,7 +15246,8 @@ function registerRatingPhotoRoutes(app2) {
     const { ratingPhotos: ratingPhotos2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
     const { eq: eq36 } = await import("drizzle-orm");
     const photos = await db2.select().from(ratingPhotos2).where(eq36(ratingPhotos2.ratingId, ratingId));
-    return res.json({ data: photos });
+    const mapped = photos.map((p) => ({ ...p, isPhotoVerified: !!p.contentHash }));
+    return res.json({ data: mapped });
   }));
 }
 

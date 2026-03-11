@@ -22,7 +22,7 @@
     "components/search/CityComparisonOverlay.tsx": { "maxLOC": 210, "current": 194, "notes": "Sprint 595: raised ceiling 200→210" },
     "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 155, "notes": "Sprint 571: extracted from search.tsx" },
     "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 220, "current": 202, "notes": "Sprint 595: raised ceiling 210→220" },
-    "components/business/RatingPhotoGallery.tsx": { "maxLOC": 210, "current": 195, "notes": "Sprint 595: raised ceiling 200→210" },
+    "components/business/RatingPhotoGallery.tsx": { "maxLOC": 230, "current": 210, "notes": "Sprint 612: +verifiedPhotoBadge style (195→210)" },
     "components/profile/TierProgressNotification.tsx": { "maxLOC": 220, "current": 208, "notes": "Sprint 595: raised ceiling 210→220" },
     "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 170, "current": 153, "notes": "Sprint 595: raised ceiling 160→170" },
     "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 501, "notes": "Sprint 606: receipt extraction (629→501)" },
