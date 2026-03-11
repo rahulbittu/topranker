@@ -43,10 +43,11 @@ describe("Sprint 622 — Horizontal Alignment + White Space", () => {
       expect(match![1]).not.toContain("paddingRight: 4");
     });
 
-    it("bestInHeader has paddingHorizontal: 16", () => {
+    it("bestInHeader relies on FlatList paddingHorizontal (no own padding)", () => {
       const match = bestInSrc.match(/bestInHeader:\s*\{([^}]+)\}/);
       expect(match).toBeTruthy();
-      expect(match![1]).toContain("paddingHorizontal: 16");
+      // FlatList provides paddingHorizontal: 16, so bestInHeader should NOT have its own
+      expect(match![1]).not.toContain("paddingHorizontal");
     });
   });
 
@@ -57,16 +58,18 @@ describe("Sprint 622 — Horizontal Alignment + White Space", () => {
       expect(match![1]).toContain("paddingHorizontal: 16");
     });
 
-    it("priceRow has paddingHorizontal: 16", () => {
+    it("priceRow relies on FlatList paddingHorizontal (no own padding)", () => {
       const match = filtersSrc.match(/priceRow:\s*\{([^}]+)\}/);
       expect(match).toBeTruthy();
-      expect(match![1]).toContain("paddingHorizontal: 16");
+      // FlatList provides paddingHorizontal: 16, so priceRow should NOT have its own
+      expect(match![1]).not.toContain("paddingHorizontal");
     });
 
-    it("sortRow has paddingHorizontal: 16", () => {
+    it("sortRow relies on FlatList paddingHorizontal (no own padding)", () => {
       const match = filtersSrc.match(/sortRow:\s*\{([^}]+)\}/);
       expect(match).toBeTruthy();
-      expect(match![1]).toContain("paddingHorizontal: 16");
+      // FlatList provides paddingHorizontal: 16, so sortRow should NOT have its own
+      expect(match![1]).not.toContain("paddingHorizontal");
     });
   });
 

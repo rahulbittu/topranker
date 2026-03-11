@@ -46,6 +46,7 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.fullBleedRow}
         contentContainerStyle={styles.cuisineTabsScroll}
       >
         <TouchableOpacity
@@ -74,6 +75,7 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.fullBleedRow}
           contentContainerStyle={styles.dishShortcutsScroll}
         >
           {dishShortcuts.map((dish) => (
@@ -95,6 +97,7 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.fullBleedRow}
         contentContainerStyle={styles.bestInScroll}
       >
         {bestInItems.map((cat: BestInCategory) => (
@@ -124,8 +127,9 @@ const styles = StyleSheet.create({
   },
   bestInHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginBottom: 6, paddingHorizontal: 16,
+    marginBottom: 6,
   },
+  fullBleedRow: { marginHorizontal: -16 },
   bestInHeaderLeft: {
     flexDirection: "row", alignItems: "center", gap: 8,
   },
