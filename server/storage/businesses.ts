@@ -84,6 +84,31 @@ export async function getTrendingBusinesses(
   });
 }
 
+/** Sprint 617: Get businesses with most recent ratings (last 24h) */
+export async function getJustRatedBusinesses(
+  city: string,
+  limit: number = 5,
+): Promise<Business[]> {
+  const key = `just-rated:${city}:${limit}`;
+  return cacheAside(key, 300, async () => {
+    trackCacheMiss();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentlyRated = db
+      .selectDistinct({ businessId: ratings.businessId })
+      .from(ratings)
+      .where(gte(ratings.createdAt, cutoff))
+      .orderBy(desc(ratings.createdAt))
+      .limit(limit)
+      .as("recently_rated");
+    return db
+      .select()
+      .from(businesses)
+      .innerJoin(recentlyRated, eq(businesses.id, recentlyRated.businessId))
+      .where(and(eq(businesses.city, city), eq(businesses.isActive, true)))
+      .then(rows => rows.map(r => r.businesses));
+  });
+}
+
 export async function getBusinessBySlug(slug: string): Promise<Business | undefined> {
   const [business] = await db
     .select()

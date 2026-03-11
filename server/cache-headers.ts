@@ -16,6 +16,7 @@ interface CacheConfig {
 const CACHE_RULES: Record<string, CacheConfig> = {
   "/api/leaderboard": { public: true, maxAge: 300, staleWhileRevalidate: 60 },
   "/api/trending": { public: true, maxAge: 600, staleWhileRevalidate: 120 },
+  "/api/just-rated": { public: true, maxAge: 300, staleWhileRevalidate: 60 },
   "/api/leaderboard/categories": { public: true, maxAge: 7200 },
   "/api/businesses/popular-categories": { public: true, maxAge: 3600 },
   "/api/businesses/autocomplete": { public: true, maxAge: 30 },

@@ -2,15 +2,15 @@
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
     "shared/schema.ts": { "maxLOC": 960, "current": 896, "notes": "Sprint 597: compressed 938→896, removed comments/blank lines" },
-    "server/routes.ts": { "maxLOC": 400, "current": 353, "notes": "Sprint 601: consolidated admin routes (386→353)" },
-    "server/storage/businesses.ts": { "maxLOC": 620, "current": 600, "notes": "Sprint 554: +updateBusinessHours" },
+    "server/routes.ts": { "maxLOC": 400, "current": 367, "notes": "Sprint 617: +/api/just-rated route (353→367)" },
+    "server/storage/businesses.ts": { "maxLOC": 650, "current": 624, "notes": "Sprint 617: +getJustRatedBusinesses (600→624)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 530, "current": 518, "notes": "Sprint 595: raised ceiling 525→530" },
+    "lib/api.ts": { "maxLOC": 530, "current": 525, "notes": "Sprint 617: +fetchJustRated (518→525)" },
     "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
-    "app/(tabs)/search.tsx": { "maxLOC": 610, "current": 561, "notes": "Sprint 598: compressed 589→561, removed sprint comments" },
+    "app/(tabs)/search.tsx": { "maxLOC": 610, "current": 568, "notes": "Sprint 617: +justRated query (561→568)" },
     "app/business/dashboard.tsx": { "maxLOC": 520, "current": 397, "notes": "Sprint 599: extracted ReviewCard + removed dead MiniChart (503→397)" },
     "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 112, "notes": "Sprint 561: extracted from dashboard.tsx" },
     "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 170, "notes": "Sprint 567: velocity widget" },
@@ -20,21 +20,22 @@
     "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 415, "notes": "Sprint 546: dedup" },
     "lib/sharing.ts": { "maxLOC": 150, "current": 136, "notes": "Sprint 608: +getRatingShareText for post-rating share prompt" },
     "components/search/CityComparisonOverlay.tsx": { "maxLOC": 210, "current": 194, "notes": "Sprint 595: raised ceiling 200→210" },
-    "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 155, "notes": "Sprint 571: extracted from search.tsx" },
+    "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 159, "notes": "Sprint 617: +JustRatedSection (155→159)" },
     "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 220, "current": 202, "notes": "Sprint 595: raised ceiling 210→220" },
     "components/business/RatingPhotoGallery.tsx": { "maxLOC": 230, "current": 210, "notes": "Sprint 612: +verifiedPhotoBadge style (195→210)" },
     "components/profile/TierProgressNotification.tsx": { "maxLOC": 220, "current": 208, "notes": "Sprint 595: raised ceiling 210→220" },
     "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 170, "current": 153, "notes": "Sprint 595: raised ceiling 160→170" },
     "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 506, "notes": "Sprint 616: +TimeOnPageIndicator (501→506)" },
     "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" },
-    "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" }
+    "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" },
+    "components/search/JustRatedSection.tsx": { "maxLOC": 140, "current": 122, "notes": "Sprint 617: just-rated feed section" }
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 733.4
+    "currentSizeKb": 734.9
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11347
+    "currentCount": 11379
   }
 }

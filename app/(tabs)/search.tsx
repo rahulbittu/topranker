@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
-import { fetchBusinessSearch, fetchTrending, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
+import { fetchBusinessSearch, fetchTrending, fetchJustRated, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
@@ -138,6 +138,12 @@ export default function SearchScreen() {
   const { data: trending = [] } = useQuery({
     queryKey: ["trending", city],
     queryFn: () => fetchTrending(city, 3),
+    staleTime: 60000,
+  });
+
+  const { data: justRated = [] } = useQuery({
+    queryKey: ["just-rated", city],
+    queryFn: () => fetchJustRated(city, 5),
     staleTime: 60000,
   });
 
@@ -466,6 +472,7 @@ export default function SearchScreen() {
                 trending={trending}
                 featuredBusinesses={featuredBusinesses}
                 dishEntryCounts={dishEntryCounts}
+                justRated={justRated}
                 showDiscoverTip={showDiscoverTip}
                 onDismissDiscoverTip={dismissDiscoverTip}
                 onSetQuery={setQuery}

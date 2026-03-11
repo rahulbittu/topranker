@@ -419,6 +419,14 @@ export async function fetchTrending(city: string, limit: number = 3) {
   return businesses.map(mapApiBusiness);
 }
 
+// Sprint 617: Just-rated businesses
+export async function fetchJustRated(city: string, limit: number = 5) {
+  const businesses = await apiFetch<ApiBusiness[]>(
+    `/api/just-rated?city=${encodeURIComponent(city)}&limit=${limit}`,
+  );
+  return businesses.map(mapApiBusiness);
+}
+
 // Sprint 544: Popular search queries
 export type PopularQuery = { query: string; count: number; lastSearched: number };
 

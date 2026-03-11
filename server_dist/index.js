@@ -1553,6 +1553,7 @@ __export(businesses_exports, {
   getBusinessesWithoutPhotos: () => getBusinessesWithoutPhotos,
   getCuisines: () => getCuisines,
   getImportStats: () => getImportStats,
+  getJustRatedBusinesses: () => getJustRatedBusinesses,
   getLeaderboard: () => getLeaderboard,
   getNeighborhoods: () => getNeighborhoods,
   getPopularCategories: () => getPopularCategories,
@@ -1609,6 +1610,15 @@ async function getTrendingBusinesses(city, limit = 3) {
         sql4`${businesses.rankDelta} > 0`
       )
     ).orderBy(desc2(businesses.rankDelta)).limit(limit);
+  });
+}
+async function getJustRatedBusinesses(city, limit = 5) {
+  const key2 = `just-rated:${city}:${limit}`;
+  return cacheAside(key2, 300, async () => {
+    trackCacheMiss();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1e3);
+    const recentlyRated = db.selectDistinct({ businessId: ratings.businessId }).from(ratings).where(gte2(ratings.createdAt, cutoff)).orderBy(desc2(ratings.createdAt)).limit(limit).as("recently_rated");
+    return db.select().from(businesses).innerJoin(recentlyRated, eq4(businesses.id, recentlyRated.businessId)).where(and3(eq4(businesses.city, city), eq4(businesses.isActive, true))).then((rows) => rows.map((r) => r.businesses));
   });
 }
 async function getBusinessBySlug(slug) {
@@ -3596,6 +3606,7 @@ __export(storage_exports, {
   getFeedbackStats: () => getFeedbackStats,
   getFlagCount: () => getFlagCount,
   getImportStats: () => getImportStats,
+  getJustRatedBusinesses: () => getJustRatedBusinesses,
   getLeaderboard: () => getLeaderboard,
   getMemberBadgeCount: () => getMemberBadgeCount,
   getMemberBadges: () => getMemberBadges,
@@ -15899,6 +15910,18 @@ async function registerRoutes(app2) {
     }));
     return res.json({ data });
   }));
+  app2.get("/api/just-rated", wrapAsync(async (req, res) => {
+    const { getJustRatedBusinesses: getJustRatedBusinesses2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit) || 5));
+    const bizList = await getJustRatedBusinesses2(city, limit);
+    const photoMap = await getBusinessPhotosMap(bizList.map((b) => b.id));
+    const data = bizList.map((b) => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
+    }));
+    return res.json({ data });
+  }));
   app2.post("/api/category-suggestions", requireAuth, wrapAsync(async (req, res) => {
     const parsed = insertCategorySuggestionSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -16072,6 +16095,7 @@ init_error_tracking();
 var CACHE_RULES = {
   "/api/leaderboard": { public: true, maxAge: 300, staleWhileRevalidate: 60 },
   "/api/trending": { public: true, maxAge: 600, staleWhileRevalidate: 120 },
+  "/api/just-rated": { public: true, maxAge: 300, staleWhileRevalidate: 60 },
   "/api/leaderboard/categories": { public: true, maxAge: 7200 },
   "/api/businesses/popular-categories": { public: true, maxAge: 3600 },
   "/api/businesses/autocomplete": { public: true, maxAge: 30 },

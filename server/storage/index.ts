@@ -41,6 +41,7 @@ export {
   getLeaderboard,
   getNeighborhoods, // Sprint 549
   getTrendingBusinesses,
+  getJustRatedBusinesses, // Sprint 617
   getBusinessBySlug,
   getBusinessById,
   updateBusinessSubscription,

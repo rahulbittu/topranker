@@ -274,6 +274,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
+  // Sprint 617: Just-rated businesses (last 24h)
+  app.get("/api/just-rated", wrapAsync(async (req: Request, res: Response) => {
+    const { getJustRatedBusinesses } = await import("./storage");
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const limit = Math.min(10, Math.max(1, parseInt(req.query.limit as string) || 5));
+    const bizList = await getJustRatedBusinesses(city, limit);
+    const photoMap = await getBusinessPhotosMap(bizList.map(b => b.id));
+    const data = bizList.map(b => ({
+      ...b,
+      photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []),
+    }));
+    return res.json({ data });
+  }));
+
   // ── Category Suggestions ────────────────────────────────────
   app.post("/api/category-suggestions", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);

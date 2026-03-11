@@ -14,6 +14,7 @@ import { TrendingSection } from "@/components/search/TrendingSection";
 import { DishLeaderboardSection } from "@/components/DishLeaderboardSection";
 import { CityComparisonOverlay } from "@/components/search/CityComparisonOverlay";
 import { FeaturedSection, type FeaturedBusiness } from "@/components/FeaturedCard";
+import { JustRatedSection } from "@/components/search/JustRatedSection";
 import { CUISINE_DISPLAY } from "@/shared/best-in-categories";
 import * as Haptics from "expo-haptics";
 
@@ -28,6 +29,7 @@ export interface DiscoverSectionsProps {
   trending: any[];
   featuredBusinesses: FeaturedBusiness[];
   dishEntryCounts: Record<string, number>;
+  justRated: any[]; // Sprint 617
   showDiscoverTip: boolean;
   onDismissDiscoverTip: () => void;
   onSetQuery: (q: string) => void;
@@ -44,6 +46,7 @@ export function DiscoverSections({
   trending,
   featuredBusinesses,
   dishEntryCounts,
+  justRated,
   showDiscoverTip,
   onDismissDiscoverTip,
   onSetQuery,
@@ -113,6 +116,8 @@ export function DiscoverSections({
 
       {/* Trending section */}
       {!debouncedQuery && <TrendingSection trending={trending} />}
+      {/* Sprint 617: Just Rated feed */}
+      {!debouncedQuery && <JustRatedSection businesses={justRated} />}
       {/* Dish Leaderboards */}
       {!debouncedQuery && <DishLeaderboardSection city={city} />}
     </>
