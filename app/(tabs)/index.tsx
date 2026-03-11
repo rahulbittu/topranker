@@ -347,7 +347,7 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    paddingHorizontal: 20, paddingBottom: 10, paddingTop: 2,
+    paddingHorizontal: 16, paddingBottom: 10, paddingTop: 2,
   },
   headerSubtitle: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 2 },
   lastUpdated: { fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular", marginTop: 1, opacity: 0.7 },

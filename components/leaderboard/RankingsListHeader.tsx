@@ -190,7 +190,7 @@ export function RankingsListHeader({
 }
 
 const s = StyleSheet.create({
-  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 12 },
+  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 6 },
   chipsContainer: { paddingHorizontal: 16, gap: 8, flexDirection: "row", paddingVertical: 6 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -215,7 +215,7 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: AMBER, borderStyle: "dashed",
   },
   suggestChipText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
-  bestInHeader: { paddingHorizontal: 20, paddingTop: 2, paddingBottom: 4 },
+  bestInHeader: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 2 },
   bestInTitle: { fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text },
   dishShortcutsRow: { flexGrow: 0, minHeight: 38, marginBottom: 4 },
   dishShortcutsContainer: { paddingHorizontal: 16, flexDirection: "row", alignItems: "center", paddingVertical: 2 },
