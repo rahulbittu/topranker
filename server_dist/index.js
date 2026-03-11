@@ -7141,6 +7141,114 @@ var init_search_autocomplete = __esm({
   }
 });
 
+// server/search-suggestions.ts
+var search_suggestions_exports = {};
+__export(search_suggestions_exports, {
+  CATEGORY_SUGGESTIONS: () => CATEGORY_SUGGESTIONS,
+  buildSuggestionIndex: () => buildSuggestionIndex,
+  clearSuggestionIndex: () => clearSuggestionIndex,
+  getAllIndexedCities: () => getAllIndexedCities,
+  getCitySuggestionCount: () => getCitySuggestionCount,
+  getPopularSearches: () => getPopularSearches,
+  getSuggestions: () => getSuggestions,
+  refreshSuggestionsFromDb: () => refreshSuggestionsFromDb,
+  startSuggestionRefresh: () => startSuggestionRefresh,
+  stopSuggestionRefresh: () => stopSuggestionRefresh
+});
+function buildSuggestionIndex(city, businesses2) {
+  const suggestions = [];
+  for (const biz of businesses2) {
+    suggestions.push({ text: biz.name, type: "business", city, score: 10 });
+    if (biz.neighborhood && !suggestions.some((s) => s.text === biz.neighborhood && s.type === "neighborhood")) {
+      suggestions.push({ text: biz.neighborhood, type: "neighborhood", city, score: 5 });
+    }
+  }
+  for (const cat of CATEGORY_SUGGESTIONS) {
+    suggestions.push({ text: cat, type: "category", city, score: 3 });
+  }
+  suggestionIndex.set(city, suggestions);
+  suggestLog.info(`Index built for ${city}: ${suggestions.length} suggestions`);
+}
+function getSuggestions(query, city, limit) {
+  const index2 = suggestionIndex.get(city) || [];
+  const q = query.toLowerCase();
+  return index2.filter((s) => s.text.toLowerCase().includes(q)).sort((a, b) => b.score - a.score).slice(0, limit || 10);
+}
+function getPopularSearches(city, limit) {
+  const index2 = suggestionIndex.get(city) || [];
+  return index2.filter((s) => s.type === "business").sort((a, b) => b.score - a.score).slice(0, limit || 5);
+}
+function getCitySuggestionCount(city) {
+  return (suggestionIndex.get(city) || []).length;
+}
+function getAllIndexedCities() {
+  return Array.from(suggestionIndex.keys());
+}
+function clearSuggestionIndex(city) {
+  if (city) suggestionIndex.delete(city);
+  else suggestionIndex.clear();
+}
+async function refreshSuggestionsFromDb() {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { sql: sql21 } = await import("drizzle-orm");
+    const cityRows = await db2.selectDistinct({ city: businesses2.city }).from(businesses2);
+    const cities = cityRows.map((r) => r.city).filter(Boolean);
+    for (const city of cities) {
+      const rows = await db2.select({
+        name: businesses2.name,
+        category: businesses2.category,
+        neighborhood: businesses2.neighborhood
+      }).from(businesses2).where(sql21`${businesses2.city} = ${city}`);
+      buildSuggestionIndex(city, rows.map((r) => ({
+        name: r.name,
+        category: r.category,
+        neighborhood: r.neighborhood || ""
+      })));
+    }
+    suggestLog.info(`Refreshed suggestions for ${cities.length} cities`);
+  } catch (err) {
+    suggestLog.error("Failed to refresh suggestions:", err);
+  }
+}
+function startSuggestionRefresh() {
+  refreshSuggestionsFromDb();
+  refreshTimer = setInterval(refreshSuggestionsFromDb, REFRESH_INTERVAL_MS);
+  suggestLog.info(`Suggestion refresh scheduled every ${REFRESH_INTERVAL_MS / 6e4} minutes`);
+}
+function stopSuggestionRefresh() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+var suggestLog, suggestionIndex, CATEGORY_SUGGESTIONS, REFRESH_INTERVAL_MS, refreshTimer;
+var init_search_suggestions = __esm({
+  "server/search-suggestions.ts"() {
+    "use strict";
+    init_logger();
+    suggestLog = log.tag("SearchSuggestions");
+    suggestionIndex = /* @__PURE__ */ new Map();
+    CATEGORY_SUGGESTIONS = [
+      "restaurant",
+      "cafe",
+      "bar",
+      "bakery",
+      "bbq",
+      "pizza",
+      "seafood",
+      "fine_dining",
+      "food_truck",
+      "deli",
+      "street_food",
+      "fast_food"
+    ];
+    REFRESH_INTERVAL_MS = 30 * 60 * 1e3;
+    refreshTimer = null;
+  }
+});
+
 // server/notification-frequency.ts
 function enqueueNotification(notification) {
   const key2 = `${notification.memberId}:${notification.category}`;
@@ -14806,26 +14914,7 @@ function registerOwnerDashboardRoutes(app2) {
 
 // server/routes-search.ts
 init_logger();
-
-// server/search-suggestions.ts
-init_logger();
-var suggestLog = log.tag("SearchSuggestions");
-var suggestionIndex = /* @__PURE__ */ new Map();
-function getSuggestions(query, city, limit) {
-  const index2 = suggestionIndex.get(city) || [];
-  const q = query.toLowerCase();
-  return index2.filter((s) => s.text.toLowerCase().includes(q)).sort((a, b) => b.score - a.score).slice(0, limit || 10);
-}
-function getPopularSearches(city, limit) {
-  const index2 = suggestionIndex.get(city) || [];
-  return index2.filter((s) => s.type === "business").sort((a, b) => b.score - a.score).slice(0, limit || 5);
-}
-function getCitySuggestionCount(city) {
-  return (suggestionIndex.get(city) || []).length;
-}
-function getAllIndexedCities() {
-  return Array.from(suggestionIndex.keys());
-}
+init_search_suggestions();
 
 // server/search-query-tracker.ts
 init_logger();
@@ -16323,6 +16412,8 @@ function setupErrorHandler(app2) {
   preloadHashIndex2().catch((err) => log.error("Photo hash preload failed:", err));
   const { preloadPHashIndex: preloadPHashIndex2 } = await Promise.resolve().then(() => (init_phash(), phash_exports));
   preloadPHashIndex2().catch((err) => log.error("PHash preload failed:", err));
+  const { startSuggestionRefresh: startSuggestionRefresh2 } = await Promise.resolve().then(() => (init_search_suggestions(), search_suggestions_exports));
+  startSuggestionRefresh2();
   const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2, startCityHighlightsScheduler: startCityHighlightsScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
   const weeklyDigestTimeout = startWeeklyDigestScheduler2();
   const cityHighlightsTimeout = startCityHighlightsScheduler2();

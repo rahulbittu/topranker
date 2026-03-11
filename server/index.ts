@@ -428,6 +428,10 @@ function setupErrorHandler(app: express.Application) {
   const { preloadPHashIndex } = await import("./phash");
   preloadPHashIndex().catch((err) => logger.error("PHash preload failed:", err));
 
+  // Sprint 614: Search suggestions — build from DB + periodic refresh every 30 min
+  const { startSuggestionRefresh } = await import("./search-suggestions");
+  startSuggestionRefresh();
+
   // Sprint 175: Weekly digest push notification scheduler
   const { startWeeklyDigestScheduler, startCityHighlightsScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();

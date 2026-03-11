@@ -68,3 +68,52 @@ export function clearSuggestionIndex(city?: string): void {
   if (city) suggestionIndex.delete(city);
   else suggestionIndex.clear();
 }
+
+// Sprint 614: Periodic refresh — rebuilds suggestion index from DB every 30 minutes
+const REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+export async function refreshSuggestionsFromDb(): Promise<void> {
+  try {
+    const { db } = await import("./db");
+    const { businesses } = await import("@shared/schema");
+    const { sql } = await import("drizzle-orm");
+
+    // Get distinct cities
+    const cityRows = await db.selectDistinct({ city: businesses.city }).from(businesses);
+    const cities = cityRows.map(r => r.city).filter(Boolean);
+
+    for (const city of cities) {
+      const rows = await db.select({
+        name: businesses.name,
+        category: businesses.category,
+        neighborhood: businesses.neighborhood,
+      }).from(businesses).where(sql`${businesses.city} = ${city}`);
+
+      buildSuggestionIndex(city, rows.map(r => ({
+        name: r.name,
+        category: r.category,
+        neighborhood: r.neighborhood || "",
+      })));
+    }
+
+    suggestLog.info(`Refreshed suggestions for ${cities.length} cities`);
+  } catch (err) {
+    suggestLog.error("Failed to refresh suggestions:", err);
+  }
+}
+
+export function startSuggestionRefresh(): void {
+  // Initial build
+  refreshSuggestionsFromDb();
+  // Periodic refresh
+  refreshTimer = setInterval(refreshSuggestionsFromDb, REFRESH_INTERVAL_MS);
+  suggestLog.info(`Suggestion refresh scheduled every ${REFRESH_INTERVAL_MS / 60000} minutes`);
+}
+
+export function stopSuggestionRefresh(): void {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
