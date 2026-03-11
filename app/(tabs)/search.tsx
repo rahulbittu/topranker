@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { Analytics } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Platform, RefreshControl,
+  TextInput, Platform, RefreshControl, Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
@@ -242,13 +242,17 @@ export default function SearchScreen() {
     setActivePresetId(null);
   }, []);
 
-  // Sprint 644: Share search results
+  // Sprint 644/646: Share search results — native share sheet
   const handleShareSearch = useCallback(async () => {
     Haptics.selectionAsync();
     const url = buildSearchUrl("https://topranker.com/search", currentFilters);
     const text = getSearchShareText(query, city, filtered.length, url);
     Analytics.searchShare(query, city, filtered.length);
-    await copyShareLink(url, "Search results");
+    try {
+      await Share.share({ message: text, url });
+    } catch {
+      await copyShareLink(url, "Search results");
+    }
   }, [query, city, filtered.length, currentFilters]);
 
   const filtered = useMemo(() => {

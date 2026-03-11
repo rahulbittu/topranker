@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Platform, RefreshControl,
+  Platform, RefreshControl, Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -17,6 +17,7 @@ import { ProfileSkeleton } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, deleteRatingApi, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
+import { getProfileShareText } from "@/lib/sharing";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -109,6 +110,9 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       <View style={styles.header}>
         <Text style={styles.title}>Profile</Text>
         <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+          <TouchableOpacity onPress={() => Share.share({ message: getProfileShareText(profile.displayName, profile.totalRatings || 0, tier) })} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Share profile">
+            <Ionicons name="share-outline" size={18} color={Colors.textTertiary} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push("/settings")} style={styles.logoutBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Open settings">
             <Ionicons name="settings-outline" size={18} color={Colors.textTertiary} />
           </TouchableOpacity>

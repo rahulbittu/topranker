@@ -115,6 +115,18 @@ export function getRatingShareText(
 }
 
 /**
+ * Sprint 646: Generate profile share text.
+ */
+export function getProfileShareText(
+  displayName: string,
+  ratingCount: number,
+  tier: string,
+): string {
+  const tierTitle = tier.charAt(0).toUpperCase() + tier.slice(1);
+  return `🏆 ${displayName} is a ${tierTitle} Judge on TopRanker with ${ratingCount} rating${ratingCount !== 1 ? "s" : ""}!\n\nJoin and rate your favorite spots:\nhttps://topranker.com`;
+}
+
+/**
  * Sprint 644: Generate WhatsApp-optimized search share text.
  * "Best [query] in [city]" format for controversy-driven engagement.
  */
