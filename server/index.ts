@@ -195,7 +195,7 @@ function configureExpoAndLanding(app: express.Application) {
   if (hasDistBuild) {
     distIndexHtml = fs.readFileSync(path.join(distPath, "index.html"), "utf-8");
     // If dist has old bundle with localhost baked in, replace with correct bundle
-    const CORRECT_BUNDLE = "entry-666ec119d2844b53cf20c02cd28c144c.js";
+    const CORRECT_BUNDLE = "entry-2ed6946db2a61da512f3486da04e7749.js";
     if (!distIndexHtml.includes(CORRECT_BUNDLE)) {
       log(`WARNING: dist/index.html has stale bundle, patching to ${CORRECT_BUNDLE}`);
       distIndexHtml = distIndexHtml.replace(
@@ -207,8 +207,8 @@ function configureExpoAndLanding(app: express.Application) {
 
   if (hasDistBuild) {
     // Sprint 593: If the correct bundle doesn't exist but old one does, copy it
-    const correctBundlePath = path.join(distPath, "_expo/static/js/web/entry-666ec119d2844b53cf20c02cd28c144c.js");
-    const oldBundlePath = path.join(distPath, "_expo/static/js/web/entry-666ec119d2844b53cf20c02cd28c144c.js");
+    const correctBundlePath = path.join(distPath, "_expo/static/js/web/entry-2ed6946db2a61da512f3486da04e7749.js");
+    const oldBundlePath = path.join(distPath, "_expo/static/js/web/entry-2ed6946db2a61da512f3486da04e7749.js");
     if (!fs.existsSync(correctBundlePath) && fs.existsSync(oldBundlePath)) {
       // Serve the old bundle content at the new bundle URL via route
       const oldBundleContent = fs.readFileSync(oldBundlePath, "utf-8");
