@@ -26,6 +26,7 @@ interface Props {
     neighborhood?: string | null;
     city: string;
     isClaimed: boolean;
+    isPro?: boolean;
     isOpenNow: boolean;
     priceRange?: string | null;
     rank: number;
@@ -94,6 +95,7 @@ export function BusinessHeroSection({
       <BusinessNameCard
         name={business.name}
         isClaimed={business.isClaimed}
+        isPro={business.isPro}
         category={business.category}
         neighborhood={business.neighborhood}
         city={business.city}

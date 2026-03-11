@@ -44,6 +44,8 @@ interface DashboardData {
   monthlyVolume: VolumePoint[];
   velocityChange: number;
   sparklineScores: number[];
+  isPro?: boolean;
+  subscriptionStatus?: string;
 }
 
 function StatCard({ label, value, delta, icon, color, delay }: {
@@ -131,9 +133,17 @@ export default function BusinessDashboardScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle} numberOfLines={1}>{name || "Dashboard"}</Text>
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
-            <Text style={styles.verifiedText}>VERIFIED OWNER</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.verifiedBadge}>
+              <Ionicons name="shield-checkmark" size={10} color="#FFFFFF" />
+              <Text style={styles.verifiedText}>VERIFIED OWNER</Text>
+            </View>
+            {a.isPro && (
+              <View style={styles.proBadge}>
+                <Ionicons name="diamond" size={10} color="#FFFFFF" />
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            )}
           </View>
         </View>
         <TouchableOpacity
@@ -206,16 +216,36 @@ export default function BusinessDashboardScreen() {
               </Animated.View>
             )}
 
-            <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.proCard}>
-              <View style={styles.proCardInner}>
-                <Ionicons name="diamond-outline" size={24} color={BRAND.colors.amber} />
-                <View style={styles.proCardInfo}>
-                  <Text style={styles.proCardTitle}>Upgrade to Pro</Text>
-                  <Text style={styles.proCardSub}>Respond to reviews, advanced analytics, verified badge</Text>
+            {a.isPro ? (
+              <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.proActiveCard}>
+                <View style={styles.proCardInner}>
+                  <Ionicons name="diamond" size={24} color={BRAND.colors.amber} />
+                  <View style={styles.proCardInfo}>
+                    <Text style={styles.proCardTitle}>Dashboard Pro Active</Text>
+                    <Text style={styles.proCardSub}>Full analytics, review notes, priority support</Text>
+                  </View>
+                  <View style={styles.priorityBadge}>
+                    <Ionicons name="headset-outline" size={12} color={BRAND.colors.amber} />
+                    <Text style={styles.priorityText}>Priority</Text>
+                  </View>
                 </View>
-                <Text style={styles.proCardPrice}>{PRICING.dashboardPro.displayAmount}</Text>
-              </View>
-            </Animated.View>
+              </Animated.View>
+            ) : (
+              <Animated.View entering={FadeInDown.delay(700).duration(400)} style={styles.proCard}>
+                <TouchableOpacity
+                  style={styles.proCardInner}
+                  onPress={() => router.push({ pathname: "/business/enter-dashboard-pro", params: { slug: slug || "" } })}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="diamond-outline" size={24} color={BRAND.colors.amber} />
+                  <View style={styles.proCardInfo}>
+                    <Text style={styles.proCardTitle}>Upgrade to Pro</Text>
+                    <Text style={styles.proCardSub}>Full review notes, advanced analytics, priority support</Text>
+                  </View>
+                  <Text style={styles.proCardPrice}>{PRICING.dashboardPro.displayAmount}</Text>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
 
             {slug && <HoursEditor businessId={slug} delay={800} />}
             {slug && <ActionUrlEditor slug={slug} delay={850} />}
@@ -231,7 +261,25 @@ export default function BusinessDashboardScreen() {
           </>
         )}
 
-        {activeTab === "insights" && (
+        {activeTab === "insights" && !a.isPro && (
+          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.proGateCard}>
+            <Ionicons name="lock-closed" size={32} color={BRAND.colors.amber} />
+            <Text style={styles.proGateTitle}>Unlock Full Insights</Text>
+            <Text style={styles.proGateDesc}>
+              Dimension breakdowns, visit type distribution, competitor trends, and monthly analytics are available with Dashboard Pro.
+            </Text>
+            <TouchableOpacity
+              style={styles.proGateBtn}
+              onPress={() => router.push({ pathname: "/business/enter-dashboard-pro", params: { slug: slug || "" } })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="diamond-outline" size={16} color="#fff" />
+              <Text style={styles.proGateBtnText}>Upgrade — {PRICING.dashboardPro.displayAmount}</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {activeTab === "insights" && a.isPro && (
           <>
             {dimensionData && dimensionData.totalRatings > 0 && (
               <DimensionBreakdownCard
@@ -314,6 +362,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceRaised, alignItems: "center", justifyContent: "center",
   },
   headerCenter: { flex: 1, alignItems: "center", gap: 4 },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   headerTitle: {
     fontSize: 18, fontWeight: "700", color: Colors.text,
     fontFamily: "PlayfairDisplay_700Bold", letterSpacing: -0.5,
@@ -378,8 +427,26 @@ const styles = StyleSheet.create({
   highlightValue: { fontSize: 18, fontWeight: "800", color: Colors.text, fontFamily: "DMSans_800ExtraBold" },
   highlightLabel: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
+  // Pro badges
+  proBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: BRAND.colors.amber, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  proBadgeText: {
+    fontSize: 8, fontWeight: "800", color: "#FFFFFF",
+    fontFamily: "DMSans_800ExtraBold", letterSpacing: 0.5,
+  },
+  priorityBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: `${BRAND.colors.amber}15`, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  priorityText: {
+    fontSize: 11, fontWeight: "600", color: BRAND.colors.amber, fontFamily: "DMSans_600SemiBold",
+  },
+
   // Pro upsell
   proCard: { backgroundColor: "rgba(196,154,26,0.06)", borderRadius: 14, borderWidth: 1, borderColor: "rgba(196,154,26,0.2)" },
+  proActiveCard: { backgroundColor: "rgba(196,154,26,0.08)", borderRadius: 14, borderWidth: 1, borderColor: BRAND.colors.amber },
   proCardInner: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16 },
   proCardInfo: { flex: 1 },
   proCardTitle: { fontSize: 14, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
@@ -396,4 +463,21 @@ const styles = StyleSheet.create({
   insightInfo: { flex: 1, gap: 4 },
   insightTitle: { fontSize: 14, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   insightDesc: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_400Regular", lineHeight: 18 },
+
+  // Pro gate
+  proGateCard: {
+    alignItems: "center", gap: 12, padding: 32,
+    backgroundColor: Colors.surfaceRaised, borderRadius: 14,
+  },
+  proGateTitle: { fontSize: 18, fontWeight: "700", color: Colors.text, fontFamily: "DMSans_700Bold" },
+  proGateDesc: {
+    fontSize: 13, color: Colors.textSecondary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", lineHeight: 20,
+  },
+  proGateBtn: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: BRAND.colors.amber, borderRadius: 10,
+    paddingHorizontal: 20, paddingVertical: 12, marginTop: 4,
+  },
+  proGateBtnText: { fontSize: 14, fontWeight: "700", color: "#fff", fontFamily: "DMSans_700Bold" },
 });

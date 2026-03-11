@@ -54,9 +54,9 @@ describe("Sprint 589: BusinessHeroSection", () => {
     expect(src).toContain("BadgeRowCompact");
   });
 
-  it("module LOC under 160", () => {
+  it("module LOC under 170", () => { // Sprint 652: ceiling raised 160→170 (+isPro prop)
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(160);
+    expect(lines).toBeLessThan(170);
   });
 });
 

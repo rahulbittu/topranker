@@ -129,8 +129,8 @@ describe("Sprint 576: api.ts Cleanup", () => {
     expect(apiSrc).not.toContain("let _servingMockData");
   });
 
-  it("api.ts LOC dropped below 560", () => { // Sprint 624: ceiling raised 530→560
+  it("api.ts LOC dropped below 570", () => { // Sprint 652: ceiling raised 560→570 (+isPro field)
     const lines = apiSrc.split("\n").length;
-    expect(lines).toBeLessThan(560);
+    expect(lines).toBeLessThan(570);
   });
 });

@@ -30,6 +30,7 @@ export interface ApiBusiness {
   priceRange: string | null;
   isOpenNow: boolean;
   isClaimed: boolean;
+  subscriptionStatus?: string | null;
   googleRating: string | null;
   googleMapsUrl: string | null;
   openingHours: { weekday_text?: string[]; periods?: any[] } | null;
@@ -197,6 +198,7 @@ export function mapApiBusiness(biz: ApiBusiness) {
     lat: biz.lat ? parseFloat(biz.lat) : undefined,
     lng: biz.lng ? parseFloat(biz.lng) : undefined,
     isClaimed: biz.isClaimed,
+    isPro: biz.subscriptionStatus === "active" || biz.subscriptionStatus === "trialing",
     googleRating: biz.googleRating ? parseFloat(biz.googleRating) : undefined,
     googleMapsUrl: biz.googleMapsUrl || undefined,
     openingHours: biz.openingHours || undefined,

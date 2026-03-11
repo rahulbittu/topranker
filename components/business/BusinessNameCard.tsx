@@ -8,6 +8,7 @@ import { getCategoryDisplay } from "@/lib/data";
 export interface BusinessNameCardProps {
   name: string;
   isClaimed: boolean;
+  isPro?: boolean;
   category: string;
   neighborhood?: string;
   city: string;
@@ -16,7 +17,7 @@ export interface BusinessNameCardProps {
 }
 
 export function BusinessNameCard({
-  name, isClaimed, category, neighborhood, city, isOpenNow, priceRange,
+  name, isClaimed, isPro, category, neighborhood, city, isOpenNow, priceRange,
 }: BusinessNameCardProps) {
   const catDisplay = getCategoryDisplay(category);
   return (
@@ -24,6 +25,12 @@ export function BusinessNameCard({
       <View style={s.nameRow}>
         <Text style={s.businessName}>{name}</Text>
         {isClaimed && <Ionicons name="checkmark-circle" size={18} color={Colors.blue} />}
+        {isPro && (
+          <View style={s.proBadge}>
+            <Ionicons name="diamond" size={10} color="#fff" />
+            <Text style={s.proBadgeText}>PRO</Text>
+          </View>
+        )}
       </View>
       <Text style={s.businessMeta}>
         {catDisplay.emoji} {catDisplay.label}{neighborhood ? ` \u00B7 ${neighborhood}` : ""} {"\u00B7"} {city}
@@ -70,4 +77,13 @@ const s = StyleSheet.create({
   openDot: { width: 6, height: 6, borderRadius: 3 },
   openBadgeText: { fontSize: 10, fontWeight: "700", fontFamily: "DMSans_700Bold", letterSpacing: 0.5 },
   priceText: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
+  proBadge: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: BRAND.colors.amber, borderRadius: 6,
+    paddingHorizontal: 7, paddingVertical: 2,
+  },
+  proBadgeText: {
+    fontSize: 9, fontWeight: "800", color: "#fff",
+    fontFamily: "DMSans_800ExtraBold", letterSpacing: 0.5,
+  },
 });

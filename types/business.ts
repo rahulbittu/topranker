@@ -23,6 +23,7 @@ export interface MappedBusiness {
   lng?: number;
   googleRating?: number;
   isClaimed?: boolean;
+  isPro?: boolean;
   relevanceScore?: number;
   // Sprint 626: Decision-to-Action fields
   phone?: string | null;
