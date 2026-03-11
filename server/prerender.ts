@@ -148,6 +148,7 @@ async function prerenderDish(slug: string, city: string): Promise<string | null>
       title: `Best ${board.dishName} in ${cityTitle} — TopRanker`,
       description: `${entries.length} restaurants ranked by credibility-weighted reviews. Top spots: ${topNames || "Be the first to rate"}.`,
       url: `${SITE_URL}/dish/${slug}`,
+      image: `${SITE_URL}/api/og-image/dish/${slug}?city=${encodeURIComponent(city)}`,
       jsonLd,
     });
   } catch (err) {
@@ -188,7 +189,7 @@ async function prerenderBusiness(slug: string): Promise<string | null> {
       title: `${biz.name} — ${biz.category} in ${biz.city} — TopRanker`,
       description: `${biz.name} ranked #${biz.currentRank || "unranked"} in ${biz.category} in ${biz.city}. ${biz.totalRatings} credibility-weighted ratings.`,
       url: `${SITE_URL}/business/${slug}`,
-      image: biz.photoUrl || undefined,
+      image: `${SITE_URL}/api/og-image/business/${slug}`,
       jsonLd,
     });
   } catch (err) {

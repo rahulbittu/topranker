@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { handleWebhook, handleDeployStatus } from "./deploy";
 import { handlePhotoProxy } from "./photos";
 import { handleBadgeShare } from "./badge-share";
+import { handleBusinessOgImage, handleDishOgImage } from "./og-image";
 import { registerAllAdminRoutes } from "./routes-admin";
 import { registerPaymentRoutes } from "./routes-payments";
 import { registerBadgeRoutes } from "./routes-badges";
@@ -331,6 +332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/webhook/deploy", wrapAsync(handleWebhook));
   app.get("/api/deploy/status", wrapAsync(handleDeployStatus));
   app.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
+  app.get("/api/og-image/business/:slug", wrapAsync(handleBusinessOgImage));
+  app.get("/api/og-image/dish/:slug", wrapAsync(handleDishOgImage));
 
   // ── Sprint 211: Beta Feedback ───────────────────────────────
   app.post("/api/feedback", requireAuth, wrapAsync(async (req: Request, res: Response) => {

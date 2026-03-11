@@ -198,8 +198,8 @@ describe("Prerender — business pages", () => {
     expect(src).toContain("biz.totalRatings > 0");
   });
 
-  it("includes business photo as OG image", () => {
-    expect(src).toContain("biz.photoUrl");
+  it("includes dynamic OG image URL", () => {
+    expect(src).toContain("/api/og-image/business/");
   });
 });
 

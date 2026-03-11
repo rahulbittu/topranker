@@ -30,14 +30,15 @@
     "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" },
     "components/rate/DimensionScoringStep.tsx": { "maxLOC": 170, "current": 151, "notes": "Sprint 621: extracted step 1 dimension scoring" },
     "components/search/JustRatedSection.tsx": { "maxLOC": 140, "current": 122, "notes": "Sprint 617: just-rated feed section" },
-    "components/search/GooglePlacesFallback.tsx": { "maxLOC": 160, "current": 142, "notes": "Sprint 623: Google Places fallback for empty results" }
+    "components/search/GooglePlacesFallback.tsx": { "maxLOC": 160, "current": 142, "notes": "Sprint 623: Google Places fallback for empty results" },
+    "server/og-image.ts": { "maxLOC": 160, "current": 150, "notes": "Sprint 636: Dynamic OG image generation" }
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 630.5
+    "currentSizeKb": 636.9
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11694
+    "currentCount": 11695
   }
 }
