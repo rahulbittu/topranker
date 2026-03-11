@@ -90,16 +90,16 @@ describe("Sprint 622 — Horizontal Alignment + White Space", () => {
       expect(searchSrc).toContain("marginBottom: 6");
     });
 
-    it("priceRow paddingBottom reduced to 6", () => {
+    it("priceRow paddingBottom tightened to 2", () => {
       const match = filtersSrc.match(/priceRow:\s*\{([^}]+)\}/);
       expect(match).toBeTruthy();
-      expect(match![1]).toContain("paddingBottom: 6");
+      expect(match![1]).toContain("paddingBottom: 2");
     });
 
-    it("sortRow paddingBottom reduced to 6", () => {
+    it("sortRow paddingBottom tightened to 2", () => {
       const match = filtersSrc.match(/sortRow:\s*\{([^}]+)\}/);
       expect(match).toBeTruthy();
-      expect(match![1]).toContain("paddingBottom: 6");
+      expect(match![1]).toContain("paddingBottom: 2");
     });
   });
 

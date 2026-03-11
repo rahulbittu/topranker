@@ -39,6 +39,7 @@ export function MapView({ businesses, city, onSelectBiz, onSearchArea, onMyLocat
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const infoWindowRef = useRef<any>(null);
+  const userMarkerRef = useRef<any>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState<string | false>(false);
   const [showSearchArea, setShowSearchArea] = useState(false);
@@ -122,6 +123,7 @@ export function MapView({ businesses, city, onSelectBiz, onSearchArea, onMyLocat
     return () => {
       markersRef.current.forEach(m => m.setMap?.(null));
       markersRef.current = [];
+      if (userMarkerRef.current) { userMarkerRef.current.setMap(null); userMarkerRef.current = null; }
       // Clear map instance so it's re-created on next mount (prevents stale DOM ref)
       mapInstance.current = null;
       setMapReady(false);
@@ -186,6 +188,35 @@ export function MapView({ businesses, city, onSelectBiz, onSearchArea, onMyLocat
       google.maps.event.removeListener(listener);
     });
   }
+
+  // Sprint 635: Show blue dot for user location + auto-pan on first location
+  useEffect(() => {
+    if (!mapInstance.current || !mapReady || !userLocation) return;
+    const google = window.google;
+    if (!google) return;
+    const pos = { lat: userLocation.lat, lng: userLocation.lng };
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setPosition(pos);
+    } else {
+      const blueDotSvg = encodeURIComponent(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="8" fill="#4285F4" stroke="white" stroke-width="3"/></svg>`
+      );
+      userMarkerRef.current = new google.maps.Marker({
+        position: pos,
+        map: mapInstance.current,
+        icon: {
+          url: `data:image/svg+xml,${blueDotSvg}`,
+          scaledSize: new google.maps.Size(24, 24),
+          anchor: new google.maps.Point(12, 12),
+        },
+        title: "My Location",
+        zIndex: 9999,
+      });
+      // Auto-pan on first location acquisition
+      mapInstance.current.panTo(pos);
+      mapInstance.current.setZoom(14);
+    }
+  }, [userLocation, mapReady]);
 
   if (Platform.OS !== "web") {
     return (

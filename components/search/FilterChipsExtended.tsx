@@ -140,10 +140,10 @@ export const HoursFilterChips = React.memo(function HoursFilterChips({
 export function getHoursFilters(): typeof HOURS_FILTERS { return HOURS_FILTERS; }
 
 const s = StyleSheet.create({
-  filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
+  filterRow: { gap: 6, flexDirection: "row" as const, alignItems: "center" as const, paddingHorizontal: 16 },
 
   // Dietary
-  dietaryScrollRow: { marginBottom: 6 },
+  dietaryScrollRow: { marginBottom: 2, marginHorizontal: -16 },
   dietaryChip: {
     flexDirection: "row" as const, alignItems: "center" as const,
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
@@ -155,7 +155,7 @@ const s = StyleSheet.create({
 
   // Distance
   distanceRow: {
-    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 10,
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 2,
   },
   distanceLabel: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
@@ -172,7 +172,7 @@ const s = StyleSheet.create({
 
   // Hours
   hoursRow: {
-    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 10,
+    flexDirection: "row" as const, alignItems: "center" as const, gap: 6, paddingBottom: 2,
   },
   hoursLabel: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,
