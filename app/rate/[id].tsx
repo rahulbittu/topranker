@@ -417,6 +417,7 @@ export default function RateScreen() {
             tierColor={tierColor}
             weightedScore={weightedScore}
             visitType={visitType}
+            pageEnteredAt={pageEnteredAt}
           />
         ) : (
           <RatingReviewStep

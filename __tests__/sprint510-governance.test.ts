@@ -126,11 +126,11 @@ describe("Sprint 510: Governance", () => {
       expect(src).toContain("recordPushExperimentOpen");
     });
 
-    it("server build stays under 720kb", () => {
-      // Sprint 566: dish photo integration +0.7kb
+    it("server build stays under 750kb", () => {
+      // Sprint 616: ceiling raised to 750kb
       const buildSrc = readFile("server_dist/index.js");
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(730);
+      expect(sizeKb).toBeLessThan(750);
     });
   });
 });

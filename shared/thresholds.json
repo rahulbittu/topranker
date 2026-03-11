@@ -25,8 +25,9 @@
     "components/business/RatingPhotoGallery.tsx": { "maxLOC": 230, "current": 210, "notes": "Sprint 612: +verifiedPhotoBadge style (195→210)" },
     "components/profile/TierProgressNotification.tsx": { "maxLOC": 220, "current": 208, "notes": "Sprint 595: raised ceiling 210→220" },
     "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 170, "current": 153, "notes": "Sprint 595: raised ceiling 160→170" },
-    "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 501, "notes": "Sprint 606: receipt extraction (629→501)" },
-    "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" }
+    "components/rate/RatingExtrasStep.tsx": { "maxLOC": 550, "current": 506, "notes": "Sprint 616: +TimeOnPageIndicator (501→506)" },
+    "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" },
+    "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" }
   },
   "build": {
     "maxSizeKb": 750,
@@ -34,6 +35,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11327
+    "currentCount": 11347
   }
 }

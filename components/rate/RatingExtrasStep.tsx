@@ -20,6 +20,7 @@ import { PhotoBoostMeter, PhotoTips } from "@/components/rate/PhotoBoostMeter";
 import { NoteSentimentIndicator } from "@/components/rate/NoteSentimentIndicator";
 import { getPhotoPromptsByVisitType, getReceiptHint, type VisitType } from "@/components/rate/RatingPrompts";
 import { ReceiptUploadCard } from "@/components/rate/ReceiptUploadCard";
+import { TimeOnPageIndicator } from "@/components/rate/TimeOnPageIndicator";
 
 // Re-exports for backward compatibility
 export { getPhotoPromptsByVisitType, getReceiptHint } from "@/components/rate/RatingPrompts";
@@ -52,6 +53,7 @@ interface RatingExtrasStepProps {
   tierColor: string;
   weightedScore: number;
   visitType?: VisitType | null; // Sprint 459
+  pageEnteredAt?: number; // Sprint 616: time-on-page indicator
 }
 
 export function RatingExtrasStep({
@@ -62,7 +64,7 @@ export function RatingExtrasStep({
   receiptUri = null, setReceiptUri,
   q1Score, q2Score, q3Score, wouldReturn,
   userTier, tierColor, weightedScore,
-  visitType,
+  visitType, pageEnteredAt,
 }: RatingExtrasStepProps) {
   // Multi-photo support: use photoUris array if available, fall back to single photoUri
   const photos = setPhotoUris ? photoUris : (photoUri ? [photoUri] : []);
@@ -316,6 +318,9 @@ export function RatingExtrasStep({
       {setReceiptUri && (
         <ReceiptUploadCard receiptUri={receiptUri} setReceiptUri={setReceiptUri} visitType={visitType} />
       )}
+
+      {/* Sprint 616: Time-on-page indicator */}
+      {pageEnteredAt && <TimeOnPageIndicator startedAt={pageEnteredAt} />}
 
       {/* Score summary */}
       <View style={s.summaryCard} accessibilityRole="summary" accessibilityLabel={`Your rating summary: Quality ${q1Score}, Value ${q2Score}, Service ${q3Score}, Would return: ${wouldReturn ? "yes" : "no"}, weighted score ${weightedScore.toFixed(1)}`}>
