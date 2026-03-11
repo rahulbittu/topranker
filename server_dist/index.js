@@ -16151,7 +16151,7 @@ function configureExpoAndLanding(app2) {
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
-  app2.get("/_debug-dist", (_req, res) => {
+  app2.get("/api/debug-dist", (_req, res) => {
     const cwd = process.cwd();
     const distDir = path2.resolve(cwd, "dist");
     const backupDir = path2.resolve(cwd, "dist-web-backup");

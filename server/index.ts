@@ -168,7 +168,7 @@ function configureExpoAndLanding(app: express.Application) {
   });
 
   // Temporary debug endpoint — remove after deploy fix
-  app.get("/_debug-dist", (_req: Request, res: Response) => {
+  app.get("/api/debug-dist", (_req: Request, res: Response) => {
     const cwd = process.cwd();
     const distDir = path.resolve(cwd, "dist");
     const backupDir = path.resolve(cwd, "dist-web-backup");
