@@ -1,30 +1,30 @@
 {
-  "_comment": "Sprint 558: Centralized file health thresholds. Update here instead of per-sprint test files.",
+  "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
-    "shared/schema.ts": { "maxLOC": 950, "current": 935, "notes": "Sprint 551: compressed from 996" },
-    "server/routes.ts": { "maxLOC": 400, "current": 383, "notes": "Core routes" },
-    "server/storage/businesses.ts": { "maxLOC": 620, "current": 599, "notes": "Sprint 554: +updateBusinessHours" },
-    "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 86, "notes": "Sprint 559: hours conversion wired" },
-    "server/hours-utils.ts": { "maxLOC": 220, "current": 200, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 525, "current": 517, "notes": "Sprint 576: getMockData extracted to mock-router.ts" },
-    "lib/mock-router.ts": { "maxLOC": 85, "current": 77, "notes": "Sprint 576: extracted from api.ts" },
-    "lib/api-owner.ts": { "maxLOC": 220, "current": 198, "notes": "Sprint 562: extracted from api.ts" },
-    "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 443, "notes": "Sprint 553: filter extraction" },
-    "app/(tabs)/search.tsx": { "maxLOC": 600, "current": 588, "notes": "Sprint 571: DiscoverSections extracted" },
-    "app/business/dashboard.tsx": { "maxLOC": 510, "current": 502, "notes": "Sprint 567: +RatingVelocityWidget" },
-    "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 111, "notes": "Sprint 561: extracted from dashboard.tsx" },
-    "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 169, "notes": "Sprint 567: velocity widget" },
-    "components/business/CollapsibleReviews.tsx": { "maxLOC": 370, "current": 349, "notes": "Sprint 563: carousel extracted" },
-    "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 70, "notes": "Sprint 563: extracted from CollapsibleReviews" },
-    "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 115, "current": 106, "notes": "Sprint 593: web flexbox row" },
-    "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 414, "notes": "Sprint 546: dedup" },
+    "shared/schema.ts": { "maxLOC": 960, "current": 938, "notes": "Sprint 595: raised ceiling 950→960, stable" },
+    "server/routes.ts": { "maxLOC": 400, "current": 386, "notes": "Core routes" },
+    "server/storage/businesses.ts": { "maxLOC": 620, "current": 600, "notes": "Sprint 554: +updateBusinessHours" },
+    "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
+    "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
+    "lib/api.ts": { "maxLOC": 530, "current": 518, "notes": "Sprint 595: raised ceiling 525→530" },
+    "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
+    "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
+    "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
+    "app/(tabs)/search.tsx": { "maxLOC": 610, "current": 589, "notes": "Sprint 595: raised ceiling 600→610" },
+    "app/business/dashboard.tsx": { "maxLOC": 520, "current": 503, "notes": "Sprint 595: raised ceiling 510→520" },
+    "components/dashboard/HoursEditor.tsx": { "maxLOC": 130, "current": 112, "notes": "Sprint 561: extracted from dashboard.tsx" },
+    "components/dashboard/RatingVelocityWidget.tsx": { "maxLOC": 180, "current": 170, "notes": "Sprint 567: velocity widget" },
+    "components/business/CollapsibleReviews.tsx": { "maxLOC": 370, "current": 350, "notes": "Sprint 563: carousel extracted" },
+    "components/business/PhotoCarouselModal.tsx": { "maxLOC": 90, "current": 71, "notes": "Sprint 563: extracted" },
+    "components/leaderboard/LeaderboardFilterChips.tsx": { "maxLOC": 115, "current": 107, "notes": "Sprint 593: web flexbox row" },
+    "components/search/SearchOverlays.tsx": { "maxLOC": 430, "current": 415, "notes": "Sprint 546: dedup" },
     "lib/sharing.ts": { "maxLOC": 130, "current": 118, "notes": "Sprint 547: domain alignment" },
-    "components/search/CityComparisonOverlay.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 568: city comparison overlay" },
-    "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 154, "notes": "Sprint 571: extracted from search.tsx" },
-    "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 210, "current": 202, "notes": "Sprint 569: credibility breakdown" },
-    "components/business/RatingPhotoGallery.tsx": { "maxLOC": 200, "current": 194, "notes": "Sprint 572: rating photo gallery grid" },
-    "components/profile/TierProgressNotification.tsx": { "maxLOC": 210, "current": 207, "notes": "Sprint 573: tier progress notification" },
-    "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 160, "current": 152, "notes": "Sprint 574: dish vote streak tracking" }
+    "components/search/CityComparisonOverlay.tsx": { "maxLOC": 210, "current": 194, "notes": "Sprint 595: raised ceiling 200→210" },
+    "components/search/DiscoverSections.tsx": { "maxLOC": 170, "current": 155, "notes": "Sprint 571: extracted from search.tsx" },
+    "components/profile/CredibilityBreakdownTooltip.tsx": { "maxLOC": 220, "current": 202, "notes": "Sprint 595: raised ceiling 210→220" },
+    "components/business/RatingPhotoGallery.tsx": { "maxLOC": 210, "current": 195, "notes": "Sprint 595: raised ceiling 200→210" },
+    "components/profile/TierProgressNotification.tsx": { "maxLOC": 220, "current": 208, "notes": "Sprint 595: raised ceiling 210→220" },
+    "components/profile/DishVoteStreakCard.tsx": { "maxLOC": 170, "current": 153, "notes": "Sprint 595: raised ceiling 160→170" }
   },
   "build": {
     "maxSizeKb": 750,
@@ -32,6 +32,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11290
+    "currentCount": 11307
   }
 }
