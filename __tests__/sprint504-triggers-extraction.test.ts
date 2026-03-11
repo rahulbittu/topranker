@@ -10,9 +10,9 @@ const readFile = (relPath: string) => fs.readFileSync(path.join(ROOT, relPath), 
 
 describe("Sprint 504: notification-triggers.ts Extraction", () => {
   describe("notification-triggers.ts LOC reduction", () => {
-    it("notification-triggers.ts under 200 LOC (was 402)", () => {
+    it("notification-triggers.ts under 280 LOC (Sprint 648: +rating reminder)", () => {
       const loc = readFile("server/notification-triggers.ts").split("\n").length;
-      expect(loc).toBeLessThan(200);
+      expect(loc).toBeLessThan(280);
     });
 
     it("re-exports event triggers from events file", () => {

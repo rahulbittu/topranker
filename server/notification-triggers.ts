@@ -180,5 +180,87 @@ export function startWeeklyDigestScheduler(): NodeJS.Timeout {
   return initialTimeout;
 }
 
+/**
+ * Sprint 648: Rating reminder push for inactive users.
+ * Sends a nudge to users who haven't rated in 7+ days.
+ * Runs daily at 6pm UTC (lunchtime in Dallas).
+ */
+export async function sendRatingReminderPush(): Promise<number> {
+  try {
+    const { db } = await import("./db");
+    const { members, ratings } = await import("@shared/schema");
+    const { isNotNull, sql } = await import("drizzle-orm");
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+
+    // Find users with push tokens who haven't rated in 7+ days
+    const inactiveUsers = await db
+      .select({
+        id: members.id,
+        pushToken: members.pushToken,
+        displayName: members.displayName,
+        notificationPrefs: members.notificationPrefs,
+        selectedCity: members.selectedCity,
+      })
+      .from(members)
+      .where(isNotNull(members.pushToken));
+
+    let sent = 0;
+    for (const user of inactiveUsers) {
+      if (!user.pushToken) continue;
+      const prefs = (user.notificationPrefs as Record<string, boolean>) || {};
+      if (prefs.ratingReminders === false) continue;
+
+      // Check if user has rated in the last 7 days
+      const recentRatings = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ratings)
+        .where(sql`${ratings.memberId} = ${user.id} AND ${ratings.createdAt} > ${sevenDaysAgo}`);
+
+      if (recentRatings[0]?.count > 0) continue; // Active user, skip
+
+      const firstName = (user.displayName || "").split(" ")[0] || "there";
+      const city = (user as any).selectedCity || "your city";
+      await sendPushNotification(
+        [user.pushToken],
+        "Your neighborhood misses you",
+        `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`,
+        { screen: "search", type: "ratingReminder" },
+      );
+      sent++;
+    }
+
+    triggerLog.info(`Rating reminder push sent to ${sent} inactive users`);
+    recordPushDelivery("ratingReminder", "all", inactiveUsers.length, sent, inactiveUsers.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog.error("Rating reminder push failed:", err);
+    return 0;
+  }
+}
+
+/**
+ * Sprint 648: Start daily rating reminder scheduler.
+ * Runs daily at 6pm UTC (12pm CST — lunchtime in Dallas).
+ */
+export function startRatingReminderScheduler(): NodeJS.Timeout {
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  const now = new Date();
+  const next6pm = new Date(now);
+  next6pm.setUTCHours(18, 0, 0, 0);
+  if (next6pm <= now) next6pm.setUTCDate(next6pm.getUTCDate() + 1);
+
+  const msUntilFirst = next6pm.getTime() - now.getTime();
+  triggerLog.info(`Rating reminder scheduler: first run in ${Math.round(msUntilFirst / 3600000)}h`);
+
+  const initialTimeout = setTimeout(() => {
+    sendRatingReminderPush();
+    setInterval(sendRatingReminderPush, DAY_MS);
+  }, msUntilFirst);
+
+  return initialTimeout;
+}
+
 // Sprint 504: Event-driven triggers extracted to notification-triggers-events.ts
 export { onRankingChange, onNewRatingForBusiness, sendCityHighlightsPush, startCityHighlightsScheduler } from "./notification-triggers-events";

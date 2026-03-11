@@ -7371,8 +7371,10 @@ __export(notification_triggers_exports, {
   onRankingChange: () => onRankingChange,
   onTierUpgrade: () => onTierUpgrade,
   sendCityHighlightsPush: () => sendCityHighlightsPush,
+  sendRatingReminderPush: () => sendRatingReminderPush,
   sendWeeklyDigestPush: () => sendWeeklyDigestPush,
   startCityHighlightsScheduler: () => startCityHighlightsScheduler,
+  startRatingReminderScheduler: () => startRatingReminderScheduler,
   startWeeklyDigestScheduler: () => startWeeklyDigestScheduler
 });
 async function onTierUpgrade(memberId, pushToken, newTier) {
@@ -7472,6 +7474,58 @@ function startWeeklyDigestScheduler() {
   const initialTimeout = setTimeout(() => {
     sendWeeklyDigestPush();
     setInterval(sendWeeklyDigestPush, WEEK_MS2);
+  }, msUntilFirst);
+  return initialTimeout;
+}
+async function sendRatingReminderPush() {
+  try {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { members: members4, ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { isNotNull: isNotNull8, sql: sql20 } = await import("drizzle-orm");
+    const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString();
+    const inactiveUsers = await db2.select({
+      id: members4.id,
+      pushToken: members4.pushToken,
+      displayName: members4.displayName,
+      notificationPrefs: members4.notificationPrefs,
+      selectedCity: members4.selectedCity
+    }).from(members4).where(isNotNull8(members4.pushToken));
+    let sent = 0;
+    for (const user of inactiveUsers) {
+      if (!user.pushToken) continue;
+      const prefs = user.notificationPrefs || {};
+      if (prefs.ratingReminders === false) continue;
+      const recentRatings = await db2.select({ count: sql20`count(*)` }).from(ratings6).where(sql20`${ratings6.memberId} = ${user.id} AND ${ratings6.createdAt} > ${sevenDaysAgo}`);
+      if (recentRatings[0]?.count > 0) continue;
+      const firstName = (user.displayName || "").split(" ")[0] || "there";
+      const city = user.selectedCity || "your city";
+      await sendPushNotification(
+        [user.pushToken],
+        "Your neighborhood misses you",
+        `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`,
+        { screen: "search", type: "ratingReminder" }
+      );
+      sent++;
+    }
+    triggerLog2.info(`Rating reminder push sent to ${sent} inactive users`);
+    recordPushDelivery("ratingReminder", "all", inactiveUsers.length, sent, inactiveUsers.length - sent);
+    return sent;
+  } catch (err) {
+    triggerLog2.error("Rating reminder push failed:", err);
+    return 0;
+  }
+}
+function startRatingReminderScheduler() {
+  const DAY_MS4 = 24 * 60 * 60 * 1e3;
+  const now = /* @__PURE__ */ new Date();
+  const next6pm = new Date(now);
+  next6pm.setUTCHours(18, 0, 0, 0);
+  if (next6pm <= now) next6pm.setUTCDate(next6pm.getUTCDate() + 1);
+  const msUntilFirst = next6pm.getTime() - now.getTime();
+  triggerLog2.info(`Rating reminder scheduler: first run in ${Math.round(msUntilFirst / 36e5)}h`);
+  const initialTimeout = setTimeout(() => {
+    sendRatingReminderPush();
+    setInterval(sendRatingReminderPush, DAY_MS4);
   }, msUntilFirst);
   return initialTimeout;
 }
@@ -15867,9 +15921,10 @@ function setupErrorHandler(app2) {
   preloadPHashIndex2().catch((err) => log.error("PHash preload failed:", err));
   const { startSuggestionRefresh: startSuggestionRefresh2 } = await Promise.resolve().then(() => (init_search_suggestions(), search_suggestions_exports));
   startSuggestionRefresh2();
-  const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2, startCityHighlightsScheduler: startCityHighlightsScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
+  const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2, startCityHighlightsScheduler: startCityHighlightsScheduler2, startRatingReminderScheduler: startRatingReminderScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
   const weeklyDigestTimeout = startWeeklyDigestScheduler2();
   const cityHighlightsTimeout = startCityHighlightsScheduler2();
+  const ratingReminderTimeout = startRatingReminderScheduler2();
   const { startDripScheduler: startDripScheduler2 } = await Promise.resolve().then(() => (init_drip_scheduler(), drip_scheduler_exports));
   const dripSchedulerTimeout = startDripScheduler2();
   const { startOutreachScheduler: startOutreachScheduler2 } = await Promise.resolve().then(() => (init_outreach_scheduler(), outreach_scheduler_exports));

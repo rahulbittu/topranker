@@ -436,11 +436,14 @@ function setupErrorHandler(app: express.Application) {
   startSuggestionRefresh();
 
   // Sprint 175: Weekly digest push notification scheduler
-  const { startWeeklyDigestScheduler, startCityHighlightsScheduler } = await import("./notification-triggers");
+  const { startWeeklyDigestScheduler, startCityHighlightsScheduler, startRatingReminderScheduler } = await import("./notification-triggers");
   const weeklyDigestTimeout = startWeeklyDigestScheduler();
 
   // Sprint 488: Weekly city highlights push scheduler
   const cityHighlightsTimeout = startCityHighlightsScheduler();
+
+  // Sprint 648: Daily rating reminder for inactive users
+  const ratingReminderTimeout = startRatingReminderScheduler();
 
   // Sprint 223: Drip email scheduler — daily at 9am UTC
   const { startDripScheduler } = await import("./drip-scheduler");
