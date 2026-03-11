@@ -82,7 +82,7 @@ describe("MappedBusiness — todayHours field", () => {
 // 4. API mapping
 // ---------------------------------------------------------------------------
 describe("API — hours field mapping", () => {
-  const src = readFile("lib/api.ts");
+  const src = readFile("lib/api-mappers.ts");
 
   it("maps closingTime from server", () => {
     expect(src).toContain("closingTime");

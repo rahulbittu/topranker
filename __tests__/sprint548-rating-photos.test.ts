@@ -38,7 +38,7 @@ describe("Sprint 548: Rating Photo Indicators", () => {
   });
 
   describe("mapApiRating — photo field mapping", () => {
-    const src = readFile("lib/api.ts");
+    const src = readFile("lib/api-mappers.ts");
 
     it("maps hasPhoto from rating", () => {
       expect(src).toContain("hasPhoto: rating.hasPhoto");

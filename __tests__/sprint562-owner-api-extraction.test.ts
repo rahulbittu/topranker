@@ -118,10 +118,10 @@ describe("Sprint 562: Owner API Extraction", () => {
       expect(src).toContain("export async function fetchBusinessSearch");
     });
 
-    it("dropped from 691 to under 575 LOC", () => {
+    it("dropped from 691 to under 490 LOC", () => {
       const loc = src.split("\n").length;
-      expect(loc).toBeLessThan(575);
-      expect(loc).toBeGreaterThan(500);
+      expect(loc).toBeLessThan(490);
+      expect(loc).toBeGreaterThan(400);
     });
   });
 

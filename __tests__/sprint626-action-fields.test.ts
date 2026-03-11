@@ -50,14 +50,15 @@ describe("Sprint 626 — Decision-to-Action Action Fields", () => {
   });
 
   describe("mapApiBusiness mapping", () => {
+    const mappersSrc = readFile("lib/api-mappers.ts");
     it("maps menuUrl", () => {
-      expect(apiSrc).toContain("menuUrl: biz.menuUrl");
+      expect(mappersSrc).toContain("menuUrl: biz.menuUrl");
     });
     it("maps orderUrl", () => {
-      expect(apiSrc).toContain("orderUrl: biz.orderUrl");
+      expect(mappersSrc).toContain("orderUrl: biz.orderUrl");
     });
     it("maps doordashUrl", () => {
-      expect(apiSrc).toContain("doordashUrl: biz.doordashUrl");
+      expect(mappersSrc).toContain("doordashUrl: biz.doordashUrl");
     });
   });
 
@@ -105,9 +106,9 @@ describe("Sprint 626 — Decision-to-Action Action Fields", () => {
   describe("file health", () => {
     const thresholds = JSON.parse(readFile("shared/thresholds.json"));
 
-    it("api.ts stays under 570 LOC", () => {
+    it("api.ts stays under 490 LOC", () => {
       const loc = apiSrc.split("\n").length;
-      expect(loc).toBeLessThan(570);
+      expect(loc).toBeLessThan(490);
     });
 
     it("build under 750kb", () => {

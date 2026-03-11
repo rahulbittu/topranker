@@ -12,13 +12,14 @@ const readFile = (relPath: string) =>
 
 describe("Sprint 288: ApiBusiness type includes cuisine", () => {
   const api = readFile("lib/api.ts");
+  const mappers = readFile("lib/api-mappers.ts");
 
   it("ApiBusiness has cuisine field", () => {
     expect(api).toContain("cuisine: string | null");
   });
 
   it("mapApiBusiness passes cuisine through", () => {
-    expect(api).toContain("cuisine: biz.cuisine");
+    expect(mappers).toContain("cuisine: biz.cuisine");
   });
 });
 

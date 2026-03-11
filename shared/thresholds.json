@@ -6,7 +6,7 @@
     "server/storage/businesses.ts": { "maxLOC": 650, "current": 637, "notes": "Sprint 626: +updateBusinessActions (624→637)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 570, "current": 560, "notes": "Sprint 652: +subscriptionStatus/isPro in ApiBusiness + mapApiBusiness (558→560)" },
+    "lib/api.ts": { "maxLOC": 490, "current": 483, "notes": "Sprint 656: extracted mappers to lib/api-mappers.ts (560→483)" },
     "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
