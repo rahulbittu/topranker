@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   searchBox: {
     flexDirection: "row", alignItems: "center", marginHorizontal: 16,
     backgroundColor: Colors.surface, borderRadius: 12, paddingHorizontal: 12,
-    paddingVertical: 10, gap: 8, marginBottom: 9,
+    paddingVertical: 10, gap: 8, marginBottom: 6,
     ...Colors.cardShadow,
     shadowOpacity: 0.04,
     shadowRadius: 6,
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   },
   controlsRow: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16,
-    paddingBottom: 10, gap: 10,
+    paddingBottom: 6, gap: 10,
   },
   viewToggle: {
     flexDirection: "row", backgroundColor: Colors.surface, borderRadius: 8,

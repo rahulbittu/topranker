@@ -149,7 +149,7 @@ export function SortResultsHeader({ count, sortBy, activeFilter }: SortResultsHe
 }
 
 const styles = StyleSheet.create({
-  filterRow: { gap: 6, flexDirection: "row", alignItems: "center" },
+  filterRow: { gap: 6, flexDirection: "row", alignItems: "center", paddingHorizontal: 16 },
   filterScrollRow: { marginBottom: 6 },
   filterChip: {
     paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   filterTextActive: { color: "#fff", fontWeight: "600" },
 
   priceRow: {
-    flexDirection: "row", paddingHorizontal: 0, gap: 8, paddingBottom: 10,
+    flexDirection: "row", paddingHorizontal: 16, gap: 8, paddingBottom: 6,
   },
   priceChip: {
     paddingHorizontal: 14, paddingVertical: 5, borderRadius: 16,
@@ -173,7 +173,7 @@ const styles = StyleSheet.create({
   priceChipTextActive: { color: "#fff" },
 
   sortRow: {
-    flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 10,
+    flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 6, paddingHorizontal: 16,
   },
   sortLabel: {
     fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_500Medium", marginRight: 2,

@@ -120,11 +120,11 @@ export function BestInSection({ city, onSelectCategory, onSelectDish, onSeeAll, 
 
 const styles = StyleSheet.create({
   bestInSection: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   bestInHeader: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    marginBottom: 10,
+    marginBottom: 6, paddingHorizontal: 16,
   },
   bestInHeaderLeft: {
     flexDirection: "row", alignItems: "center", gap: 8,
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: "600", color: AMBER, fontFamily: "DMSans_600SemiBold",
   },
   cuisineTabsScroll: {
-    flexDirection: "row", paddingBottom: 8, gap: 6,
+    flexDirection: "row", paddingBottom: 8, gap: 6, paddingHorizontal: 16,
   },
   cuisineTab: {
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
     color: "#0D1B2A", fontFamily: "DMSans_700Bold",
   },
   dishShortcutsScroll: {
-    flexDirection: "row", gap: 6, paddingBottom: 8,
+    flexDirection: "row", gap: 6, paddingBottom: 8, paddingHorizontal: 16,
   },
   dishShortcutChip: {
     flexDirection: "row", alignItems: "center", gap: 4,
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   },
   dishShortcutText: { fontSize: 11, fontWeight: "600", color: AMBER },
   bestInScroll: {
-    gap: 10, paddingRight: 4,
+    gap: 10, paddingHorizontal: 16,
   },
   bestInCard: {
     width: 100, backgroundColor: Colors.surface, borderRadius: 14,
