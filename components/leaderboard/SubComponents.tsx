@@ -105,7 +105,7 @@ export const PhotoStrip = React.memo(function PhotoStrip({
   photos: string[]; height: number; category?: string; cuisine?: string; containerWidth: number; name?: string;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const stripPhotos = photos.slice(0, 3);
+  const stripPhotos = photos.slice(0, 6); // Sprint 624: 3→6 photos per CEO feedback
   const stripWidth = containerWidth;
 
   if (stripPhotos.length === 0) {

@@ -36,17 +36,20 @@ interface SearchMapSplitViewProps {
   onCityChange: (city: string) => void;
   onClearFilter: () => void;
   bottomInset: number;
+  onMyLocation?: () => void;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 export function SearchMapSplitView({
   filtered, city, selectedMapBiz, onSelectMapBiz, onSearchArea,
   selectedCuisine, onClearCuisine, query, activeFilter,
   popularCategories, onSearchCategory, onCityChange, onClearFilter, bottomInset,
+  onMyLocation, userLocation,
 }: SearchMapSplitViewProps) {
   return (
     <View style={styles.splitContainer}>
       <View style={styles.splitMapSection}>
-        <MapView businesses={filtered} city={city} onSelectBiz={onSelectMapBiz} onSearchArea={onSearchArea} />
+        <MapView businesses={filtered} city={city} onSelectBiz={onSelectMapBiz} onSearchArea={onSearchArea} onMyLocation={onMyLocation} userLocation={userLocation} />
         {selectedMapBiz && (
           <TouchableOpacity
             style={styles.mapSelectedCard}

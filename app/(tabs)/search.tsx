@@ -394,6 +394,8 @@ export default function SearchScreen() {
           onCityChange={setCity}
           onClearFilter={() => setActiveFilter("All")}
           bottomInset={insets.bottom}
+          onMyLocation={requestLocation}
+          userLocation={userLocation}
         />
       ) : (
         <FlatList

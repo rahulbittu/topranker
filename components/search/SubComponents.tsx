@@ -46,7 +46,7 @@ export const DiscoverPhotoStrip = React.memo(function DiscoverPhotoStrip({
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const stripWidth = containerWidth;
-  const stripPhotos = photos.slice(0, 3);
+  const stripPhotos = photos.slice(0, 6); // Sprint 624: 3→6 photos per CEO feedback
 
   if (stripPhotos.length === 0) {
     const initial = name?.charAt(0)?.toUpperCase() || "";

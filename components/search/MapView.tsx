@@ -34,7 +34,7 @@ export const CITY_COORDS: Record<string, { lat: number; lng: number }> = {
 
 let _mapsInitialized = false;
 
-export function MapView({ businesses, city, onSelectBiz, onSearchArea }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void; onSearchArea?: (lat: number, lng: number) => void }) {
+export function MapView({ businesses, city, onSelectBiz, onSearchArea, onMyLocation, userLocation }: { businesses: MappedBusiness[]; city: string; onSelectBiz?: (biz: MappedBusiness | null) => void; onSearchArea?: (lat: number, lng: number) => void; onMyLocation?: () => void; userLocation?: { lat: number; lng: number } | null }) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
@@ -205,6 +205,16 @@ export function MapView({ businesses, city, onSelectBiz, onSearchArea }: { busin
     );
   }
 
+  // Sprint 624: Center map on user's location
+  const handleMyLocation = () => {
+    if (userLocation && mapInstance.current) {
+      mapInstance.current.panTo({ lat: userLocation.lat, lng: userLocation.lng });
+      mapInstance.current.setZoom(14);
+    } else if (onMyLocation) {
+      onMyLocation();
+    }
+  };
+
   const handleSearchArea = () => {
     if (!mapInstance.current || !onSearchArea) return;
     const center = mapInstance.current.getCenter();
@@ -233,6 +243,18 @@ export function MapView({ businesses, city, onSelectBiz, onSearchArea }: { busin
         >
           <Ionicons name="search" size={14} color="#fff" />
           <Text style={ms.searchAreaText}>Search this area</Text>
+        </TouchableOpacity>
+      )}
+      {/* Sprint 624: My Location button */}
+      {mapReady && (
+        <TouchableOpacity
+          style={ms.myLocationBtn}
+          onPress={handleMyLocation}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Center map on my location"
+        >
+          <Ionicons name="navigate" size={18} color={userLocation ? AMBER : Colors.textTertiary} />
         </TouchableOpacity>
       )}
     </View>
@@ -265,6 +287,14 @@ const ms = StyleSheet.create({
   },
   searchAreaText: {
     fontSize: 12, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
+  },
+  myLocationBtn: {
+    position: "absolute" as const, bottom: 16, right: 12,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "#fff", alignItems: "center", justifyContent: "center",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 4, elevation: 4,
+    borderWidth: 1, borderColor: Colors.border,
   },
   mapFallbackBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
