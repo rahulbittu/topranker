@@ -299,4 +299,8 @@ export const Analytics = {
     track("notification_dismissed", { notification_id: notificationId, category }),
   notificationOpenReported: (notificationId: string, category: string) =>
     track("notification_open_reported", { notification_id: notificationId, category }),
+
+  // Sprint 627: Decision-to-Action CTA tracking
+  actionCTATap: (slug: string, actionType: string) =>
+    track("action_cta_tap", { business_slug: slug, action_type: actionType }),
 };

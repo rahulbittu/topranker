@@ -63,7 +63,7 @@ describe("Sprint 381: Extract BusinessActionBar from business detail", () => {
 
     it("should have self-contained actionBar style", () => {
       expect(actionSrc).toContain("StyleSheet.create");
-      expect(actionSrc).toContain("actionBar");
+      expect(actionSrc).toContain("actionRow"); // Sprint 627: renamed from actionBar
     });
   });
 

@@ -268,6 +268,12 @@ export default function BusinessProfileScreen() {
             website={business.website}
             address={business.address}
             googleMapsUrl={business.googleMapsUrl}
+            menuUrl={business.menuUrl}
+            orderUrl={business.orderUrl}
+            pickupUrl={business.pickupUrl}
+            doordashUrl={business.doordashUrl}
+            uberEatsUrl={business.uberEatsUrl}
+            reservationUrl={business.reservationUrl}
           />
 
           {/* Share Preview Card — Sprint 378 */}
