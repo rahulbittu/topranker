@@ -111,9 +111,10 @@ describe("Sprint 622 — Horizontal Alignment + White Space", () => {
       expect(loc).toBeLessThan(200);
     });
 
-    it("DiscoverFilters stays under 220 LOC", () => {
+    it("DiscoverFilters stays under 230 LOC", () => {
+      // Sprint 644: +shareBtn style + onShare prop
       const loc = filtersSrc.split("\n").length;
-      expect(loc).toBeLessThan(220);
+      expect(loc).toBeLessThan(230);
     });
 
     it("search.tsx stays under 610 LOC", () => {

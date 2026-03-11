@@ -130,9 +130,10 @@ interface SortResultsHeaderProps {
   count: number;
   sortBy: string;
   activeFilter: string;
+  onShare?: () => void;
 }
 
-export function SortResultsHeader({ count, sortBy, activeFilter }: SortResultsHeaderProps) {
+export function SortResultsHeader({ count, sortBy, activeFilter, onShare }: SortResultsHeaderProps) {
   const sortInfo = SORT_DESCRIPTIONS[sortBy] || SORT_DESCRIPTIONS.ranked;
   const filterLabel = activeFilter !== "All" ? ` · ${activeFilter}` : "";
   return (
@@ -144,6 +145,11 @@ export function SortResultsHeader({ count, sortBy, activeFilter }: SortResultsHe
           <Text style={styles.sortIndicatorText}>{sortInfo.label}{filterLabel}</Text>
         </View>
       </View>
+      {onShare && (
+        <TouchableOpacity onPress={onShare} style={styles.shareBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Share search results">
+          <Ionicons name="share-outline" size={16} color={AMBER} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -208,6 +214,11 @@ const styles = StyleSheet.create({
   },
   sortIndicatorText: {
     fontSize: 10, color: AMBER, fontFamily: "DMSans_500Medium",
+  },
+  // Sprint 644: Share search results button
+  shareBtn: {
+    padding: 6, borderRadius: 14,
+    backgroundColor: `${AMBER}10`,
   },
 
 });

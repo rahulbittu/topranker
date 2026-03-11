@@ -115,6 +115,23 @@ export function getRatingShareText(
 }
 
 /**
+ * Sprint 644: Generate WhatsApp-optimized search share text.
+ * "Best [query] in [city]" format for controversy-driven engagement.
+ */
+export function getSearchShareText(
+  query: string,
+  city: string,
+  resultCount: number,
+  url: string,
+): string {
+  const cityTitle = city.charAt(0).toUpperCase() + city.slice(1);
+  if (query.trim()) {
+    return `🔍 Best "${query}" in ${cityTitle} — ${resultCount} spot${resultCount !== 1 ? "s" : ""} ranked!\n\nSee the live ranking:\n${url}`;
+  }
+  return `🔍 Top restaurants in ${cityTitle} — ${resultCount} spots ranked!\n\nSee the live ranking:\n${url}`;
+}
+
+/**
  * Parse a TopRanker URL and extract the type and slug.
  * Returns null if the URL doesn't match expected patterns.
  */

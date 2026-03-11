@@ -192,6 +192,9 @@ export const Analytics = {
   searchQuery: (query: string, resultsCount: number) =>
     track("search_query", { query, results_count: resultsCount }),
 
+  searchShare: (query: string, city: string, resultsCount: number) =>
+    track("search_share", { query, city, results_count: resultsCount }),
+
   filterTap: (filter: string) =>
     track("filter_tap", { filter }),
 

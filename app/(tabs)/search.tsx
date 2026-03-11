@@ -12,6 +12,8 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { fetchBusinessSearch, fetchTrending, fetchJustRated, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
+import { buildSearchUrl } from "@/lib/search-url-params";
+import { copyShareLink, getSearchShareText } from "@/lib/sharing";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
 import { DiscoverSkeleton } from "@/components/Skeleton";
@@ -240,6 +242,15 @@ export default function SearchScreen() {
     setActivePresetId(null);
   }, []);
 
+  // Sprint 644: Share search results
+  const handleShareSearch = useCallback(async () => {
+    Haptics.selectionAsync();
+    const url = buildSearchUrl("https://topranker.com/search", currentFilters);
+    const text = getSearchShareText(query, city, filtered.length, url);
+    Analytics.searchShare(query, city, filtered.length);
+    await copyShareLink(url, "Search results");
+  }, [query, city, filtered.length, currentFilters]);
+
   const filtered = useMemo(() => {
     let list = allBusinesses;
     if (activeFilter === "Top 10") list = list.filter((b: MappedBusiness) => b.rank <= 10);
@@ -402,13 +413,11 @@ export default function SearchScreen() {
           data={filtered}
           keyExtractor={(item: MappedBusiness) => item.id}
           renderItem={({ item, index }: { item: MappedBusiness; index: number }) => (
-            <View style={styles.resultCardWrap}>
-              <BusinessCard
-                item={item}
-                displayRank={item.rank > 0 ? item.rank : 0}
-                distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
-              />
-            </View>
+            <BusinessCard
+              item={item}
+              displayRank={item.rank > 0 ? item.rank : 0}
+              distanceKm={activeFilter === "Near Me" && userLocation && item.lat != null && item.lng != null ? haversineKm(userLocation.lat, userLocation.lng, item.lat, item.lng) : undefined}
+            />
           )}
           contentContainerStyle={[
             styles.resultList,
@@ -484,7 +493,7 @@ export default function SearchScreen() {
                 onSetSelectedCuisine={setSelectedCuisine}
               />
 
-              <SortResultsHeader count={filtered.length} sortBy={sortBy} activeFilter={activeFilter} />
+              <SortResultsHeader count={filtered.length} sortBy={sortBy} activeFilter={activeFilter} onShare={handleShareSearch} />
             </>
           }
         />
@@ -553,8 +562,7 @@ const styles = StyleSheet.create({
   viewToggleTextActive: { color: "#fff" },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 60 },
-  resultList: { gap: 8, paddingTop: 4 },
-  resultCardWrap: { paddingHorizontal: 16 },
+  resultList: { paddingHorizontal: 16, gap: 8, paddingTop: 4 },
   resultsCount: { ...TYPOGRAPHY.ui.caption, color: Colors.textTertiary, paddingBottom: 4 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },

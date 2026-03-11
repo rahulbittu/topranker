@@ -44,10 +44,10 @@ describe("Sprint 507: Client-side Notification Analytics", () => {
       expect(src).toContain("category");
     });
 
-    it("stays under 320 LOC", () => {
-      // Sprint 618: +share landing events
+    it("stays under 330 LOC", () => {
+      // Sprint 644: +searchShare event
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(320);
+      expect(lines).toBeLessThan(330);
     });
   });
 
