@@ -288,6 +288,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.json({ data });
   }));
 
+  // Sprint 623: Google Places fallback for empty city+category
+  app.get("/api/google-places-fallback", wrapAsync(async (req: Request, res: Response) => {
+    const { searchNearbyRestaurants } = await import("./google-places");
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || "restaurant";
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const places = await searchNearbyRestaurants(city, category, limit);
+    return res.json({ data: places, source: "google_places" });
+  }));
+
   // ── Category Suggestions ────────────────────────────────────
   app.post("/api/category-suggestions", requireAuth, wrapAsync(async (req: Request, res: Response) => {
       const parsed = insertCategorySuggestionSchema.safeParse(req.body);

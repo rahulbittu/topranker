@@ -57,8 +57,8 @@ describe("Sprint 595: Governance Artifacts", () => {
 describe("Sprint 595: Threshold Recalibration", () => {
   const thresholds = JSON.parse(readFile("shared/thresholds.json"));
 
-  it("has 29 tracked files", () => {
-    expect(Object.keys(thresholds.files).length).toBe(29);
+  it("has 30 tracked files", () => {
+    expect(Object.keys(thresholds.files).length).toBe(30);
   });
 
   it("schema.ts ceiling raised to 960", () => {

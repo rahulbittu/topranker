@@ -2,11 +2,11 @@
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
     "shared/schema.ts": { "maxLOC": 960, "current": 896, "notes": "Sprint 597: compressed 938→896, removed comments/blank lines" },
-    "server/routes.ts": { "maxLOC": 400, "current": 367, "notes": "Sprint 617: +/api/just-rated route (353→367)" },
+    "server/routes.ts": { "maxLOC": 400, "current": 377, "notes": "Sprint 623: +/api/google-places-fallback (367→377)" },
     "server/storage/businesses.ts": { "maxLOC": 650, "current": 624, "notes": "Sprint 617: +getJustRatedBusinesses (600→624)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
-    "lib/api.ts": { "maxLOC": 530, "current": 525, "notes": "Sprint 617: +fetchJustRated (518→525)" },
+    "lib/api.ts": { "maxLOC": 560, "current": 544, "notes": "Sprint 623: +fetchGooglePlacesFallback (525→544)" },
     "lib/mock-router.ts": { "maxLOC": 90, "current": 81, "notes": "Sprint 595: raised ceiling 85→90" },
     "lib/api-owner.ts": { "maxLOC": 220, "current": 199, "notes": "Sprint 562: extracted from api.ts" },
     "app/(tabs)/index.tsx": { "maxLOC": 460, "current": 444, "notes": "Sprint 553: filter extraction" },
@@ -29,14 +29,15 @@
     "components/rate/ReceiptUploadCard.tsx": { "maxLOC": 180, "current": 153, "notes": "Sprint 606: extracted from RatingExtrasStep" },
     "components/rate/TimeOnPageIndicator.tsx": { "maxLOC": 100, "current": 81, "notes": "Sprint 616: time-on-page indicator for rating flow" },
     "components/rate/DimensionScoringStep.tsx": { "maxLOC": 170, "current": 151, "notes": "Sprint 621: extracted step 1 dimension scoring" },
-    "components/search/JustRatedSection.tsx": { "maxLOC": 140, "current": 122, "notes": "Sprint 617: just-rated feed section" }
+    "components/search/JustRatedSection.tsx": { "maxLOC": 140, "current": 122, "notes": "Sprint 617: just-rated feed section" },
+    "components/search/GooglePlacesFallback.tsx": { "maxLOC": 160, "current": 142, "notes": "Sprint 623: Google Places fallback for empty results" }
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 625.7
+    "currentSizeKb": 627.3
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11478
+    "currentCount": 11504
   }
 }

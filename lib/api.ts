@@ -427,6 +427,25 @@ export async function fetchJustRated(city: string, limit: number = 5) {
   return businesses.map(mapApiBusiness);
 }
 
+// Sprint 623: Google Places fallback for empty results
+export interface GooglePlaceResult {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating: number | null;
+  priceLevel: string | null;
+  types: string[];
+}
+
+export async function fetchGooglePlacesFallback(city: string, category: string = "restaurant", limit: number = 10): Promise<GooglePlaceResult[]> {
+  const res = await apiFetch<GooglePlaceResult[]>(
+    `/api/google-places-fallback?city=${encodeURIComponent(city)}&category=${encodeURIComponent(category)}&limit=${limit}`,
+  );
+  return res;
+}
+
 // Sprint 544: Popular search queries
 export type PopularQuery = { query: string; count: number; lastSearched: number };
 

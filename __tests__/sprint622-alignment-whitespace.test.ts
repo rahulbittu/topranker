@@ -122,8 +122,8 @@ describe("Sprint 622 — Horizontal Alignment + White Space", () => {
       expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
-    it("tracks 29 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(29);
+    it("tracks 30 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(30);
     });
   });
 });

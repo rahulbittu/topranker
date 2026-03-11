@@ -305,6 +305,8 @@ function RootLayoutNav() {
       <Stack.Screen name="legal/terms" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="legal/privacy" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="admin/index" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="dish/[slug]" options={{ headerShown: false, presentation: "card", animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="share/[slug]" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="rate/[id]" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
       <Stack.Screen name="saved" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
       <Stack.Screen name="referral" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />

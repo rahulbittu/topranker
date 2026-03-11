@@ -14,6 +14,7 @@ import { BRAND, getCategoryDisplay } from "@/constants/brand";
 import { CUISINE_DISPLAY, CUISINE_DISH_MAP } from "@/shared/best-in-categories";
 import { SUPPORTED_CITIES } from "@/lib/city-context";
 import { pct } from "@/lib/style-helpers";
+import { GooglePlacesFallback } from "@/components/search/GooglePlacesFallback";
 
 const AMBER = BRAND.colors.amber;
 
@@ -205,6 +206,11 @@ export function DiscoverEmptyState({
         <Ionicons name="star-outline" size={16} color={AMBER} />
         <Text style={s.beFirstText}>Be the first to rate in {cityDisplay}</Text>
       </TouchableOpacity>
+
+      {/* Sprint 623: Google Places fallback for empty results */}
+      {!hasActiveSearch && variant === "list" && (
+        <GooglePlacesFallback city={city} />
+      )}
 
       {/* Cuisine-aware dish suggestions */}
       {selectedCuisine && CUISINE_DISH_MAP[selectedCuisine] && !query.trim() && (

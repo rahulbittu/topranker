@@ -3782,6 +3782,14 @@ var init_admin = __esm({
 });
 
 // server/google-places.ts
+var google_places_exports = {};
+__export(google_places_exports, {
+  fetchAndStorePhotos: () => fetchAndStorePhotos,
+  fetchPlacePhotos: () => fetchPlacePhotos,
+  normalizeCategory: () => normalizeCategory,
+  searchNearbyRestaurants: () => searchNearbyRestaurants,
+  searchPlace: () => searchPlace
+});
 async function fetchPlacePhotos(googlePlaceId, limit = 5) {
   const apiKey = config.googleMapsApiKey;
   if (!apiKey) {
@@ -3816,6 +3824,36 @@ async function fetchPlacePhotos(googlePlaceId, limit = 5) {
       log.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
     }
     return [];
+  }
+}
+async function searchPlace(query, city) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) return null;
+  const url = `${API_BASE}/places:searchText`;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName"
+      },
+      body: JSON.stringify({
+        textQuery: `${query} ${city}`,
+        maxResultCount: 1
+      }),
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const place = data.places?.[0];
+    if (!place) return null;
+    return {
+      placeId: place.id,
+      name: place.displayName?.text || query
+    };
+  } catch {
+    return null;
   }
 }
 async function searchNearbyRestaurants(city, category = "restaurant", maxResults = 20) {
@@ -15090,6 +15128,14 @@ async function registerRoutes(app2) {
       photoUrls: photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : [])
     }));
     return res.json({ data });
+  }));
+  app2.get("/api/google-places-fallback", wrapAsync(async (req, res) => {
+    const { searchNearbyRestaurants: searchNearbyRestaurants2 } = await Promise.resolve().then(() => (init_google_places(), google_places_exports));
+    const city = sanitizeString(req.query.city, 100) || "Dallas";
+    const category = sanitizeString(req.query.category, 50) || "restaurant";
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 10));
+    const places = await searchNearbyRestaurants2(city, category, limit);
+    return res.json({ data: places, source: "google_places" });
   }));
   app2.post("/api/category-suggestions", requireAuth, wrapAsync(async (req, res) => {
     const parsed = insertCategorySuggestionSchema.safeParse(req.body);
