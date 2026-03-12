@@ -1375,9 +1375,11 @@ __export(redis_exports, {
 import Redis from "ioredis";
 function getRedisClient() {
   if (redis) return redis;
+  if (redisChecked) return null;
   const url = process.env.REDIS_URL;
   if (!url) {
     redisLog.info("REDIS_URL not set \u2014 caching disabled, using DB-only mode");
+    redisChecked = true;
     return null;
   }
   try {
@@ -1459,13 +1461,14 @@ function getCacheStats() {
     hitRate: total > 0 ? (hits / total * 100).toFixed(1) + "%" : "N/A"
   };
 }
-var redisLog, redis, hits, misses;
+var redisLog, redis, redisChecked, hits, misses;
 var init_redis = __esm({
   "server/redis.ts"() {
     "use strict";
     init_logger();
     redisLog = log2.tag("Redis");
     redis = null;
+    redisChecked = false;
     hits = 0;
     misses = 0;
   }

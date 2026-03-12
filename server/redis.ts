@@ -15,12 +15,15 @@ const redisLog = log.tag("Redis");
 // ---------------------------------------------------------------------------
 
 let redis: Redis | null = null;
+let redisChecked = false;
 
 export function getRedisClient(): Redis | null {
   if (redis) return redis;
+  if (redisChecked) return null; // Already checked, no Redis — don't log again
   const url = process.env.REDIS_URL;
   if (!url) {
     redisLog.info("REDIS_URL not set — caching disabled, using DB-only mode");
+    redisChecked = true;
     return null;
   }
   try {
