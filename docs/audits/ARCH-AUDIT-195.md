@@ -1,86 +1,80 @@
-# Architecture Audit #21 — Sprint 195
+# Architectural Audit #195 — Sprint 740
 
-**Date:** 2026-03-09
+**Date:** 2026-03-11
 **Auditor:** Amir Patel (Architecture)
 **Grade:** A
-**Previous Grade:** A- (Sprint 190)
+**Previous Grade:** A (Audit #190, Sprint 735)
+
+---
 
 ## Executive Summary
 
-Grade upgraded from A- to A. The M1 finding (search.tsx 870 LOC) was closed in Sprint 193 (reduced to 791 LOC). M2 (email ESP) resolved — using Resend with retry logic. Four clean sprints since last audit added error tracking, HTTP cache headers, load testing, and referral UI. No new CRITICAL, HIGH, or MEDIUM findings.
+87th consecutive A-range audit. Sprints 736-739 completed offline-aware coverage on all 4 screens, added static deployment files, session analytics, and accessibility polish. The codebase is in peak condition for TestFlight beta.
 
-## Scorecard
+---
 
-| Category | Score | Trend | Notes |
-|----------|-------|-------|-------|
-| Test Coverage | A+ | ↑ | 3,256 tests, 126 files, <2s |
-| Type Safety | B+ | → | 108 `as any`, stable |
-| Module Organization | A+ | ↑ | 14 routes, 17 storage, search decomposed |
-| Performance | A+ | ↑ | Redis + CDN cache headers + load test script |
-| Security | A | → | Rate limiting, CSP, email verification |
-| Documentation | A | ↑ | 22 sprint docs, 22 retros, 4 SLT meetings |
-| Infrastructure | A | ↑ | Redis, error tracking, DB backups, CDN headers |
-| **Overall** | **A** | **↑** | Up from A- |
+## Audit Scope
+
+| Area | Files Reviewed |
+|------|---------------|
+| Static files | `public/.well-known/apple-app-site-association`, `public/robots.txt` |
+| Offline mode | All 4 screen files (index, search, [id], profile) |
+| Session analytics | `lib/analytics.ts`, `app/feedback.tsx` |
+| Accessibility | `app/+not-found.tsx`, `components/ErrorBoundary.tsx`, `app/_layout.tsx` |
+| Pre-submit | `scripts/pre-submit-check.sh` |
+| Deep links | `app.json` (Android intentFilters) |
+
+---
 
 ## Findings
 
-### CRITICAL — 0 findings
-### HIGH — 0 findings
-### MEDIUM — 0 findings
+### Critical (P0): 0
+### High (P1): 0
+### Medium (P2): 0
 
-*All previous MEDIUM findings closed:*
-- ~~M1: search.tsx 870 LOC~~ → Closed (791 LOC, Sprint 193)
-- ~~M2: No production email service~~ → Closed (Resend + retry, Sprint 191)
+### Low (P3): 2
 
-### LOW — 3 findings
+| # | Finding | Location | Recommendation |
+|---|---------|----------|----------------|
+| 1 | ErrorBoundary network detection is string-based | `components/ErrorBoundary.tsx` | Consider using NetInfo API for more robust detection post-beta |
+| 2 | Analytics console provider in production | `lib/analytics.ts` | Configure real provider (Mixpanel/Amplitude) before GA |
 
-**L1: 108 `as any` casts** (Stable — carried)
-- Not growing. React Native style sheets and third-party gaps.
-- No action needed.
+---
 
-**L2: No automated DB backup schedule** (Carried)
-- Script exists but not scheduled as cron.
-- **Recommendation:** Add Railway cron or GitHub Actions schedule.
+## Health Metrics
 
-**L3: No CDN deployed** (New)
-- Cache-Control headers ready, but no Cloudflare/CloudFront configured.
-- **Recommendation:** Set up Cloudflare free tier before public launch.
+| Metric | Value | Status |
+|--------|-------|--------|
+| Build size | 663.0kb / 750kb | Green (88.4%) |
+| Test count | 12,746 / 548 files | Green |
+| Schema LOC | 911 / 950 | Green (95.9%) |
+| Threshold violations | 0 | Green |
+| Offline-aware screens | 4/4 | Green (100%) |
+| Rate limiters | 7 dedicated | Green |
+| A11y labels on error states | 3/3 | Green |
 
-## Metrics Comparison
+---
 
-| Metric | Sprint 190 | Sprint 195 | Delta |
-|--------|-----------|-----------|-------|
-| Tests | 3,083 | 3,256 | +173 |
-| Test Files | 121 | 126 | +5 |
-| Route Modules | 14 | 14 | 0 |
-| Storage Modules | 17 | 17 | 0 |
-| `as any` Casts | 108 | 108 | 0 |
-| Suite Duration | <2.0s | <2.0s | 0 |
-| Largest File | search.tsx (870) | search.tsx (791) | -79 |
+## Architecture Quality
 
-## Key File Sizes
+| Dimension | Grade | Notes |
+|-----------|-------|-------|
+| Offline resilience | A+ | 100% screen coverage, StaleBanner, sync service |
+| Accessibility | A | All error states, splash, and 404 labeled |
+| Security | A | 7 rate limiters, all write endpoints protected |
+| Analytics | A | Session-correlated, breadcrumbed, feedback-integrated |
+| Deployment | A | AASA, robots.txt, pre-submit validated |
 
-| File | LOC | Status |
-|------|-----|--------|
-| search.tsx | 791 | OK (down from 870) |
-| profile.tsx | 659 | OK |
-| business/[id].tsx | 567 | OK |
-| members.ts (storage) | 566 | OK |
-| businesses.ts (storage) | 540 | OK |
-| challenger.tsx | 484 | OK |
-| ratings.ts (storage) | 464 | OK |
-| routes.ts | 406 | OK |
+---
 
 ## Grade History
 
-| Audit | Sprint | Grade | Notes |
-|-------|--------|-------|-------|
-| #17 | 170 | A+ | Clean codebase |
-| #18 | 175 | B+ | Payment debt |
-| #19 | 185 | A- | Recovery |
-| #20 | 190 | A- | Stable |
-| #21 | 195 | **A** | M1 + M2 closed |
+| Audit | Sprint | Grade |
+|-------|--------|-------|
+| #185 | 730 | A |
+| #190 | 735 | A |
+| #195 | 740 | A |
 
-## Conclusion
+---
 
-The codebase is in its healthiest state. All MEDIUM findings closed. Infrastructure hardened with Redis, error tracking, CDN headers, and load testing. Ready for beta launch.
+## Next Audit: Sprint 745 (Audit #200)
