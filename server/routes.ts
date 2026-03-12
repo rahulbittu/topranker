@@ -13,6 +13,7 @@ import { registerAuthRoutes } from "./routes-auth";
 import { registerMemberRoutes } from "./routes-members";
 import { registerMemberNotificationRoutes } from "./routes-member-notifications";
 import { registerBusinessRoutes } from "./routes-businesses";
+import { registerClaimRoutes } from "./routes-claims";
 import { registerBusinessAnalyticsRoutes } from "./routes-business-analytics";
 import { registerDishRoutes } from "./routes-dishes";
 import { registerSeoRoutes } from "./routes-seo";
@@ -226,6 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ── Business Routes (extracted to routes-businesses.ts, Sprint 171) ──
   registerBusinessRoutes(app);
+  registerClaimRoutes(app);
   // Sprint 486: Business analytics routes (dashboard, rank-history, dimension-breakdown)
   registerBusinessAnalyticsRoutes(app);
 

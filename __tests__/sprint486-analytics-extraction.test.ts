@@ -95,12 +95,11 @@ describe("Sprint 486: Business Analytics Route Extraction", () => {
       expect(src).not.toContain('"/api/businesses/:id/dimension-breakdown"');
     });
 
-    it("still has search, autocomplete, slug, ratings, claim, photos", () => {
+    it("still has search, autocomplete, slug, ratings, photos (Sprint 659: claims extracted to routes-claims.ts)", () => {
       expect(src).toContain('"/api/businesses/search"');
       expect(src).toContain('"/api/businesses/autocomplete"');
       expect(src).toContain('"/api/businesses/:slug"');
       expect(src).toContain('"/api/businesses/:id/ratings"');
-      expect(src).toContain('"/api/businesses/:slug/claim"');
       expect(src).toContain('"/api/businesses/:id/photos"');
     });
   });

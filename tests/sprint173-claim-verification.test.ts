@@ -167,28 +167,28 @@ describe("admin claim review — email notifications", () => {
 // ---------------------------------------------------------------------------
 // 5. Claim submission flow (existing)
 // ---------------------------------------------------------------------------
-describe("claim submission flow", () => {
-  const bizRoutesSrc = readFile("server/routes-businesses.ts");
+describe("claim submission flow (Sprint 659: extracted to routes-claims.ts)", () => {
+  const claimRoutesSrc = readFile("server/routes-claims.ts");
 
   it("claim endpoint requires auth", () => {
-    expect(bizRoutesSrc).toContain('"/api/businesses/:slug/claim", requireAuth');
+    expect(claimRoutesSrc).toContain('"/api/businesses/:slug/claim", requireAuth');
   });
 
   it("prevents duplicate claims", () => {
-    expect(bizRoutesSrc).toContain("getClaimByMemberAndBusiness");
-    expect(bizRoutesSrc).toContain("409");
+    expect(claimRoutesSrc).toContain("getClaimByMemberAndBusiness");
+    expect(claimRoutesSrc).toContain("409");
   });
 
   it("sends confirmation email on claim submission", () => {
-    expect(bizRoutesSrc).toContain("sendClaimConfirmationEmail");
+    expect(claimRoutesSrc).toContain("sendClaimConfirmationEmail");
   });
 
   it("sends admin notification on claim submission", () => {
-    expect(bizRoutesSrc).toContain("sendClaimAdminNotification");
+    expect(claimRoutesSrc).toContain("sendClaimAdminNotification");
   });
 
   it("requires role in claim submission", () => {
-    expect(bizRoutesSrc).toContain("Role is required");
+    expect(claimRoutesSrc).toContain("Role is required");
   });
 });
 
@@ -199,7 +199,6 @@ describe("claim lifecycle — submission to approval", () => {
   const claimsSrc = readFile("server/storage/claims.ts");
   const emailSrc = readFile("server/email.ts");
   const adminSrc = readFile("server/routes-admin.ts");
-  const bizRoutesSrc = readFile("server/routes-businesses.ts");
 
   it("submitClaim creates a pending claim", () => {
     expect(claimsSrc).toContain("export async function submitClaim");

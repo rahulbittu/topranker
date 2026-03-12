@@ -176,12 +176,10 @@ describe("routes-businesses.ts — business endpoints", () => {
     expect(bizSrc).toContain("/api/businesses/:id/ratings");
   });
 
-  it("handles POST /api/businesses/:slug/claim", () => {
-    expect(bizSrc).toContain("/api/businesses/:slug/claim");
-  });
-
-  it("uses requireAuth on claim", () => {
-    expect(bizSrc).toContain("requireAuth");
+  it("Sprint 659: claims extracted to routes-claims.ts", () => {
+    const claimsSrc = readFile("server/routes-claims.ts");
+    expect(claimsSrc).toContain("/api/businesses/:slug/claim");
+    expect(claimsSrc).toContain("requireAuth");
   });
 });
 

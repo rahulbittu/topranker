@@ -76,8 +76,8 @@ describe("Sprint 394 — Claim form data submission", () => {
 
 // ── 3. Server endpoint accepts new fields ───────────────────────────
 
-describe("Sprint 394 — Server claim endpoint", () => {
-  const src = readFile("server/routes-businesses.ts");
+describe("Sprint 394 — Server claim endpoint (Sprint 659: extracted to routes-claims.ts)", () => {
+  const src = readFile("server/routes-claims.ts");
 
   it("parses businessEmail from body", () => {
     expect(src).toContain("req.body.businessEmail");
