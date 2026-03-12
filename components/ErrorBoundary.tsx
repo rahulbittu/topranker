@@ -46,6 +46,12 @@ export class ErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
   }
 
+  // Sprint 739: Detect network-related errors for context-aware messaging
+  isNetworkError = (): boolean => {
+    const msg = this.state.error?.message?.toLowerCase() || "";
+    return msg.includes("network") || msg.includes("fetch") || msg.includes("timeout") || msg.includes("offline");
+  };
+
   handleRetry = () => {
     // Sprint 726: Track recovery action
     track("error_boundary_retry" as any);
@@ -62,9 +68,11 @@ export class ErrorBoundary extends Component<Props, State> {
           <View style={styles.iconCircle}>
             <Ionicons name="warning-outline" size={32} color={BRAND.colors.amber} />
           </View>
-          <Text style={styles.title}>Something went wrong</Text>
+          <Text style={styles.title} accessibilityRole="header">Something went wrong</Text>
           <Text style={styles.message}>
-            Don't worry — your data is safe. Try again or head back to the home screen.
+            {this.isNetworkError()
+              ? "Looks like you're offline. Check your connection and try again."
+              : "Don't worry — your data is safe. Try again or head back to the home screen."}
           </Text>
           {__DEV__ && this.state.error && (
             <Text style={styles.debugInfo}>{this.state.error.message}</Text>

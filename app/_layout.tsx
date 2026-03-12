@@ -205,7 +205,7 @@ function AnimatedSplash({ onFinish, reduceMotion }: { onFinish: () => void; redu
   }));
 
   return (
-    <Animated.View style={[splashStyles.container, containerStyle]} pointerEvents="none">
+    <Animated.View style={[splashStyles.container, containerStyle]} pointerEvents="none" accessible accessibilityLabel="TopRanker loading">
       {/* Ambient background glow */}
       <Animated.View style={[splashStyles.bgGlow, bgGlowStyle]} />
 

@@ -7,11 +7,11 @@ export default function NotFoundScreen() {
   return (
     <>
       <Stack.Screen options={{ title: "Not Found" }} />
-      <View style={styles.container}>
-        <Ionicons name="compass-outline" size={48} color={Colors.textTertiary} />
+      <View style={styles.container} accessibilityRole="alert" accessibilityLabel="Page not found">
+        <Ionicons name="compass-outline" size={48} color={Colors.textTertiary} accessibilityElementsHidden />
         <Text style={styles.title}>Page not found</Text>
         <Text style={styles.subtitle}>This page doesn't exist or has been moved.</Text>
-        <Link href="/" style={styles.link}>
+        <Link href="/" style={styles.link} accessibilityRole="button" accessibilityLabel="Back to Rankings">
           <Text style={styles.linkText}>Back to Rankings</Text>
         </Link>
       </View>
