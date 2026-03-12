@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 /**
  * Proxy for Google Places photos.
@@ -20,7 +21,8 @@ export async function handlePhotoProxy(req: Request, res: Response) {
     return res.status(400).json({ error: "Invalid photo reference" });
   }
 
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || "";
+  // Sprint 806: Centralized to config.ts
+  const apiKey = config.googleMapsApiKey || "";
   if (!apiKey) {
     return res.status(503).json({ error: "Maps API key not configured" });
   }

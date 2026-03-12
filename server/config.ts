@@ -33,6 +33,7 @@ export const config = {
 
   // Stripe (optional — mock payments if not set)
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || null,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || null,
 
   // GitHub deploy webhook (optional)
   githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || null,

@@ -2,6 +2,7 @@ import { exec } from "child_process";
 import * as crypto from "crypto";
 import type { Request, Response } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 const deployLog = log.tag("Deploy");
 
@@ -25,7 +26,8 @@ let deployStatus: DeployStatus = {
 
 // Optional: set GITHUB_WEBHOOK_SECRET in env for signature verification
 function verifySignature(req: Request): boolean {
-  const secret = process.env.GITHUB_WEBHOOK_SECRET;
+  // Sprint 806: Centralized to config.ts
+  const secret = config.githubWebhookSecret;
   if (!secret) return true; // skip verification if no secret configured
 
   const signature = req.header("x-hub-signature-256");
@@ -126,7 +128,8 @@ async function runDeploy() {
 function sendNotification(title: string, message: string) {
   // Uses ntfy.sh — free push notifications, no signup needed
   // Subscribe on your phone: install ntfy app, subscribe to "topranker-deploy"
-  const topic = process.env.NTFY_TOPIC || "topranker-deploy";
+  // Sprint 806: Centralized to config.ts
+  const topic = config.ntfyTopic;
   const url = `https://ntfy.sh/${topic}`;
 
   // Sprint 784: 5s timeout — notifications are fire-and-forget, don't block

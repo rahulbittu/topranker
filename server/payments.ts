@@ -7,6 +7,7 @@
  * npm install stripe
  */
 import { log } from "./logger";
+import { config } from "./config";
 import { PRICING } from "../shared/pricing";
 
 const payLog = log.tag("Payments");
@@ -28,7 +29,7 @@ interface CreatePaymentParams {
 }
 
 async function createPaymentIntent(params: CreatePaymentParams): Promise<PaymentIntent> {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = config.stripeSecretKey;
 
   if (stripeKey) {
     // Production: use Stripe
@@ -118,7 +119,7 @@ export async function createDashboardProSubscription(params: {
   successUrl: string;
   cancelUrl: string;
 }): Promise<SubscriptionCheckout> {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = config.stripeSecretKey;
 
   if (stripeKey) {
     try {
@@ -187,7 +188,7 @@ export async function createDashboardProSubscription(params: {
 }
 
 export async function cancelSubscription(stripeSubscriptionId: string): Promise<{ cancelAtPeriodEnd: boolean }> {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeKey = config.stripeSecretKey;
 
   if (stripeKey) {
     try {

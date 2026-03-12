@@ -5,6 +5,7 @@
  */
 import type { Request, Response } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 import { updatePaymentStatusByStripeId, logWebhookEvent, markWebhookProcessed } from "./storage";
 
 const whLog = log.tag("StripeWebhook");
@@ -28,12 +29,13 @@ interface StripeEvent {
  * Falls through to raw JSON parsing in development.
  */
 function verifyAndParseEvent(req: Request): StripeEvent | null {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  // Sprint 806: Centralized to config.ts
+  const secret = config.stripeWebhookSecret;
   const sig = req.headers["stripe-signature"] as string | undefined;
 
   if (secret && sig) {
     try {
-      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+      const stripe = require("stripe")(config.stripeSecretKey);
       return stripe.webhooks.constructEvent(req.body, sig, secret) as StripeEvent;
     } catch (err: any) {
       whLog.error(`Signature verification failed: ${err.message}`);
