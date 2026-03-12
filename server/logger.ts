@@ -48,21 +48,23 @@ function createTaggedLogger(tag: string) {
   };
 }
 
-export const log = {
-  /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
-  tag: createTaggedLogger,
+/** Callable logger: log("msg") logs at info level; log.info/warn/error/debug for explicit levels */
+function baseLog(message: string, data?: unknown) {
+  if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+}
 
-  // Top-level convenience methods (tag: "Server")
-  debug(message: string, data?: unknown) {
-    if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
-  },
-  info(message: string, data?: unknown) {
-    if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
-  },
-  warn(message: string, data?: unknown) {
-    if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
-  },
-  error(message: string, data?: unknown) {
-    if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
-  },
+baseLog.tag = createTaggedLogger;
+baseLog.debug = function (message: string, data?: unknown) {
+  if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
 };
+baseLog.info = function (message: string, data?: unknown) {
+  if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+};
+baseLog.warn = function (message: string, data?: unknown) {
+  if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
+};
+baseLog.error = function (message: string, data?: unknown) {
+  if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
+};
+
+export const log = baseLog;

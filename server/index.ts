@@ -394,6 +394,27 @@ function setupErrorHandler(app: express.Application) {
 
   configureExpoAndLanding(app);
 
+  setupErrorHandler(app);
+
+  const port = parseInt(process.env.PORT || "5000", 10);
+
+  // Sprint 758: Explicit timeout configuration for Railway
+  server.keepAliveTimeout = 65_000; // Slightly above Railway's 60s LB idle timeout
+  server.headersTimeout = 66_000; // Must be > keepAliveTimeout
+
+  // Sprint 762: Listen FIRST, then run background tasks.
+  // This ensures Railway health check passes while DB operations run.
+  server.listen(
+    port,
+    "0.0.0.0",
+    () => {
+      log(`express server serving on port ${port} (0.0.0.0)`);
+      log.info(`Node ${process.version} | PID ${process.pid} | ENV ${process.env.NODE_ENV || "development"}`);
+    },
+  );
+
+  // ── Background startup tasks (non-blocking, after listen) ──────────
+
   // Sprint 619: Skip seed in production — saves ~109kb from bundle
   if (process.env.NODE_ENV !== "production") {
     const { seedDatabase } = await import("./seed");
@@ -462,23 +483,6 @@ function setupErrorHandler(app: express.Application) {
   // Sprint 227: Owner outreach scheduler — weekly on Wednesdays
   const { startOutreachScheduler } = await import("./outreach-scheduler");
   const outreachSchedulerTimeout = startOutreachScheduler();
-
-  setupErrorHandler(app);
-
-  const port = parseInt(process.env.PORT || "5000", 10);
-
-  // Sprint 758: Explicit timeout configuration for Railway
-  server.keepAliveTimeout = 65_000; // Slightly above Railway's 60s LB idle timeout
-  server.headersTimeout = 66_000; // Must be > keepAliveTimeout
-
-  server.listen(
-    port,
-    "0.0.0.0",
-    () => {
-      log(`express server serving on port ${port} (0.0.0.0)`);
-      log.info(`Node ${process.version} | PID ${process.pid} | ENV ${process.env.NODE_ENV || "development"}`);
-    },
-  );
 
   // Graceful shutdown
   function gracefulShutdown(signal: string) {

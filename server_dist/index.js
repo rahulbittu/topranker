@@ -860,6 +860,9 @@ function createTaggedLogger(tag) {
     }
   };
 }
+function baseLog(message, data) {
+  if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+}
 var LEVEL_ORDER, MIN_LEVEL, log2;
 var init_logger = __esm({
   "server/logger.ts"() {
@@ -871,23 +874,20 @@ var init_logger = __esm({
       error: 3
     };
     MIN_LEVEL = true ? "info" : "debug";
-    log2 = {
-      /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
-      tag: createTaggedLogger,
-      // Top-level convenience methods (tag: "Server")
-      debug(message, data) {
-        if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
-      },
-      info(message, data) {
-        if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
-      },
-      warn(message, data) {
-        if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
-      },
-      error(message, data) {
-        if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
-      }
+    baseLog.tag = createTaggedLogger;
+    baseLog.debug = function(message, data) {
+      if (shouldLog("debug")) console.log(formatMessage("debug", "Server", message, data));
     };
+    baseLog.info = function(message, data) {
+      if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
+    };
+    baseLog.warn = function(message, data) {
+      if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
+    };
+    baseLog.error = function(message, data) {
+      if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
+    };
+    log2 = baseLog;
   }
 });
 
@@ -16408,6 +16408,18 @@ function setupErrorHandler(app2) {
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
   log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
+  setupErrorHandler(app);
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.keepAliveTimeout = 65e3;
+  server.headersTimeout = 66e3;
+  server.listen(
+    port,
+    "0.0.0.0",
+    () => {
+      log2(`express server serving on port ${port} (0.0.0.0)`);
+      log2.info(`Node ${process.version} | PID ${process.pid} | ENV ${"production"}`);
+    }
+  );
   if (false) {
     const { seedDatabase } = await null;
     seedDatabase().catch((err) => log2.error("Seed error:", err));
@@ -16451,18 +16463,6 @@ function setupErrorHandler(app2) {
   const dripSchedulerTimeout = startDripScheduler2();
   const { startOutreachScheduler: startOutreachScheduler2 } = await Promise.resolve().then(() => (init_outreach_scheduler(), outreach_scheduler_exports));
   const outreachSchedulerTimeout = startOutreachScheduler2();
-  setupErrorHandler(app);
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.keepAliveTimeout = 65e3;
-  server.headersTimeout = 66e3;
-  server.listen(
-    port,
-    "0.0.0.0",
-    () => {
-      log2(`express server serving on port ${port} (0.0.0.0)`);
-      log2.info(`Node ${process.version} | PID ${process.pid} | ENV ${"production"}`);
-    }
-  );
   function gracefulShutdown(signal) {
     log2.info(`${signal} received. Starting graceful shutdown...`);
     clearInterval(challengerInterval);
