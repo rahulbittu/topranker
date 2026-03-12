@@ -468,6 +468,7 @@ function setupErrorHandler(app: express.Application) {
     "0.0.0.0",
     () => {
       log(`express server serving on port ${port} (0.0.0.0)`);
+      logger.info(`Node ${process.version} | PID ${process.pid} | ENV ${process.env.NODE_ENV || "development"}`);
     },
   );
 

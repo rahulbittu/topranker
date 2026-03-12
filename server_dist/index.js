@@ -15723,6 +15723,15 @@ async function registerRoutes(app2) {
   app2.get("/_health", (_req, res) => {
     res.status(200).json({ status: "ok" });
   });
+  app2.get("/_ready", async (_req, res) => {
+    try {
+      const { pool: pool2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      await pool2.query("SELECT 1");
+      res.status(200).json({ status: "ready", db: "connected" });
+    } catch {
+      res.status(503).json({ status: "not_ready", db: "disconnected" });
+    }
+  });
   app2.get("/api/health", (req, res) => {
     const uptime = process.uptime();
     const memUsage = process.memoryUsage();
@@ -16447,6 +16456,7 @@ function setupErrorHandler(app2) {
     "0.0.0.0",
     () => {
       log(`express server serving on port ${port} (0.0.0.0)`);
+      log2.info(`Node ${process.version} | PID ${process.pid} | ENV ${"production"}`);
     }
   );
   function gracefulShutdown(signal) {

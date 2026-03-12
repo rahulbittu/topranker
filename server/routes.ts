@@ -78,6 +78,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok" });
   });
 
+  // Readiness probe — verifies database connectivity
+  app.get("/_ready", async (_req: Request, res: Response) => {
+    try {
+      const { pool } = await import("./db");
+      await pool.query("SELECT 1");
+      res.status(200).json({ status: "ready", db: "connected" });
+    } catch {
+      res.status(503).json({ status: "not_ready", db: "disconnected" });
+    }
+  });
+
   // Health check — process vitals for uptime monitoring, load balancers, and alerting
   app.get("/api/health", (req: Request, res: Response) => {
     const uptime = process.uptime();
