@@ -1506,7 +1506,7 @@ async function getBusinessPhotosMap(businessIds) {
   const map = {};
   for (const row of rows) {
     if (!map[row.businessId]) map[row.businessId] = [];
-    if (map[row.businessId].length < 3) {
+    if (map[row.businessId].length < 5) {
       map[row.businessId].push(row.photoUrl);
     }
   }
