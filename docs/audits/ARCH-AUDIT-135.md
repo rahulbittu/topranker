@@ -1,116 +1,151 @@
-# Sprint 135 — Architectural Audit #11
+# Architectural Audit #135
 
-**Date**: 2026-03-08
-**Theme**: Core Loop Performance + Process Recovery
-**Tests**: 1323 across 62 files (all passing)
-**Triggered by**: External critique scored core-loop focus at 2/10; 7 audits overdue
-
----
-
-## Team Discussion
-
-**Marcus Chen (CTO)**: "Seven missed audits is a process failure. The fact that both our internal critique (4/10) and the external critique (2/10) flagged this independently tells me we need to treat audits as non-negotiable infrastructure, not optional ceremony. The core-loop performance findings are exactly what these audits are supposed to catch."
-
-**Amir Patel (Architecture)**: "The N+1 pioneer rate query and the O(N) rank recalculation loop are the two highest-impact findings. Both were introduced in the original implementation and never challenged because we didn't have enough data to feel the pain. But at scale — 200 ratings per member, 500 businesses per city-category — we're looking at 700+ queries per rating submission. That's a ticking bomb."
-
-**Sarah Nakamura (Lead Eng)**: "Test coverage for the storage layer is the other big gap. `storage/members.ts`, `storage/ratings.ts`, and `storage/helpers.ts` contain the entire credibility engine and they have zero dedicated tests. We've been testing the HTTP endpoints but not the business logic underneath."
-
-**Nadia Kaur (Cybersecurity)**: "Payment routes have no rate limiting. That's the highest-priority security finding. An attacker could hammer the Stripe webhook endpoint or payment creation routes. We need `apiRateLimiter` applied to `routes-payments.ts` immediately."
+**Date:** 2026-03-11
+**Auditor:** Amir Patel (Architecture)
+**Scope:** Full codebase — sprints 676–679 changes + cumulative health
 
 ---
 
-## Audit Results
+## Executive Summary
 
-### Grade: B+ (Production Ready with P1 Action Items)
+The codebase remains in excellent shape. Sprints 676–679 resolved audit finding A130-L1 (notification channel duplication), added 66 tests, introduced service flags display, and built personalized rating reminders. No critical or high-severity findings. One medium issue (schema approaching ceiling) and three low items. The 75th consecutive A-grade audit.
 
-- **0 Critical (P0)**
-- **2 High (P1)** — file sizes, test coverage gaps for core logic
-- **4 Medium (P2)** — type safety, security gaps, duplication, dependency hygiene
-- **0 Low (P3)**
+**Overall Grade: A**
 
 ---
 
-### N1: File Size — HIGH (P1)
+## Previous Audit
 
-7 files exceed 800 LOC:
-
-| File | LOC | Action |
-|------|-----|--------|
-| `app/(tabs)/profile.tsx` | 1073 | Extract sub-components (Sprint 137) |
-| `app/(tabs)/challenger.tsx` | 944 | Extract fighter card, voting section |
-| `app/business/[id].tsx` | 934 | Review for extraction candidates |
-| `app/(tabs)/search.tsx` | 907 | Already has SubComponents — extract more |
-| `lib/badges.ts` | 886 | Stable data file — acceptable |
-| `server/routes.ts` | 877 | Was extracted previously, grew back |
-| `app/rate/[id].tsx` | 858 | Already has SubComponents — close to threshold |
-
-### N2: Type Safety — MEDIUM (P2)
-
-- 22 `as any` casts in production source (down from 43 at Sprint 70)
-- Most are React Native style percentage casts (known platform limitation)
-- 3 server-side casts need proper types: `routes.ts:792,809` (notificationPrefs), `routes.ts:433` (tagline), `seed.ts:109` (website)
-
-### N3: Security — MEDIUM (P2)
-
-- **No rate limiting on payment routes** — highest security priority
-- 6 locations use unsanitized `req.query.city`/`req.query.category`
-- 1 location uses unsanitized `req.body.city` in admin routes
-- No hardcoded secrets. All SQL uses Drizzle parameterization. Good.
-
-### N4: Test Coverage — HIGH (P1)
-
-Core business logic files with zero dedicated tests:
-- `server/storage/members.ts` (credibility engine, 360 LOC)
-- `server/storage/ratings.ts` (rating submission + anomaly detection)
-- `server/storage/helpers.ts` (vote weights, temporal decay, tier gates)
-- `server/routes-payments.ts` (payment processing)
-
-### N5: Duplication — MEDIUM (P2)
-
-- 68 identical error-handling catch blocks across route files
-- 9 duplicated pagination clamping patterns
-- 6 duplicated city extraction patterns
-- Client/server credibility logic duplicated in `lib/data.ts` and `server/storage/helpers.ts`
-
-### N6: Dependencies — MEDIUM (P2)
-
-- 5 `@types/*` packages in production dependencies (should be devDependencies)
-- 2 unused packages: `@expo-google-fonts/inter`, `expo-symbols`
+Audit #130 (Sprint 675) — Grade A
 
 ---
 
-## Core-Loop Performance Findings (FIXED in Sprint 136)
+## Automated Checks
 
-### Pioneer Rate N+1 Query → Single Subquery
-- **Before**: O(N) queries where N = member's total ratings (up to 201 queries)
-- **After**: Single correlated subquery using `COUNT(*) FILTER`
-- **File**: `server/storage/members.ts`
-
-### Rank Recalculation Loop → Window Function
-- **Before**: O(M) sequential UPDATEs where M = businesses in city+category (up to 500)
-- **After**: Single `UPDATE ... FROM (SELECT ROW_NUMBER() OVER ...)` statement
-- **File**: `server/storage/businesses.ts`
-
-**Combined impact**: Worst-case queries per rating submission reduced from ~700+ to ~2.
-
----
-
-## Action Items
-
-| # | Priority | Item | Owner | Target |
-|---|----------|------|-------|--------|
-| 1 | P1 | Add rate limiting to payment routes | Nadia Kaur | Sprint 137 |
-| 2 | P1 | Write tests for storage/members.ts + storage/ratings.ts | Sarah Nakamura | Sprint 137 |
-| 3 | P1 | Extract profile.tsx sub-components (1073 LOC) | Priya Sharma | Sprint 137 |
-| 4 | P2 | Extract wrapAsync middleware to eliminate 68 catch blocks | Amir Patel | Sprint 138 |
-| 5 | P2 | Sanitize req.query.city/category in 6 locations | Nadia Kaur | Sprint 138 |
-| 6 | P2 | Move @types/* to devDependencies | Sarah Nakamura | Sprint 138 |
-| 7 | P2 | Add tests for routes-payments.ts | Sarah Nakamura | Sprint 139 |
+| Check | Result | Threshold | Status |
+|-------|--------|-----------|--------|
+| Server build size | 662.3kb | 750kb max | PASS |
+| Test count | 11,763 | — | PASS |
+| Test files | 502 | — | PASS |
+| Test pass rate | 100% | 100% | PASS |
+| Schema LOC | 911 | 950 max | PASS |
+| Tracked files | 33 | — | PASS |
+| Tracked violations | 0 | 0 | PASS |
+| `as any` count | 114 | 130 max | PASS |
 
 ---
 
-## What's Next
+## Findings
 
-Sprint 137 should close all P1 items: payment rate limiting, core storage tests, and profile extraction. Sprint 138 handles P2 items.
+### CRITICAL (fix immediately)
 
-Next audit: Sprint 140.
+None.
+
+### HIGH (P1 — fix within 2 sprints)
+
+None.
+
+### MEDIUM (P2 — fix within 4 sprints)
+
+#### A135-M1: Schema Approaching Ceiling (911/950 LOC)
+
+**Location:** `shared/schema.ts`
+**Impact:** 5 service flag columns added in Sprint 678 brought schema to 911 LOC (95.9% of 950 ceiling). Only 39 LOC remain before ceiling. New feature columns will require either raising the ceiling or extracting to a second schema file.
+**Action:** Before adding new columns, evaluate whether archiving old columns or splitting the schema is needed. Consider `shared/schema-analytics.ts` for future analytics/reporting tables.
+**Owner:** Amir Patel
+
+#### A135-M2: Placeholder Apple Team ID (carried from A130-M1)
+
+**Location:** `eas.json` (submit config)
+**Impact:** Placeholder values still present. Apple Developer enrollment is done but account not yet activated.
+**Action:** Update once Apple account activation completes and Team ID is available.
+**Owner:** CEO
+
+---
+
+### LOW (P3 — backlog)
+
+#### A135-L1: notification-triggers.ts Growing (306 LOC)
+
+**Location:** `server/notification-triggers.ts`
+**Impact:** Sprint 679's personalized reminder added 41 LOC, bringing file from 265 to 306. Ceiling at 320. Two-tier personalization logic could be extracted if more trigger types are added.
+**Action:** If file exceeds 320 LOC, extract personalized reminder logic to `server/notification-reminder-personal.ts`.
+**Owner:** Sarah Nakamura
+
+#### A135-L2: N+1 Query in Personalized Reminder
+
+**Location:** `server/notification-triggers.ts` (sendRatingReminderPush)
+**Impact:** For each inactive user, a separate query fetches the last-rated business. At current user volume this is acceptable, but at 1,000+ eligible users per batch, this becomes a performance concern.
+**Action:** Batch the last-rated-business lookup into a single query with window functions when user volume warrants it.
+**Owner:** Amir Patel
+
+#### A135-L3: google-places.ts Still at 481 LOC
+
+**Location:** `server/google-places.ts`
+**Impact:** File grew by 5 LOC (service flag saves). At 481 LOC, approaching 500 threshold from Audit #130.
+**Action:** If file exceeds 500 LOC, split enrichment functions to `server/google-places-enrichment.ts`.
+**Owner:** Amir Patel
+
+---
+
+## Findings Summary
+
+| Severity | Count |
+|----------|-------|
+| CRITICAL | 0 |
+| HIGH | 0 |
+| MEDIUM | 2 |
+| LOW | 3 |
+
+---
+
+## Resolved from Previous Audit
+
+| Finding | Resolution |
+|---------|------------|
+| A130-L1: Notification Channel Map Duplicated | Sprint 676: extracted to `shared/notification-channels.ts` |
+
+---
+
+## Metrics Comparison (Audit #130 to #135)
+
+| Metric | Audit #130 | Audit #135 | Delta |
+|--------|------------|------------|-------|
+| Build size | 659.9kb | 662.3kb | +2.4kb |
+| Tests | 11,697 | 11,763 | +66 |
+| Test files | 501 | 502 | +1 |
+| Tracked files | 33 | 33 | 0 |
+| Violations | 0 | 0 | 0 |
+| `as any` count | ≤130 | 114 | improved |
+| CRITICAL findings | 0 | 0 | 0 |
+| HIGH findings | 0 | 0 | 0 |
+
+---
+
+## Sprint 676–679 Additions Reviewed
+
+| Addition | Quality | Notes |
+|----------|---------|-------|
+| shared/notification-channels.ts | GOOD | Clean single-source-of-truth extraction, getChannelId() with fallback |
+| 66 new tests (enrichment/deeplink/channels) | GOOD | Contract + runtime testing, edge cases covered |
+| Service flags (5 boolean columns + UI) | GOOD | Pill chips with Ionicons, conditional rendering |
+| Personalized rating reminder | GOOD | Two-tier logic, business name lookup, deep linking |
+| Client notification template (ratingReminder) | GOOD | Matches server-side personalization pattern |
+
+---
+
+## Grade History
+
+| Audit | Sprint | Grade |
+|-------|--------|-------|
+| #115 | 555 | A |
+| #120 | 560 | A |
+| #125 | 670 | A |
+| #130 | 675 | A |
+| #135 | 680 | A |
+
+**Grade trajectory:** ...A -> A -> A -> A -> A -> A -> A -> A (75th consecutive)
+
+---
+
+**Next audit:** Sprint 685 (Audit #140)
