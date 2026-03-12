@@ -50,17 +50,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       }
     } catch {
-      // Backend unreachable — provide demo user for offline/visual testing
-      console.log("[MockAuth] Backend unreachable, using demo user");
-      setUser({
-        id: "demo-member",
-        displayName: "Alex Demo",
-        username: "alexdemo",
-        email: "alex@demo.com",
-        city: "Dallas",
-        credibilityScore: 72,
-        credibilityTier: "trusted",
-      });
+      // Sprint 781: Only use demo user in development — production should show logged-out state
+      if (__DEV__) {
+        console.log("[MockAuth] Backend unreachable, using demo user");
+        setUser({
+          id: "demo-member",
+          displayName: "Alex Demo",
+          username: "alexdemo",
+          email: "alex@demo.com",
+          city: "Dallas",
+          credibilityScore: 72,
+          credibilityTier: "trusted",
+        });
+      } else {
+        setUser(null);
+      }
     } finally {
       setIsLoading(false);
     }
