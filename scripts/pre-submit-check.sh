@@ -93,10 +93,26 @@ check "Store metadata config" "$([ -f config/store-metadata.ts ] && echo true ||
 
 echo ""
 
-# 5. Sprint 738: Rate limiter check
+# 5. Sprint 738+741-747: Security checks
 echo "Security:"
 LIMITER_COUNT=$(grep -c "export const.*RateLimiter\|export const.*rateLimiter" server/rate-limiter.ts 2>/dev/null || echo 0)
 check "Rate limiters defined: $LIMITER_COUNT (expected 7+)" "$([ "$LIMITER_COUNT" -ge 7 ] && echo true || echo false)"
+
+# Sprint 741: Crypto IDs
+MATH_RANDOM_IDS=$(grep -r "Math.random().toString(36)" server/security-headers.ts server/rate-limit-dashboard.ts server/alerting.ts server/abuse-detection.ts 2>/dev/null | wc -l | tr -d ' ')
+check "No Math.random() in server IDs" "$([ "$MATH_RANDOM_IDS" = "0" ] && echo true || echo false)"
+
+# Sprint 742: URL centralization
+check "SHARE_BASE_URL exported" "$(grep -q 'SHARE_BASE_URL' lib/sharing.ts && echo true || echo false)"
+check "config.siteUrl defined" "$(grep -q 'siteUrl' server/config.ts && echo true || echo false)"
+
+# Sprint 743: Empty catches
+EMPTY_CATCHES=$(grep -r 'catch\s*{}' app/ lib/ components/ server/ 2>/dev/null | grep -v node_modules | grep -v __tests__ | wc -l | tr -d ' ')
+check "No empty catch blocks: $EMPTY_CATCHES" "$([ "$EMPTY_CATCHES" = "0" ] && echo true || echo false)"
+
+# Sprint 746: Input validation
+check "isReceipt strictly validated" "$(grep -q 'rawIsReceipt === true' server/routes-rating-photos.ts && echo true || echo false)"
+check "URL protocol validation" "$(grep -q 'http.*https.*protocol' server/routes-businesses.ts && echo true || echo false)"
 
 echo ""
 
