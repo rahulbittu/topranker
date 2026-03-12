@@ -45,15 +45,15 @@ export default function ChallengerScreen() {
 
   return (
     <ErrorBoundary>
-    <View style={[styles.container, { paddingTop: topPad }]}>
+    <View style={[styles.container, { paddingTop: topPad }]} accessibilityRole="summary" accessibilityLabel="Live Challenges screen">
       <View style={styles.header}>
-        <Text style={styles.title}>Live Challenges</Text>
-        <View style={styles.liveBadge}>
+        <Text style={styles.title} accessibilityRole="header">Live Challenges</Text>
+        <View style={styles.liveBadge} accessibilityLabel="Live indicator" accessibilityRole="text">
           <View style={styles.liveDot} />
           <Text style={styles.liveText}>LIVE</Text>
         </View>
       </View>
-      <Text style={styles.headerSub}>
+      <Text style={styles.headerSub} accessibilityRole="text">
         Head-to-head battles. Community-weighted votes. Real winners.
       </Text>
       {dataUpdatedAt > 0 && (

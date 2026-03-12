@@ -166,6 +166,7 @@ function ClassicTabLayout() {
         name="index"
         options={{
           title: "Rankings",
+          tabBarAccessibilityLabel: "Rankings tab — view restaurant leaderboards",
           tabBarIcon: ({ color, focused }) => <TabIcon name="bar-chart" color={color} focused={focused} />,
         }}
       />
@@ -173,6 +174,7 @@ function ClassicTabLayout() {
         name="challenger"
         options={{
           title: "Challenger",
+          tabBarAccessibilityLabel: "Challenger tab — live head-to-head battles",
           tabBarIcon: ({ color, focused }) => <TabIcon name="flash" color={color} focused={focused} />,
         }}
       />
@@ -180,6 +182,7 @@ function ClassicTabLayout() {
         name="search"
         options={{
           title: "Discover",
+          tabBarAccessibilityLabel: "Discover tab — search and explore restaurants",
           tabBarIcon: ({ color, focused }) => <TabIcon name="compass" color={color} focused={focused} />,
         }}
       />
@@ -187,6 +190,7 @@ function ClassicTabLayout() {
         name="profile"
         options={{
           title: "Profile",
+          tabBarAccessibilityLabel: "Profile tab — your ratings and tier progress",
           tabBarIcon: ({ color, focused }) => <TabIcon name="person" color={color} focused={focused} />,
         }}
       />
