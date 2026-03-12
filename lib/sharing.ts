@@ -38,7 +38,8 @@ export async function copyShareLink(
     const { Alert } = await import("react-native");
     Alert.alert("Link Copied", label ? `${label} link copied to clipboard!` : "Link copied to clipboard!");
     return true;
-  } catch {
+  } catch (e) {
+    if (__DEV__) console.warn("[Sharing] Copy failed:", e);
     return false;
   }
 }
@@ -61,7 +62,8 @@ export async function shareToWhatsApp(text: string): Promise<boolean> {
     const fallback = `whatsapp://send?text=${encoded}`;
     await Linking.openURL(fallback);
     return true;
-  } catch {
+  } catch (e) {
+    if (__DEV__) console.warn("[Sharing] WhatsApp failed:", e);
     return false;
   }
 }
@@ -163,7 +165,8 @@ export function getDeepLinkParams(url: string): { type: string; slug: string } |
     if (segments.length < 2) return null;
 
     return { type: segments[0], slug: segments[1] };
-  } catch {
+  } catch (e) {
+    if (__DEV__) console.warn("[Sharing] Deep link parse failed:", e);
     return null;
   }
 }

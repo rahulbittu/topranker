@@ -8939,6 +8939,8 @@ async function handleBadgeShare(req, res) {
 }
 
 // server/og-image.ts
+init_logger();
+var ogLog = log2.tag("OG-Image");
 var AMBER = "#C49A1A";
 var NAVY = "#0D1B2A";
 var DARK_SURFACE = "#1A2D44";
@@ -9027,7 +9029,7 @@ async function handleBusinessOgImage(req, res) {
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
     return res.send(svg);
   } catch (err) {
-    console.error("[og-image] Business image failed:", err);
+    ogLog.error("Business image failed:", err);
     return res.status(500).send("Error generating image");
   }
 }
@@ -9051,7 +9053,7 @@ async function handleDishOgImage(req, res) {
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
     return res.send(svg);
   } catch (err) {
-    console.error("[og-image] Dish image failed:", err);
+    ogLog.error("Dish image failed:", err);
     return res.status(500).send("Error generating image");
   }
 }

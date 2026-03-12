@@ -4,6 +4,9 @@
  * Endpoints: /api/og-image/business/:slug, /api/og-image/dish/:slug
  */
 import type { Request, Response } from "express";
+import { log } from "./logger";
+
+const ogLog = log.tag("OG-Image");
 
 const AMBER = "#C49A1A";
 const NAVY = "#0D1B2A";
@@ -118,7 +121,7 @@ export async function handleBusinessOgImage(req: Request, res: Response) {
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
     return res.send(svg);
   } catch (err) {
-    console.error("[og-image] Business image failed:", err);
+    ogLog.error("Business image failed:", err);
     return res.status(500).send("Error generating image");
   }
 }
@@ -143,7 +146,7 @@ export async function handleDishOgImage(req: Request, res: Response) {
     res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
     return res.send(svg);
   } catch (err) {
-    console.error("[og-image] Dish image failed:", err);
+    ogLog.error("Dish image failed:", err);
     return res.status(500).send("Error generating image");
   }
 }

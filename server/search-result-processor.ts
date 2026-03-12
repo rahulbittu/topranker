@@ -9,6 +9,43 @@
 import { combinedRelevance } from "./search-ranking-v2";
 import { computeOpenStatus, isOpenLate, isOpenWeekends } from "./hours-utils";
 
+/**
+ * Sprint 744: Typed business record for search processing.
+ * Covers fields returned by business queries used in search endpoints.
+ */
+export interface SearchBusinessRecord {
+  id: string;
+  name: string;
+  slug: string;
+  photoUrl?: string | null;
+  category?: string | null;
+  cuisine?: string | null;
+  neighborhood?: string | null;
+  description?: string | null;
+  lat?: string | null;
+  lng?: string | null;
+  ratingCount?: number | string | null;
+  weightedScore?: string | null;
+  closingTime?: string | null;
+  isOpenNow?: boolean | null;
+  topDishes?: string[];
+  city?: string | null;
+  menuUrl?: string | null;
+  orderUrl?: string | null;
+  doordashUrl?: string | null;
+  openingHours?: Record<string, unknown> | null;
+  dietaryTags?: string[];
+}
+
+export interface EnrichedSearchResult extends SearchBusinessRecord {
+  photoUrls: string[];
+  relevanceScore: number;
+  distanceKm: number | null;
+  closingTime: string | null;
+  nextOpenTime: string | null;
+  todayHours: string | null;
+}
+
 // Sprint 442: Haversine distance calculation (km)
 export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371; // Earth radius in km
@@ -36,10 +73,10 @@ export interface SearchProcessingOpts {
  * Enrich business records with relevance scores, distance, and real-time open status.
  */
 export function enrichSearchResults(
-  bizList: any[],
+  bizList: SearchBusinessRecord[],
   photoMap: Record<string, string[]>,
   opts: SearchProcessingOpts,
-) {
+): EnrichedSearchResult[] {
   return bizList.map(b => {
     const photos = photoMap[b.id] || (b.photoUrl ? [b.photoUrl] : []);
     const searchCtx = {
@@ -53,11 +90,11 @@ export function enrichSearchResults(
       neighborhood: b.neighborhood,
       ratingCount: b.ratingCount ? Number(b.ratingCount) : 0,
       // Sprint 534: Dish-aware and city-aware relevance scoring
-      dishNames: (b as any).topDishes || [],
-      city: (b as any).city || opts.city,
+      dishNames: b.topDishes || [],
+      city: b.city || opts.city,
       // Sprint 633: Action URL presence + city match signals
-      hasActionUrls: !!(b as any).menuUrl || !!(b as any).orderUrl || !!(b as any).doordashUrl,
-      businessCity: (b as any).city || undefined,
+      hasActionUrls: !!b.menuUrl || !!b.orderUrl || !!b.doordashUrl,
+      businessCity: b.city || undefined,
       // Sprint 641: Pass coordinates for proximity signal
       userLat: opts.userLat ?? undefined,
       userLng: opts.userLng ?? undefined,
@@ -73,7 +110,7 @@ export function enrichSearchResults(
       distanceKm = haversineKm(opts.userLat, opts.userLng, parseFloat(b.lat), parseFloat(b.lng));
     }
     // Sprint 447: Compute real-time open status from openingHours
-    const bHours = (b as any).openingHours;
+    const bHours = b.openingHours;
     const openStatus = computeOpenStatus(bHours);
     const dynamicIsOpenNow = bHours ? openStatus.isOpen : (b.isOpenNow ?? false);
     return {
@@ -93,15 +130,15 @@ export function enrichSearchResults(
  * Apply post-query filters: dietary tags, distance, hours status.
  */
 export function applySearchFilters(
-  data: any[],
+  data: EnrichedSearchResult[],
   opts: SearchProcessingOpts,
-): any[] {
+): EnrichedSearchResult[] {
   let filtered = data;
 
   // Sprint 442: Filter by dietary tags (business must have ALL requested tags)
   if (opts.dietaryTags.length > 0) {
     filtered = filtered.filter(b => {
-      const bizTags: string[] = Array.isArray((b as any).dietaryTags) ? (b as any).dietaryTags : [];
+      const bizTags: string[] = Array.isArray(b.dietaryTags) ? b.dietaryTags : [];
       return opts.dietaryTags.every(tag => bizTags.includes(tag));
     });
   }
@@ -116,10 +153,10 @@ export function applySearchFilters(
     filtered = filtered.filter(b => b.isOpenNow === true);
   }
   if (opts.openLate) {
-    filtered = filtered.filter(b => { const h = (b as any).openingHours; return isOpenLate(h); });
+    filtered = filtered.filter(b => { const h = b.openingHours; return isOpenLate(h); });
   }
   if (opts.openWeekends) {
-    filtered = filtered.filter(b => { const h = (b as any).openingHours; return isOpenWeekends(h); });
+    filtered = filtered.filter(b => { const h = b.openingHours; return isOpenWeekends(h); });
   }
 
   return filtered;
@@ -128,7 +165,7 @@ export function applySearchFilters(
 /**
  * Sort results by relevance when a search query is present.
  */
-export function sortByRelevance(data: any[], query: string): any[] {
+export function sortByRelevance(data: EnrichedSearchResult[], query: string): EnrichedSearchResult[] {
   if (!query) return data;
   return [...data].sort((a, b) =>
     b.relevanceScore - a.relevanceScore || parseFloat(b.weightedScore) - parseFloat(a.weightedScore)

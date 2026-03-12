@@ -74,8 +74,9 @@ describe("Sprint 476: Search Result Processing Extraction", () => {
       expect(src).toContain("weightedScore");
     });
 
-    it("is under 140 LOC", () => {
-      expect(src.split("\n").length).toBeLessThan(140);
+    it("is under 175 LOC", () => {
+      // Sprint 744: Added typed interfaces (+30 LOC)
+      expect(src.split("\n").length).toBeLessThan(175);
     });
   });
 
