@@ -46,6 +46,9 @@ describe("securityHeaders middleware", () => {
   let securityHeaders: any;
 
   beforeEach(async () => {
+    // Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET
+    process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+    process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
     const mod = await import("../server/security-headers");
     securityHeaders = mod.securityHeaders;
   });

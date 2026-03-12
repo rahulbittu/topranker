@@ -13,6 +13,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<any>;
 
@@ -22,7 +23,8 @@ export function wrapAsync(fn: AsyncHandler) {
       log.error(`Unhandled route error: ${req.method} ${req.path}`, err);
       if (!res.headersSent) {
         // Sprint 779: Don't leak internal error details to clients in production
-        const isProduction = process.env.NODE_ENV === "production";
+        // Sprint 807: Centralized to config.ts
+        const isProduction = config.isProduction;
         const message = isProduction ? "Internal Server Error" : (err.message || "Internal Server Error");
         res.status(500).json({ error: message });
       }

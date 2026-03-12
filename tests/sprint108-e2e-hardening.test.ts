@@ -16,6 +16,9 @@ describe("CORS Configuration", () => {
   let securityHeaders: (req: any, res: any, next: () => void) => any;
 
   beforeAll(async () => {
+    // Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET
+    process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+    process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
     // Ensure localhost origins are matched via the isLocalhostOrigin helper
     const mod = await import("../server/security-headers");
     securityHeaders = mod.securityHeaders;
@@ -62,6 +65,9 @@ describe("API Versioning Headers", () => {
   let securityHeaders: (req: any, res: any, next: () => void) => any;
 
   beforeAll(async () => {
+    // Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET
+    process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+    process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
     const mod = await import("../server/security-headers");
     securityHeaders = mod.securityHeaders;
   });

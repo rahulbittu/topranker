@@ -7,6 +7,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 const errorLog = log.tag("ErrorTracking");
 
@@ -14,7 +15,8 @@ const errorLog = log.tag("ErrorTracking");
 // Configuration
 // ---------------------------------------------------------------------------
 
-const SENTRY_DSN = process.env.SENTRY_DSN || "";
+// Sprint 807: Centralized to config.ts
+const SENTRY_DSN = config.sentryDsn;
 let initialized = false;
 
 interface ErrorEvent {

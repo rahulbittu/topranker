@@ -32,8 +32,9 @@ describe("Sprint 753: CORS + CSP Production Configuration", () => {
       expect(secHeaders).toContain("https://www.topranker.io");
     });
 
-    it("includes Railway domain from env", () => {
-      expect(secHeaders).toContain("RAILWAY_PUBLIC_DOMAIN");
+    it("includes Railway domain from config", () => {
+      // Sprint 807: Centralized to config.ts — uses config.railwayPublicDomain
+      expect(secHeaders).toContain("config.railwayPublicDomain");
     });
 
     it("supports CORS_ORIGINS env var", () => {

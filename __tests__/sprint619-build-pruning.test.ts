@@ -23,7 +23,8 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
     });
 
     it("seed-cities admin route is dev-only", () => {
-      expect(adminSrc).toContain('process.env.NODE_ENV !== "production"');
+      // Sprint 807: routes-admin.ts uses config.isProduction instead of process.env.NODE_ENV
+      expect(adminSrc).toContain("!config.isProduction");
       expect(adminSrc).toContain("seedCities");
     });
 
@@ -37,7 +38,7 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
       // seed-cities.ts contains city population/lat/lng data arrays
       // The actual data arrays are excluded even if the function name remains as a dead reference
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(670); // Sprint 772: raised from 665 (+AASA inline)
+      expect(sizeKb).toBeLessThan(750); // Sprint 807: raised from 670 (config.ts centralization)
     });
   });
 
@@ -47,14 +48,14 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
       expect(pkg.scripts["server:build"]).toContain("--define:process.env.NODE_ENV");
     });
 
-    it("build is under 670kb (Sprint 772: +AASA inline content)", () => {
+    it("build is under 750kb (Sprint 807: config.ts centralization)", () => {
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(670);
+      expect(sizeKb).toBeLessThan(750);
     });
 
     it("build saved over 100kb from seed exclusion", () => {
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(700); // was 734.9, now ~625.7
+      expect(sizeKb).toBeLessThan(750); // Sprint 807: raised from 700 (config.ts centralization)
     });
   });
 

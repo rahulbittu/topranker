@@ -104,12 +104,14 @@ describe("Replit CORS removal — server/security-headers.ts", () => {
     expect(src).toContain("topranker.io");
   });
 
-  it("retains Railway CORS support", () => {
-    expect(src).toContain("RAILWAY_PUBLIC_DOMAIN");
+  it("retains Railway CORS support via config", () => {
+    // Sprint 807: Centralized to config.ts — uses config.railwayPublicDomain
+    expect(src).toContain("config.railwayPublicDomain");
   });
 
-  it("retains CORS_ORIGINS env support", () => {
-    expect(src).toContain("CORS_ORIGINS");
+  it("retains CORS_ORIGINS env support via config", () => {
+    // Sprint 807: Centralized to config.ts — uses config.corsOrigins
+    expect(src).toContain("config.corsOrigins");
   });
 });
 

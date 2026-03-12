@@ -5,8 +5,14 @@
  * Validates error propagation, response shape consistency, headersSent guard,
  * and non-interference with custom error handling in converted routes.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import type { Request, Response, NextFunction } from "express";
+
+// Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET (hoisted before imports)
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+});
 
 // ---------- inline wrapAsync (mirrors server/wrap-async.ts) ----------
 // We import the real implementation so the test is not tautological.

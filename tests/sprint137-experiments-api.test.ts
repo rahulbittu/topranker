@@ -10,13 +10,22 @@
  * - GET /api/experiments returns active experiment list
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import {
-  hashString as serverHash,
-  assignVariant,
-  _getRegistry,
-} from "../server/routes-experiments";
+import { describe, it, expect, beforeEach, beforeAll } from "vitest";
 import { hashString as clientHash } from "@/lib/ab-testing";
+
+// Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET (transitive via routes-experiments → wrap-async → config)
+let serverHash: (s: string) => number;
+let assignVariant: (userId: string, experimentId: string) => { variant: string; isDefault: boolean };
+let _getRegistry: () => Record<string, any>;
+
+beforeAll(async () => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+  const mod = await import("../server/routes-experiments");
+  serverHash = mod.hashString;
+  assignVariant = mod.assignVariant;
+  _getRegistry = mod._getRegistry;
+});
 
 // ─── DJB2 Hash Parity ───────────────────────────────────────
 
@@ -51,9 +60,10 @@ describe("DJB2 hash parity (server vs client)", () => {
 // ─── Variant Assignment ──────────────────────────────────────
 
 describe("assignVariant", () => {
-  const registry = _getRegistry();
+  let registry: Record<string, any>;
 
   beforeEach(() => {
+    registry = _getRegistry();
     // Ensure confidence_tooltip is active for tests
     registry.confidence_tooltip.active = true;
     registry.trust_signal_style.active = false;
@@ -119,9 +129,10 @@ describe("unauthenticated user behavior", () => {
 // ─── Experiment List (GET /api/experiments shape) ────────────
 
 describe("experiment list metadata", () => {
-  const registry = _getRegistry();
+  let registry: Record<string, any>;
 
   beforeEach(() => {
+    registry = _getRegistry();
     registry.confidence_tooltip.active = true;
     registry.trust_signal_style.active = false;
     registry.personalized_weight.active = false;

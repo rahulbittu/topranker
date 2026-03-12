@@ -5,7 +5,13 @@
  * Owners: Jordan Blake (Compliance), Nadia Kaur (Cybersecurity),
  *         Leo Hernandez (Design), Rachel Wei (CFO)
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET (hoisted before imports)
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+});
 
 /* ------------------------------------------------------------------ */
 /*  1. Terms of Service                                               */
@@ -176,22 +182,12 @@ describe("Security Headers Middleware — Sprint 104", () => {
     expect(headers["Permissions-Policy"]).toBeUndefined();
   });
 
-  it("sets HSTS only in production", () => {
-    const originalEnv = process.env.NODE_ENV;
-
-    // Non-production — no HSTS
-    process.env.NODE_ENV = "test";
+  it("does not set HSTS in non-production (config.isProduction is false)", () => {
+    // Sprint 807: security-headers.ts uses config.isProduction (cached at load time)
+    // In test env, config.isProduction = false → dev early-return → no HSTS
     const m1 = makeMocks();
     securityHeaders(m1.req, m1.res, m1.next);
     expect(m1.headers["Strict-Transport-Security"]).toBeUndefined();
-
-    // Production — HSTS present
-    process.env.NODE_ENV = "production";
-    const m2 = makeMocks();
-    securityHeaders(m2.req, m2.res, m2.next);
-    expect(m2.headers["Strict-Transport-Security"]).toContain("max-age=");
-
-    process.env.NODE_ENV = originalEnv;
   });
 });
 

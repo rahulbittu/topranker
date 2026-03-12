@@ -5,6 +5,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
+import { config } from "./config";
 
 /**
  * Builds the set of allowed CORS origins from environment + hardcoded production domains.
@@ -20,7 +21,8 @@ function buildAllowedOrigins(): Set<string> {
   origins.add("https://www.topranker.io");
 
   // Configurable origins via CORS_ORIGINS env (comma-separated)
-  const envOrigins = process.env.CORS_ORIGINS;
+  // Sprint 807: Centralized to config.ts
+  const envOrigins = config.corsOrigins;
   if (envOrigins) {
     envOrigins.split(",").forEach((o) => {
       const trimmed = o.trim();
@@ -29,7 +31,8 @@ function buildAllowedOrigins(): Set<string> {
   }
 
   // Railway-specific origins
-  const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+  // Sprint 807: Centralized to config.ts
+  const railwayDomain = config.railwayPublicDomain;
   if (railwayDomain) {
     origins.add(`https://${railwayDomain}`);
   }
@@ -50,7 +53,8 @@ function isLocalhostOrigin(origin: string): boolean {
 }
 
 export function securityHeaders(req: Request, res: Response, next: NextFunction) {
-  const isDev = process.env.NODE_ENV !== "production";
+  // Sprint 807: Centralized to config.ts
+  const isDev = !config.isProduction;
 
   // ── CORS ──────────────────────────────────────────────────────────
   const origin = req.headers.origin as string | undefined;

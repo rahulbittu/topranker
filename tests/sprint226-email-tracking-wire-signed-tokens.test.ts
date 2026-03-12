@@ -103,8 +103,9 @@ describe("Signed unsubscribe tokens — server/unsubscribe-tokens.ts (static)", 
     expect(src).toContain("timingSafeEqual");
   });
 
-  it("uses UNSUBSCRIBE_SECRET env var", () => {
-    expect(src).toContain("UNSUBSCRIBE_SECRET");
+  it("uses unsubscribeSecret from config", () => {
+    // Sprint 807: Centralized to config.ts
+    expect(src).toContain("config.unsubscribeSecret");
   });
 });
 

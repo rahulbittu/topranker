@@ -1,6 +1,7 @@
 import { db } from "./db";
 import { businesses } from "@shared/schema";
 import { log } from "./logger";
+import { config } from "./config";
 import { eq, isNull, and } from "drizzle-orm";
 
 export interface PlaceEnrichment {
@@ -14,7 +15,8 @@ export async function findGooglePlaceId(
   name: string,
   city: string,
 ): Promise<PlaceEnrichment | null> {
-  const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+  // Sprint 807: Centralized to config.ts
+  const apiKey = config.googlePlacesApiKey;
   if (!apiKey) {
     log.warn("GOOGLE_PLACES_API_KEY not set — skipping place enrichment");
     return null;

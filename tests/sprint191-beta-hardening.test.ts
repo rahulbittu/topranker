@@ -87,8 +87,9 @@ describe("Error tracking — server/error-tracking.ts", () => {
     expect(src).toContain("export function getErrorStats");
   });
 
-  it("reads SENTRY_DSN from env", () => {
-    expect(src).toContain("process.env.SENTRY_DSN");
+  it("reads SENTRY_DSN from config", () => {
+    // Sprint 807: Centralized to config.ts
+    expect(src).toContain("config.sentryDsn");
   });
 
   it("handles unhandled rejections", () => {

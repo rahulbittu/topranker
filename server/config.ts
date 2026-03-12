@@ -44,10 +44,19 @@ export const config = {
   // Google Maps (optional)
   googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
 
+  // Google Places (optional — enrichment disabled if not set)
+  googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY || null,
+
   // Email (optional — console fallback if not set)
   resendApiKey: process.env.RESEND_API_KEY || null,
   resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET || null,
   emailFrom: optional("EMAIL_FROM", "TopRanker <noreply@topranker.com>"),
+
+  // Unsubscribe HMAC (optional — dev fallback if not set)
+  unsubscribeSecret: optional("UNSUBSCRIBE_SECRET", "topranker-unsub-dev-secret"),
+
+  // Error tracking (optional — console fallback if not set)
+  sentryDsn: process.env.SENTRY_DSN || "",
 
   // Site URL (optional — used for emails, SEO, QR codes)
   siteUrl: optional("SITE_URL", "https://topranker.io"),

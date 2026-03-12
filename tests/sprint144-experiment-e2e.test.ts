@@ -13,7 +13,14 @@
  * 4. Experiment Lifecycle (4 tests)
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// Sprint 807: config.ts requires DATABASE_URL and SESSION_SECRET (hoisted before imports)
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+});
+
 import { hashString } from "@shared/hash";
 import {
   getVariant,

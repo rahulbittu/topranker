@@ -16,8 +16,9 @@ describe("Sprint 779: Production Error Sanitization", () => {
   describe("server/wrap-async.ts — route error handler", () => {
     const src = readFile("server/wrap-async.ts");
 
-    it("checks NODE_ENV for production", () => {
-      expect(src).toContain('process.env.NODE_ENV === "production"');
+    it("checks config.isProduction for production mode", () => {
+      // Sprint 807: Centralized to config.ts
+      expect(src).toContain("config.isProduction");
     });
 
     it("returns generic message in production", () => {

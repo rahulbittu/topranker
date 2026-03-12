@@ -47,6 +47,7 @@ import { getAllFlags } from "../lib/feature-flags";
 import { CATEGORY_CONFIDENCE_THRESHOLDS, DEFAULT_THRESHOLDS } from "../lib/data";
 import { adminRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
+import { config } from "./config";
 import { checkAndRefreshTier } from "./tier-staleness";
 import { requireAuth } from "./middleware";
 import { getCityEngagement, getAllCityEngagement } from "./city-engagement";
@@ -76,7 +77,8 @@ export function registerAdminRoutes(app: Express) {
   }));
 
   // Sprint 619: Seed cities — dev only, excluded from production bundle
-  if (process.env.NODE_ENV !== "production") {
+  // Sprint 807: Centralized to config.ts
+  if (!config.isProduction) {
     app.post("/api/admin/seed-cities", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
         const { seedCities } = await import("./seed-cities");
         await seedCities();

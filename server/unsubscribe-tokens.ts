@@ -5,7 +5,8 @@
 import crypto from "crypto";
 import { config } from "./config";
 
-const SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
+// Sprint 807: Centralized to config.ts
+const SECRET = config.unsubscribeSecret;
 
 function hmac(data: string): string {
   return crypto
