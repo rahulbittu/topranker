@@ -19,8 +19,8 @@ export function getAppEnvironment(): AppEnvironment {
 
 export function getApiBaseUrl(): string {
   const env = getAppEnvironment();
-  if (env === "production") return "https://topranker.com";
-  if (env === "preview") return "https://staging.topranker.com";
+  if (env === "production") return "https://topranker.io";
+  if (env === "preview") return "https://topranker.io";
   // Development: use local or Replit URL
   return process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 }

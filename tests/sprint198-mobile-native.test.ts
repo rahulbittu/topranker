@@ -196,8 +196,7 @@ describe("App environment — lib/app-env.ts", () => {
   });
 
   it("uses different API URLs per environment", () => {
-    expect(src).toContain("topranker.com");
-    expect(src).toContain("staging.topranker.com");
+    expect(src).toContain("topranker.io");
     expect(src).toContain("localhost");
   });
 
