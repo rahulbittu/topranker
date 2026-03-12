@@ -18,6 +18,23 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 
 const MIN_LEVEL: LogLevel = process.env.NODE_ENV === "production" ? "info" : "debug";
 
+// Sprint 799: Error rate tracking for production observability
+let errorCount = 0;
+let warnCount = 0;
+let lastErrorAt: string | null = null;
+let lastWarnAt: string | null = null;
+
+export function getLogStats() {
+  return { errorCount, warnCount, lastErrorAt, lastWarnAt };
+}
+
+export function resetLogStats() {
+  errorCount = 0;
+  warnCount = 0;
+  lastErrorAt = null;
+  lastWarnAt = null;
+}
+
 function shouldLog(level: LogLevel): boolean {
   return LEVEL_ORDER[level] >= LEVEL_ORDER[MIN_LEVEL];
 }
@@ -40,9 +57,11 @@ function createTaggedLogger(tag: string) {
       if (shouldLog("info")) console.log(formatMessage("info", tag, message, data));
     },
     warn(message: string, data?: unknown) {
+      warnCount++; lastWarnAt = new Date().toISOString();
       if (shouldLog("warn")) console.warn(formatMessage("warn", tag, message, data));
     },
     error(message: string, data?: unknown) {
+      errorCount++; lastErrorAt = new Date().toISOString();
       if (shouldLog("error")) console.error(formatMessage("error", tag, message, data));
     },
   };
@@ -61,9 +80,11 @@ baseLog.info = function (message: string, data?: unknown) {
   if (shouldLog("info")) console.log(formatMessage("info", "Server", message, data));
 };
 baseLog.warn = function (message: string, data?: unknown) {
+  warnCount++; lastWarnAt = new Date().toISOString();
   if (shouldLog("warn")) console.warn(formatMessage("warn", "Server", message, data));
 };
 baseLog.error = function (message: string, data?: unknown) {
+  errorCount++; lastErrorAt = new Date().toISOString();
   if (shouldLog("error")) console.error(formatMessage("error", "Server", message, data));
 };
 

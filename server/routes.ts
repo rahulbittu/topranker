@@ -32,7 +32,7 @@ import { registerScoreBreakdownRoutes } from "./routes-score-breakdown";
 import { registerRatingRoutes } from "./routes-ratings";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
-import { log } from "./logger";
+import { log, getLogStats } from "./logger";
 import { config } from "./config";
 import {
   getLeaderboard,
@@ -116,6 +116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rss: Math.round(memUsage.rss / 1024 / 1024),
       },
       push: pushStats,
+      logs: getLogStats(),
     });
   });
 
