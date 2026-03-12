@@ -71,7 +71,8 @@ describe("Sprint 689: Challenger uses shared ErrorState", () => {
   const src = readFile("app/(tabs)/challenger.tsx");
 
   it("imports ErrorState from NetworkBanner", () => {
-    expect(src).toContain('import { ErrorState } from "@/components/NetworkBanner"');
+    expect(src).toContain('ErrorState');
+    expect(src).toContain('@/components/NetworkBanner');
   });
 
   it("uses ErrorState component", () => {

@@ -97,7 +97,8 @@ describe("Sprint 697: backward compatibility — imports still work", () => {
   for (const file of screens) {
     it(`${file} imports ErrorState from NetworkBanner`, () => {
       const src = readFile(file);
-      expect(src).toContain('import { ErrorState } from "@/components/NetworkBanner"');
+      expect(src).toContain("ErrorState");
+      expect(src).toContain("@/components/NetworkBanner");
     });
   }
 });

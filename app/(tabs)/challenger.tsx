@@ -9,7 +9,7 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { type ApiChallenger } from "@/lib/api";
@@ -19,7 +19,7 @@ import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
 import { ChallengerSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ErrorState } from "@/components/NetworkBanner";
+import { ErrorState, EmptyState } from "@/components/NetworkBanner";
 import { formatTimeAgo } from "@/lib/data";
 import { useChallengerTip, ChallengerTipCard } from "@/components/challenger/ChallengerTip";
 import { ChallengeCard } from "@/components/challenger/ChallengeCard";
@@ -81,13 +81,11 @@ export default function ChallengerScreen() {
           )}
 
           {challenges.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <Ionicons name="flash" size={28} color={BRAND.colors.amber} />
-              </View>
-              <Text style={styles.emptyText}>No active challenges</Text>
-              <Text style={styles.emptySubtext}>New head-to-head matchups drop weekly.{"\n"}Rate more businesses to unlock challengers!</Text>
-            </View>
+            <EmptyState
+              icon="flash-outline"
+              title="No active challenges"
+              subtitle="New head-to-head matchups drop weekly. Rate more businesses to unlock challengers!"
+            />
           ) : (
             challenges.map((ch: ApiChallenger) => (
               <ChallengeCard key={ch.id} challenge={ch} />
@@ -142,11 +140,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   content: { paddingHorizontal: 16, gap: 16 },
-  emptyState: { alignItems: "center", paddingTop: 60, gap: 10 },
-  emptyIcon: {
-    width: 56, height: 56, borderRadius: 28, alignItems: "center", justifyContent: "center",
-    backgroundColor: `${BRAND.colors.amber}10`, marginBottom: 4,
-  },
-  emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
-  emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 });
