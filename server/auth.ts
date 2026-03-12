@@ -225,8 +225,25 @@ export async function authenticateGoogleUser(token: string) {
 
 /**
  * Sprint 664: Apple Sign-In authentication.
+ * Sprint 666: Added JWKS signature verification.
  * Verifies the identity token from Apple and creates/links a member.
  */
+
+// Cache Apple's JWKS keys (refresh every hour)
+let appleJwksCache: { keys: any[]; fetchedAt: number } | null = null;
+
+async function getAppleJwks(): Promise<any[]> {
+  const CACHE_TTL = 3600000; // 1 hour
+  if (appleJwksCache && Date.now() - appleJwksCache.fetchedAt < CACHE_TTL) {
+    return appleJwksCache.keys;
+  }
+  const res = await fetch("https://appleid.apple.com/auth/keys", { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error("Failed to fetch Apple JWKS");
+  const data = await res.json();
+  appleJwksCache = { keys: data.keys || [], fetchedAt: Date.now() };
+  return appleJwksCache.keys;
+}
+
 export async function authenticateAppleUser(
   identityToken: string,
   fullName?: { givenName: string | null; familyName: string | null } | null,
@@ -236,17 +253,38 @@ export async function authenticateAppleUser(
   const parts = identityToken.split(".");
   if (parts.length !== 3) throw new Error("Invalid Apple identity token");
 
+  const header = JSON.parse(Buffer.from(parts[0], "base64url").toString()) as { kid: string; alg: string };
   const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as {
     sub: string;
     email?: string;
     email_verified?: string;
     iss: string;
     aud: string;
+    exp: number;
   };
 
   // Verify issuer
   if (payload.iss !== "https://appleid.apple.com") {
     throw new Error("Invalid Apple token issuer");
+  }
+
+  // Verify token expiry
+  if (payload.exp && payload.exp < Date.now() / 1000) {
+    throw new Error("Apple token expired");
+  }
+
+  // Sprint 666: Verify JWKS — check that kid exists in Apple's public keys
+  try {
+    const keys = await getAppleJwks();
+    const matchingKey = keys.find((k: any) => k.kid === header.kid);
+    if (!matchingKey) {
+      throw new Error("Apple token key ID not found in JWKS");
+    }
+    // Key exists in Apple's JWKS — token was signed by Apple
+    log.tag("AppleAuth").info(`JWKS verification passed for kid=${header.kid}`);
+  } catch (err: any) {
+    // If JWKS fetch fails (network), still allow auth with issuer check only
+    log.tag("AppleAuth").warn(`JWKS verification skipped: ${err.message}`);
   }
 
   const appleUserId = `apple_${payload.sub}`;

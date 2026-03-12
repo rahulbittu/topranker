@@ -13,14 +13,20 @@ import { useAuth } from "@/lib/auth-context";
 import { useCity } from "@/lib/city-context";
 import { AppLogo } from "@/components/Logo";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
+import { signInWithApple, isAppleAuthAvailable } from "@/lib/apple-auth";
 import { Analytics } from "@/lib/analytics";
 
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
-  const { signup, googleLogin } = useAuth();
+  const { signup, googleLogin, appleLogin } = useAuth();
   const { city } = useCity();
   const { ref: referralParam } = useLocalSearchParams<{ ref?: string }>();
   const googleAvailable = isGoogleAuthAvailable();
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  React.useEffect(() => {
+    isAppleAuthAvailable().then(setAppleAvailable);
+  }, []);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -180,6 +186,34 @@ export default function SignupScreen() {
             </View>
           )}
         </TouchableOpacity>
+
+        {appleAvailable && (
+          <TouchableOpacity
+            style={styles.appleButton}
+            activeOpacity={0.7}
+            disabled={loading}
+            onPress={async () => {
+              setError("");
+              setLoading(true);
+              try {
+                const result = await signInWithApple();
+                if (result) {
+                  await appleLogin(result.identityToken, result.fullName, result.email);
+                  router.back();
+                }
+              } catch (err: any) {
+                if (!err.message?.includes("cancelled") && !err.message?.includes("ERR_REQUEST_CANCELED")) {
+                  setError(err.message || "Apple sign-in failed");
+                }
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <Ionicons name="logo-apple" size={20} color="#fff" />
+            <Text style={styles.appleButtonText}>Continue with Apple</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -369,6 +403,14 @@ const styles = StyleSheet.create({
   },
   googleButtonTextActive: {
     color: Colors.text,
+  },
+  appleButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: "#000", borderRadius: 14, paddingVertical: 15, marginTop: 10,
+  },
+  appleButtonText: {
+    fontSize: 15, fontWeight: "600", color: "#fff",
+    fontFamily: "DMSans_600SemiBold",
   },
   comingSoonBadge: {
     backgroundColor: Colors.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
