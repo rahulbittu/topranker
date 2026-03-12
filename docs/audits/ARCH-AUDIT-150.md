@@ -1,93 +1,86 @@
-# Architectural Audit #14 — Sprint 150
+# Architectural Audit #150
 
-**Date:** 2026-03-08
-**Auditor:** Amir Patel (Principal Architect)
-**Scope:** Full codebase scan with focus on Sprint 147-149 changes
-
----
-
-## Overall Grade: A-
-
-Same grade as Audit #13 (Sprint 145). Improvements in user-facing features and notification sync are balanced by new complexity from avatar handling and edit profile screen.
+**Sprint Range:** 691–694
+**Date:** 2026-03-11
+**Auditor:** Amir Patel (Architecture)
+**Grade:** A (78th consecutive)
 
 ---
 
-## Category Assessment
+## Automated Checks
 
-### Security — A
-- OWASP headers, CSP, CORS, rate limiting all intact
-- New PUT /api/members/me has requireAuth
-- Avatar endpoint has size limit (2MB)
-- Notification prefs endpoint validates boolean types
-- Input sanitization on profile fields
-- **No new vulnerabilities introduced**
-
-### Testing — A
-- 2049 tests across 88 files, all passing in <1.7s
-- New features (edit profile, avatar, settings sync) all have dedicated test files
-- Test-to-code ratio remains healthy
-- Coverage of new endpoints verified through source inspection tests
-
-### Code Organization — A-
-- Component decomposition continues to be clean
-- Barrel files stable (business 15 files, search MapView extraction)
-- New edit-profile.tsx is well-structured single-file screen
-- **Minor concern:** avatar base64 storage is a temporary pattern that needs migration
-
-### API Design — A-
-- REST conventions followed consistently
-- PUT /api/members/me and POST /api/members/me/avatar are correctly separated
-- Notification preferences endpoint expanded cleanly from 3→6 keys
-- **Minor concern:** avatar endpoint accepts base64 in request body — should move to multipart/form-data for production
-
-### State Management — A-
-- Settings notification sync is properly implemented (server source of truth, AsyncStorage as cache)
-- Profile defers to settings for notification toggles — clean unification
-- Edit profile uses local state with server persistence on save
-- **Minor concern:** profile.tsx may still have unused notification state from before unification
-
-### Performance — B+
-- No new N+1 queries introduced
-- Avatar as base64 data URL could impact member query performance (large column)
-- No new caching concerns
-- Test suite remains fast (<1.7s)
+| Check | Threshold | Actual | Status |
+|-------|-----------|--------|--------|
+| Build size | ≤750kb | 662.3kb (88.3%) | PASS |
+| Test count | ≥11,900 | 12,022 | PASS |
+| Test pass rate | 100% | 100% (512 files) | PASS |
+| Schema LOC | ≤950 | 911 (95.9%) | PASS |
+| Tracked file violations | 0 | 0 | PASS |
+| `as any` casts | ≤130 | 114 | PASS |
 
 ---
 
 ## Findings
 
-### P1 — Fix Within 2 Sprints
-1. **Avatar base64 storage needs CDN migration.** Storing avatar data URLs directly in the members table will degrade query performance as user count grows. Migrate to Cloudflare R2 or S3 with URL-only storage in DB.
-2. **Clean up unused notification state in profile.tsx.** After notification unification, profile.tsx may still have `notifRatingUpdates` / `notifChallengeResults` / `notifWeeklyDigest` state variables and handlers that are no longer used.
+### CRITICAL: None
 
-### P2 — Fix Within 5 Sprints
-3. **Avatar upload should use multipart/form-data** instead of base64 in JSON body. This reduces memory pressure and aligns with CDN upload patterns.
-4. **Version number should be dynamic.** Read from package.json instead of hardcoded "1.0.0".
-5. **Email change flow.** Edit profile has read-only email with no explanation. Either enable email editing with re-verification or add an inline note.
+### HIGH: None
 
-### P3 — Track
-6. **Barrel file coupling.** No new issues, but the pattern should be monitored as more components are extracted.
+### MEDIUM
+
+**A150-M1: Schema approaching ceiling (carried from A145/A140)**
+- `shared/schema.ts` at 911/950 LOC (39 LOC buffer, 4.1%)
+- **Status:** No new columns added in 691-694 but still needs growth plan
+- **Owner:** Amir Patel
+- **Target:** Before next schema change
+
+### LOW
+
+**A150-L1: ErrorState still in NetworkBanner.tsx (carried from A145)**
+- 4 tab screens now import ErrorState from NetworkBanner.tsx
+- File at 294 LOC, approaching 300 LOC threshold for extraction
+- **Recommendation:** Extract to own file when next touched
+
+**A150-L2: Orphaned error styles in tab screens (carried from A145)**
+- Dead styles from pre-Sprint 689 inline error markup
+- **Recommendation:** Clean up in Sprint 696 (scheduled)
+
+**A150-L3: Unused Animated import in Skeleton.tsx**
+- Sprint 691 migrated SkeletonBlock to Reanimated but old `Animated` import may still be present
+- **Recommendation:** Remove if unused
 
 ---
 
-## Comparison to Audit #13 (Sprint 145)
+## Bug Found
 
-| Category | Audit #13 | Audit #14 | Change |
-|---|---|---|---|
-| Security | A | A | Stable |
-| Testing | A | A | +41 tests |
-| Code Organization | A- | A- | Stable |
-| API Design | A- | A- | +2 endpoints |
-| State Management | B+ | A- | Improved (notification unification) |
-| Performance | B+ | B+ | Stable |
-| **Overall** | **A-** | **A-** | **Stable** |
+**ratingReminder deep link mismatch (Sprint 694)**
+- Template sent `screen: "business/slug"` (compound path)
+- Handler expected `screen: "business"` + `slug: "slug"` (separate fields)
+- `isValidDeepLinkScreen` guard correctly rejected the compound path → silent failure
+- **Fixed:** Template now sends `screen: "business", slug: businessSlug`
+- **Severity:** Would have caused 100% failure rate for rating reminder deep links
 
 ---
 
-## Recommendations
-1. Prioritize R2 avatar migration in Sprint 151
-2. Clean profile.tsx notification state in Sprint 151
-3. Consider multipart upload when implementing R2 pipeline
-4. Dynamic version from package.json is a quick win
+## Metrics Comparison
 
-**Next audit:** Sprint 155
+| Metric | A145 (Sprint 689) | A150 (Sprint 694) | Delta |
+|--------|-------------------|-------------------|-------|
+| Build size | 662.3kb | 662.3kb | +0 |
+| Tests | 11,934 | 12,022 | +88 |
+| Test files | 508 | 512 | +4 |
+| Schema LOC | 911 | 911 | +0 |
+| `as any` casts | 114 | 114 | +0 |
+
+---
+
+## Grade History
+
+| Audit | Sprint | Grade | Critical | High | Medium | Low |
+|-------|--------|-------|----------|------|--------|-----|
+| #135 | 680 | A | 0 | 0 | 2 | 2 |
+| #140 | 685 | A | 0 | 0 | 1 | 2 |
+| #145 | 689 | A | 0 | 0 | 1 | 2 |
+| **#150** | **694** | **A** | **0** | **0** | **1** | **3** |
+
+**Next Audit:** Sprint 700 (Audit #155)
