@@ -302,32 +302,30 @@ describe("SLT meeting — Sprint 180", () => {
 // ---------------------------------------------------------------------------
 // 12. Audit doc exists
 // ---------------------------------------------------------------------------
-describe("Architecture Audit #18 — Sprint 180", () => {
+describe("Architecture Audit #180 — Sprint 725", () => {
   const doc = readFile("docs/audits/ARCH-AUDIT-180.md");
 
-  it("has grade A-", () => {
-    expect(doc).toContain("Overall Grade: A-");
+  it("has grade A", () => {
+    expect(doc).toContain("Overall Grade: A");
   });
 
-  it("identifies profile SubComponents as HIGH", () => {
-    expect(doc).toContain("SubComponents");
-    expect(doc).toContain("HIGH");
+  it("is the 84th consecutive A-grade", () => {
+    expect(doc).toContain("84th consecutive");
   });
 
-  it("includes consequence chain audit", () => {
-    expect(doc).toContain("Consequence Chain Audit");
+  it("reviews Sprint 721-724 additions", () => {
+    expect(doc).toContain("Sprint 721");
+    expect(doc).toContain("Sprint 722");
+    expect(doc).toContain("Sprint 723");
+    expect(doc).toContain("Sprint 724");
   });
 
-  it("reviews Sprints 176-180 additions", () => {
-    expect(doc).toContain("Sprint 176:");
-    expect(doc).toContain("Sprint 177:");
-    expect(doc).toContain("Sprint 178:");
-    expect(doc).toContain("Sprint 179:");
-    expect(doc).toContain("Sprint 180:");
+  it("has health metrics", () => {
+    expect(doc).toContain("12,510");
+    expect(doc).toContain("536");
   });
 
-  it("has test coverage metrics", () => {
-    expect(doc).toContain("2,679");
-    expect(doc).toContain("112");
+  it("has zero critical findings", () => {
+    expect(doc).toContain("Critical findings:** 0");
   });
 });

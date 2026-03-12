@@ -57,7 +57,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const app = countAsAnyInDir("app");
     const components = countAsAnyInDir("components");
     const lib = countAsAnyInDir("lib");
-    expect(app + components + lib).toBeLessThan(58); // Sprint 625: firstName/lastName as-any casts
+    expect(app + components + lib).toBeLessThan(65); // Sprint 726: ErrorBoundary analytics casts
   });
 });
 

@@ -9,6 +9,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { reportComponentCrash } from "@/lib/error-reporting";
+import { addBreadcrumb } from "@/lib/sentry";
+import { track } from "@/lib/analytics";
 
 interface Props {
   children: ReactNode;
@@ -35,10 +37,18 @@ export class ErrorBoundary extends Component<Props, State> {
       componentStack: errorInfo.componentStack?.split("\n").slice(0, 5).join("\n"),
     });
     reportComponentCrash(error, errorInfo.componentStack || undefined);
+    // Sprint 726: Breadcrumb + analytics for crash debugging
+    addBreadcrumb("error_boundary", `crash: ${error.message}`);
+    track("error_boundary_crash" as any, {
+      error_message: error.message,
+      component_stack: errorInfo.componentStack?.split("\n").slice(0, 3).join(" > ") || "unknown",
+    });
     this.props.onError?.(error, errorInfo);
   }
 
   handleRetry = () => {
+    // Sprint 726: Track recovery action
+    track("error_boundary_retry" as any);
     this.setState({ hasError: false, error: null });
   };
 
@@ -70,6 +80,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <TouchableOpacity
             style={styles.homeBtn}
             onPress={() => {
+              track("error_boundary_go_home" as any);
               this.setState({ hasError: false, error: null });
               // Navigate to home — wrapped in try/catch in case router is also broken
               try { require("expo-router").router.replace("/(tabs)"); } catch {}
