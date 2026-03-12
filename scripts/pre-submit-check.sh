@@ -114,6 +114,12 @@ check "No empty catch blocks: $EMPTY_CATCHES" "$([ "$EMPTY_CATCHES" = "0" ] && e
 check "isReceipt strictly validated" "$(grep -q 'rawIsReceipt === true' server/routes-rating-photos.ts && echo true || echo false)"
 check "URL protocol validation" "$(grep -q 'http.*https.*protocol' server/routes-businesses.ts && echo true || echo false)"
 
+# Sprint 751-753: Railway deployment readiness
+check "/_health endpoint exists" "$(grep -q '/_health' server/routes.ts && echo true || echo false)"
+check "/_ready endpoint exists" "$(grep -q '/_ready' server/routes.ts && echo true || echo false)"
+check "CORS expo-platform in production" "$(grep -q 'expo-platform' server/security-headers.ts && echo true || echo false)"
+check "CSP includes Railway domains" "$(grep -q 'railway.app' server/security-headers.ts && echo true || echo false)"
+
 echo ""
 
 # 6. Documentation checks
