@@ -46,7 +46,7 @@ import { type EarnedBadge } from "@/lib/badges";
 
 const AMBER = BRAND.colors.amber;
 
-function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refetch: () => Promise<any> }) {
+function ProfileContent({ profile, refetch, isRefetching }: { profile: ApiMemberProfile; refetch: () => Promise<any>; isRefetching: boolean }) {
 
   const insets = useSafeAreaInsets();
   const { logout } = useAuth();
@@ -89,13 +89,8 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
 
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    Haptics.selectionAsync();
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
+  // Sprint 701: Consistent refresh pattern — use React Query isRefetching (matches Rankings/Discover)
+  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
   return (
     <>
@@ -107,7 +102,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
       ]}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={AMBER} />
+        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={AMBER} />
       }
     >
       <View style={styles.header}>
@@ -276,7 +271,7 @@ export default function ProfileScreen() {
 
   const { user, isLoading: authLoading } = useAuth();
 
-  const { data: profile, isLoading: profileLoading, isError, refetch } = useQuery({
+  const { data: profile, isLoading: profileLoading, isError, refetch, isRefetching } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchMemberProfile(),
     enabled: !!user,
@@ -307,7 +302,7 @@ export default function ProfileScreen() {
     );
   }
 
-  return <ErrorBoundary><SkeletonToContent visible={!profileLoading}><ProfileContent profile={profile} refetch={refetch} /></SkeletonToContent></ErrorBoundary>;
+  return <ErrorBoundary><SkeletonToContent visible={!profileLoading}><ProfileContent profile={profile} refetch={refetch} isRefetching={isRefetching} /></SkeletonToContent></ErrorBoundary>;
 }
 
 const styles = StyleSheet.create({

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { track } from "@/lib/analytics";
 import {
   View, Text, StyleSheet, ScrollView,
@@ -30,7 +30,7 @@ export default function ChallengerScreen() {
   const { city } = useCity();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
-  const { data: challenges = [], isLoading, isError, refetch, dataUpdatedAt } = useQuery({
+  const { data: challenges = [], isLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["challengers", city],
     queryFn: () => fetchActiveChallenges(city),
     staleTime: 30000,
@@ -40,13 +40,8 @@ export default function ChallengerScreen() {
 
   const { showTip: showChallengerTip, dismissTip: dismissChallengerTip } = useChallengerTip();
 
-  const [refreshing, setRefreshing] = useState(false);
-  const onRefresh = useCallback(async () => {
-    Haptics.selectionAsync();
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  }, [refetch]);
+  // Sprint 701: Consistent refresh pattern — use React Query isRefetching (matches Rankings/Discover)
+  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
 
   return (
     <ErrorBoundary>
@@ -74,7 +69,7 @@ export default function ChallengerScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND.colors.amber} />
+            <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={BRAND.colors.amber} />
           }
           contentContainerStyle={[
             styles.content,
