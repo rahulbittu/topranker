@@ -139,21 +139,23 @@ describe("Sprint 119 — Health Check Enhancement", () => {
   const routesPath = path.resolve(__dirname, "..", "server", "routes-health.ts");
   const routesSource = fs.readFileSync(routesPath, "utf-8");
 
-  it("health endpoint includes process.uptime", () => {
+  it("public health endpoint includes process.uptime", () => {
     expect(routesSource).toContain("process.uptime()");
   });
 
-  it("health endpoint includes process.memoryUsage", () => {
+  // Sprint 812: Memory/nodeVersion moved to admin-gated /api/health/diagnostics
+  it("diagnostics endpoint includes process.memoryUsage", () => {
     expect(routesSource).toContain("process.memoryUsage()");
   });
 
-  it("health endpoint includes process.version (nodeVersion)", () => {
+  it("diagnostics endpoint includes process.version (nodeVersion)", () => {
     expect(routesSource).toContain("process.version");
     expect(routesSource).toContain("nodeVersion");
   });
 
-  it("health endpoint returns memoryUsage field with heapUsed", () => {
-    expect(routesSource).toContain("memoryUsage: memUsage.heapUsed");
+  it("diagnostics endpoint is admin-gated", () => {
+    expect(routesSource).toContain("isAdminEmail");
+    expect(routesSource).toContain("/api/health/diagnostics");
   });
 });
 
