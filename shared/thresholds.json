@@ -44,7 +44,7 @@
   },
   "tests": {
     "minCount": 12800,
-    "currentCount": 13588
+    "currentCount": 13598
   },
   "config": {
     "maxFields": 35,
