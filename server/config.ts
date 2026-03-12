@@ -61,6 +61,16 @@ export const config = {
   // Site URL (optional — used for emails, SEO, QR codes)
   siteUrl: optional("SITE_URL", "https://topranker.io"),
 
+  // Redis (optional — memory fallback if not set)
+  redisUrl: process.env.REDIS_URL || null,
+
+  // Cloudflare R2 file storage (optional — local fallback if not set)
+  r2BucketName: process.env.R2_BUCKET_NAME || null,
+  r2AccountId: process.env.R2_ACCOUNT_ID || null,
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID || null,
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY || null,
+  r2PublicUrl: process.env.R2_PUBLIC_URL || null,
+
   // Hosting platform (optional — for CORS)
   replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
   replitDomains: process.env.REPLIT_DOMAINS || null,

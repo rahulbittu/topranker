@@ -4,9 +4,15 @@
  * Adds getRateLimitStats() to rate-limiter.ts and wires it into /api/health.
  * Reports active window count and store type (memory vs redis).
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+
+// config.ts requires DATABASE_URL and SESSION_SECRET at import time
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test";
+});
 
 function readFile(rel: string): string {
   return fs.readFileSync(path.resolve(process.cwd(), rel), "utf-8");

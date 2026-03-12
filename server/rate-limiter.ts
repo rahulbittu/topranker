@@ -6,6 +6,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 const rlLog = log.tag("RateLimiter");
 
@@ -75,7 +76,8 @@ export class RedisStore implements RateLimitStore {
 // ---------------------------------------------------------------------------
 
 function createDefaultStore(): RateLimitStore {
-  const redisUrl = process.env.REDIS_URL;
+  // Sprint 808: Centralized to config.ts
+  const redisUrl = config.redisUrl;
   if (redisUrl) {
     try {
       const Redis = require("ioredis");

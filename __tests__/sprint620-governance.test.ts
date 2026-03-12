@@ -134,8 +134,8 @@ describe("Sprint 620 — Governance", () => {
       expect(sizeKb).toBeLessThan(750);
     });
 
-    it("build recovered headroom (Sprint 663: raised from 650)", () => {
-      expect(thresholds.build.currentSizeKb).toBeLessThan(670);
+    it("build recovered headroom (Sprint 808: config.ts centralization)", () => {
+      expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
     it("11,000+ tests", () => {

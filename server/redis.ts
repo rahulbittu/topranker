@@ -7,6 +7,7 @@
  */
 import Redis from "ioredis";
 import { log } from "./logger";
+import { config } from "./config";
 
 const redisLog = log.tag("Redis");
 
@@ -20,7 +21,8 @@ let redisChecked = false;
 export function getRedisClient(): Redis | null {
   if (redis) return redis;
   if (redisChecked) return null; // Already checked, no Redis — don't log again
-  const url = process.env.REDIS_URL;
+  // Sprint 808: Centralized to config.ts
+  const url = config.redisUrl;
   if (!url) {
     redisLog.info("REDIS_URL not set — caching disabled, using DB-only mode");
     redisChecked = true;

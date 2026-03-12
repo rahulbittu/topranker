@@ -31,8 +31,8 @@ describe("Redis client — server/redis.ts", () => {
     expect(src).toContain("export function getRedisClient");
   });
 
-  it("reads REDIS_URL from env", () => {
-    expect(src).toContain("process.env.REDIS_URL");
+  it("reads REDIS_URL via config", () => {
+    expect(src).toContain("config.redisUrl");
   });
 
   it("handles missing REDIS_URL gracefully", () => {
@@ -183,7 +183,7 @@ describe("Redis rate limiter — rate-limiter.ts", () => {
   });
 
   it("auto-selects Redis store when REDIS_URL is set", () => {
-    expect(src).toContain("process.env.REDIS_URL");
+    expect(src).toContain("config.redisUrl");
     expect(src).toContain("Using Redis rate-limit store");
   });
 

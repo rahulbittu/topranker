@@ -6,6 +6,7 @@
  * In production: sends via https://exp.host/--/api/v2/push/send
  */
 import { log } from "./logger";
+import { config } from "./config";
 import { getChannelId } from "../shared/notification-channels";
 
 const pushLog = log.tag("Push");
@@ -53,7 +54,8 @@ export async function sendPushNotification(
   }));
 
   // In development, log instead of sending
-  if (process.env.NODE_ENV !== "production") {
+  // Sprint 808: Centralized to config.ts
+  if (!config.isProduction) {
     pushLog.debug("DEV MODE — would send:", messages);
     return messages.map(() => ({ status: "ok" as const, id: `dev-${Date.now()}` }));
   }

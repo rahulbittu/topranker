@@ -5,7 +5,14 @@
  * Owner: Sarah Nakamura (Lead Engineer), Nadia Kaur (Cybersecurity),
  *        Jordan Blake (Compliance), Amir Patel (Architecture)
  */
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+
+// config.ts requires DATABASE_URL and SESSION_SECRET at import time
+vi.hoisted(() => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test";
+});
+
 import {
   trackEvent,
   clearAnalytics,

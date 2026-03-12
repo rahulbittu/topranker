@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { log } from "./logger";
+import { config } from "./config";
 
 /**
  * File storage abstraction layer.
@@ -70,13 +71,12 @@ class R2FileStorage implements FileStorage {
   private publicUrl: string;
 
   constructor() {
-    const {
-      R2_ACCOUNT_ID,
-      R2_ACCESS_KEY_ID,
-      R2_SECRET_ACCESS_KEY,
-      R2_BUCKET_NAME,
-      R2_PUBLIC_URL,
-    } = process.env;
+    // Sprint 808: Centralized to config.ts
+    const R2_ACCOUNT_ID = config.r2AccountId;
+    const R2_ACCESS_KEY_ID = config.r2AccessKeyId;
+    const R2_SECRET_ACCESS_KEY = config.r2SecretAccessKey;
+    const R2_BUCKET_NAME = config.r2BucketName;
+    const R2_PUBLIC_URL = config.r2PublicUrl;
 
     if (!R2_BUCKET_NAME || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ACCOUNT_ID) {
       throw new Error(
@@ -132,7 +132,8 @@ class R2FileStorage implements FileStorage {
 // ── Factory ──────────────────────────────────────────────────
 
 export function createFileStorage(): FileStorage {
-  if (process.env.R2_BUCKET_NAME) {
+  // Sprint 808: Centralized to config.ts
+  if (config.r2BucketName) {
     return new R2FileStorage();
   }
   return new LocalFileStorage();

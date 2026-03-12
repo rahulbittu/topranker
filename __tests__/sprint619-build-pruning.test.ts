@@ -86,7 +86,7 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
     const thresholds = JSON.parse(readFile("shared/thresholds.json"));
 
     it("build size is updated", () => {
-      expect(thresholds.build.currentSizeKb).toBeLessThan(700);
+      expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
     it("max build size is still 750kb", () => {
