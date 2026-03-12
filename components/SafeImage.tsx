@@ -19,6 +19,10 @@ interface SafeImageProps {
   showHint?: boolean;
   contentFit?: "cover" | "contain" | "fill";
   accessibilityLabel?: string;
+  // Sprint 707: Image optimization props
+  priority?: "low" | "normal" | "high";
+  recyclingKey?: string;
+  placeholder?: string;
 }
 
 /**
@@ -26,7 +30,7 @@ interface SafeImageProps {
  * Prevents blank white rectangles when photo URLs 404.
  * Sprint 341: Cuisine-specific emoji fallback + optional hint text.
  */
-export function SafeImage({ uri, style, category, cuisine, fallbackText, showHint, contentFit = "cover", accessibilityLabel }: SafeImageProps) {
+export function SafeImage({ uri, style, category, cuisine, fallbackText, showHint, contentFit = "cover", accessibilityLabel, priority = "normal", recyclingKey, placeholder }: SafeImageProps) {
   const [failed, setFailed] = useState(false);
 
   if (failed || !uri) {
@@ -64,6 +68,12 @@ export function SafeImage({ uri, style, category, cuisine, fallbackText, showHin
       onError={() => setFailed(true)}
       accessible={!!accessibilityLabel}
       accessibilityLabel={accessibilityLabel}
+      // Sprint 707: Image loading optimization
+      cachePolicy="memory-disk"
+      priority={priority}
+      recyclingKey={recyclingKey}
+      placeholder={placeholder}
+      placeholderContentFit="cover"
     />
   );
 }
