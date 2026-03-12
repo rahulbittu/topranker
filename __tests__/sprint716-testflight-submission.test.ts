@@ -103,7 +103,7 @@ describe("Sprint 716 — TestFlight Submission Support", () => {
 
     it("has preview profile with API URL", () => {
       expect(easJson.build.preview).toBeTruthy();
-      expect(easJson.build.preview.env.EXPO_PUBLIC_API_URL).toContain("railway.app");
+      expect(easJson.build.preview.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
     });
 
     it("has production profile with auto-increment", () => {
@@ -111,8 +111,8 @@ describe("Sprint 716 — TestFlight Submission Support", () => {
       expect(easJson.build.production.autoIncrement).toBe(true);
     });
 
-    it("production has API URL pointing to Railway", () => {
-      expect(easJson.build.production.env.EXPO_PUBLIC_API_URL).toContain("topranker-production");
+    it("production has API URL pointing to topranker.io", () => {
+      expect(easJson.build.production.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
     });
   });
 

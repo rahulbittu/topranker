@@ -104,12 +104,12 @@ describe("Sprint 754: EAS + TestFlight Readiness", () => {
       expect(easJson.build.development.developmentClient).toBe(true);
     });
 
-    it("has preview profile with Railway API URL", () => {
-      expect(easJson.build.preview.env.EXPO_PUBLIC_API_URL).toContain("railway.app");
+    it("has preview profile with production API URL", () => {
+      expect(easJson.build.preview.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
     });
 
-    it("has production profile with Railway API URL", () => {
-      expect(easJson.build.production.env.EXPO_PUBLIC_API_URL).toContain("railway.app");
+    it("has production profile with production API URL", () => {
+      expect(easJson.build.production.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
     });
 
     it("has auto-increment for production builds", () => {
@@ -144,9 +144,9 @@ describe("Sprint 754: EAS + TestFlight Readiness", () => {
     const easJson = readJSON("eas.json");
     const railwayToml = fs.readFileSync(path.resolve(process.cwd(), "railway.toml"), "utf-8");
 
-    it("Railway domain matches EAS API URL domain", () => {
+    it("Railway serves the custom domain used by EAS", () => {
       const apiUrl = easJson.build.production.env.EXPO_PUBLIC_API_URL;
-      expect(apiUrl).toContain("topranker-production.up.railway.app");
+      expect(apiUrl).toContain("topranker.io");
       expect(railwayToml).toContain("internalPort = 8080");
     });
   });

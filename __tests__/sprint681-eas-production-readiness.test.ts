@@ -126,12 +126,12 @@ describe("Sprint 681: eas.json build profiles", () => {
     expect(eas.build.production.autoIncrement).toBe(true);
   });
 
-  it("preview connects to Railway API", () => {
-    expect(eas.build.preview.env.EXPO_PUBLIC_API_URL).toContain("railway");
+  it("preview connects to production API", () => {
+    expect(eas.build.preview.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
   });
 
-  it("production connects to Railway API", () => {
-    expect(eas.build.production.env.EXPO_PUBLIC_API_URL).toContain("railway");
+  it("production connects to production API", () => {
+    expect(eas.build.production.env.EXPO_PUBLIC_API_URL).toContain("topranker.io");
   });
 
   it("has OTA update channels configured", () => {
