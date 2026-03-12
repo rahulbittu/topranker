@@ -112,12 +112,14 @@ export function RankingsListHeader({
       </View>
 
       {/* Cuisine filter */}
-      <CuisineChipRow
-        cuisines={availableCuisines}
-        selectedCuisine={selectedCuisine}
-        onSelect={onCuisineChange}
-        analyticsSource="rankings"
-      />
+      <View style={s.fullBleedRow}>
+        <CuisineChipRow
+          cuisines={availableCuisines}
+          selectedCuisine={selectedCuisine}
+          onSelect={onCuisineChange}
+          analyticsSource="rankings"
+        />
+      </View>
 
       {/* Dish shortcuts */}
       {dishShortcuts.length > 0 && (
@@ -125,7 +127,7 @@ export function RankingsListHeader({
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.dishShortcutsContainer}
-          style={s.dishShortcutsRow}
+          style={[s.dishShortcutsRow, s.fullBleedRow]}
         >
           <Text style={s.dishShortcutsLabel}>Dish Rankings:</Text>
           {dishShortcuts.map((dish) => (
@@ -190,8 +192,8 @@ export function RankingsListHeader({
 }
 
 const s = StyleSheet.create({
-  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 6 },
-  chipsContainer: { paddingHorizontal: 16, gap: 8, flexDirection: "row", paddingVertical: 6 },
+  chipsRow: { flexGrow: 0, minHeight: 52, marginBottom: 6, marginHorizontal: -16 },
+  chipsContainer: { paddingHorizontal: 16, gap: 8, flexDirection: "row" as const, paddingVertical: 6 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 14, height: 38, borderRadius: 100,
@@ -215,8 +217,9 @@ const s = StyleSheet.create({
     backgroundColor: Colors.surface, borderWidth: 1.5, borderColor: AMBER, borderStyle: "dashed",
   },
   suggestChipText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
-  bestInHeader: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 2 },
+  bestInHeader: { paddingTop: 0, paddingBottom: 2 },
   bestInTitle: { fontSize: 15, fontFamily: "DMSans_700Bold", color: Colors.text },
+  fullBleedRow: { marginHorizontal: -16 },
   dishShortcutsRow: { flexGrow: 0, minHeight: 38, marginBottom: 4 },
   dishShortcutsContainer: { paddingHorizontal: 16, flexDirection: "row", alignItems: "center", paddingVertical: 2 },
   dishShortcutsLabel: { fontSize: 11, fontFamily: "DMSans_600SemiBold", color: Colors.textTertiary, marginRight: 8 },
@@ -229,7 +232,7 @@ const s = StyleSheet.create({
   dishShortcutText: { fontSize: 12, fontFamily: "DMSans_600SemiBold", color: AMBER },
   welcomeBanner: {
     backgroundColor: "#0D1B2A", borderRadius: 12,
-    padding: 16, marginBottom: 12, marginHorizontal: 0,
+    padding: 16, marginBottom: 12,
     position: "relative" as const,
   },
   welcomeBannerText: {
@@ -242,7 +245,7 @@ const s = StyleSheet.create({
   welcomeBannerClose: { position: "absolute" as const, top: 12, right: 12 },
   rankingSummary: {
     flexDirection: "row" as const, alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 16, paddingVertical: 6, marginBottom: 4,
+    paddingVertical: 6, marginBottom: 4,
   },
   rankingSummaryText: {
     fontSize: 12, fontWeight: "500" as const, color: Colors.textSecondary, fontFamily: "DMSans_500Medium",

@@ -237,11 +237,9 @@ export default function LeaderboardScreen() {
           data={restBiz}
           keyExtractor={item => item.id}
           renderItem={({ item, index }) => (
-            <View style={styles.cardWrap}>
-              <TopRankHighlight active={item.rank === 1}>
-                <RankedCard item={item} index={index} />
-              </TopRankHighlight>
-            </View>
+            <TopRankHighlight active={item.rank === 1}>
+              <RankedCard item={item} index={index} />
+            </TopRankHighlight>
           )}
           contentContainerStyle={[
             styles.list,
@@ -387,8 +385,7 @@ const styles = StyleSheet.create({
 
   // Sprint 386: chip styles moved to RankingsListHeader
 
-  list: { gap: 10, paddingTop: 4 },
-  cardWrap: { paddingHorizontal: CARD_PADDING },
+  list: { paddingHorizontal: CARD_PADDING, gap: 10, paddingTop: 4 },
 
   loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center", paddingTop: 80 },
   emptyText: { fontSize: 16, color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
