@@ -1,7 +1,9 @@
 import { fetch } from "expo/fetch";
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { QueryClient, QueryFunction, onlineManager } from "@tanstack/react-query";
 import { recordApiCall, recordApiError } from "@/lib/perf-tracker";
 import { addBreadcrumb } from "@/lib/sentry";
+import { Platform, AppState } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
 
 // Sprint 776: Request timeout for mobile resilience (15s default)
 const API_TIMEOUT_MS = 15_000;
@@ -137,6 +139,37 @@ function shouldRetry(failureCount: number, error: unknown): boolean {
   if (/^4\d{2}:/.test(msg)) return false;
   // Retry network errors and 5xx server errors
   return true;
+}
+
+// Sprint 777: Wire React Query onlineManager to NetInfo
+// Pauses queries when offline, resumes when back online
+if (Platform.OS !== "web") {
+  onlineManager.setEventListener((setOnline) => {
+    return NetInfo.addEventListener((state) => {
+      setOnline(!!state.isConnected);
+    });
+  });
+} else if (typeof window !== "undefined") {
+  // Web: use navigator.onLine
+  onlineManager.setEventListener((setOnline) => {
+    const onlineHandler = () => setOnline(true);
+    const offlineHandler = () => setOnline(false);
+    window.addEventListener("online", onlineHandler);
+    window.addEventListener("offline", offlineHandler);
+    return () => {
+      window.removeEventListener("online", onlineHandler);
+      window.removeEventListener("offline", offlineHandler);
+    };
+  });
+}
+
+// Sprint 777: Refetch on app focus (React Native)
+if (Platform.OS !== "web") {
+  const focusSub = AppState.addEventListener("change", (state) => {
+    if (state === "active") {
+      onlineManager.setOnline(true);
+    }
+  });
 }
 
 export const queryClient = new QueryClient({
