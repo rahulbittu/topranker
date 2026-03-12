@@ -101,14 +101,14 @@ export const HAPTIC_PATTERN_NAMES: HapticPatternName[] = Object.keys(
 export async function triggerHaptic(name: HapticPatternName): Promise<void> {
   const fn = patterns[name];
   if (!fn) {
-    console.warn(`[Haptics] Unknown pattern: ${name}`);
+    if (__DEV__) console.warn(`[Haptics] Unknown pattern: ${name}`);
     return;
   }
   try {
     await fn();
   } catch (err) {
     // Haptics are non-critical — never crash the app
-    console.log(`[Haptics] Pattern "${name}" failed:`, err);
+    if (__DEV__) console.log(`[Haptics] Pattern "${name}" failed:`, err);
   }
 }
 

@@ -96,7 +96,7 @@ async function ensureAudioConfigured(): Promise<void> {
     });
     audioConfigured = true;
   } catch (err) {
-    console.log("[AudioEngine] Could not configure audio:", err);
+    if (__DEV__) console.log("[AudioEngine] Could not configure audio:", err);
   }
 }
 
@@ -142,7 +142,7 @@ export async function playSound(name: SoundName): Promise<void> {
       soundCache[cacheKey] = sound;
     }
   } catch (err) {
-    console.log(`[AudioEngine] Sound "${name}" not available:`, err);
+    if (__DEV__) console.log(`[AudioEngine] Sound "${name}" not available:`, err);
   }
 
   await hapticPromise;

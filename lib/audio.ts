@@ -54,7 +54,7 @@ async function playSound(asset: any): Promise<void> {
     soundCache[key] = sound;
   } catch (err) {
     // Audio is optional — haptics are the baseline
-    console.log("[Audio] Sound not available:", err);
+    if (__DEV__) console.log("[Audio] Sound not available:", err);
   }
 }
 
