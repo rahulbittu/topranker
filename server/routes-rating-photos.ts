@@ -49,7 +49,8 @@ export function registerRatingPhotoRoutes(app: Express): void {
     }
 
     // Validate photo data
-    const { data: photoData, mimeType: rawMime, isReceipt } = req.body;
+    const { data: photoData, mimeType: rawMime, isReceipt: rawIsReceipt } = req.body;
+    const isReceipt = rawIsReceipt === true; // Sprint 746: Strict boolean validation
     const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
 
     if (!photoData || typeof photoData !== "string") {

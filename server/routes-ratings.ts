@@ -180,12 +180,13 @@ export function registerRatingRoutes(app: Express): void {
   app.post("/api/ratings/:id/flag", requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const { submitRatingFlag } = await import("./storage/ratings");
     try {
+      // Sprint 746: Strict boolean validation for anti-gaming flags
       const flag = await submitRatingFlag(req.params.id, req.user!.id, {
-        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
-        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
-        q3InsiderSuspected: req.body.q3InsiderSuspected,
-        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
-        q5CompetitorBombing: req.body.q5CompetitorBombing,
+        q1NoSpecificExperience: req.body.q1NoSpecificExperience === true,
+        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote === true,
+        q3InsiderSuspected: req.body.q3InsiderSuspected === true,
+        q4CoordinatedPattern: req.body.q4CoordinatedPattern === true,
+        q5CompetitorBombing: req.body.q5CompetitorBombing === true,
         explanation: sanitizeString(req.body.explanation, 500),
       });
       return res.status(201).json({ data: flag });

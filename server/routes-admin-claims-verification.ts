@@ -10,6 +10,7 @@
  */
 
 import { Router } from "express";
+import { sanitizeString } from "./sanitize";
 import { log } from "./logger";
 import {
   getPendingClaims,
@@ -51,7 +52,9 @@ export function registerAdminClaimVerificationRoutes(app: Router): void {
   });
 
   app.post("/api/admin/claims/:id/reject", (req, res) => {
-    const result = rejectClaim(req.params.id, req.body?.reason);
+    // Sprint 746: Sanitize rejection reason to prevent injection
+    const reason = sanitizeString(req.body?.reason, 500) || undefined;
+    const result = rejectClaim(req.params.id, reason);
     if (!result) return res.status(400).json({ error: "Cannot reject claim" });
     adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
     res.json({ success: true });

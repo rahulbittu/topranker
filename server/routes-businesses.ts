@@ -253,6 +253,17 @@ export function registerBusinessRoutes(app: Express) {
         if (val !== null && (typeof val !== "string" || val.length > 500)) {
           return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
         }
+        // Sprint 746: Validate URL protocol to prevent javascript: injection
+        if (val !== null) {
+          try {
+            const parsed = new URL(val);
+            if (!["http:", "https:"].includes(parsed.protocol)) {
+              return res.status(400).json({ error: `${field} must use http or https protocol` });
+            }
+          } catch {
+            return res.status(400).json({ error: `${field} is not a valid URL` });
+          }
+        }
         updates[field] = val;
       }
     }

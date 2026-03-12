@@ -10255,7 +10255,8 @@ function registerAdminClaimVerificationRoutes(app2) {
     res.json(getClaimsByBusiness(req.params.businessId));
   });
   app2.post("/api/admin/claims/:id/reject", (req, res) => {
-    const result = rejectClaim(req.params.id, req.body?.reason);
+    const reason = sanitizeString(req.body?.reason, 500) || void 0;
+    const result = rejectClaim(req.params.id, reason);
     if (!result) return res.status(400).json({ error: "Cannot reject claim" });
     adminClaimLog.info(`Admin rejected claim ${req.params.id}`);
     res.json({ success: true });
@@ -13572,6 +13573,16 @@ function registerBusinessRoutes(app2) {
         if (val !== null && (typeof val !== "string" || val.length > 500)) {
           return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
         }
+        if (val !== null) {
+          try {
+            const parsed = new URL(val);
+            if (!["http:", "https:"].includes(parsed.protocol)) {
+              return res.status(400).json({ error: `${field} must use http or https protocol` });
+            }
+          } catch {
+            return res.status(400).json({ error: `${field} is not a valid URL` });
+          }
+        }
         updates[field] = val;
       }
     }
@@ -15178,7 +15189,8 @@ function registerRatingPhotoRoutes(app2) {
     if (rating.memberId !== memberId) {
       return res.status(403).json({ error: "Cannot upload photo for another user's rating" });
     }
-    const { data: photoData, mimeType: rawMime, isReceipt } = req.body;
+    const { data: photoData, mimeType: rawMime, isReceipt: rawIsReceipt } = req.body;
+    const isReceipt = rawIsReceipt === true;
     const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
     if (!photoData || typeof photoData !== "string") {
       return res.status(400).json({ error: "Photo data is required (base64)" });
@@ -15649,11 +15661,11 @@ function registerRatingRoutes(app2) {
     const { submitRatingFlag: submitRatingFlag2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
     try {
       const flag = await submitRatingFlag2(req.params.id, req.user.id, {
-        q1NoSpecificExperience: req.body.q1NoSpecificExperience,
-        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote,
-        q3InsiderSuspected: req.body.q3InsiderSuspected,
-        q4CoordinatedPattern: req.body.q4CoordinatedPattern,
-        q5CompetitorBombing: req.body.q5CompetitorBombing,
+        q1NoSpecificExperience: req.body.q1NoSpecificExperience === true,
+        q2ScoreMismatchNote: req.body.q2ScoreMismatchNote === true,
+        q3InsiderSuspected: req.body.q3InsiderSuspected === true,
+        q4CoordinatedPattern: req.body.q4CoordinatedPattern === true,
+        q5CompetitorBombing: req.body.q5CompetitorBombing === true,
         explanation: sanitizeString(req.body.explanation, 500)
       });
       return res.status(201).json({ data: flag });
@@ -16084,7 +16096,6 @@ function cacheHeaders(req, res, next) {
 // server/index.ts
 init_analytics2();
 var app = express();
-var log3 = console.log;
 initErrorTracking();
 (async () => {
   try {
@@ -16128,7 +16139,7 @@ function setupRequestLogging(app2) {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
-      log3(logLine);
+      log(logLine);
     });
     next();
   });
@@ -16171,8 +16182,8 @@ function serveLandingPage({
   const host = forwardedHost || req.get("host");
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
-  log3(`baseUrl`, baseUrl);
-  log3(`expsUrl`, expsUrl);
+  log(`baseUrl`, baseUrl);
+  log(`expsUrl`, expsUrl);
   const html = landingPageTemplate.replace(/BASE_URL_PLACEHOLDER/g, baseUrl).replace(/EXPS_URL_PLACEHOLDER/g, expsUrl).replace(/APP_NAME_PLACEHOLDER/g, appName);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.status(200).send(html);
@@ -16187,7 +16198,7 @@ function configureExpoAndLanding(app2) {
   const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
   const isProduction = true;
-  log3("Serving static Expo files with dynamic manifest routing");
+  log("Serving static Expo files with dynamic manifest routing");
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
@@ -16221,7 +16232,7 @@ function configureExpoAndLanding(app2) {
       maxAge: isProduction ? "1d" : 0,
       index: false
     }));
-    log3(`Serving static web build from ${distPath}`);
+    log(`Serving static web build from ${distPath}`);
   }
   if (!isProduction) {
     const metroProxy = createProxyMiddleware({
@@ -16305,13 +16316,13 @@ document.body.appendChild(s);
         return next();
       }
       if (req.path === "/" || req.path === "/index.html") {
-        log3(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
+        log(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
         return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
     });
-    log3("Expo routing: Checking expo-platform header on / and /manifest");
-    log3("Metro proxy: Forwarding web requests to localhost:8081");
+    log("Expo routing: Checking expo-platform header on / and /manifest");
+    log("Metro proxy: Forwarding web requests to localhost:8081");
   } else {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
@@ -16326,7 +16337,7 @@ document.body.appendChild(s);
       }
       return serveLandingPage({ req, res, landingPageTemplate, appName });
     });
-    log3("Production mode: Serving static dist build (no Metro proxy)");
+    log("Production mode: Serving static dist build (no Metro proxy)");
   }
 }
 function setupErrorHandler(app2) {
@@ -16365,7 +16376,7 @@ function setupErrorHandler(app2) {
   app.use(prerenderMiddleware2);
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
-  log3(`[TopRanker] ${routeCount} routes registered`);
+  log(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
   if (false) {
     const { seedDatabase } = await null;
@@ -16416,7 +16427,7 @@ function setupErrorHandler(app2) {
     port,
     "0.0.0.0",
     () => {
-      log3(`express server serving on port ${port} (0.0.0.0)`);
+      log(`express server serving on port ${port} (0.0.0.0)`);
     }
   );
   function gracefulShutdown(signal) {

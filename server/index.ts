@@ -14,7 +14,6 @@ import { cacheHeaders } from "./cache-headers";
 import { setFlushHandler } from "./analytics";
 
 const app = express();
-const log = console.log;
 
 // Sprint 191: Initialize error tracking early
 initErrorTracking();
