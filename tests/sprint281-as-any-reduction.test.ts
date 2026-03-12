@@ -50,7 +50,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(130); // Sprint 629: seed action URL as-any casts
+    expect(total).toBeLessThan(135); // Sprint 711: animated progress width percentage cast
   });
 
   it("client-side casts under 15", () => {

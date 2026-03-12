@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Platform,
   Dimensions, FlatList, type ViewToken,
@@ -6,7 +6,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeInDown, FadeInUp, useSharedValue, useAnimatedStyle, withTiming,
+} from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
@@ -148,16 +150,33 @@ export default function OnboardingScreen() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+  const progressWidth = useSharedValue(1 / SLIDES.length);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
       setCurrentIndex(viewableItems[0].index);
+      progressWidth.value = withTiming(
+        (viewableItems[0].index + 1) / SLIDES.length,
+        { duration: 300 },
+      );
+      hapticPress();
     }
   }).current;
 
   const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
   const isLastSlide = currentIndex === SLIDES.length - 1;
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value * 100}%` as any,
+  }));
+
+  const goBack = useCallback(() => {
+    if (currentIndex > 0) {
+      hapticPress();
+      flatListRef.current?.scrollToIndex({ index: currentIndex - 1, animated: true });
+    }
+  }, [currentIndex]);
 
   const completeOnboarding = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
@@ -180,19 +199,23 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: topPad }]}>
-      {/* Skip button */}
+      {/* Top bar: back, progress, skip */}
       <View style={styles.topBar}>
-        <View style={{ width: 60 }} />
-        <View style={styles.dots}>
-          {SLIDES.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                i === currentIndex && styles.dotActive,
-              ]}
-            />
-          ))}
+        {currentIndex > 0 ? (
+          <TouchableOpacity
+            onPress={goBack}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Previous slide"
+          >
+            <Ionicons name="arrow-back" size={18} color={Colors.textSecondary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, progressStyle]} />
         </View>
         <TouchableOpacity
           onPress={skip}
@@ -258,16 +281,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 12,
   },
-  dots: { flexDirection: "row", gap: 8 },
-  dot: {
-    width: 8, height: 8, borderRadius: 4,
+  backBtn: { width: 40, alignItems: "flex-start" },
+  progressTrack: {
+    flex: 1,
+    height: 3,
     backgroundColor: Colors.border,
+    borderRadius: 1.5,
+    marginHorizontal: 12,
+    overflow: "hidden",
   },
-  dotActive: {
+  progressFill: {
+    height: 3,
     backgroundColor: BRAND.colors.amber,
-    width: 24,
+    borderRadius: 1.5,
   },
-  skipBtn: { width: 60, alignItems: "flex-end" },
+  skipBtn: { width: 40, alignItems: "flex-end" },
   skipText: {
     fontSize: 14, color: Colors.textTertiary,
     fontFamily: "DMSans_500Medium",
