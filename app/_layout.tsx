@@ -46,6 +46,8 @@ import { Analytics } from "@/lib/analytics";
 import { addBreadcrumb } from "@/lib/sentry";
 import { reportError } from "@/lib/error-reporting";
 import { markAppStart, markAppReady } from "@/lib/perf-tracker";
+import { getDeepLinkParams } from "@/lib/sharing";
+import * as Linking from "expo-linking";
 
 async function savePushToken(token: string) {
   try {
@@ -493,6 +495,31 @@ export default function RootLayout() {
     });
 
     return () => subscription.remove();
+  }, []);
+
+  // Sprint 731: Universal link deep link handler
+  useEffect(() => {
+    function handleDeepLink(event: { url: string }) {
+      const params = getDeepLinkParams(event.url);
+      if (!params) return;
+      addBreadcrumb("deeplink", `${params.type}/${params.slug}`);
+      Analytics.track("deep_link_opened" as any, { type: params.type, slug: params.slug });
+      if (params.type === "business") {
+        router.push({ pathname: "/business/[id]", params: { id: params.slug } });
+      } else if (params.type === "dish") {
+        router.push({ pathname: "/dish/[slug]", params: { slug: params.slug } });
+      } else if (params.type === "challenger") {
+        router.push({ pathname: "/(tabs)/challenger", params: { id: params.slug } });
+      } else if (params.type === "share") {
+        router.push({ pathname: "/business/[id]", params: { id: params.slug } });
+      }
+    }
+    const sub = Linking.addEventListener("url", handleDeepLink);
+    // Handle cold-start deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+    return () => sub.remove();
   }, []);
 
   // Connect to SSE for near-real-time data updates

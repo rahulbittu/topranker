@@ -5,7 +5,7 @@
  */
 
 // Sprint 547: Aligned share domain from topranker.app → topranker.com (matches app.json deeplinks)
-export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com"] as const;
+export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com", "topranker.io", "www.topranker.io"] as const;
 
 /**
  * Generate a shareable URL for a business, challenger match, or profile.
@@ -151,8 +151,9 @@ export function getDeepLinkParams(url: string): { type: string; slug: string } |
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.replace(/^www\./, "");
-    // Sprint 547: Accept both topranker.com (primary) and topranker.app (legacy)
-    if (host !== "topranker.com" && host !== "topranker.app") return null;
+    // Sprint 547: Accept topranker.com (primary) and topranker.app (legacy)
+    // Sprint 731: Accept topranker.io (custom domain)
+    if (host !== "topranker.com" && host !== "topranker.app" && host !== "topranker.io") return null;
 
     // Expected format: /type/slug
     const segments = parsed.pathname.split("/").filter(Boolean);

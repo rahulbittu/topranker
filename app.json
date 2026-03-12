@@ -23,7 +23,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.topranker.app",
       "associatedDomains": [
-        "applinks:topranker.com"
+        "applinks:topranker.com",
+        "applinks:topranker.io"
       ],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TopRanker uses your location to find restaurants near you.",
