@@ -1,6 +1,8 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import { Platform } from "react-native";
+import { NOTIFICATION_CHANNELS, type NotificationType } from "@/shared/notification-channels";
+export type { NotificationType } from "@/shared/notification-channels";
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -12,13 +14,6 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
-
-export type NotificationType =
-  | "tier_upgrade"         // You reached a new credibility tier
-  | "challenger_result"    // A challenge you followed ended
-  | "challenger_started"   // New challenge in your city
-  | "weekly_digest"        // Your weekly activity summary
-  | "drip_reminder";       // Re-engagement nudge
 
 export interface PushNotification {
   type: NotificationType;
@@ -53,43 +48,23 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  // Sprint 672: Multi-channel Android notification categories
+  // Sprint 676: Android channels from shared config (single source of truth)
   if (Platform.OS === "android") {
-    await Promise.all([
-      Notifications.setNotificationChannelAsync("default", {
-        name: "General",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#C49A1A",
-      }),
-      Notifications.setNotificationChannelAsync("tier_upgrade", {
-        name: "Tier Promotions",
-        description: "When your credibility tier increases",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 200, 100, 200],
-        lightColor: "#C49A1A",
-      }),
-      Notifications.setNotificationChannelAsync("challenger", {
-        name: "Challenges",
-        description: "New challenges and results",
-        importance: Notifications.AndroidImportance.HIGH,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#C49A1A",
-      }),
-      Notifications.setNotificationChannelAsync("digest", {
-        name: "Weekly Digest",
-        description: "Your weekly activity summary",
-        importance: Notifications.AndroidImportance.DEFAULT,
-        vibrationPattern: [0, 150],
-        lightColor: "#C49A1A",
-      }),
-      Notifications.setNotificationChannelAsync("reminders", {
-        name: "Reminders",
-        description: "Re-engagement reminders",
-        importance: Notifications.AndroidImportance.LOW,
-        lightColor: "#C49A1A",
-      }),
-    ]);
+    const importanceMap = {
+      HIGH: Notifications.AndroidImportance.HIGH,
+      DEFAULT: Notifications.AndroidImportance.DEFAULT,
+      LOW: Notifications.AndroidImportance.LOW,
+    };
+    await Promise.all(
+      NOTIFICATION_CHANNELS.map((ch) =>
+        Notifications.setNotificationChannelAsync(ch.id, {
+          name: ch.name,
+          description: ch.description,
+          importance: importanceMap[ch.importance],
+          lightColor: "#C49A1A",
+        }),
+      ),
+    );
   }
 
   try {
@@ -144,14 +119,8 @@ export async function setBadgeCount(count: number): Promise<void> {
   await Notifications.setBadgeCountAsync(count);
 }
 
-// Sprint 672: Map notification types to Android channel IDs
-export const NOTIFICATION_CHANNEL_MAP: Record<NotificationType, string> = {
-  tier_upgrade: "tier_upgrade",
-  challenger_result: "challenger",
-  challenger_started: "challenger",
-  weekly_digest: "digest",
-  drip_reminder: "reminders",
-};
+// Sprint 676: Re-export channel map from shared (single source of truth)
+export { NOTIFICATION_TYPE_TO_CHANNEL as NOTIFICATION_CHANNEL_MAP } from "@/shared/notification-channels";
 
 // Sprint 672: Valid deep link screens for notification tap handling
 export const VALID_DEEP_LINK_SCREENS = [

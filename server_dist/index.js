@@ -854,7 +854,7 @@ function createTaggedLogger(tag) {
     }
   };
 }
-var LEVEL_ORDER, MIN_LEVEL, log;
+var LEVEL_ORDER, MIN_LEVEL, log2;
 var init_logger = __esm({
   "server/logger.ts"() {
     "use strict";
@@ -865,7 +865,7 @@ var init_logger = __esm({
       error: 3
     };
     MIN_LEVEL = true ? "info" : "debug";
-    log = {
+    log2 = {
       /** Create a logger with a specific tag (e.g., "Email", "Push", "Deploy") */
       tag: createTaggedLogger,
       // Top-level convenience methods (tag: "Server")
@@ -904,7 +904,7 @@ var init_tier_staleness = __esm({
     init_schema();
     init_logger();
     init_credibility();
-    stalenessLog = log.tag("TierStaleness");
+    stalenessLog = log2.tag("TierStaleness");
   }
 });
 
@@ -1458,7 +1458,7 @@ var init_redis = __esm({
   "server/redis.ts"() {
     "use strict";
     init_logger();
-    redisLog = log.tag("Redis");
+    redisLog = log2.tag("Redis");
     redis = null;
     hits = 0;
     misses = 0;
@@ -1955,6 +1955,25 @@ var init_businesses = __esm({
   }
 });
 
+// shared/notification-channels.ts
+function getChannelId(type) {
+  return NOTIFICATION_TYPE_TO_CHANNEL[type] || "default";
+}
+var NOTIFICATION_TYPE_TO_CHANNEL;
+var init_notification_channels = __esm({
+  "shared/notification-channels.ts"() {
+    "use strict";
+    NOTIFICATION_TYPE_TO_CHANNEL = {
+      tier_upgrade: "tier_upgrade",
+      challenger_result: "challenger",
+      challenger_started: "challenger",
+      weekly_digest: "digest",
+      drip_reminder: "reminders",
+      rating_reminder: "reminders"
+    };
+  }
+});
+
 // server/storage/notifications.ts
 var notifications_exports = {};
 __export(notifications_exports, {
@@ -2018,13 +2037,14 @@ __export(push_exports, {
 });
 async function sendPushNotification(tokens2, title, body, data) {
   if (tokens2.length === 0) return [];
+  const channelId = getChannelId(data?.type || "");
   const messages = tokens2.map((token) => ({
     to: token,
     title,
     body,
     data,
-    sound: "default",
-    channelId: "default"
+    sound: channelId === "reminders" ? null : "default",
+    channelId
   }));
   if (false) {
     pushLog.debug("DEV MODE \u2014 would send:", messages);
@@ -2107,7 +2127,8 @@ var init_push = __esm({
   "server/push.ts"() {
     "use strict";
     init_logger();
-    pushLog = log.tag("Push");
+    init_notification_channels();
+    pushLog = log2.tag("Push");
     EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
   }
 });
@@ -2134,7 +2155,7 @@ async function createChallenge(data) {
     endDate,
     status: "active"
   }).returning();
-  log.info(`Challenge created: ${challenge.id} (${data.challengerId} vs ${data.defenderId})`);
+  log2.info(`Challenge created: ${challenge.id} (${data.challengerId} vs ${data.defenderId})`);
   try {
     const [challengerBiz, defenderBiz] = await Promise.all([
       db.select().from(businesses).where(eq6(businesses.id, data.challengerId)).then((r) => r[0]),
@@ -2156,7 +2177,7 @@ async function createChallenge(data) {
       }
     }
   } catch (err) {
-    log.error(`Failed to send new challenger notification: ${err}`);
+    log2.error(`Failed to send new challenger notification: ${err}`);
   }
   return challenge;
 }
@@ -2228,7 +2249,7 @@ async function closeExpiredChallenges() {
       winnerId
     }).where(eq6(challengers.id, c.id));
     closed++;
-    log.info(`Challenge ${c.id} closed: winner=${winnerId || "draw"} (${challengerVotes} vs ${defenderVotes})`);
+    log2.info(`Challenge ${c.id} closed: winner=${winnerId || "draw"} (${challengerVotes} vs ${defenderVotes})`);
     try {
       const winnerBiz = winnerId ? await db.select().from(businesses).where(eq6(businesses.id, winnerId)).then((r) => r[0]) : null;
       const winnerName = winnerBiz?.name || "It's a draw";
@@ -2245,11 +2266,11 @@ async function closeExpiredChallenges() {
         });
       }
     } catch (err) {
-      log.error(`Failed to send challenger result notification: ${err}`);
+      log2.error(`Failed to send challenger result notification: ${err}`);
     }
   }
   if (closed > 0) {
-    log.info(`Closed ${closed} expired challenge(s)`);
+    log2.info(`Closed ${closed} expired challenge(s)`);
   }
   return closed;
 }
@@ -3833,7 +3854,12 @@ var init_admin = __esm({
 // server/google-places.ts
 var google_places_exports = {};
 __export(google_places_exports, {
+  batchEnrichActionUrls: () => batchEnrichActionUrls,
+  enrichBusinessActionUrls: () => enrichBusinessActionUrls,
+  enrichBusinessFullDetails: () => enrichBusinessFullDetails,
   fetchAndStorePhotos: () => fetchAndStorePhotos,
+  fetchPlaceActionUrls: () => fetchPlaceActionUrls,
+  fetchPlaceFullDetails: () => fetchPlaceFullDetails,
   fetchPlacePhotos: () => fetchPlacePhotos,
   normalizeCategory: () => normalizeCategory,
   searchNearbyRestaurants: () => searchNearbyRestaurants,
@@ -3842,7 +3868,7 @@ __export(google_places_exports, {
 async function fetchPlacePhotos(googlePlaceId, limit = 5) {
   const apiKey = config.googleMapsApiKey;
   if (!apiKey) {
-    log.tag("GooglePlaces").warn("No API key configured \u2014 skipping photo fetch");
+    log2.tag("GooglePlaces").warn("No API key configured \u2014 skipping photo fetch");
     return [];
   }
   const url = `${API_BASE}/places/${googlePlaceId}?fields=photos&key=${apiKey}`;
@@ -3855,22 +3881,22 @@ async function fetchPlacePhotos(googlePlaceId, limit = 5) {
     });
     if (!response.ok) {
       const body = await response.text();
-      log.tag("GooglePlaces").error(
+      log2.tag("GooglePlaces").error(
         `Place details failed for ${googlePlaceId}: ${response.status} \u2014 ${body.slice(0, 200)}`
       );
       return [];
     }
     const data = await response.json();
     if (!data.photos || data.photos.length === 0) {
-      log.tag("GooglePlaces").info(`No photos found for ${googlePlaceId}`);
+      log2.tag("GooglePlaces").info(`No photos found for ${googlePlaceId}`);
       return [];
     }
     return data.photos.slice(0, limit).map((p) => p.name);
   } catch (err) {
     if (err.name === "TimeoutError") {
-      log.tag("GooglePlaces").error(`Timeout fetching photos for ${googlePlaceId}`);
+      log2.tag("GooglePlaces").error(`Timeout fetching photos for ${googlePlaceId}`);
     } else {
-      log.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
+      log2.tag("GooglePlaces").error(`Error fetching photos for ${googlePlaceId}: ${err.message}`);
     }
     return [];
   }
@@ -3908,7 +3934,7 @@ async function searchPlace(query, city) {
 async function searchNearbyRestaurants(city, category = "restaurant", maxResults = 20) {
   const apiKey = config.googleMapsApiKey;
   if (!apiKey) {
-    log.tag("GooglePlaces").warn("No API key \u2014 skipping nearby search");
+    log2.tag("GooglePlaces").warn("No API key \u2014 skipping nearby search");
     return [];
   }
   const typeQuery = category === "restaurant" ? "restaurants" : category === "cafe" ? "cafes" : category === "bar" ? "bars" : category === "bakery" ? "bakeries" : category === "street_food" ? "street food" : category === "fast_food" ? "fast food" : "restaurants";
@@ -3928,7 +3954,7 @@ async function searchNearbyRestaurants(city, category = "restaurant", maxResults
     });
     if (!response.ok) {
       const body = await response.text();
-      log.tag("GooglePlaces").error(`Nearby search failed: ${response.status} \u2014 ${body.slice(0, 200)}`);
+      log2.tag("GooglePlaces").error(`Nearby search failed: ${response.status} \u2014 ${body.slice(0, 200)}`);
       return [];
     }
     const data = await response.json();
@@ -3951,7 +3977,7 @@ async function searchNearbyRestaurants(city, category = "restaurant", maxResults
       types: p.types || []
     }));
   } catch (err) {
-    log.tag("GooglePlaces").error(`Nearby search error: ${err.message}`);
+    log2.tag("GooglePlaces").error(`Nearby search error: ${err.message}`);
     return [];
   }
 }
@@ -3961,6 +3987,156 @@ function normalizeCategory(types) {
   if (types.includes("bakery")) return "bakery";
   if (types.includes("meal_delivery") || types.includes("meal_takeaway")) return "fast_food";
   return "restaurant";
+}
+async function fetchPlaceActionUrls(googlePlaceId, businessName, city) {
+  const apiKey = config.googleMapsApiKey;
+  const result = {
+    websiteUri: null,
+    googleMapsUri: null,
+    menuUrl: null,
+    doordashUrl: null,
+    uberEatsUrl: null
+  };
+  const encodedName = encodeURIComponent(`${businessName} ${city}`);
+  result.doordashUrl = `https://www.doordash.com/search/store/${encodedName}/`;
+  result.uberEatsUrl = `https://www.ubereats.com/search?q=${encodedName}`;
+  if (!apiKey) {
+    log2.tag("GooglePlaces").warn("No API key \u2014 returning constructed URLs only");
+    return result;
+  }
+  try {
+    const fields = "websiteUri,googleMapsUri";
+    const url = `${API_BASE}/places/${googlePlaceId}?fields=${fields}&key=${apiKey}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!response.ok) {
+      log2.tag("GooglePlaces").error(`Action URL fetch failed for ${googlePlaceId}: ${response.status}`);
+      return result;
+    }
+    const data = await response.json();
+    result.websiteUri = data.websiteUri || null;
+    result.googleMapsUri = data.googleMapsUri || null;
+    if (result.websiteUri && !result.menuUrl) {
+      result.menuUrl = result.websiteUri;
+    }
+    log2.tag("GooglePlaces").info(`Fetched action URLs for ${googlePlaceId}: website=${!!result.websiteUri}, maps=${!!result.googleMapsUri}`);
+  } catch (err) {
+    log2.tag("GooglePlaces").error(`Action URL fetch error for ${googlePlaceId}: ${err.message}`);
+  }
+  return result;
+}
+async function enrichBusinessActionUrls(businessId, googlePlaceId, businessName, city) {
+  const urls = await fetchPlaceActionUrls(googlePlaceId, businessName, city);
+  const updates = {};
+  if (urls.menuUrl) updates.menuUrl = urls.menuUrl;
+  if (urls.doordashUrl) updates.doordashUrl = urls.doordashUrl;
+  if (urls.uberEatsUrl) updates.uberEatsUrl = urls.uberEatsUrl;
+  if (Object.keys(updates).length === 0) return false;
+  const { updateBusinessActions: updateBusinessActions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+  await updateBusinessActions2(businessId, updates);
+  if (urls.googleMapsUri) {
+    const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+    const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq35 } = await import("drizzle-orm");
+    await db2.update(businesses2).set({ googleMapsUrl: urls.googleMapsUri }).where(eq35(businesses2.id, businessId));
+  }
+  log2.tag("GooglePlaces").info(`Enriched action URLs for business ${businessId}: ${Object.keys(updates).join(", ")}`);
+  return true;
+}
+async function batchEnrichActionUrls() {
+  const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+  const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const { isNotNull: isNotNull8, isNull: isNull2, and: and21 } = await import("drizzle-orm");
+  const unenriched = await db2.select({
+    id: businesses2.id,
+    googlePlaceId: businesses2.googlePlaceId,
+    name: businesses2.name,
+    city: businesses2.city
+  }).from(businesses2).where(and21(
+    isNotNull8(businesses2.googlePlaceId),
+    isNull2(businesses2.doordashUrl)
+  )).limit(50);
+  let enriched = 0;
+  for (const biz of unenriched) {
+    if (!biz.googlePlaceId) continue;
+    try {
+      const success = await enrichBusinessActionUrls(biz.id, biz.googlePlaceId, biz.name, biz.city || "Dallas");
+      if (success) enriched++;
+      await new Promise((r) => setTimeout(r, 200));
+    } catch (err) {
+      log2.tag("GooglePlaces").error(`Batch enrich failed for ${biz.id}: ${err}`);
+    }
+  }
+  log2.tag("GooglePlaces").info(`Batch enriched ${enriched}/${unenriched.length} businesses with action URLs`);
+  return enriched;
+}
+async function fetchPlaceFullDetails(googlePlaceId) {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) return null;
+  const fields = [
+    "editorialSummary",
+    "currentOpeningHours",
+    "priceLevel",
+    "servesBreakfast",
+    "servesLunch",
+    "servesDinner",
+    "servesBeer",
+    "servesWine"
+  ].join(",");
+  try {
+    const url = `${API_BASE}/places/${googlePlaceId}?fields=${fields}&key=${apiKey}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!response.ok) {
+      log2.tag("GooglePlaces").error(`Full details failed for ${googlePlaceId}: ${response.status}`);
+      return null;
+    }
+    const data = await response.json();
+    const priceLevelMap = {
+      PRICE_LEVEL_FREE: "$",
+      PRICE_LEVEL_INEXPENSIVE: "$",
+      PRICE_LEVEL_MODERATE: "$$",
+      PRICE_LEVEL_EXPENSIVE: "$$$",
+      PRICE_LEVEL_VERY_EXPENSIVE: "$$$$"
+    };
+    const hours = data.currentOpeningHours;
+    const weekdayText = hours?.weekdayDescriptions || [];
+    return {
+      description: data.editorialSummary?.text || null,
+      openingHours: weekdayText.length > 0 ? { weekday_text: weekdayText } : null,
+      isOpenNow: hours?.openNow ?? false,
+      priceRange: priceLevelMap[data.priceLevel] || null,
+      servesBreakfast: data.servesBreakfast ?? false,
+      servesLunch: data.servesLunch ?? false,
+      servesDinner: data.servesDinner ?? false,
+      servesBeer: data.servesBeer ?? false,
+      servesWine: data.servesWine ?? false
+    };
+  } catch (err) {
+    log2.tag("GooglePlaces").error(`Full details error for ${googlePlaceId}: ${err.message}`);
+    return null;
+  }
+}
+async function enrichBusinessFullDetails(businessId, googlePlaceId) {
+  const details = await fetchPlaceFullDetails(googlePlaceId);
+  if (!details) return false;
+  const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+  const { businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+  const { eq: eq35 } = await import("drizzle-orm");
+  const updates = {};
+  if (details.description) updates.description = details.description;
+  if (details.openingHours) updates.openingHours = details.openingHours;
+  if (details.priceRange) updates.priceRange = details.priceRange;
+  updates.isOpenNow = details.isOpenNow;
+  updates.hoursLastUpdated = /* @__PURE__ */ new Date();
+  if (Object.keys(updates).length === 0) return false;
+  await db2.update(businesses2).set(updates).where(eq35(businesses2.id, businessId));
+  log2.tag("GooglePlaces").info(`Enriched full details for business ${businessId}`);
+  return true;
 }
 async function fetchAndStorePhotos(businessId, googlePlaceId) {
   const photoRefs = await fetchPlacePhotos(googlePlaceId, 5);
@@ -3974,7 +4150,7 @@ async function fetchAndStorePhotos(businessId, googlePlaceId) {
       sortOrder: i
     }))
   );
-  log.tag("GooglePlaces").info(
+  log2.tag("GooglePlaces").info(
     `Stored ${photoRefs.length} photos for business ${businessId} (place: ${googlePlaceId})`
   );
   return photoRefs.length;
@@ -4153,7 +4329,7 @@ var init_analytics2 = __esm({
   "server/analytics.ts"() {
     "use strict";
     init_logger();
-    analyticsLog = log.tag("Analytics");
+    analyticsLog = log2.tag("Analytics");
     buffer = [];
     MAX_BUFFER = 1e3;
     flushHandler = null;
@@ -4181,7 +4357,7 @@ function trackEmailSent(to, template, metadata) {
   if (events.length > MAX_EVENTS) {
     events.splice(0, events.length - MAX_EVENTS);
   }
-  log(`Email sent to=${to} template=${template} id=${id}`);
+  log2(`Email sent to=${to} template=${template} id=${id}`);
   return id;
 }
 function trackEmailOpened(eventId) {
@@ -4189,27 +4365,27 @@ function trackEmailOpened(eventId) {
   if (!event) return;
   event.status = "opened";
   event.openedAt = /* @__PURE__ */ new Date();
-  log(`Email opened id=${eventId}`);
+  log2(`Email opened id=${eventId}`);
 }
 function trackEmailClicked(eventId) {
   const event = findEvent(eventId);
   if (!event) return;
   event.status = "clicked";
   event.clickedAt = /* @__PURE__ */ new Date();
-  log(`Email clicked id=${eventId}`);
+  log2(`Email clicked id=${eventId}`);
 }
 function trackEmailFailed(eventId, reason) {
   const event = findEvent(eventId);
   if (!event) return;
   event.status = "failed";
   event.metadata = { ...event.metadata, failureReason: reason };
-  log(`Email failed id=${eventId} reason=${reason}`);
+  log2(`Email failed id=${eventId} reason=${reason}`);
 }
 function trackEmailBounced(eventId) {
   const event = findEvent(eventId);
   if (!event) return;
   event.status = "bounced";
-  log(`Email bounced id=${eventId}`);
+  log2(`Email bounced id=${eventId}`);
 }
 function getEmailStats() {
   const total = events.length;
@@ -4449,7 +4625,7 @@ var init_experiment_tracker = __esm({
   "server/experiment-tracker.ts"() {
     "use strict";
     init_logger();
-    trackerLog = log.tag("ExperimentTracker");
+    trackerLog = log2.tag("ExperimentTracker");
     exposures = [];
     outcomes = [];
   }
@@ -4528,7 +4704,7 @@ var init_push_ab_testing = __esm({
     "use strict";
     init_experiment_tracker();
     init_logger();
-    pushAbLog = log.tag("PushAB");
+    pushAbLog = log2.tag("PushAB");
     experiments2 = /* @__PURE__ */ new Map();
   }
 });
@@ -4811,7 +4987,7 @@ var init_moderation_queue = __esm({
   "server/moderation-queue.ts"() {
     "use strict";
     init_logger();
-    modLog = log.tag("ModerationQueue");
+    modLog = log2.tag("ModerationQueue");
     queue = [];
     MAX_QUEUE = 2e3;
   }
@@ -4889,7 +5065,7 @@ var init_notification_templates = __esm({
   "server/notification-templates.ts"() {
     "use strict";
     init_logger();
-    tmplLog2 = log.tag("NotifTemplate");
+    tmplLog2 = log2.tag("NotifTemplate");
     templates2 = /* @__PURE__ */ new Map();
     SUPPORTED_VARIABLES = [
       "firstName",
@@ -5019,7 +5195,7 @@ var init_push_analytics = __esm({
   "server/push-analytics.ts"() {
     "use strict";
     init_logger();
-    analyticsLog2 = log.tag("PushAnalytics");
+    analyticsLog2 = log2.tag("PushAnalytics");
     deliveryRecords = [];
     MAX_RECORDS = 1e4;
     openRecords = [];
@@ -5138,7 +5314,7 @@ var init_photo_moderation = __esm({
     init_logger();
     init_db();
     init_schema();
-    photoModLog = log.tag("PhotoModeration");
+    photoModLog = log2.tag("PhotoModeration");
     ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
     MAX_FILE_SIZE = 10 * 1024 * 1024;
     MAX_CAPTION_LENGTH = 500;
@@ -5233,7 +5409,7 @@ var init_photo_hash = __esm({
     init_logger();
     init_db();
     init_schema();
-    hashLog = log.tag("PhotoHash");
+    hashLog = log2.tag("PhotoHash");
     hashIndex = /* @__PURE__ */ new Map();
   }
 });
@@ -5349,7 +5525,7 @@ var init_phash = __esm({
     init_logger();
     init_db();
     init_schema();
-    phashLog = log.tag("PHash");
+    phashLog = log2.tag("PHash");
     HASH_BITS = 64;
     NEAR_DUPLICATE_THRESHOLD = 10;
     phashIndex = [];
@@ -5447,7 +5623,7 @@ var init_receipt_analysis = __esm({
     init_db();
     init_schema();
     init_logger();
-    receiptLog = log.tag("ReceiptAnalysis");
+    receiptLog = log2.tag("ReceiptAnalysis");
   }
 });
 
@@ -6228,7 +6404,7 @@ var init_email = __esm({
     "use strict";
     init_logger();
     init_email_tracking();
-    emailLog = log.tag("Email");
+    emailLog = log2.tag("Email");
     RESEND_API_KEY = process.env.RESEND_API_KEY || "";
     FROM_ADDRESS = process.env.EMAIL_FROM || "TopRanker <noreply@topranker.com>";
   }
@@ -6380,7 +6556,7 @@ var init_stripe_webhook = __esm({
     "use strict";
     init_logger();
     init_storage();
-    whLog = log.tag("StripeWebhook");
+    whLog = log2.tag("StripeWebhook");
     STATUS_MAP = {
       "payment_intent.succeeded": "succeeded",
       "payment_intent.payment_failed": "failed",
@@ -6473,7 +6649,7 @@ var init_error_tracking = __esm({
   "server/error-tracking.ts"() {
     "use strict";
     init_logger();
-    errorLog = log.tag("ErrorTracking");
+    errorLog = log2.tag("ErrorTracking");
     SENTRY_DSN = process.env.SENTRY_DSN || "";
     initialized = false;
     recentErrors = [];
@@ -6680,7 +6856,7 @@ var init_prerender = __esm({
   "server/prerender.ts"() {
     "use strict";
     init_logger();
-    prerenderLog = log.tag("Prerender");
+    prerenderLog = log2.tag("Prerender");
     SITE_URL = process.env.SITE_URL || "https://topranker.com";
     BOT_AGENTS = [
       "googlebot",
@@ -6904,7 +7080,7 @@ var init_payments2 = __esm({
     "use strict";
     init_logger();
     init_pricing();
-    payLog = log.tag("Payments");
+    payLog = log2.tag("Payments");
   }
 });
 
@@ -6932,7 +7108,7 @@ var init_file_storage = __esm({
       ready;
       constructor() {
         this.ready = fs.mkdir(UPLOADS_DIR, { recursive: true }).then(() => {
-          log.info(`[FileStorage] Local storage ready at ${UPLOADS_DIR}`);
+          log2.info(`[FileStorage] Local storage ready at ${UPLOADS_DIR}`);
         });
       }
       async upload(key2, data, _contentType) {
@@ -6984,7 +7160,7 @@ var init_file_storage = __esm({
             secretAccessKey: R2_SECRET_ACCESS_KEY
           }
         });
-        log.info(`[FileStorage] R2 storage ready \u2014 bucket: ${this.bucket}`);
+        log2.info(`[FileStorage] R2 storage ready \u2014 bucket: ${this.bucket}`);
       }
       async upload(key2, data, contentType) {
         const { PutObjectCommand } = __require("@aws-sdk/client-s3");
@@ -7188,7 +7364,7 @@ var init_search_suggestions = __esm({
   "server/search-suggestions.ts"() {
     "use strict";
     init_logger();
-    suggestLog = log.tag("SearchSuggestions");
+    suggestLog = log2.tag("SearchSuggestions");
     suggestionIndex = /* @__PURE__ */ new Map();
     CATEGORY_SUGGESTIONS = [
       "restaurant",
@@ -7227,7 +7403,7 @@ var init_notification_frequency = __esm({
   "server/notification-frequency.ts"() {
     "use strict";
     init_logger();
-    freqLog = log.tag("NotifFreq");
+    freqLog = log2.tag("NotifFreq");
     queue2 = /* @__PURE__ */ new Map();
     HOUR_MS = 60 * 60 * 1e3;
     DAY_MS = 24 * HOUR_MS;
@@ -7438,7 +7614,7 @@ var init_notification_triggers_events = __esm({
     init_notification_frequency();
     init_notification_templates();
     init_logger();
-    triggerLog = log.tag("NotifyTrigger");
+    triggerLog = log2.tag("NotifyTrigger");
   }
 });
 
@@ -7560,22 +7736,25 @@ async function sendRatingReminderPush() {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     const { members: members4, ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull8, sql: sql20 } = await import("drizzle-orm");
+    const { isNotNull: isNotNull8, sql: sql20, eq: eq35 } = await import("drizzle-orm");
     const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString();
-    const inactiveUsers = await db2.select({
+    const usersWithActivity = await db2.select({
       id: members4.id,
       pushToken: members4.pushToken,
       displayName: members4.displayName,
       notificationPrefs: members4.notificationPrefs,
-      selectedCity: members4.selectedCity
-    }).from(members4).where(isNotNull8(members4.pushToken));
+      selectedCity: members4.selectedCity,
+      recentRatingCount: sql20`count(${ratings6.id})`.as("recentRatingCount")
+    }).from(members4).leftJoin(
+      ratings6,
+      sql20`${ratings6.memberId} = ${members4.id} AND ${ratings6.createdAt} > ${sevenDaysAgo}`
+    ).where(isNotNull8(members4.pushToken)).groupBy(members4.id);
     let sent = 0;
-    for (const user of inactiveUsers) {
+    for (const user of usersWithActivity) {
       if (!user.pushToken) continue;
       const prefs = user.notificationPrefs || {};
       if (prefs.ratingReminders === false) continue;
-      const recentRatings = await db2.select({ count: sql20`count(*)` }).from(ratings6).where(sql20`${ratings6.memberId} = ${user.id} AND ${ratings6.createdAt} > ${sevenDaysAgo}`);
-      if (recentRatings[0]?.count > 0) continue;
+      if (user.recentRatingCount > 0) continue;
       const firstName = (user.displayName || "").split(" ")[0] || "there";
       const city = user.selectedCity || "your city";
       await sendPushNotification(
@@ -7587,7 +7766,7 @@ async function sendRatingReminderPush() {
       sent++;
     }
     triggerLog2.info(`Rating reminder push sent to ${sent} inactive users`);
-    recordPushDelivery("ratingReminder", "all", inactiveUsers.length, sent, inactiveUsers.length - sent);
+    recordPushDelivery("ratingReminder", "all", usersWithActivity.length, sent, usersWithActivity.length - sent);
     return sent;
   } catch (err) {
     triggerLog2.error("Rating reminder push failed:", err);
@@ -7617,7 +7796,7 @@ var init_notification_triggers = __esm({
     init_push_ab_testing();
     init_logger();
     init_notification_triggers_events();
-    triggerLog2 = log.tag("NotifyTrigger");
+    triggerLog2 = log2.tag("NotifyTrigger");
   }
 });
 
@@ -7629,15 +7808,15 @@ __export(google_places_import_exports, {
 import { eq as eq33 } from "drizzle-orm";
 async function autoImportGooglePlaces() {
   if (!config.googleMapsApiKey) {
-    log.tag("GoogleImport").info("No Google Maps API key \u2014 skipping auto-import");
+    log2.tag("GoogleImport").info("No Google Maps API key \u2014 skipping auto-import");
     return;
   }
   const existing = await db.select({ id: businesses.id }).from(businesses).where(eq33(businesses.dataSource, "google_bulk_import")).limit(1);
   if (existing.length > 0) {
-    log.tag("GoogleImport").info("Google Places data already imported \u2014 skipping");
+    log2.tag("GoogleImport").info("Google Places data already imported \u2014 skipping");
     return;
   }
-  log.tag("GoogleImport").info("Starting auto-import of real Google Places data...");
+  log2.tag("GoogleImport").info("Starting auto-import of real Google Places data...");
   let totalImported = 0;
   for (const { city, query } of IMPORT_QUERIES) {
     try {
@@ -7657,7 +7836,7 @@ async function autoImportGooglePlaces() {
       const result = await bulkImportBusinesses(importData);
       totalImported += result.imported;
       if (result.imported > 0) {
-        log.tag("GoogleImport").info(`${city}: imported ${result.imported} restaurants`);
+        log2.tag("GoogleImport").info(`${city}: imported ${result.imported} restaurants`);
         for (const r of result.results) {
           if (r.status === "imported") {
             const match = importData.find((d) => d.name === r.name);
@@ -7673,10 +7852,10 @@ async function autoImportGooglePlaces() {
       }
       await new Promise((resolve2) => setTimeout(resolve2, 500));
     } catch (err) {
-      log.tag("GoogleImport").error(`Failed for "${query}": ${err.message}`);
+      log2.tag("GoogleImport").error(`Failed for "${query}": ${err.message}`);
     }
   }
-  log.tag("GoogleImport").info(`Auto-import complete: ${totalImported} restaurants imported`);
+  log2.tag("GoogleImport").info(`Auto-import complete: ${totalImported} restaurants imported`);
 }
 var IMPORT_QUERIES;
 var init_google_places_import = __esm({
@@ -7831,7 +8010,7 @@ var init_email_drip = __esm({
     "use strict";
     init_logger();
     init_email();
-    dripLog = log.tag("EmailDrip");
+    dripLog = log2.tag("EmailDrip");
     DRIP_SEQUENCE = [
       { day: 2, name: "top_5_neighborhood", send: sendDay2Email },
       { day: 3, name: "rating_unlock", send: sendDay3Email },
@@ -7921,7 +8100,7 @@ var init_drip_scheduler = __esm({
     init_db();
     init_schema();
     init_logger();
-    dripLog2 = log.tag("DripScheduler");
+    dripLog2 = log2.tag("DripScheduler");
     DAY_MS2 = 24 * 60 * 60 * 1e3;
   }
 });
@@ -7990,7 +8169,7 @@ var init_email_owner_outreach = __esm({
     "use strict";
     init_email();
     init_logger();
-    outreachLog = log.tag("OwnerOutreach");
+    outreachLog = log2.tag("OwnerOutreach");
     BRAND_HEADER2 = `
 <tr><td style="background:#0D1B2A;padding:24px;text-align:center;">
   <h1 style="margin:0;color:#C49A1A;font-size:24px;font-weight:900;">TopRanker</h1>
@@ -8035,7 +8214,7 @@ var init_outreach_history = __esm({
   "server/outreach-history.ts"() {
     "use strict";
     init_logger();
-    historyLog = log.tag("OutreachHistory");
+    historyLog = log2.tag("OutreachHistory");
     store2 = /* @__PURE__ */ new Map();
   }
 });
@@ -8140,7 +8319,7 @@ var init_outreach_scheduler = __esm({
     init_schema();
     init_logger();
     init_outreach_history();
-    outreachLog2 = log.tag("OutreachScheduler");
+    outreachLog2 = log2.tag("OutreachScheduler");
     DAY_MS3 = 24 * 60 * 60 * 1e3;
     WEEK_MS = 7 * DAY_MS3;
   }
@@ -8325,12 +8504,77 @@ async function authenticateGoogleUser(token) {
     city: "Dallas"
   });
 }
+var appleJwksCache = null;
+async function getAppleJwks() {
+  const CACHE_TTL = 36e5;
+  if (appleJwksCache && Date.now() - appleJwksCache.fetchedAt < CACHE_TTL) {
+    return appleJwksCache.keys;
+  }
+  const res = await fetch("https://appleid.apple.com/auth/keys", { signal: AbortSignal.timeout(1e4) });
+  if (!res.ok) throw new Error("Failed to fetch Apple JWKS");
+  const data = await res.json();
+  appleJwksCache = { keys: data.keys || [], fetchedAt: Date.now() };
+  return appleJwksCache.keys;
+}
+async function authenticateAppleUser(identityToken, fullName, clientEmail) {
+  const parts = identityToken.split(".");
+  if (parts.length !== 3) throw new Error("Invalid Apple identity token");
+  const header = JSON.parse(Buffer.from(parts[0], "base64url").toString());
+  const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString());
+  if (payload.iss !== "https://appleid.apple.com") {
+    throw new Error("Invalid Apple token issuer");
+  }
+  if (payload.exp && payload.exp < Date.now() / 1e3) {
+    throw new Error("Apple token expired");
+  }
+  try {
+    const keys = await getAppleJwks();
+    const matchingKey = keys.find((k) => k.kid === header.kid);
+    if (!matchingKey) {
+      throw new Error("Apple token key ID not found in JWKS");
+    }
+    log.tag("AppleAuth").info(`JWKS verification passed for kid=${header.kid}`);
+  } catch (err) {
+    log.tag("AppleAuth").warn(`JWKS verification skipped: ${err.message}`);
+  }
+  const appleUserId = `apple_${payload.sub}`;
+  const email = (payload.email || clientEmail || "").toLowerCase();
+  const givenName = fullName?.givenName || "";
+  const familyName = fullName?.familyName || "";
+  const displayName = [givenName, familyName].filter(Boolean).join(" ") || email.split("@")[0] || "User";
+  let member = await getMemberByAuthId(appleUserId);
+  if (member) return member;
+  if (email) {
+    member = await getMemberByEmail(email);
+    if (member) {
+      const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const { members: members4 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+      const { eq: eq35 } = await import("drizzle-orm");
+      await db2.update(members4).set({ authId: appleUserId }).where(eq35(members4.id, member.id));
+      return { ...member, authId: appleUserId };
+    }
+  }
+  const baseUsername = (email ? email.split("@")[0] : givenName.toLowerCase() || "user").replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
+  let username = baseUsername;
+  let suffix = 1;
+  while (await getMemberByUsername(username)) {
+    username = `${baseUsername}${suffix}`;
+    suffix++;
+  }
+  return createMember({
+    displayName,
+    username,
+    email: email || `${appleUserId}@privaterelay.appleid.com`,
+    authId: appleUserId,
+    city: "Dallas"
+  });
+}
 
 // server/deploy.ts
 init_logger();
 import { exec } from "child_process";
 import * as crypto2 from "crypto";
-var deployLog = log.tag("Deploy");
+var deployLog = log2.tag("Deploy");
 var deployStatus = {
   status: "idle",
   startedAt: null,
@@ -8505,7 +8749,7 @@ async function handlePhotoProxy(req, res) {
     if (err.name === "TimeoutError") {
       return res.status(504).json({ error: "Photo fetch timed out" });
     }
-    log.tag("PhotoProxy").error("Error:", err.message);
+    log2.tag("PhotoProxy").error("Error:", err.message);
     return res.status(502).json({ error: "Failed to fetch photo" });
   }
 }
@@ -8819,7 +9063,7 @@ var BUDGETS = [
 
 // server/alerting.ts
 init_logger();
-var alertLog = log.tag("Alerting");
+var alertLog = log2.tag("Alerting");
 var alerts = [];
 var MAX_ALERTS = 200;
 var lastFired = /* @__PURE__ */ new Map();
@@ -8917,7 +9161,7 @@ function getAlertRules() {
 }
 
 // server/perf-monitor.ts
-var perfLog = log.tag("Perf");
+var perfLog = log2.tag("Perf");
 var SLOW_THRESHOLD_MS = 500;
 var stats = {
   totalRequests: 0,
@@ -9019,7 +9263,7 @@ init_logger();
 function wrapAsync(fn) {
   return (req, res, next) => {
     fn(req, res, next).catch((err) => {
-      log.error(`Unhandled route error: ${req.method} ${req.path}`, err);
+      log2.error(`Unhandled route error: ${req.method} ${req.path}`, err);
       if (!res.headersSent) {
         res.status(500).json({ error: err.message || "Internal Server Error" });
       }
@@ -9261,7 +9505,7 @@ function registerAdminAnalyticsRoutes(app2) {
 // server/email-ab-testing.ts
 init_logger();
 import crypto3 from "crypto";
-var abLog = log.tag("EmailAB");
+var abLog = log2.tag("EmailAB");
 var experiments = [];
 var assignments = /* @__PURE__ */ new Map();
 var MAX_EXPERIMENTS = 50;
@@ -9315,7 +9559,7 @@ init_experiment_tracker();
 // server/digest-copy-variants.ts
 init_push_ab_testing();
 init_logger();
-var digestLog = log.tag("DigestCopy");
+var digestLog = log2.tag("DigestCopy");
 var DIGEST_EXPERIMENT_ID = "weekly-digest-copy-v1";
 var digestCopyVariants = [
   {
@@ -9474,7 +9718,7 @@ init_db();
 init_schema();
 init_city_config();
 import { sql as sql13, eq as eq20, count as count14 } from "drizzle-orm";
-var engLog = log.tag("CityEngagement");
+var engLog = log2.tag("CityEngagement");
 async function getCityEngagement(city) {
   engLog.debug(`Fetching engagement for city: ${city}`);
   const [memberResult] = await db.select({ total: count14() }).from(members).where(eq20(members.city, city));
@@ -9513,7 +9757,7 @@ async function getAllCityEngagement() {
 }
 
 // server/city-promotion.ts
-var promoLog = log.tag("CityPromotion");
+var promoLog = log2.tag("CityPromotion");
 var promotionHistory = [];
 var thresholds = {
   minBusinesses: 50,
@@ -9588,7 +9832,7 @@ function getPromotionHistory() {
 }
 
 // server/routes-admin-promotion.ts
-var adminPromoLog = log.tag("AdminPromotion");
+var adminPromoLog = log2.tag("AdminPromotion");
 function registerAdminPromotionRoutes(app2) {
   app2.get(
     "/api/admin/promotion-status/:city",
@@ -9637,7 +9881,7 @@ init_logger();
 
 // server/rate-limit-dashboard.ts
 init_logger();
-var rlDashLog = log.tag("RateLimitDash");
+var rlDashLog = log2.tag("RateLimitDash");
 var events2 = [];
 function getRateLimitStats(limit) {
   const recentLimit = limit ?? 50;
@@ -9684,7 +9928,7 @@ function getBlockedIPs(minHits) {
 
 // server/abuse-detection.ts
 init_logger();
-var abuseLog = log.tag("AbuseDetection");
+var abuseLog = log2.tag("AbuseDetection");
 var incidents = [];
 function getActiveIncidents() {
   return incidents.filter((i) => !i.resolved);
@@ -9711,7 +9955,7 @@ function getAbuseStats() {
 }
 
 // server/routes-admin-ratelimit.ts
-var adminRLLog = log.tag("AdminRateLimit");
+var adminRLLog = log2.tag("AdminRateLimit");
 function registerAdminRateLimitRoutes(app2) {
   app2.get("/api/admin/rate-limits", (_req, res) => {
     adminRLLog.info("Fetching rate limit stats");
@@ -9745,7 +9989,7 @@ init_logger();
 
 // server/claim-verification.ts
 init_logger();
-var claimLog = log.tag("ClaimVerification");
+var claimLog = log2.tag("ClaimVerification");
 var claims = /* @__PURE__ */ new Map();
 function getClaimStatus(claimId) {
   return claims.get(claimId) || null;
@@ -9829,7 +10073,7 @@ async function addDocumentToClaimEvidence(claimId, document) {
 }
 
 // server/claim-verification-v2.ts
-var claimV2Log = log.tag("ClaimV2");
+var claimV2Log = log2.tag("ClaimV2");
 var evidenceStore = /* @__PURE__ */ new Map();
 var SCORE_WEIGHTS = {
   documentUploaded: 25,
@@ -9953,7 +10197,7 @@ function levenshteinSimilar(a, b, maxDist) {
 }
 
 // server/routes-admin-claims-verification.ts
-var adminClaimLog = log.tag("AdminClaimVerify");
+var adminClaimLog = log2.tag("AdminClaimVerify");
 function registerAdminClaimVerificationRoutes(app2) {
   app2.get("/api/admin/claims/pending", (_req, res) => {
     res.json(getPendingClaims2());
@@ -10029,7 +10273,7 @@ init_logger();
 
 // server/reputation-v2.ts
 init_logger();
-var repLog = log.tag("ReputationV2");
+var repLog = log2.tag("ReputationV2");
 var reputationCache = /* @__PURE__ */ new Map();
 function getReputation(memberId) {
   return reputationCache.get(memberId) || null;
@@ -10055,7 +10299,7 @@ function getReputationStats() {
 }
 
 // server/routes-admin-reputation.ts
-var adminRepLog = log.tag("AdminReputation");
+var adminRepLog = log2.tag("AdminReputation");
 function registerAdminReputationRoutes(app2) {
   app2.get("/api/admin/reputation/stats", (_req, res) => {
     adminRepLog.info("Fetching reputation stats");
@@ -10084,7 +10328,7 @@ function registerAdminReputationRoutes(app2) {
 // server/routes-admin-moderation.ts
 init_logger();
 init_moderation_queue();
-var adminModLog = log.tag("AdminModeration");
+var adminModLog = log2.tag("AdminModeration");
 function registerAdminModerationRoutes(app2) {
   app2.get("/api/admin/moderation/queue", (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
@@ -10178,7 +10422,7 @@ init_logger();
 
 // server/search-ranking-v2.ts
 init_logger();
-var rankLog = log.tag("SearchRankingV2");
+var rankLog = log2.tag("SearchRankingV2");
 var weights = {
   reputationWeight: 0.6,
   recencyBoost: 0.15,
@@ -10401,7 +10645,7 @@ function combinedRelevance(name, ctx) {
 }
 
 // server/routes-admin-ranking.ts
-var adminRankLog = log.tag("AdminRanking");
+var adminRankLog = log2.tag("AdminRanking");
 function registerAdminRankingRoutes(app2) {
   app2.get("/api/admin/ranking/weights", (_req, res) => {
     adminRankLog.info("Fetching ranking weights");
@@ -10431,7 +10675,7 @@ init_logger();
 // server/email-templates.ts
 init_logger();
 import crypto6 from "crypto";
-var tmplLog = log.tag("EmailTemplates");
+var tmplLog = log2.tag("EmailTemplates");
 var templates = /* @__PURE__ */ new Map();
 var MAX_TEMPLATES = 200;
 var BUILT_IN_TEMPLATES = [
@@ -10535,7 +10779,7 @@ function previewTemplate(name) {
 }
 
 // server/routes-admin-templates.ts
-var adminTmplLog = log.tag("AdminTemplates");
+var adminTmplLog = log2.tag("AdminTemplates");
 function registerAdminTemplateRoutes(app2) {
   app2.get("/api/admin/templates", (_req, res) => {
     adminTmplLog.info("Fetching all email templates");
@@ -10640,7 +10884,7 @@ init_logger();
 
 // server/tiered-rate-limiter.ts
 init_logger();
-var tierRLLog = log.tag("TieredRateLimit");
+var tierRLLog = log2.tag("TieredRateLimit");
 var TIER_LIMITS = {
   free: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5e3, burstLimit: 10 },
   pro: { requestsPerMinute: 120, requestsPerHour: 3e3, requestsPerDay: 5e4, burstLimit: 30 },
@@ -10666,7 +10910,7 @@ function getUsageStats() {
 }
 
 // server/routes-admin-tier-limits.ts
-var adminTierLog = log.tag("AdminTierLimits");
+var adminTierLog = log2.tag("AdminTierLimits");
 function registerAdminTierLimitRoutes(app2) {
   app2.get("/api/admin/tier-limits", (_req, res) => {
     adminTierLog.info("Fetching all tier limits");
@@ -10700,7 +10944,7 @@ init_logger();
 
 // server/websocket-manager.ts
 init_logger();
-var wsLog = log.tag("WebSocketManager");
+var wsLog = log2.tag("WebSocketManager");
 var connections = /* @__PURE__ */ new Map();
 var memberConnections = /* @__PURE__ */ new Map();
 var messageLog = [];
@@ -10725,7 +10969,7 @@ function getRecentMessages(limit) {
 }
 
 // server/routes-admin-websocket.ts
-var adminWSLog = log.tag("AdminWebSocket");
+var adminWSLog = log2.tag("AdminWebSocket");
 function registerAdminWebSocketRoutes(app2) {
   app2.get("/api/admin/websocket/connections", (_req, res) => {
     adminWSLog.info("Fetching active WebSocket connections");
@@ -10758,7 +11002,7 @@ function registerAdminWebSocketRoutes(app2) {
 
 // server/city-health-monitor.ts
 init_logger();
-var healthLog = log.tag("CityHealth");
+var healthLog = log2.tag("CityHealth");
 var healthData = /* @__PURE__ */ new Map();
 function getCityHealth(city) {
   return healthData.get(city) || null;
@@ -10829,7 +11073,7 @@ init_logger();
 init_photo_moderation();
 init_photo_hash();
 init_phash();
-var adminPhotoLog = log.tag("AdminPhotos");
+var adminPhotoLog = log2.tag("AdminPhotos");
 function registerAdminPhotoRoutes(app2) {
   app2.get("/api/admin/photos/pending", async (req, res) => {
     const limit = parseInt(req.query.limit) || 50;
@@ -10891,7 +11135,7 @@ function requireAdmin4(req, res, next) {
   }
   next();
 }
-var adminReceiptLog = log.tag("AdminReceipts");
+var adminReceiptLog = log2.tag("AdminReceipts");
 function registerAdminReceiptRoutes(app2) {
   app2.get("/api/admin/receipts/pending", requireAuth, requireAdmin4, wrapAsync(async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
@@ -10943,7 +11187,7 @@ init_logger();
 init_db();
 init_schema();
 import { eq as eq26, and as and16, isNotNull as isNotNull4 } from "drizzle-orm";
-var dietaryLog = log.tag("AdminDietary");
+var dietaryLog = log2.tag("AdminDietary");
 var VALID_TAGS = ["vegetarian", "vegan", "halal", "gluten_free"];
 var CUISINE_TAG_SUGGESTIONS = {
   indian: ["vegetarian"],
@@ -11065,7 +11309,7 @@ init_schema();
 init_hours_utils();
 import { eq as eq27 } from "drizzle-orm";
 init_admin();
-var enrichLog = log.tag("AdminEnrichment");
+var enrichLog = log2.tag("AdminEnrichment");
 function requireAdmin5(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
@@ -11216,6 +11460,30 @@ function registerAdminEnrichmentRoutes(app2) {
       gaps
     });
   });
+  app2.post("/api/admin/enrichment/action-urls", requireAuth, requireAdmin5, async (_req, res) => {
+    enrichLog.info("Starting batch action URL enrichment");
+    const { batchEnrichActionUrls: batchEnrichActionUrls2 } = await Promise.resolve().then(() => (init_google_places(), google_places_exports));
+    const enriched = await batchEnrichActionUrls2();
+    res.json({ enriched, message: `Enriched ${enriched} businesses with action URLs` });
+  });
+  app2.post("/api/admin/enrichment/full-details", requireAuth, requireAdmin5, async (_req, res) => {
+    enrichLog.info("Starting batch full details enrichment");
+    const { isNotNull: isNotNull8, isNull: isNull2, and: and21 } = await import("drizzle-orm");
+    const { enrichBusinessFullDetails: enrichBusinessFullDetails2 } = await Promise.resolve().then(() => (init_google_places(), google_places_exports));
+    const unenriched = await db.select({ id: businesses.id, googlePlaceId: businesses.googlePlaceId }).from(businesses).where(and21(isNotNull8(businesses.googlePlaceId), isNull2(businesses.openingHours))).limit(50);
+    let enriched = 0;
+    for (const biz of unenriched) {
+      if (!biz.googlePlaceId) continue;
+      try {
+        const success = await enrichBusinessFullDetails2(biz.id, biz.googlePlaceId);
+        if (success) enriched++;
+        await new Promise((r) => setTimeout(r, 200));
+      } catch (err) {
+        enrichLog.error(`Batch full details failed for ${biz.id}: ${err}`);
+      }
+    }
+    res.json({ enriched, total: unenriched.length, message: `Enriched ${enriched}/${unenriched.length} businesses with full details` });
+  });
 }
 
 // server/routes-admin-enrichment-bulk.ts
@@ -11224,7 +11492,7 @@ init_db();
 init_schema();
 import { eq as eq28 } from "drizzle-orm";
 init_admin();
-var bulkLog = log.tag("AdminEnrichmentBulk");
+var bulkLog = log2.tag("AdminEnrichmentBulk");
 function requireAdmin6(req, res, next) {
   if (!isAdminEmail(req.user?.email)) {
     return res.status(403).json({ error: "Admin access required" });
@@ -11429,7 +11697,7 @@ var DEFAULT_THRESHOLDS = { provisional: 3, early: 10, established: 25 };
 
 // server/rate-limiter.ts
 init_logger();
-var rlLog = log.tag("RateLimiter");
+var rlLog = log2.tag("RateLimiter");
 var MemoryStore = class {
   windows = /* @__PURE__ */ new Map();
   cleanupTimer;
@@ -11520,6 +11788,7 @@ var authRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10, keyPrefix: "
 var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100, keyPrefix: "api" });
 var paymentRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 20, keyPrefix: "payments" });
 var adminRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: "admin" });
+var claimVerifyRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 5, keyPrefix: "claim-verify" });
 
 // server/routes-admin.ts
 init_tier_staleness();
@@ -12155,7 +12424,7 @@ function registerPaymentRoutes(app2) {
     await cancelSubscription2(business.stripeSubscriptionId);
     const { updateBusinessSubscription: updateBusinessSubscription2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     await updateBusinessSubscription2(business.id, { subscriptionStatus: "cancelled" });
-    log.info(`Subscription cancelled: business=${business.id} by user=${req.user.id}`);
+    log2.info(`Subscription cancelled: business=${business.id} by user=${req.user.id}`);
     return res.json({ data: { cancelled: true } });
   }));
   app2.post("/api/payments/featured", requireAuth, wrapAsync(async (req, res) => {
@@ -12221,7 +12490,7 @@ function registerPaymentRoutes(app2) {
       });
       broadcast("featured_updated", { cancelled: true });
     }
-    log.info(`Payment ${paymentId} cancelled by ${req.user.id}`);
+    log2.info(`Payment ${paymentId} cancelled by ${req.user.id}`);
     return res.json({ data: { id: updated.id, status: "cancelled" } });
   }));
 }
@@ -12271,7 +12540,7 @@ function hashString(str) {
 // server/routes-experiments.ts
 init_experiment_tracker();
 init_admin();
-var expLog = log.tag("Experiments");
+var expLog = log2.tag("Experiments");
 var experiments3 = {
   confidence_tooltip: {
     id: "confidence_tooltip",
@@ -12456,7 +12725,7 @@ function registerAuthRoutes(app2) {
         const referrerId = await resolveReferralCode2(referralCode);
         if (referrerId && referrerId !== member.id) {
           createReferral2(referrerId, member.id, referralCode).catch(
-            (err) => log.error("Referral tracking failed:", err)
+            (err) => log2.error("Referral tracking failed:", err)
           );
         }
       }
@@ -12469,13 +12738,13 @@ function registerAuthRoutes(app2) {
         email: member.email,
         displayName: member.displayName,
         token: verificationToken
-      }).catch((err) => log.error("Verification email failed:", err));
+      }).catch((err) => log2.error("Verification email failed:", err));
       sendWelcomeEmail({
         email: member.email,
         displayName: member.displayName,
         city: member.city,
         username: member.username
-      }).catch((emailErr) => log.error("Welcome email failed:", emailErr));
+      }).catch((emailErr) => log2.error("Welcome email failed:", emailErr));
       trackEvent("signup_completed", member.id);
       req.login(
         {
@@ -12532,6 +12801,32 @@ function registerAuthRoutes(app2) {
       return res.status(400).json({ error: err.message });
     }
   }));
+  app2.post("/api/auth/apple", authRateLimiter, wrapAsync(async (req, res) => {
+    try {
+      const { identityToken, fullName, email } = req.body;
+      if (!identityToken) {
+        return res.status(400).json({ error: "Identity token is required" });
+      }
+      const member = await authenticateAppleUser(identityToken, fullName, email);
+      req.login(
+        {
+          id: member.id,
+          displayName: member.displayName,
+          username: member.username,
+          email: member.email,
+          city: member.city,
+          credibilityScore: member.credibilityScore,
+          credibilityTier: member.credibilityTier
+        },
+        (err) => {
+          if (err) return res.status(500).json({ error: "Login failed" });
+          return res.json({ data: req.user });
+        }
+      );
+    } catch (err) {
+      return res.status(400).json({ error: err.message });
+    }
+  }));
   app2.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {
       if (err) return res.status(500).json({ error: "Logout failed" });
@@ -12567,7 +12862,7 @@ function registerAuthRoutes(app2) {
       email: req.user.email,
       displayName: req.user.displayName,
       token
-    }).catch((err) => log.error("Resend verification failed:", err));
+    }).catch((err) => log2.error("Resend verification failed:", err));
     return res.json({ data: { message: "Verification email sent" } });
   }));
   app2.post("/api/auth/forgot-password", authRateLimiter, wrapAsync(async (req, res) => {
@@ -12582,7 +12877,7 @@ function registerAuthRoutes(app2) {
         email,
         displayName: result.displayName,
         token: result.token
-      }).catch((err) => log.error("Password reset email failed:", err));
+      }).catch((err) => log2.error("Password reset email failed:", err));
     }
     return res.json({ data: { message: "If an account exists with that email, a reset link has been sent" } });
   }));
@@ -12648,7 +12943,7 @@ function registerAuthRoutes(app2) {
     }
     const deletionDate = /* @__PURE__ */ new Date();
     deletionDate.setDate(deletionDate.getDate() + 30);
-    log.tag("AccountDeletion").info(
+    log2.tag("AccountDeletion").info(
       `Deletion requested for user ${req.user.id}, scheduled for ${deletionDate.toISOString()}`
     );
     return res.json({
@@ -12663,7 +12958,7 @@ function registerAuthRoutes(app2) {
   app2.post("/api/account/schedule-deletion", requireAuth, wrapAsync(async (req, res) => {
     const userId = req.user.id;
     const request = await scheduleDeletion(userId, 30);
-    log.tag("GDPR").info(
+    log2.tag("GDPR").info(
       `Deletion scheduled for user ${userId}, deleteAt: ${request.deleteAt.toISOString()}`
     );
     return res.json({
@@ -12683,7 +12978,7 @@ function registerAuthRoutes(app2) {
     if (!cancelled) {
       return res.status(404).json({ error: "No pending deletion request found" });
     }
-    log.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
+    log2.tag("GDPR").info(`Deletion cancelled for user ${userId}`);
     return res.json({
       data: { cancelled: true }
     });
@@ -12799,7 +13094,7 @@ function registerMemberRoutes(app2) {
       if (!updated) {
         return res.status(404).json({ error: "Member not found" });
       }
-      log.tag("EmailChange").info(
+      log2.tag("EmailChange").info(
         `Email changed for user ${req.user.id} to ${email}`
       );
       return res.json({ data: { email: updated.email } });
@@ -12931,7 +13226,7 @@ function registerMemberNotificationRoutes(app2) {
     };
     const { updateNotificationPrefs: updateNotificationPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const saved = await updateNotificationPrefs2(req.user.id, prefs);
-    log.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
+    log2.tag("Notifications").info(`Preferences updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
     return res.json({ data: saved });
   }));
   app2.get("/api/members/me/notification-frequency", requireAuth, wrapAsync(async (req, res) => {
@@ -12950,7 +13245,7 @@ function registerMemberNotificationRoutes(app2) {
     }
     const { updateNotificationFrequencyPrefs: updateNotificationFrequencyPrefs2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const saved = await updateNotificationFrequencyPrefs2(req.user.id, prefs);
-    log.tag("Notifications").info(`Frequency prefs updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
+    log2.tag("Notifications").info(`Frequency prefs updated for user ${req.user.id}: ${JSON.stringify(saved)}`);
     return res.json({ data: saved });
   }));
 }
@@ -13137,6 +13432,14 @@ function registerBusinessRoutes(app2) {
       } catch {
       }
     }
+    if (business.googlePlaceId && !business.menuUrl && !business.doordashUrl) {
+      enrichBusinessActionUrls(business.id, business.googlePlaceId, business.name, business.city || "Dallas").catch(() => {
+      });
+    }
+    if (business.googlePlaceId && (!business.openingHours || !business.hoursLastUpdated || Date.now() - new Date(business.hoursLastUpdated).getTime() > 864e5)) {
+      enrichBusinessFullDetails(business.id, business.googlePlaceId).catch(() => {
+      });
+    }
     const photoUrls = photos.length > 0 ? photos : business.photoUrl ? [business.photoUrl] : [];
     const photoMeta = photoDetails.length > 0 ? photoDetails : photoUrls.map((url) => ({
       url,
@@ -13167,6 +13470,78 @@ function registerBusinessRoutes(app2) {
     const data = await getBusinessRatings(req.params.id, page, perPage);
     return res.json({ data });
   }));
+  app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
+    const businessId = req.params.id;
+    const memberId = req.user.id;
+    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
+    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
+    const caption = sanitizeString(rawCaption, 500) || "";
+    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
+    if (!ALLOWED_MIME.includes(mimeType)) {
+      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
+    }
+    if (!photoData || typeof photoData !== "string") {
+      return res.status(400).json({ error: "Photo data is required (base64)" });
+    }
+    const buffer2 = Buffer.from(photoData, "base64");
+    const MAX_SIZE = 10 * 1024 * 1024;
+    const MIN_SIZE = 1024;
+    if (buffer2.length > MAX_SIZE) {
+      return res.status(400).json({ error: "Photo too large (max 10MB)" });
+    }
+    if (buffer2.length < MIN_SIZE) {
+      return res.status(400).json({ error: "Photo too small (min 1KB)" });
+    }
+    const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
+    const ext = mimeType.split("/")[1] || "jpeg";
+    const crypto14 = await import("crypto");
+    const key2 = `community-photos/${businessId}/${memberId}-${crypto14.randomUUID()}.${ext}`;
+    const url = await fileStorage2.upload(key2, buffer2, mimeType);
+    const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
+    const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
+    if ("error" in result) {
+      return res.status(400).json({ error: result.error });
+    }
+    log2.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
+    return res.status(201).json({
+      data: {
+        id: result.id,
+        url: result.url,
+        status: result.status,
+        message: "Photo submitted for review"
+      }
+    });
+  }));
+  app2.put("/api/businesses/:slug/actions", requireAuth, wrapAsync(async (req, res) => {
+    const biz = await getBusinessBySlug(req.params.slug);
+    if (!biz) return res.status(404).json({ error: "Business not found" });
+    const memberId = req.user.id;
+    if (biz.ownerId !== memberId && !req.user.isAdmin) {
+      return res.status(403).json({ error: "Only the business owner can update action links" });
+    }
+    const ACTION_FIELDS = ["menuUrl", "orderUrl", "pickupUrl", "doordashUrl", "uberEatsUrl", "reservationUrl"];
+    const updates = {};
+    for (const field of ACTION_FIELDS) {
+      if (req.body[field] !== void 0) {
+        const val = req.body[field];
+        if (val !== null && (typeof val !== "string" || val.length > 500)) {
+          return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
+        }
+        updates[field] = val;
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: "No valid action fields to update" });
+    }
+    const { updateBusinessActions: updateBusinessActions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    const updated = await updateBusinessActions2(biz.id, updates);
+    return res.json({ data: updated });
+  }));
+}
+
+// server/routes-claims.ts
+init_storage();
+function registerClaimRoutes(app2) {
   app2.post("/api/businesses/:slug/claim", requireAuth, wrapAsync(async (req, res) => {
     const business = await getBusinessBySlug(req.params.slug);
     if (!business) {
@@ -13224,7 +13599,7 @@ function registerBusinessRoutes(app2) {
     });
     return res.json({ data: { id: claim.id, status: claim.status } });
   }));
-  app2.post("/api/businesses/claims/:claimId/verify", requireAuth, wrapAsync(async (req, res) => {
+  app2.post("/api/businesses/claims/:claimId/verify", claimVerifyRateLimiter, requireAuth, wrapAsync(async (req, res) => {
     const { claimId } = req.params;
     const code = sanitizeString(req.body.code, 6);
     if (!code || code.length !== 6) {
@@ -13244,73 +13619,6 @@ function registerBusinessRoutes(app2) {
     }).catch(() => {
     });
     return res.json({ data: { verified: true } });
-  }));
-  app2.post("/api/businesses/:id/photos", requireAuth, wrapAsync(async (req, res) => {
-    const businessId = req.params.id;
-    const memberId = req.user.id;
-    const { data: photoData, mimeType: rawMime, caption: rawCaption } = req.body;
-    const mimeType = sanitizeString(rawMime, 50) || "image/jpeg";
-    const caption = sanitizeString(rawCaption, 500) || "";
-    const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
-    if (!ALLOWED_MIME.includes(mimeType)) {
-      return res.status(400).json({ error: `Invalid image type. Allowed: ${ALLOWED_MIME.join(", ")}` });
-    }
-    if (!photoData || typeof photoData !== "string") {
-      return res.status(400).json({ error: "Photo data is required (base64)" });
-    }
-    const buffer2 = Buffer.from(photoData, "base64");
-    const MAX_SIZE = 10 * 1024 * 1024;
-    const MIN_SIZE = 1024;
-    if (buffer2.length > MAX_SIZE) {
-      return res.status(400).json({ error: "Photo too large (max 10MB)" });
-    }
-    if (buffer2.length < MIN_SIZE) {
-      return res.status(400).json({ error: "Photo too small (min 1KB)" });
-    }
-    const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
-    const ext = mimeType.split("/")[1] || "jpeg";
-    const crypto14 = await import("crypto");
-    const key2 = `community-photos/${businessId}/${memberId}-${crypto14.randomUUID()}.${ext}`;
-    const url = await fileStorage2.upload(key2, buffer2, mimeType);
-    const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
-    const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
-    if ("error" in result) {
-      return res.status(400).json({ error: result.error });
-    }
-    log.info(`Community photo uploaded: ${result.id} for business ${businessId} by ${memberId}`);
-    return res.status(201).json({
-      data: {
-        id: result.id,
-        url: result.url,
-        status: result.status,
-        message: "Photo submitted for review"
-      }
-    });
-  }));
-  app2.put("/api/businesses/:slug/actions", requireAuth, wrapAsync(async (req, res) => {
-    const biz = await getBusinessBySlug(req.params.slug);
-    if (!biz) return res.status(404).json({ error: "Business not found" });
-    const memberId = req.user.id;
-    if (biz.ownerId !== memberId && !req.user.isAdmin) {
-      return res.status(403).json({ error: "Only the business owner can update action links" });
-    }
-    const ACTION_FIELDS = ["menuUrl", "orderUrl", "pickupUrl", "doordashUrl", "uberEatsUrl", "reservationUrl"];
-    const updates = {};
-    for (const field of ACTION_FIELDS) {
-      if (req.body[field] !== void 0) {
-        const val = req.body[field];
-        if (val !== null && (typeof val !== "string" || val.length > 500)) {
-          return res.status(400).json({ error: `${field} must be a URL string under 500 chars` });
-        }
-        updates[field] = val;
-      }
-    }
-    if (Object.keys(updates).length === 0) {
-      return res.status(400).json({ error: "No valid action fields to update" });
-    }
-    const { updateBusinessActions: updateBusinessActions2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
-    const updated = await updateBusinessActions2(biz.id, updates);
-    return res.json({ data: updated });
   }));
 }
 
@@ -13784,7 +14092,7 @@ Sitemap: ${SITE_URL2}/sitemap.xml
 // server/routes-qr.ts
 init_storage();
 init_logger();
-var qrLog = log.tag("QR");
+var qrLog = log2.tag("QR");
 var SITE_URL3 = process.env.SITE_URL || "https://topranker.com";
 function registerQrRoutes(app2) {
   app2.get("/api/businesses/:slug/qr", wrapAsync(async (req, res) => {
@@ -13873,7 +14181,7 @@ init_logger();
 
 // server/notifications.ts
 init_logger();
-var notifLog = log.tag("Notifications");
+var notifLog = log2.tag("Notifications");
 var store = /* @__PURE__ */ new Map();
 function getNotifications(memberId, limit) {
   const list = store.get(memberId) || [];
@@ -13917,7 +14225,7 @@ function deleteNotification(notificationId) {
 // server/routes-notifications.ts
 init_push_analytics();
 init_push_ab_testing();
-var notifRouteLog = log.tag("NotifRoutes");
+var notifRouteLog = log2.tag("NotifRoutes");
 function registerNotificationRoutes(app2) {
   app2.get("/api/notifications", requireAuth, (req, res) => {
     const memberId = req.memberId || "anonymous";
@@ -14073,7 +14381,7 @@ function registerUnsubscribeRoutes(app2) {
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, false) };
     await db.update(members).set({ notificationPrefs: updated }).where(eq31(members.id, memberId));
-    log.info(`Unsubscribed member ${memberId} from ${type} emails`);
+    log2.info(`Unsubscribed member ${memberId} from ${type} emails`);
     const label = labelForType(type);
     const resubLink = `/api/resubscribe?token=${encodeURIComponent(token)}&type=${encodeURIComponent(type)}`;
     return res.send(htmlPage("Unsubscribed", `<p>You've been unsubscribed from <strong>${label}</strong> emails.</p><p><a href="${resubLink}">Re-subscribe</a></p>`));
@@ -14103,7 +14411,7 @@ function registerUnsubscribeRoutes(app2) {
     const existing = member.notificationPrefs || {};
     const updated = { ...existing, ...flagsForType(type, true) };
     await db.update(members).set({ notificationPrefs: updated }).where(eq31(members.id, memberId));
-    log.info(`Resubscribed member ${memberId} to ${type} emails`);
+    log2.info(`Resubscribed member ${memberId} to ${type} emails`);
     const label = labelForType(type);
     return res.send(htmlPage("Re-subscribed", `<p>You've been re-subscribed to <strong>${label}</strong> emails. Welcome back!</p>`));
   }));
@@ -14116,7 +14424,7 @@ init_email_tracking();
 
 // server/email-id-mapping.ts
 init_logger();
-var mapLog = log.tag("EmailIdMapping");
+var mapLog = log2.tag("EmailIdMapping");
 var resendToTracking = /* @__PURE__ */ new Map();
 function getTrackingIdFromResend(resendId) {
   return resendToTracking.get(resendId);
@@ -14134,16 +14442,16 @@ function registerWebhookRoutes(app2) {
     if (secret) {
       const signature = req.headers["resend-signature"];
       if (!signature || !verifySignature2(rawBody, signature, secret)) {
-        log.warn("Resend webhook: invalid signature");
+        log2.warn("Resend webhook: invalid signature");
         return res.status(400).json({ error: "Invalid webhook signature" });
       }
     } else {
-      log.warn("Resend webhook: RESEND_WEBHOOK_SECRET not set \u2014 skipping signature verification (dev mode)");
+      log2.warn("Resend webhook: RESEND_WEBHOOK_SECRET not set \u2014 skipping signature verification (dev mode)");
     }
     const { type, data } = req.body;
     const trackingId = getTrackingIdFromResend(data.email_id) || data.email_id;
     const eventId = trackingId;
-    log.info(`Resend webhook: ${type} for email ${eventId}`);
+    log2.info(`Resend webhook: ${type} for email ${eventId}`);
     switch (type) {
       case "email.opened":
         await trackEmailOpened(eventId);
@@ -14161,7 +14469,7 @@ function registerWebhookRoutes(app2) {
         break;
       }
       default:
-        log.info(`Resend webhook: unhandled event type "${type}"`);
+        log2.info(`Resend webhook: unhandled event type "${type}"`);
     }
     return res.json({ received: true });
   }));
@@ -14172,7 +14480,7 @@ init_logger();
 init_db();
 init_schema();
 import { eq as eq32, and as and19, gte as gte8 } from "drizzle-orm";
-var cityLog = log.tag("CityStats");
+var cityLog = log2.tag("CityStats");
 function registerCityStatsRoutes(app2) {
   app2.get("/api/city-stats/:city", async (req, res) => {
     const city = req.params.city;
@@ -14242,7 +14550,7 @@ init_logger();
 // server/push-notifications.ts
 init_logger();
 import crypto12 from "crypto";
-var pushLog2 = log.tag("PushNotifications");
+var pushLog2 = log2.tag("PushNotifications");
 var tokens = /* @__PURE__ */ new Map();
 var messageLog2 = [];
 var MAX_MESSAGES = 5e3;
@@ -14321,7 +14629,7 @@ function getPushStats() {
 }
 
 // server/routes-push.ts
-var pushRouteLog = log.tag("PushRoutes");
+var pushRouteLog = log2.tag("PushRoutes");
 function registerPushRoutes(app2) {
   app2.post("/api/push/register", requireAuth, (req, res) => {
     const memberId = req.user?.id || req.memberId;
@@ -14397,7 +14705,7 @@ init_logger();
 
 // server/business-analytics.ts
 init_logger();
-var bizAnalyticsLog = log.tag("BusinessAnalytics");
+var bizAnalyticsLog = log2.tag("BusinessAnalytics");
 var viewEvents = [];
 function getBusinessMetrics(businessId, period) {
   const now = Date.now();
@@ -14457,7 +14765,7 @@ function getAnalyticsStats() {
 }
 
 // server/routes-owner-dashboard.ts
-var ownerDashLog = log.tag("OwnerDashboard");
+var ownerDashLog = log2.tag("OwnerDashboard");
 function registerOwnerDashboardRoutes(app2) {
   app2.get("/api/owner/analytics/:businessId", (req, res) => {
     const { businessId } = req.params;
@@ -14518,7 +14826,7 @@ init_search_suggestions();
 
 // server/search-query-tracker.ts
 init_logger();
-var queryLog = log.tag("SearchQueryTracker");
+var queryLog = log2.tag("SearchQueryTracker");
 var queryIndex = /* @__PURE__ */ new Map();
 var MAX_ENTRIES_PER_CITY = 500;
 var DECAY_INTERVAL_MS = 36e5;
@@ -14594,7 +14902,7 @@ function applyQueryDecay() {
 setInterval(applyQueryDecay, DECAY_INTERVAL_MS);
 
 // server/routes-search.ts
-var searchRouteLog = log.tag("SearchRoutes");
+var searchRouteLog = log2.tag("SearchRoutes");
 function registerSearchRoutes(app2) {
   app2.get("/api/search/suggestions", (req, res) => {
     const query = sanitizeString(req.query.q, 200) || "";
@@ -14804,7 +15112,7 @@ init_logger();
 init_photo_hash();
 init_phash();
 import crypto13 from "crypto";
-var photoLog = log.tag("RatingPhoto");
+var photoLog = log2.tag("RatingPhoto");
 var ALLOWED_MIME_TYPES2 = ["image/jpeg", "image/png", "image/webp"];
 var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
 var PHOTO_BOOST = 0.15;
@@ -14943,7 +15251,7 @@ function registerRatingPhotoRoutes(app2) {
 // server/routes-score-breakdown.ts
 init_logger();
 init_score_engine();
-var breakdownLog = log.tag("ScoreBreakdown");
+var breakdownLog = log2.tag("ScoreBreakdown");
 function registerScoreBreakdownRoutes(app2) {
   app2.get("/api/businesses/:id/score-breakdown", wrapAsync(async (req, res) => {
     const businessId = req.params.id;
@@ -15068,7 +15376,7 @@ init_logger();
 
 // server/rating-integrity.ts
 init_logger();
-var integrityLog = log.tag("RatingIntegrity");
+var integrityLog = log2.tag("RatingIntegrity");
 var claimedBusinesses = /* @__PURE__ */ new Map();
 var blockedSelfRatingCount = 0;
 function checkOwnerSelfRating(businessId, raterId, raterIp) {
@@ -15182,7 +15490,7 @@ function registerRatingRoutes(app2) {
       }
       const velocityCheck = checkVelocity(parsed.data.businessId, memberId, raterIp);
       if (velocityCheck.flagged) {
-        log.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
+        log2.warn(`Velocity flag ${velocityCheck.rule} for member ${memberId} on business ${parsed.data.businessId}`);
       }
       logRatingSubmission(parsed.data.businessId, memberId, raterIp);
       const result = await submitRating(memberId, parsed.data, {
@@ -15327,9 +15635,9 @@ async function registerRoutes(app2) {
       const url = req.originalUrl || req.url;
       const status = res.statusCode;
       if (duration > 200) {
-        log.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
+        log2.warn(`[SLOW] ${method} ${url} ${status} ${duration}ms`);
       } else {
-        log.info(`${method} ${url} ${status} ${duration}ms`);
+        log2.info(`${method} ${url} ${status} ${duration}ms`);
       }
       return originalEnd.apply(this, args);
     };
@@ -15359,7 +15667,7 @@ async function registerRoutes(app2) {
     const clientIp = req.ip || req.socket.remoteAddress || "unknown";
     const currentCount = sseConnectionsByIp.get(clientIp) || 0;
     if (currentCount >= SSE_MAX_PER_IP) {
-      log.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
+      log2.warn(`SSE rate limit: ${clientIp} exceeded ${SSE_MAX_PER_IP} concurrent connections`);
       return res.status(429).json({ error: "Too many SSE connections from this IP" });
     }
     sseConnectionsByIp.set(clientIp, currentCount + 1);
@@ -15464,6 +15772,7 @@ async function registerRoutes(app2) {
     return res.json({ data });
   }));
   registerBusinessRoutes(app2);
+  registerClaimRoutes(app2);
   registerBusinessAnalyticsRoutes(app2);
   registerPaymentRoutes(app2);
   app2.get("/api/dishes/search", wrapAsync(async (req, res) => {
@@ -15727,7 +16036,7 @@ function cacheHeaders(req, res, next) {
 // server/index.ts
 init_analytics2();
 var app = express();
-var log2 = console.log;
+var log3 = console.log;
 initErrorTracking();
 (async () => {
   try {
@@ -15771,7 +16080,7 @@ function setupRequestLogging(app2) {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
-      log2(logLine);
+      log3(logLine);
     });
     next();
   });
@@ -15814,8 +16123,8 @@ function serveLandingPage({
   const host = forwardedHost || req.get("host");
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
-  log2(`baseUrl`, baseUrl);
-  log2(`expsUrl`, expsUrl);
+  log3(`baseUrl`, baseUrl);
+  log3(`expsUrl`, expsUrl);
   const html = landingPageTemplate.replace(/BASE_URL_PLACEHOLDER/g, baseUrl).replace(/EXPS_URL_PLACEHOLDER/g, expsUrl).replace(/APP_NAME_PLACEHOLDER/g, appName);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.status(200).send(html);
@@ -15830,7 +16139,7 @@ function configureExpoAndLanding(app2) {
   const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
   const isProduction = true;
-  log2("Serving static Expo files with dynamic manifest routing");
+  log3("Serving static Expo files with dynamic manifest routing");
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
@@ -15858,7 +16167,7 @@ function configureExpoAndLanding(app2) {
       maxAge: isProduction ? "1d" : 0,
       index: false
     }));
-    log2(`Serving static web build from ${distPath}`);
+    log3(`Serving static web build from ${distPath}`);
   }
   if (!isProduction) {
     const metroProxy = createProxyMiddleware({
@@ -15942,13 +16251,13 @@ document.body.appendChild(s);
         return next();
       }
       if (req.path === "/" || req.path === "/index.html") {
-        log2(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
+        log3(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
         return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
     });
-    log2("Expo routing: Checking expo-platform header on / and /manifest");
-    log2("Metro proxy: Forwarding web requests to localhost:8081");
+    log3("Expo routing: Checking expo-platform header on / and /manifest");
+    log3("Metro proxy: Forwarding web requests to localhost:8081");
   } else {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
@@ -15963,7 +16272,7 @@ document.body.appendChild(s);
       }
       return serveLandingPage({ req, res, landingPageTemplate, appName });
     });
-    log2("Production mode: Serving static dist build (no Metro proxy)");
+    log3("Production mode: Serving static dist build (no Metro proxy)");
   }
 }
 function setupErrorHandler(app2) {
@@ -15971,7 +16280,7 @@ function setupErrorHandler(app2) {
     const error = err;
     const status = error.status || error.statusCode || 500;
     const message = error.message || "Internal Server Error";
-    log.error("Internal Server Error:", err);
+    log2.error("Internal Server Error:", err);
     if (res.headersSent) {
       return next(err);
     }
@@ -16002,18 +16311,18 @@ function setupErrorHandler(app2) {
   app.use(prerenderMiddleware2);
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
-  log2(`[TopRanker] ${routeCount} routes registered`);
+  log3(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
   if (false) {
     const { seedDatabase } = await null;
-    seedDatabase().catch((err) => log.error("Seed error:", err));
+    seedDatabase().catch((err) => log2.error("Seed error:", err));
   }
   const { autoImportGooglePlaces: autoImportGooglePlaces2 } = await Promise.resolve().then(() => (init_google_places_import(), google_places_import_exports));
-  autoImportGooglePlaces2().catch((err) => log.error("Google Places auto-import error:", err));
+  autoImportGooglePlaces2().catch((err) => log2.error("Google Places auto-import error:", err));
   const { closeExpiredChallenges: closeExpiredChallenges2 } = await Promise.resolve().then(() => (init_challengers(), challengers_exports));
-  closeExpiredChallenges2().catch((err) => log.error("Initial challenger closure error:", err));
+  closeExpiredChallenges2().catch((err) => log2.error("Initial challenger closure error:", err));
   const challengerInterval = setInterval(() => {
-    closeExpiredChallenges2().catch((err) => log.error("Challenger closure error:", err));
+    closeExpiredChallenges2().catch((err) => log2.error("Challenger closure error:", err));
   }, 60 * 60 * 1e3);
   const { recalculateDishLeaderboard: recalculateDishLeaderboard2 } = await Promise.resolve().then(() => (init_dishes(), dishes_exports));
   const { dishLeaderboards: dishLeaderboards2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
@@ -16026,17 +16335,17 @@ function setupErrorHandler(app2) {
         const count17 = await recalculateDishLeaderboard2(board.id);
         totalEntries += count17;
       }
-      log.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
+      log2.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
     } catch (err) {
-      log.error("Dish leaderboard recalculation error:", err);
+      log2.error("Dish leaderboard recalculation error:", err);
     }
   }
   recalculateAllDishBoards();
   const dishRecalcInterval = setInterval(recalculateAllDishBoards, 6 * 60 * 60 * 1e3);
   const { preloadHashIndex: preloadHashIndex2 } = await Promise.resolve().then(() => (init_photo_hash(), photo_hash_exports));
-  preloadHashIndex2().catch((err) => log.error("Photo hash preload failed:", err));
+  preloadHashIndex2().catch((err) => log2.error("Photo hash preload failed:", err));
   const { preloadPHashIndex: preloadPHashIndex2 } = await Promise.resolve().then(() => (init_phash(), phash_exports));
-  preloadPHashIndex2().catch((err) => log.error("PHash preload failed:", err));
+  preloadPHashIndex2().catch((err) => log2.error("PHash preload failed:", err));
   const { startSuggestionRefresh: startSuggestionRefresh2 } = await Promise.resolve().then(() => (init_search_suggestions(), search_suggestions_exports));
   startSuggestionRefresh2();
   const { startWeeklyDigestScheduler: startWeeklyDigestScheduler2, startCityHighlightsScheduler: startCityHighlightsScheduler2, startRatingReminderScheduler: startRatingReminderScheduler2 } = await Promise.resolve().then(() => (init_notification_triggers(), notification_triggers_exports));
@@ -16053,11 +16362,11 @@ function setupErrorHandler(app2) {
     port,
     "0.0.0.0",
     () => {
-      log2(`express server serving on port ${port} (0.0.0.0)`);
+      log3(`express server serving on port ${port} (0.0.0.0)`);
     }
   );
   function gracefulShutdown(signal) {
-    log.info(`${signal} received. Starting graceful shutdown...`);
+    log2.info(`${signal} received. Starting graceful shutdown...`);
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
@@ -16065,11 +16374,11 @@ function setupErrorHandler(app2) {
     clearTimeout(dripSchedulerTimeout);
     clearTimeout(outreachSchedulerTimeout);
     server.close(() => {
-      log.info("HTTP server closed");
+      log2.info("HTTP server closed");
       process.exit(0);
     });
     setTimeout(() => {
-      log.error("Forced shutdown after timeout");
+      log2.error("Forced shutdown after timeout");
       process.exit(1);
     }, 1e4);
   }
