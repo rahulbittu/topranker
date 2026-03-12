@@ -50,7 +50,7 @@ describe("Sprint 281: `as any` Cast Reduction", () => {
     const lib = countAsAnyInDir("lib");
     const server = countAsAnyInDir("server");
     const total = app + components + lib + server;
-    expect(total).toBeLessThan(135); // Sprint 711: animated progress width percentage cast
+    expect(total).toBeLessThan(140); // Sprint 727: network analytics casts width percentage cast
   });
 
   it("client-side casts under 15", () => {

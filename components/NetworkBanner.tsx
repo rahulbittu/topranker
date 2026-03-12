@@ -8,6 +8,8 @@ import NetInfo from "@react-native-community/netinfo";
 import { BRAND } from "@/constants/brand";
 import { isServingMockData, resetMockDataFlag } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
+import { addBreadcrumb } from "@/lib/sentry";
+import { track } from "@/lib/analytics";
 
 /**
  * Network connectivity banner.
@@ -38,6 +40,9 @@ export function NetworkBanner() {
       if (wasOfflineRef.current) {
         setWasOffline(true);
         setTimeout(() => setWasOffline(false), 3000);
+        // Sprint 727: Track network recovery
+        addBreadcrumb("network", "back_online");
+        track("network_recovered" as any);
       }
       wasOfflineRef.current = false;
       setIsOffline(false);
@@ -45,6 +50,9 @@ export function NetworkBanner() {
     const goOffline = () => {
       setIsOffline(true);
       wasOfflineRef.current = true;
+      // Sprint 727: Track network loss for crash correlation
+      addBreadcrumb("network", "went_offline");
+      track("network_lost" as any);
     };
 
     if (Platform.OS === "web" && typeof navigator !== "undefined") {

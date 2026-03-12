@@ -46,6 +46,23 @@ export function recordApiCall(endpoint: string, durationMs: number): void {
   marks.push({ name: `api:${endpoint}`, startMs: Date.now() - durationMs, endMs: Date.now(), durationMs });
 }
 
+// Sprint 727: Track API errors for network resilience monitoring
+const apiErrors: Array<{ endpoint: string; status: number; timestamp: number }> = [];
+const MAX_API_ERRORS = 50;
+
+/** Record an API error */
+export function recordApiError(endpoint: string, status: number): void {
+  apiErrors.push({ endpoint, status, timestamp: Date.now() });
+  if (apiErrors.length > MAX_API_ERRORS) {
+    apiErrors.splice(0, apiErrors.length - MAX_API_ERRORS);
+  }
+}
+
+/** Get recent API errors */
+export function getRecentApiErrors(limit = 10): Array<{ endpoint: string; status: number; timestamp: number }> {
+  return apiErrors.slice(-limit);
+}
+
 /** Record a screen mount time */
 export function recordScreenMount(screenName: string, durationMs: number): void {
   if (!screenMountTimes[screenName]) screenMountTimes[screenName] = [];
