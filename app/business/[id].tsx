@@ -200,7 +200,9 @@ export default function BusinessProfileScreen() {
         url: getShareUrl("business", business.slug),
       });
       Analytics.shareBusiness(business.slug, "share_sheet");
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn("[Share] Failed:", e);
+    }
   };
   const handleCopyLink = async () => {
     Haptics.selectionAsync();

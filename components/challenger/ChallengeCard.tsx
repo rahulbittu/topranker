@@ -80,7 +80,9 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
       await Share.share({
         message: `${catDisplay.emoji} ${catDisplay.label} Challenge in ${challenge.city}\n\n${defender} (${defPct}%) vs ${challenger} (${chPct}%)\n\n${formatCompact(defenderVotes)} vs ${formatCompact(challengerVotes)} weighted votes\n${countdown.ended ? "Challenge ended!" : `${countdown.days}d ${countdown.hours}h remaining`}\n\nVote now on TopRanker!`,
       });
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn("[Challenge] Share failed:", e);
+    }
   };
 
   return (

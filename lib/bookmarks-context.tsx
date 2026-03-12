@@ -43,7 +43,7 @@ export function BookmarksProvider({ children }: { children: React.ReactNode }) {
           const map = new Map<string, BookmarkEntry>();
           entries.forEach(e => map.set(e.id, e));
           setBookmarks(map);
-        } catch {}
+        } catch (e) { if (__DEV__) console.warn("[Bookmarks] Parse failed:", e); }
       }
     });
   }, [storageKey]);

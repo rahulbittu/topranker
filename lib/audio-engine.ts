@@ -109,7 +109,7 @@ async function ensureAudioConfigured(): Promise<void> {
 export async function playSound(name: SoundName): Promise<void> {
   const def = SOUND_DEFS[name];
   if (!def) {
-    console.warn(`[AudioEngine] Unknown sound: ${name}`);
+    if (__DEV__) console.warn(`[AudioEngine] Unknown sound: ${name}`);
     return;
   }
 
@@ -163,7 +163,7 @@ export async function unloadAllSounds(): Promise<void> {
   for (const key of Object.keys(soundCache)) {
     try {
       await soundCache[key].unloadAsync();
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn("[AudioEngine] Unload failed:", e); }
     delete soundCache[key];
   }
 }

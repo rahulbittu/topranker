@@ -65,7 +65,7 @@ export async function unloadAllSounds(): Promise<void> {
   for (const key of Object.keys(soundCache)) {
     try {
       await soundCache[key].unloadAsync();
-    } catch {}
+    } catch (e) { if (__DEV__) console.warn("[Audio] Unload failed:", e); }
     delete soundCache[key];
   }
 }

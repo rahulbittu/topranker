@@ -91,7 +91,7 @@ export class ErrorBoundary extends Component<Props, State> {
               track("error_boundary_go_home" as any);
               this.setState({ hasError: false, error: null });
               // Navigate to home — wrapped in try/catch in case router is also broken
-              try { require("expo-router").router.replace("/(tabs)"); } catch {}
+              try { require("expo-router").router.replace("/(tabs)"); } catch (e) { if (__DEV__) console.warn("[ErrorBoundary] Nav failed:", e); }
             }}
             accessibilityRole="button"
             accessibilityLabel="Go to home screen"

@@ -49,7 +49,9 @@ export default function ReferralScreen() {
       });
       Analytics.shareBusiness("referral", "share_sheet");
       Analytics.betaReferralShare("share_sheet");
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn("[Referral] Share failed:", e);
+    }
   };
 
   const copyCode = () => {

@@ -112,7 +112,7 @@ function useBetaFunnel() {
       try {
         const res = await fetch(getApiUrl() + "/api/admin/analytics/beta-funnel", { credentials: "include" });
         if (res.ok) { const json = await res.json(); setData(json.data); }
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn("[Admin] Fetch failed:", e); }
     })();
   }, []);
   return data;
@@ -125,7 +125,7 @@ function useActiveUsers() {
       try {
         const res = await fetch(getApiUrl() + "/api/admin/analytics/active-users", { credentials: "include" });
         if (res.ok) { const json = await res.json(); setData(json.data); }
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn("[Admin] Fetch failed:", e); }
     })();
   }, []);
   return data;
@@ -149,7 +149,7 @@ function useDimensionTiming() {
       try {
         const res = await fetch(getApiUrl() + "/api/admin/analytics/dimension-timing", { credentials: "include" });
         if (res.ok) { const json = await res.json(); setData(json.data); }
-      } catch {}
+      } catch (e) { if (__DEV__) console.warn("[Admin] Fetch failed:", e); }
     })();
   }, []);
   return data;

@@ -48,7 +48,7 @@ export function useRecentSearches() {
 
   useEffect(() => {
     AsyncStorage.getItem("recent_searches").then((val) => {
-      if (val) try { setRecentSearches(JSON.parse(val)); } catch {}
+      if (val) try { setRecentSearches(JSON.parse(val)); } catch (e) { if (__DEV__) console.warn("[Search] Parse failed:", e); }
     });
   }, []);
 

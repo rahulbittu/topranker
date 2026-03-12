@@ -59,7 +59,9 @@ export function BusinessActionBar({
         url: getShareUrl("business", slug),
       });
       Analytics.shareBusiness(slug, "share_sheet");
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn("[ActionBar] Share failed:", e);
+    }
   };
 
   const handleCopyLink = async () => {

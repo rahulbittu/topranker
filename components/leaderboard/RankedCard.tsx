@@ -123,7 +123,9 @@ export const RankedCard = React.memo(function RankedCard({ item, index = 0 }: { 
                 url: getShareUrl("business", item.slug),
               });
               Analytics.shareBusiness(item.slug, "ranked_card");
-            } catch {}
+            } catch (e) {
+              if (__DEV__) console.warn("[RankedCard] Share failed:", e);
+            }
           }}
           onLongPress={async (e) => {
             e.stopPropagation();
