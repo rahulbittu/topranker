@@ -399,14 +399,21 @@ export default function RootLayout() {
   }, []);
 
   // Sprint 717: Global error handler + navigation breadcrumbs
+  // Sprint 721: Mount guard prevents handler chain corruption on re-mount
+  const errorHandlerInstalled = useRef(false);
   useEffect(() => {
+    if (errorHandlerInstalled.current) return;
+    errorHandlerInstalled.current = true;
     const originalHandler = ErrorUtils.getGlobalHandler();
     ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
       addBreadcrumb("error", `${isFatal ? "FATAL" : "ERROR"}: ${error.message}`);
       reportError(error, { isFatal: !!isFatal, source: "global_handler" });
       originalHandler(error, isFatal);
     });
-    return () => ErrorUtils.setGlobalHandler(originalHandler);
+    return () => {
+      errorHandlerInstalled.current = false;
+      ErrorUtils.setGlobalHandler(originalHandler);
+    };
   }, []);
 
   useEffect(() => {

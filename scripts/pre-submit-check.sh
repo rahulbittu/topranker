@@ -46,6 +46,9 @@ check "Encryption exemption: $ENCRYPTION" "$([ "$ENCRYPTION" = "false" ] && echo
 PRIVACY=$(node -e "try { console.log(require('./app.json').expo.ios.privacyManifests ? 'yes' : 'no') } catch { console.log('no') }")
 check "Privacy manifest present" "$([ "$PRIVACY" = "yes" ] && echo true || echo false)"
 
+PRIVACY_COUNT=$(node -e "try { console.log(require('./app.json').expo.ios.privacyManifests.NSPrivacyAccessedAPITypes.length) } catch { console.log(0) }")
+check "Privacy API types declared: $PRIVACY_COUNT (expected 4)" "$([ "$PRIVACY_COUNT" = "4" ] && echo true || echo false)"
+
 echo ""
 
 # 2. eas.json checks

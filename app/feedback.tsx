@@ -22,6 +22,7 @@ import { getApiUrl } from "@/lib/query-client";
 import { hapticPress } from "@/lib/audio";
 import { track } from "@/lib/analytics";
 import Constants from "expo-constants";
+import * as Device from "expo-device";
 
 const CATEGORIES = [
   { key: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -46,11 +47,14 @@ export default function FeedbackScreen() {
   const canSubmit = rating > 0 && message.trim().length > 0 && category;
 
   // Sprint 719: Device context for better bug reports
+  // Sprint 721: Added device model for hardware-specific debugging
   const deviceContext = {
     platform: Platform.OS,
     osVersion: Platform.Version,
     appVersion: Constants.expoConfig?.version || "unknown",
     buildNumber: Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "dev",
+    deviceModel: Device.modelName || "unknown",
+    deviceBrand: Device.brand || "unknown",
   };
 
   const handleSubmit = async () => {

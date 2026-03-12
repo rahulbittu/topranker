@@ -170,7 +170,7 @@ describe("Global error handler (_layout.tsx)", () => {
 
   it("restores original handler on cleanup", () => {
     expect(layoutSource).toContain("ErrorUtils.getGlobalHandler()");
-    expect(layoutSource).toContain("return () => ErrorUtils.setGlobalHandler(originalHandler)");
+    expect(layoutSource).toContain("ErrorUtils.setGlobalHandler(originalHandler)");
   });
 
   it("reports fatal errors with context", () => {
