@@ -30,6 +30,12 @@ export function redirectSystemPath({
       if (slug) return `/share/${slug}`;
     }
 
+    // Sprint 712: Route dish deep links
+    if (cleanPath.startsWith("/dish/")) {
+      const slug = cleanPath.replace("/dish/", "").split("?")[0];
+      if (slug) return `/dish/${slug}`;
+    }
+
     // Route challenger deep links
     if (cleanPath.startsWith("/challenger") || cleanPath.startsWith("/(tabs)/challenger")) {
       return "/(tabs)/challenger";

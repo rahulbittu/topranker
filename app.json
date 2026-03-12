@@ -59,6 +59,16 @@
             {
               "scheme": "https",
               "host": "topranker.com",
+              "pathPrefix": "/share/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.com",
+              "pathPrefix": "/dish/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.com",
               "pathPrefix": "/join"
             }
           ],
