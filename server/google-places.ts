@@ -206,6 +206,104 @@ export function normalizeCategory(types: string[]): string {
 }
 
 /**
+ * Sprint 662: Fetch action URLs (website, menu, Google Maps) from Google Places.
+ * Also constructs DoorDash/UberEats search URLs from business name + city.
+ */
+export async function fetchPlaceActionUrls(
+  googlePlaceId: string,
+  businessName: string,
+  city: string,
+): Promise<{
+  websiteUri: string | null;
+  googleMapsUri: string | null;
+  menuUrl: string | null;
+  doordashUrl: string | null;
+  uberEatsUrl: string | null;
+}> {
+  const apiKey = config.googleMapsApiKey;
+  const result = {
+    websiteUri: null as string | null,
+    googleMapsUri: null as string | null,
+    menuUrl: null as string | null,
+    doordashUrl: null as string | null,
+    uberEatsUrl: null as string | null,
+  };
+
+  // Construct delivery platform search URLs from business name + city
+  const encodedName = encodeURIComponent(`${businessName} ${city}`);
+  result.doordashUrl = `https://www.doordash.com/search/store/${encodedName}/`;
+  result.uberEatsUrl = `https://www.ubereats.com/search?q=${encodedName}`;
+
+  if (!apiKey) {
+    log.tag("GooglePlaces").warn("No API key — returning constructed URLs only");
+    return result;
+  }
+
+  try {
+    const fields = "websiteUri,googleMapsUri";
+    const url = `${API_BASE}/places/${googlePlaceId}?fields=${fields}&key=${apiKey}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      log.tag("GooglePlaces").error(`Action URL fetch failed for ${googlePlaceId}: ${response.status}`);
+      return result;
+    }
+
+    const data = await response.json();
+    result.websiteUri = data.websiteUri || null;
+    result.googleMapsUri = data.googleMapsUri || null;
+
+    // Use website as menu URL fallback (many restaurants host menus on their site)
+    if (result.websiteUri && !result.menuUrl) {
+      result.menuUrl = result.websiteUri;
+    }
+
+    log.tag("GooglePlaces").info(`Fetched action URLs for ${googlePlaceId}: website=${!!result.websiteUri}, maps=${!!result.googleMapsUri}`);
+  } catch (err: any) {
+    log.tag("GooglePlaces").error(`Action URL fetch error for ${googlePlaceId}: ${err.message}`);
+  }
+
+  return result;
+}
+
+/**
+ * Sprint 662: Auto-enrich a business with action URLs from Google Places.
+ * Called on business detail view when action URLs are missing.
+ */
+export async function enrichBusinessActionUrls(
+  businessId: string,
+  googlePlaceId: string,
+  businessName: string,
+  city: string,
+): Promise<boolean> {
+  const urls = await fetchPlaceActionUrls(googlePlaceId, businessName, city);
+  const updates: Record<string, string | null> = {};
+
+  if (urls.menuUrl) updates.menuUrl = urls.menuUrl;
+  if (urls.doordashUrl) updates.doordashUrl = urls.doordashUrl;
+  if (urls.uberEatsUrl) updates.uberEatsUrl = urls.uberEatsUrl;
+
+  if (Object.keys(updates).length === 0) return false;
+
+  const { updateBusinessActions } = await import("./storage");
+  await updateBusinessActions(businessId, updates);
+
+  // Also update googleMapsUrl if we got it
+  if (urls.googleMapsUri) {
+    const { db } = await import("./db");
+    const { businesses } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    await db.update(businesses).set({ googleMapsUrl: urls.googleMapsUri }).where(eq(businesses.id, businessId));
+  }
+
+  log.tag("GooglePlaces").info(`Enriched action URLs for business ${businessId}: ${Object.keys(updates).join(", ")}`);
+  return true;
+}
+
+/**
  * Batch fetch and store photos for a business.
  * Returns the number of photos stored.
  */
