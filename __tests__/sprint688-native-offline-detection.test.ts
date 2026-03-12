@@ -89,7 +89,7 @@ describe("Sprint 688: NetworkBanner layout integration", () => {
 // ─── ErrorState and EmptyState Exports ──────────────────────────────────
 
 describe("Sprint 688: ErrorState and EmptyState components", () => {
-  const src = readFile("components/NetworkBanner.tsx");
+  const src = readFile("components/ErrorState.tsx");
 
   it("ErrorState has default title", () => {
     expect(src).toContain("Something went wrong");

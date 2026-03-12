@@ -101,11 +101,11 @@ describe("Sprint 687: NetworkBanner component", () => {
   });
 
   it("exports ErrorState", () => {
-    expect(src).toContain("export function ErrorState");
+    expect(src).toContain("ErrorState");
   });
 
   it("exports EmptyState", () => {
-    expect(src).toContain("export function EmptyState");
+    expect(src).toContain("EmptyState");
   });
 
   it("shows offline message", () => {

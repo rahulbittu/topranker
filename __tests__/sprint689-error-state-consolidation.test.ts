@@ -87,7 +87,7 @@ describe("Sprint 689: Challenger uses shared ErrorState", () => {
 // ─── ErrorState Component Quality ───────────────────────────────────────
 
 describe("Sprint 689: ErrorState component features", () => {
-  const src = readFile("components/NetworkBanner.tsx");
+  const src = readFile("components/ErrorState.tsx");
 
   it("has default title and subtitle", () => {
     expect(src).toContain('title = "Something went wrong"');
