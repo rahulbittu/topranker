@@ -5,6 +5,7 @@
  */
 
 import { Router } from "express";
+import { sanitizeString } from "./sanitize";
 import { log } from "./logger";
 import {
   getAllTemplates,
@@ -68,7 +69,11 @@ export function registerAdminTemplateRoutes(app: Router): void {
 
   // Render a template with provided variables
   app.post("/api/admin/templates/:name/render", (req, res) => {
-    const { name } = req.params;
+    // Sprint 747: Sanitize template name to prevent directory traversal
+    const name = sanitizeString(req.params.name, 100) || "";
+    if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.status(400).json({ error: "Invalid template name" });
+    }
     const vars = req.body.variables || req.body;
     adminTmplLog.info(`Rendering template: ${name}`, vars);
     const result = renderTemplate(name, vars);

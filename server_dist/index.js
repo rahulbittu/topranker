@@ -9878,7 +9878,8 @@ function registerAdminPromotionRoutes(app2) {
   app2.get(
     "/api/admin/promotion-status/:city",
     wrapAsync(async (req, res) => {
-      const status = await getPromotionStatus(req.params.city);
+      const city = sanitizeString(req.params.city, 100) || "";
+      const status = await getPromotionStatus(city);
       if (!status) {
         return res.status(404).json({ error: "City not found or not in beta" });
       }
@@ -9888,13 +9889,14 @@ function registerAdminPromotionRoutes(app2) {
   app2.post(
     "/api/admin/promote/:city",
     wrapAsync(async (req, res) => {
-      const status = await getPromotionStatus(req.params.city);
-      const result = promoteCity(req.params.city, status?.currentMetrics);
+      const city = sanitizeString(req.params.city, 100) || "";
+      const status = await getPromotionStatus(city);
+      const result = promoteCity(city, status?.currentMetrics);
       if (!result) {
         return res.status(400).json({ error: "Cannot promote city" });
       }
-      adminPromoLog.info(`Admin promoted ${req.params.city}`);
-      res.json({ success: true, city: req.params.city, newStatus: "active" });
+      adminPromoLog.info(`Admin promoted ${city}`);
+      res.json({ success: true, city, newStatus: "active" });
     })
   );
   app2.get("/api/admin/promotion-thresholds", (_req, res) => {
@@ -10262,14 +10264,17 @@ function registerAdminClaimVerificationRoutes(app2) {
     res.json({ success: true });
   });
   app2.post("/api/admin/claims/:id/document", (req, res) => {
-    const { fileName, fileType, fileSize, documentType } = req.body;
+    const fileName = sanitizeString(req.body.fileName, 200);
+    const fileType = sanitizeString(req.body.fileType, 50);
+    const fileSize = Number(req.body.fileSize);
+    const documentType = sanitizeString(req.body.documentType, 100);
     if (!fileName || !fileType || !fileSize || !documentType) {
       return res.status(400).json({ error: "fileName, fileType, fileSize, documentType required" });
     }
     const evidence = addDocumentToEvidence(req.params.id, {
-      fileName: String(fileName).slice(0, 200),
-      fileType: String(fileType).slice(0, 50),
-      fileSize: Number(fileSize),
+      fileName,
+      fileType,
+      fileSize,
       uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
       documentType
     });
@@ -10865,7 +10870,10 @@ function registerAdminTemplateRoutes(app2) {
     res.json(result);
   });
   app2.post("/api/admin/templates/:name/render", (req, res) => {
-    const { name } = req.params;
+    const name = sanitizeString(req.params.name, 100) || "";
+    if (!name || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.status(400).json({ error: "Invalid template name" });
+    }
     const vars = req.body.variables || req.body;
     adminTmplLog.info(`Rendering template: ${name}`, vars);
     const result = renderTemplate(name, vars);
@@ -10900,7 +10908,11 @@ function registerAdminPushTemplateRoutes(app2) {
     return res.json({ data: template });
   }));
   app2.post("/api/admin/notification-templates", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const { id, name, category, title, body } = req.body;
+    const id = sanitizeString(req.body.id, 100);
+    const name = sanitizeString(req.body.name, 200);
+    const category = sanitizeString(req.body.category, 100);
+    const title = sanitizeString(req.body.title, 200);
+    const body = sanitizeString(req.body.body, 1e3);
     if (!id || !name || !category || !title || !body) {
       return res.status(400).json({ error: "id, name, category, title, and body are required" });
     }
@@ -10909,7 +10921,11 @@ function registerAdminPushTemplateRoutes(app2) {
     return res.json({ data: template });
   }));
   app2.put("/api/admin/notification-templates/:id", requireAuth, requireAdmin3, wrapAsync(async (req, res) => {
-    const { name, category, title, body, active } = req.body;
+    const name = sanitizeString(req.body.name, 200) || void 0;
+    const category = sanitizeString(req.body.category, 100) || void 0;
+    const title = sanitizeString(req.body.title, 200) || void 0;
+    const body = sanitizeString(req.body.body, 1e3) || void 0;
+    const active = typeof req.body.active === "boolean" ? req.body.active : void 0;
     const template = updateTemplate(req.params.id, { name, category, title, body, active });
     if (!template) return res.status(404).json({ error: "Template not found" });
     return res.json({ data: template });

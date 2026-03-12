@@ -42,9 +42,10 @@ describe("Sprint 496: Wire Claim V2 to Admin Routes", () => {
     });
 
     it("sanitizes document metadata inputs", () => {
-      expect(src).toContain("String(fileName).slice(0, 200)");
-      expect(src).toContain("String(fileType).slice(0, 50)");
-      expect(src).toContain("Number(fileSize)");
+      // Sprint 747: Now uses sanitizeString instead of String().slice()
+      expect(src).toContain("sanitizeString(req.body.fileName, 200)");
+      expect(src).toContain("sanitizeString(req.body.fileType, 50)");
+      expect(src).toContain("Number(req.body.fileSize)");
     });
 
     it("has POST /api/admin/claims/:id/score endpoint", () => {

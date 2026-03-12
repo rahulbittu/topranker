@@ -8,6 +8,7 @@
 import type { Express, Request, Response } from "express";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
+import { sanitizeString } from "./sanitize";
 import {
   createTemplate,
   updateTemplate,
@@ -47,7 +48,12 @@ export function registerAdminPushTemplateRoutes(app: Express) {
 
   // Create push template
   app.post("/api/admin/notification-templates", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
-    const { id, name, category, title, body } = req.body;
+    // Sprint 747: Sanitize all user-provided template fields
+    const id = sanitizeString(req.body.id, 100);
+    const name = sanitizeString(req.body.name, 200);
+    const category = sanitizeString(req.body.category, 100);
+    const title = sanitizeString(req.body.title, 200);
+    const body = sanitizeString(req.body.body, 1000);
     if (!id || !name || !category || !title || !body) {
       return res.status(400).json({ error: "id, name, category, title, and body are required" });
     }
@@ -58,7 +64,12 @@ export function registerAdminPushTemplateRoutes(app: Express) {
 
   // Update push template
   app.put("/api/admin/notification-templates/:id", requireAuth, requireAdmin, wrapAsync(async (req: Request, res: Response) => {
-    const { name, category, title, body, active } = req.body;
+    // Sprint 747: Sanitize update fields
+    const name = sanitizeString(req.body.name, 200) || undefined;
+    const category = sanitizeString(req.body.category, 100) || undefined;
+    const title = sanitizeString(req.body.title, 200) || undefined;
+    const body = sanitizeString(req.body.body, 1000) || undefined;
+    const active = typeof req.body.active === "boolean" ? req.body.active : undefined;
     const template = updateTemplate(req.params.id, { name, category, title, body, active });
     if (!template) return res.status(404).json({ error: "Template not found" });
     return res.json({ data: template });

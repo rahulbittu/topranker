@@ -64,14 +64,18 @@ export function registerAdminClaimVerificationRoutes(app: Router): void {
 
   // Upload document metadata for a claim
   app.post("/api/admin/claims/:id/document", (req, res) => {
-    const { fileName, fileType, fileSize, documentType } = req.body;
+    // Sprint 747: Sanitize all document metadata fields
+    const fileName = sanitizeString(req.body.fileName, 200);
+    const fileType = sanitizeString(req.body.fileType, 50);
+    const fileSize = Number(req.body.fileSize);
+    const documentType = sanitizeString(req.body.documentType, 100);
     if (!fileName || !fileType || !fileSize || !documentType) {
       return res.status(400).json({ error: "fileName, fileType, fileSize, documentType required" });
     }
     const evidence = addDocumentToEvidence(req.params.id, {
-      fileName: String(fileName).slice(0, 200),
-      fileType: String(fileType).slice(0, 50),
-      fileSize: Number(fileSize),
+      fileName,
+      fileType,
+      fileSize,
       uploadedAt: new Date().toISOString(),
       documentType,
     });

@@ -11,6 +11,7 @@
  */
 
 import type { Router, Request, Response } from "express";
+import { sanitizeString } from "./sanitize";
 import { log } from "./logger";
 import {
   getPromotionStatus,
@@ -28,7 +29,9 @@ export function registerAdminPromotionRoutes(app: Router): void {
   app.get(
     "/api/admin/promotion-status/:city",
     wrapAsync(async (req: Request, res: Response) => {
-      const status = await getPromotionStatus(req.params.city);
+      // Sprint 747: Sanitize city param
+      const city = sanitizeString(req.params.city, 100) || "";
+      const status = await getPromotionStatus(city);
       if (!status) {
         return res.status(404).json({ error: "City not found or not in beta" });
       }
@@ -39,14 +42,16 @@ export function registerAdminPromotionRoutes(app: Router): void {
   app.post(
     "/api/admin/promote/:city",
     wrapAsync(async (req: Request, res: Response) => {
+      // Sprint 747: Sanitize city param
+      const city = sanitizeString(req.params.city, 100) || "";
       // Sprint 344: Capture metrics at promotion time for history
-      const status = await getPromotionStatus(req.params.city);
-      const result = promoteCity(req.params.city, status?.currentMetrics);
+      const status = await getPromotionStatus(city);
+      const result = promoteCity(city, status?.currentMetrics);
       if (!result) {
         return res.status(400).json({ error: "Cannot promote city" });
       }
-      adminPromoLog.info(`Admin promoted ${req.params.city}`);
-      res.json({ success: true, city: req.params.city, newStatus: "active" });
+      adminPromoLog.info(`Admin promoted ${city}`);
+      res.json({ success: true, city, newStatus: "active" });
     })
   );
 
