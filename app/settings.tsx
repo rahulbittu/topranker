@@ -10,6 +10,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
 import { useAuth } from "@/lib/auth-context";
+import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
 import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
@@ -109,6 +110,30 @@ export default function SettingsScreen() {
           onPress: () => {
             logout();
             router.replace("/(tabs)");
+          },
+        },
+      ],
+    );
+  };
+
+  // Sprint 674: Account deletion (Apple App Store requirement)
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all your ratings within 30 days. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await apiRequest("DELETE", `${getApiUrl()}/api/account`);
+              logout();
+              router.replace("/(tabs)");
+            } catch {
+              Alert.alert("Error", "Failed to delete account. Please try again or contact support.");
+            }
           },
         },
       ],
@@ -215,6 +240,22 @@ export default function SettingsScreen() {
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         )}
+
+        {/* Sprint 674: Account Deletion (Apple App Store requirement) */}
+        {user && (
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={handleDeleteAccount}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account permanently"
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.textTertiary} />
+            <Text style={styles.deleteAccountText}>Delete Account</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -297,5 +338,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: Colors.red,
     fontFamily: "DMSans_600SemiBold",
+  },
+  deleteAccountBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 12,
+  },
+  deleteAccountText: {
+    fontSize: 13,
+    color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular",
   },
 });
