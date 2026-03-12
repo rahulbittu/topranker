@@ -3,6 +3,9 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { recordApiCall, recordApiError } from "@/lib/perf-tracker";
 import { addBreadcrumb } from "@/lib/sentry";
 
+// Sprint 776: Request timeout for mobile resilience (15s default)
+const API_TIMEOUT_MS = 15_000;
+
 /**
  * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
  * @returns {string} The API base URL
@@ -53,12 +56,17 @@ export async function apiRequest(
   const startMs = Date.now();
 
   try {
+    // Sprint 776: Abort if request takes longer than timeout
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     const res = await fetch(url.toString(), {
       method,
       headers: data ? { "Content-Type": "application/json" } : {},
       body: data ? JSON.stringify(data) : undefined,
       credentials: "include",
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     // Sprint 728: Record API timing and errors
     const durationMs = Date.now() - startMs;
@@ -72,11 +80,15 @@ export async function apiRequest(
     await throwIfResNotOk(res);
     return res;
   } catch (err) {
-    // Sprint 728: Record network-level failures
+    // Sprint 776: Better error message for timeout
     const durationMs = Date.now() - startMs;
     const endpoint = `${method} ${route}`;
-    recordApiError(endpoint, 0); // 0 = network error (no response)
-    addBreadcrumb("api", `${endpoint} → NETWORK_ERROR (${durationMs}ms)`);
+    const isTimeout = err instanceof DOMException && err.name === "AbortError";
+    recordApiError(endpoint, 0); // 0 = network error or timeout (no HTTP response)
+    addBreadcrumb("api", `${endpoint} → ${isTimeout ? "TIMEOUT" : "NETWORK_ERROR"} (${durationMs}ms)`);
+    if (isTimeout) {
+      throw new Error(`Request timed out after ${API_TIMEOUT_MS / 1000}s`);
+    }
     throw err;
   }
 }
@@ -92,9 +104,14 @@ export const getQueryFn: <T>(options: {
     const startMs = Date.now();
     const endpoint = `GET ${queryKey.join("/")}`;
 
+    // Sprint 776: Abort if query takes longer than timeout
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
     const res = await fetch(url.toString(), {
       credentials: "include",
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     // Sprint 728: Record query timing
     const durationMs = Date.now() - startMs;
