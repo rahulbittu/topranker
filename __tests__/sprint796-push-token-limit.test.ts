@@ -30,12 +30,13 @@ describe("Sprint 796: Push Token Store Size Limit", () => {
       expect(pushSrc).toContain("memberList.length >= MAX_TOKENS_PER_MEMBER");
     });
 
-    it("evicts oldest token via shift()", () => {
-      expect(pushSrc).toContain("memberList.shift()");
+    // Sprint 813: Changed from oldest (shift) to LRU eviction
+    it("evicts LRU token via splice", () => {
+      expect(pushSrc).toContain("splice(lruIdx, 1)");
     });
 
     it("logs eviction event", () => {
-      expect(pushSrc).toContain("Push token evicted (oldest)");
+      expect(pushSrc).toContain("evicted (LRU)");
     });
   });
 

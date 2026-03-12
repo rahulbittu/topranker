@@ -18,12 +18,20 @@ const LEVEL_ORDER: Record<LogLevel, number> = {
 
 const MIN_LEVEL: LogLevel = process.env.NODE_ENV === "production" ? "info" : "debug";
 
-// Sprint 799: Error rate tracking for production observability
+/**
+ * Sprint 799: Error/warn EVENT counters for production observability.
+ * Sprint 813: Semantics clarified per external critique —
+ *   These count EVENTS, not emitted logs. A suppressed warn/error
+ *   still increments the counter because the event occurred regardless
+ *   of log-level filtering. This is intentional: operators need to know
+ *   how many errors happened, even if console output was suppressed.
+ */
 let errorCount = 0;
 let warnCount = 0;
 let lastErrorAt: string | null = null;
 let lastWarnAt: string | null = null;
 
+/** Returns event counters (not emitted-log counters). See Sprint 813 doc. */
 export function getLogStats() {
   return { errorCount, warnCount, lastErrorAt, lastWarnAt };
 }

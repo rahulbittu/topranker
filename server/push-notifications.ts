@@ -55,12 +55,20 @@ export function registerPushToken(memberId: string, token: string, platform: Pus
     lastUsed: new Date().toISOString(),
   };
   const memberList = tokens.get(memberId)!;
-  // Sprint 796: Evict oldest token when per-member limit exceeded
+  // Sprint 796: Evict when per-member limit exceeded
+  // Sprint 813: LRU eviction — remove least-recently-used token, not oldest by registration.
+  // Rationale: an actively-used old device should survive over an abandoned newer device.
   if (memberList.length >= MAX_TOKENS_PER_MEMBER) {
-    const evicted = memberList.shift();
-    if (evicted) {
-      pushLog.info(`Push token evicted (oldest): ${evicted.platform} for ${memberId}`);
+    let lruIdx = 0;
+    let lruTime = memberList[0].lastUsed;
+    for (let i = 1; i < memberList.length; i++) {
+      if (memberList[i].lastUsed < lruTime) {
+        lruIdx = i;
+        lruTime = memberList[i].lastUsed;
+      }
     }
+    const evicted = memberList.splice(lruIdx, 1)[0];
+    pushLog.info(`Push token evicted (LRU): ${evicted.platform} for ${memberId}, lastUsed=${evicted.lastUsed}`);
   }
   memberList.push(entry);
   pushLog.info(`Push token registered: ${platform} for ${memberId}`);
