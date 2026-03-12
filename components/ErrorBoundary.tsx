@@ -4,7 +4,8 @@
  * Owner: Sarah Nakamura (Lead Engineer)
  */
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { reportComponentCrash } from "@/lib/error-reporting";
@@ -45,13 +46,19 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) return this.props.fallback;
 
+      // Sprint 709: Improved error boundary UI — icon, better copy, home fallback
       return (
         <View style={styles.container}>
-          <Text style={styles.icon}>⚠</Text>
+          <View style={styles.iconCircle}>
+            <Ionicons name="warning-outline" size={32} color={BRAND.colors.amber} />
+          </View>
           <Text style={styles.title}>Something went wrong</Text>
           <Text style={styles.message}>
-            {this.state.error?.message || "An unexpected error occurred"}
+            Don't worry — your data is safe. Try again or head back to the home screen.
           </Text>
+          {__DEV__ && this.state.error && (
+            <Text style={styles.debugInfo}>{this.state.error.message}</Text>
+          )}
           <TouchableOpacity
             style={styles.retryBtn}
             onPress={this.handleRetry}
@@ -59,6 +66,18 @@ export class ErrorBoundary extends Component<Props, State> {
             accessibilityLabel="Try again"
           >
             <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.homeBtn}
+            onPress={() => {
+              this.setState({ hasError: false, error: null });
+              // Navigate to home — wrapped in try/catch in case router is also broken
+              try { require("expo-router").router.replace("/(tabs)"); } catch {}
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Go to home screen"
+          >
+            <Text style={styles.homeBtnText}>Go Home</Text>
           </TouchableOpacity>
         </View>
       );
@@ -76,8 +95,13 @@ const styles = StyleSheet.create({
     padding: 32,
     backgroundColor: Colors.background,
   },
-  icon: {
-    fontSize: 48,
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: `${BRAND.colors.amber}15`,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   title: {
@@ -104,5 +128,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "DMSans_700Bold",
     color: "#FFFFFF",
+  },
+  homeBtn: {
+    marginTop: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  homeBtnText: {
+    fontSize: 14,
+    fontFamily: "DMSans_500Medium",
+    color: Colors.textSecondary,
+  },
+  debugInfo: {
+    fontSize: 11,
+    fontFamily: "DMSans_400Regular",
+    color: Colors.textTertiary,
+    textAlign: "center",
+    marginBottom: 16,
+    paddingHorizontal: 20,
   },
 });

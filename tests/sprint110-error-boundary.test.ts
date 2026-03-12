@@ -40,7 +40,7 @@ describe("ErrorBoundary Component", () => {
       "utf-8",
     );
     expect(source).toContain("Something went wrong");
-    expect(source).toContain("An unexpected error occurred");
+    expect(source).toContain("your data is safe");
     expect(source).toContain("Try Again");
     expect(source).toContain('accessibilityRole="button"');
     expect(source).toContain('accessibilityLabel="Try again"');
