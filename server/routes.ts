@@ -33,6 +33,7 @@ import { registerRatingRoutes } from "./routes-ratings";
 import { handleStripeWebhook } from "./stripe-webhook";
 import { addClient, broadcast } from "./sse";
 import { log } from "./logger";
+import { config } from "./config";
 import {
   getLeaderboard,
   getBusinessesByIds,
@@ -78,33 +79,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(200).json({ status: "ok" });
   });
 
-  // Readiness probe — verifies database connectivity
+  // Readiness probe — verifies database connectivity + response time
   app.get("/_ready", async (_req: Request, res: Response) => {
     try {
       const { pool } = await import("./db");
+      const start = Date.now();
       await pool.query("SELECT 1");
-      res.status(200).json({ status: "ready", db: "connected" });
+      const dbLatencyMs = Date.now() - start;
+      res.status(200).json({ status: "ready", db: "connected", dbLatencyMs });
     } catch {
       res.status(503).json({ status: "not_ready", db: "disconnected" });
     }
   });
 
   // Health check — process vitals for uptime monitoring, load balancers, and alerting
-  app.get("/api/health", (req: Request, res: Response) => {
+  app.get("/api/health", (_req: Request, res: Response) => {
     const uptime = process.uptime();
     const memUsage = process.memoryUsage();
+    // Sprint 798: Enhanced with environment + push stats for production observability
+    let pushStats = { totalTokens: 0, uniqueMembers: 0, messagesSent: 0, messagesFailed: 0 };
+    try {
+      const { getPushStats } = require("./push-notifications");
+      pushStats = getPushStats();
+    } catch { /* push module not available */ }
     res.json({
       status: "healthy",
       version: "1.0.0",
       uptime: Math.floor(uptime),
       timestamp: new Date().toISOString(),
       nodeVersion: process.version,
+      environment: config.nodeEnv,
       memoryUsage: memUsage.heapUsed,
       memory: {
         heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
         heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
         rss: Math.round(memUsage.rss / 1024 / 1024),
       },
+      push: pushStats,
     });
   });
 
