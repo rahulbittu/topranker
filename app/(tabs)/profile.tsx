@@ -23,6 +23,8 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/NetworkBanner";
+import { useOfflineAware } from "@/lib/hooks/useOfflineAware";
+import { StaleBanner } from "@/components/StaleBanner";
 import { track } from "@/lib/analytics";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
@@ -274,12 +276,15 @@ export default function ProfileScreen() {
 
   const { user, isLoading: authLoading } = useAuth();
 
-  const { data: profile, isLoading: profileLoading, isError, refetch, isRefetching } = useQuery({
+  const { data: profile, isLoading: profileLoading, isError, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: () => fetchMemberProfile(),
     enabled: !!user,
     staleTime: 30000,
   });
+
+  // Sprint 737: Offline-aware — show cached profile with stale indicator
+  const { isStale, staleLabel, showError } = useOfflineAware(isError, dataUpdatedAt, !!profile);
 
   if (authLoading) {
     return (
@@ -293,7 +298,7 @@ export default function ProfileScreen() {
     return <LoggedOutView />;
   }
 
-  if (isError) {
+  if (showError) {
     return <ErrorState title="Couldn't load your profile" onRetry={() => refetch()} />;
   }
 
@@ -305,7 +310,10 @@ export default function ProfileScreen() {
     );
   }
 
-  return <ErrorBoundary><SkeletonToContent visible={!profileLoading}><ProfileContent profile={profile} refetch={refetch} isRefetching={isRefetching} /></SkeletonToContent></ErrorBoundary>;
+  return <ErrorBoundary><SkeletonToContent visible={!profileLoading}>
+    {isStale && staleLabel && <StaleBanner label={staleLabel} />}
+    <ProfileContent profile={profile} refetch={refetch} isRefetching={isRefetching} />
+  </SkeletonToContent></ErrorBoundary>;
 }
 
 const styles = StyleSheet.create({

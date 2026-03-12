@@ -37,6 +37,8 @@ import { BusinessActionBar } from "@/components/business/BusinessActionBar";
 import { BusinessBottomSection } from "@/components/business/BusinessBottomSection";
 import { PhotoUploadSheet } from "@/components/business/PhotoUploadSheet";
 import { BusinessHeroSection } from "@/components/business/BusinessHeroSection";
+import { useOfflineAware } from "@/lib/hooks/useOfflineAware";
+import { StaleBanner } from "@/components/StaleBanner";
 import { BusinessAnalyticsSection } from "@/components/business/BusinessAnalyticsSection";
 
 export default function BusinessProfileScreen() {
@@ -45,7 +47,7 @@ export default function BusinessProfileScreen() {
   const { id: slug } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
 
-  const { data, isLoading, isError, refetch } = useQuery({
+  const { data, isLoading, isError, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["business", slug],
     queryFn: () => fetchBusinessBySlug(slug),
     enabled: !!slug,
@@ -53,6 +55,9 @@ export default function BusinessProfileScreen() {
   });
 
   const business = data?.business;
+
+  // Sprint 737: Offline-aware — show cached business data with stale indicator
+  const { isStale, staleLabel, showError } = useOfflineAware(isError, dataUpdatedAt, !!business);
 
   // Track view_business when business detail loads — Sprint 115 (Rachel Wei)
   React.useEffect(() => {
@@ -150,7 +155,7 @@ export default function BusinessProfileScreen() {
     );
   }
 
-  if (isError) {
+  if (showError) {
     return (
       <View style={[styles.notFound, { paddingTop: topPad }]}>
         <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
@@ -228,6 +233,8 @@ export default function BusinessProfileScreen() {
           { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 32 }
         ]}
       >
+        {/* Sprint 737: Stale data indicator */}
+        {isStale && staleLabel && <StaleBanner label={staleLabel} />}
         {/* Sprint 589: Extracted hero section */}
         <BusinessHeroSection
           photoUrls={photoUrls}
