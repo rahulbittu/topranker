@@ -16046,7 +16046,7 @@ function securityHeaders(req, res, next) {
     );
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization"
+      "Content-Type, Authorization, expo-platform"
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Max-Age", "86400");
@@ -16068,7 +16068,7 @@ function securityHeaders(req, res, next) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com",
     "font-src 'self' https://fonts.gstatic.com https://fonts.googleapis.com",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com https://places.googleapis.com",
+    "connect-src 'self' https://api.stripe.com https://api.resend.com https://maps.googleapis.com https://maps.gstatic.com https://accounts.google.com https://oauth2.googleapis.com https://places.googleapis.com https://topranker.com https://*.topranker.com https://topranker.io https://*.topranker.io https://*.up.railway.app",
     "frame-src 'self' https://accounts.google.com https://www.google.com https://maps.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
