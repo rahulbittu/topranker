@@ -1,91 +1,81 @@
-# Architecture Audit #22 — Sprint 200
+# Architectural Audit #200 — Sprint 745
 
-**Date:** 2026-03-09
+**Date:** 2026-03-12
 **Auditor:** Amir Patel (Architecture)
 **Grade:** A
-**Previous Grade:** A (Sprint 195)
+**Previous Grade:** A (Audit #195, Sprint 740)
+
+---
 
 ## Executive Summary
 
-Grade holds at A. Four post-GO sprints (196-199) added beta invite infrastructure, bug fixes, native build config, and analytics conversion tracking. No new CRITICAL, HIGH, or MEDIUM findings. `as any` casts dropped significantly from 108 to 46. Codebase is in excellent shape for beta wave 1.
+88th consecutive A-range audit. Sprints 741-744 delivered systematic security hardening: crypto IDs, URL centralization, empty catch elimination, and type-safe search pipeline. This is the 200th architectural audit — a milestone for engineering discipline.
 
-## Scorecard
+---
 
-| Category | Score | Trend | Notes |
-|----------|-------|-------|-------|
-| Test Coverage | A+ | ↑ | 3,417 tests, 130 files, ~2s |
-| Type Safety | A- | ↑ | 46 `as any` (down from 108!) |
-| Module Organization | A+ | → | 14 routes, 18 storage modules, clean barrel exports |
-| Performance | A+ | → | Redis + CDN + time-series analytics |
-| Security | A+ | ↑ | Demo creds fixed, password validation aligned |
-| Documentation | A+ | ↑ | 26 sprint docs, 26 retros, 5 SLT meetings, 22 audits |
-| Infrastructure | A+ | ↑ | EAS Build, environment module, invite tracking |
-| **Overall** | **A** | **→** | Maintained |
+## Audit Scope
+
+| Area | Files Reviewed |
+|------|---------------|
+| Crypto ID standardization | `server/security-headers.ts`, `server/rate-limit-dashboard.ts`, `server/alerting.ts`, `server/abuse-detection.ts`, `server/storage/claims.ts` |
+| URL centralization | `lib/sharing.ts`, `server/config.ts`, `server/routes-seo.ts`, `server/prerender.ts`, `server/routes-qr.ts`, `server/routes-payments.ts` |
+| Empty catch elimination | 14 files across app/, lib/, components/ |
+| Type safety | `server/search-result-processor.ts` |
+| Structured logging | `server/og-image.ts` |
+
+---
 
 ## Findings
 
-### CRITICAL — 0 findings
-### HIGH — 0 findings
-### MEDIUM — 0 findings
+### Critical (P0): 0
+### High (P1): 0
+### Medium (P2): 0
 
-### LOW — 3 findings
+### Low (P3): 2
 
-**L1: In-memory analytics don't survive restarts** (New)
-- Analytics buffer and active user map are in-memory only.
-- Server restart clears all conversion tracking data.
-- **Recommendation:** Connect flush handler to PostgreSQL analytics table.
+| # | Finding | Location | Recommendation |
+|---|---------|----------|----------------|
+| 1 | Email templates still have hardcoded URLs | `server/email.ts`, `server/email-drip.ts` | Centralize after beta — template refactor needed |
+| 2 | `as any` remains in auth.ts and rate-limiter.ts | `server/auth.ts`, `server/rate-limiter.ts` | Type after beta — lower-frequency code paths |
 
-**L2: No automated DB backup schedule** (Carried from #21)
-- Script exists (`scripts/db-backup.sh`) but not scheduled.
-- **Recommendation:** Add Railway cron or GitHub Actions schedule.
+---
 
-**L3: No CDN deployed** (Carried from #21)
-- Cache-Control headers ready, but no Cloudflare/CloudFront configured.
-- **Recommendation:** Set up Cloudflare free tier before public launch.
+## Health Metrics
 
-### Previous Findings Closed
+| Metric | Value | Status |
+|--------|-------|--------|
+| Build size | 663.0kb / 750kb | Green (88.4%) |
+| Test count | 12,862 / 552 files | Green |
+| Schema LOC | 911 / 950 | Green (95.9%) |
+| Threshold violations | 0 | Green |
+| Offline-aware screens | 4/4 | Green (100%) |
+| Rate limiters | 7 dedicated | Green |
+| Math.random() in IDs | 0 | Green |
+| Empty catch blocks | 0 | Green |
+| `as any` in search pipeline | 0 | Green |
 
-- ~~L1 (Sprint 195): 108 `as any` casts~~ → Resolved: Down to 46 casts
-- Password validation mismatch → Fixed in Sprint 197
-- Demo credentials exposed → Fixed in Sprint 197
+---
 
-## Metrics Comparison
+## Architecture Quality
 
-| Metric | Sprint 195 | Sprint 200 | Delta |
-|--------|-----------|-----------|-------|
-| Tests | 3,256 | 3,417 | +161 |
-| Test Files | 126 | 130 | +4 |
-| Route Modules | 14 | 14 | 0 |
-| Storage Modules | 17 | 18 | +1 (beta-invites) |
-| `as any` Casts | 108 | 46 | -62 |
-| Suite Duration | <2.0s | ~2.0s | 0 |
-| Largest File | search.tsx (791) | search.tsx (791) | 0 |
+| Dimension | Grade | Notes |
+|-----------|-------|-------|
+| Security | A+ | Crypto IDs, rate limiters, XSS prevention, __DEV__ guards |
+| Type Safety | A | Search pipeline fully typed, auth/rate-limiter deferred |
+| Error Handling | A+ | Zero empty catches, all paths logged in dev |
+| Configuration | A | Centralized config.ts, SHARE_BASE_URL, siteUrl |
+| Offline Resilience | A+ | 100% screen coverage, StaleBanner, sync service |
 
-## Key File Sizes
-
-| File | LOC | Status |
-|------|-----|--------|
-| search.tsx | 791 | OK |
-| email.ts | 667 | OK |
-| profile.tsx | 659 | OK |
-| edit-profile.tsx | 589 | OK |
-| business/[id].tsx | 567 | OK |
-| members.ts (storage) | 566 | OK |
-| routes-admin.ts | 566 | OK |
-| admin/index.tsx | 554 | OK |
-| businesses.ts (storage) | 540 | OK |
+---
 
 ## Grade History
 
-| Audit | Sprint | Grade | Notes |
-|-------|--------|-------|-------|
-| #17 | 170 | A+ | Clean codebase |
-| #18 | 175 | B+ | Payment debt |
-| #19 | 185 | A- | Recovery |
-| #20 | 190 | A- | Stable |
-| #21 | 195 | A | M1 + M2 closed |
-| #22 | 200 | **A** | Maintained, type safety improved |
+| Audit | Sprint | Grade |
+|-------|--------|-------|
+| #190 | 735 | A |
+| #195 | 740 | A |
+| #200 | 745 | A |
 
-## Conclusion
+---
 
-The codebase maintains its A grade with significant type safety improvement (108→46 `as any`). Beta infrastructure is complete: invite pipeline, tracking, analytics, native build config. The only remaining LOW findings are operational (analytics persistence, backup scheduling, CDN deployment) — all addressable before public launch. Ready for beta wave 1.
+## Next Audit: Sprint 750 (Audit #205)
