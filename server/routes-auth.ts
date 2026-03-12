@@ -28,6 +28,20 @@ import { sanitizeString, sanitizeEmail } from "./sanitize";
 import { trackEvent } from "./analytics";
 import { wrapAsync } from "./wrap-async";
 import { checkAndRefreshTier } from "./tier-staleness";
+
+/**
+ * Sprint 787: Session fixation prevention.
+ * Regenerate session ID before establishing authenticated session.
+ * Preserves session data while issuing a new session ID.
+ */
+function safeLogin(req: Request, user: Express.User, callback: (err: any) => void) {
+  req.session.regenerate((regenerateErr) => {
+    if (regenerateErr) {
+      log.warn("Session regeneration failed, proceeding with login:", regenerateErr);
+    }
+    req.login(user, callback);
+  });
+}
 import { requireAuth } from "./middleware";
 import { scheduleDeletion, getDeletionStatus, cancelDeletion } from "./gdpr";
 
@@ -86,8 +100,8 @@ export function registerAuthRoutes(app: Express) {
 
       trackEvent("signup_completed", member.id);
 
-      req.login(
-        {
+      // Sprint 787: Regenerate session before login to prevent session fixation
+      safeLogin(req, {
           id: member.id,
           displayName: member.displayName,
           username: member.username,
@@ -111,7 +125,8 @@ export function registerAuthRoutes(app: Express) {
       if (err) return res.status(500).json({ error: "Internal server error" });
       if (!user) return res.status(401).json({ error: info?.message || "Invalid credentials" });
 
-      req.login(user, (loginErr) => {
+      // Sprint 787: Regenerate session before login to prevent session fixation
+      safeLogin(req, user, (loginErr) => {
         if (loginErr) return res.status(500).json({ error: "Login failed" });
         return res.json({ data: user });
       });
@@ -127,8 +142,8 @@ export function registerAuthRoutes(app: Express) {
 
       const member = await authenticateGoogleUser(idToken);
 
-      req.login(
-        {
+      // Sprint 787: Regenerate session before login to prevent session fixation
+      safeLogin(req, {
           id: member.id,
           displayName: member.displayName,
           username: member.username,
@@ -157,8 +172,8 @@ export function registerAuthRoutes(app: Express) {
 
       const member = await authenticateAppleUser(identityToken, fullName, email);
 
-      req.login(
-        {
+      // Sprint 787: Regenerate session before login to prevent session fixation
+      safeLogin(req, {
           id: member.id,
           displayName: member.displayName,
           username: member.username,
