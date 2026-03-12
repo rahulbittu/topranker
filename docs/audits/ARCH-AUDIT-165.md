@@ -1,94 +1,89 @@
-# Architecture Audit #15 — Sprint 165
+# Architectural Audit #165
 
-**Date:** 2026-03-09
+**Date:** 2026-03-11
+**Sprint Range:** 706–710
 **Auditor:** Amir Patel (Architecture)
-**Previous Audit:** #14 at Sprint 160 (A-)
-**Grade: A**
+**Grade: A (81st consecutive)**
 
 ---
 
-## Metrics Summary
+## Automated Health Checks
 
-| Metric | Sprint 160 | Sprint 165 | Delta |
-|--------|-----------|-----------|-------|
-| Tests | 2,171 / 97 files | 2,220 / 99 files | +49 / +2 |
-| Test runtime | <1.7s | <1.7s | Stable |
-| Server TS errors | 11 | **0** | -11 ✅ |
-| `as any` casts (server) | 7 | 5 | -2 |
-| API endpoints | 70 | 75 | +5 |
-| Large files (>400 LOC) | 10 | 11 | +1 |
-| Database indexes | 8 | **10** | +2 |
+| Check | Value | Threshold | Status |
+|-------|-------|-----------|--------|
+| Build size | 662.3kb | 750kb max | PASS |
+| Test count | 12,238 | 11,900 min | PASS |
+| Test pass rate | 100% | 100% | PASS |
+| Test files | 524 | — | PASS |
+| Schema LOC | 911 | 950 max | PASS |
+| `as any` casts | 73 | 130 max | PASS |
+| Tracked file violations | 0 | 0 | PASS |
 
 ---
 
 ## Findings
 
-### CRITICAL — 0 findings
+### CRITICAL: None
 
-### HIGH — 0 findings
+### HIGH: None
 
-### MEDIUM — 2 findings
+### MEDIUM
 
-**M1: rate/[id].tsx file size (884 lines)**
-- Exceeds 500-line cognitive load threshold by 77%
-- Contains: form state, animations, mutations, error handling, confirmation step
-- **Recommendation:** Decompose into CircleScoreForm, DishSelector, ConfirmationStep
-- **Target:** Sprint 166
+**A165-M1: Schema ceiling (911/950 LOC)**
+- Fourth consecutive audit cycle at 911 LOC. Accepted as current plateau per SLT-705/710 decisions.
+- **Status:** Accepted — act only when concrete schema change needed.
 
-**M2: updateMemberStats() makes 4 sequential queries**
-- `server/storage/members.ts:68-110`
-- Could consolidate into 1-2 queries with window functions
-- **Target:** Sprint 166
+### LOW
 
-### LOW — 3 findings
+**A165-L1: Tab screens import ErrorState from NetworkBanner (re-export)**
+- Carried from A160-L1. Low priority since re-exports work correctly.
+- **Recommendation:** Update in a future cleanup sprint if convenient.
 
-**L1: ~130 TypeScript errors in test files**
-- Not blocking CI (test files excluded from tsc check)
-- **Action:** Track in scorecard, address opportunistically
+**A165-L2: search.tsx at ~548/600 LOC**
+- Carried from A160-L2. Stable since Sprint 702 dead style removal.
+- **Status:** Monitor.
 
-**L2: rating_rejected_validation event declared but not wired**
-- Zod validation failures (400) return before catch block
-- **Action:** Wire in Sprint 166
+---
 
-**L3: Analytics buffer in-memory only**
-- Data lost on restart; acceptable for current scale
-- **Action:** Monitor; implement persistence when user base grows
+## Sprint 706–709 Architecture Impact
+
+| Sprint | Change | Architecture Impact |
+|--------|--------|-------------------|
+| 706 | Centralized haptics | **Positive** — removed 4 direct Haptics imports, single source of truth in lib/audio.ts |
+| 707 | SafeImage optimization | **Neutral** — additive optional props, backward compatible |
+| 708 | Tab bar indicator dot | **Neutral** — contained to _layout.tsx, no new dependencies |
+| 709 | Error boundary improvements | **Positive** — branded UX, __DEV__ guard, safe navigation pattern |
 
 ---
 
 ## Security Assessment
-- 75 endpoints, 100% auth coverage on POST/PUT/DELETE
-- Rate limiting on all endpoints (IP-based)
-- SSE connection limiting (5/IP, 30min timeout)
-- Input sanitization via sanitize.ts
-- OWASP headers via Helmet
-- **Grade: EXCELLENT**
+
+- No new API endpoints or authentication changes in 706–709
+- Haptic functions guard for web platform — no crash risk
+- Error boundary "Go Home" uses try/catch — safe even if router is broken
+- No new attack surface introduced
 
 ---
 
-## Performance Assessment
-- Sprint 164 fixed: Featured N+1 → batch, anomaly 2x query → 1x, 2 missing indexes
-- Remaining: updateMemberStats quad-query
-- No load testing yet (recommended Sprint 168)
-- **Grade: GOOD (trending EXCELLENT)**
+## Resolution of Prior Items
+
+| Item | Status |
+|------|--------|
+| A160-M1: Schema ceiling | **Accepted** — stable at 911 |
+| A160-L1: ErrorState re-exports | **Open** — low priority |
+| A160-L2: search.tsx LOC | **Stable** — ~548 LOC |
 
 ---
 
-## Grade Justification
-- 0 Critical, 0 High → base A
-- 2 Medium findings are non-urgent (file size, query count) → no downgrade
-- Strong test coverage trajectory → no downgrade
-- Server TypeScript clean → bonus
-- **Final: A**
+## Grade Trajectory
 
----
+| Audit | Grade |
+|-------|-------|
+| #150 (Sprint 695) | A |
+| #155 (Sprint 700) | A |
+| #160 (Sprint 705) | A |
+| #165 (Sprint 710) | A |
 
-## Audit History
-| Sprint | Grade | Critical | High | Medium | Low |
-|--------|-------|----------|------|--------|-----|
-| 140 | A- | 0 | 0 | 2 | 4 |
-| 145 | A- | 0 | 0 | 2 | 3 |
-| 150 | A- | 0 | 0 | 3 | 2 |
-| 156 | A | 0 | 0 | 1 | 3 |
-| 160 | A- | 0 | 0 | 2 | 3 |
-| **165** | **A** | **0** | **0** | **2** | **3** |
+**81st consecutive A-grade.** Codebase is beta-ready. Next 5 sprints focus on beta preparation per SLT-710 roadmap.
+
+**Next audit:** Sprint 715 (Audit #170)
