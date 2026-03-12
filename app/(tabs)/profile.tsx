@@ -23,6 +23,7 @@ import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/NetworkBanner";
+import { track } from "@/lib/analytics";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
 import {
@@ -268,6 +269,8 @@ function ProfileContent({ profile, refetch, isRefetching }: { profile: ApiMember
 }
 
 export default function ProfileScreen() {
+  // Sprint 714: Track profile view
+  React.useEffect(() => { track("view_profile"); }, []);
 
   const { user, isLoading: authLoading } = useAuth();
 

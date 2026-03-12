@@ -28,6 +28,7 @@ import { RatingReviewStep } from "@/components/rate/RatingReviewStep";
 import { DimensionScoringStep } from "@/components/rate/DimensionScoringStep";
 import { VisitTypeStep, getDimensionLabels, getDimensionTooltips, type VisitType } from "@/components/rate/VisitTypeStep";
 import { BadgeToast } from "@/components/badges/BadgeToast";
+import { Analytics } from "@/lib/analytics";
 import type { Badge } from "@/lib/badges";
 import { useRatingSubmit } from "@/lib/hooks/useRatingSubmit";
 import {
@@ -51,6 +52,15 @@ export default function RateScreen() {
 
   const business = bizData?.business;
   const existingDishes = bizData?.dishes || [];
+
+  // Sprint 714: Track rate_start on mount
+  const hasTrackedStart = useRef(false);
+  useEffect(() => {
+    if (slug && !hasTrackedStart.current) {
+      hasTrackedStart.current = true;
+      Analytics.rateStart(slug);
+    }
+  }, [slug]);
 
   const [step, setStep] = useState<RatingStep>(0);
   const [visitType, setVisitType] = useState<VisitType | null>(null);
@@ -186,6 +196,7 @@ export default function RateScreen() {
     onSuccess: () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setShowConfirm(true);
+      if (slug) Analytics.rateComplete(slug, q1Score);
     },
     onBadgeEarned: (badge) => setToastBadge(badge),
     setSubmitError,
@@ -322,7 +333,10 @@ export default function RateScreen() {
     if (step === 3) setStep(2);
     else if (step === 2) setStep(1);
     else if (step === 1) setStep(0);
-    else router.back();
+    else {
+      if (slug) Analytics.rateAbandon(slug, step);
+      router.back();
+    }
   };
 
   // Sprint 531: Jump to specific step from review screen

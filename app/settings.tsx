@@ -14,6 +14,7 @@ import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useCity, SUPPORTED_CITIES, type SupportedCity } from "@/lib/city-context";
 import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
+import { track } from "@/lib/analytics";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import packageJson from "../package.json";
 import Constants from "expo-constants";
@@ -63,6 +64,8 @@ function NavigationRow({
 }
 
 export default function SettingsScreen() {
+  // Sprint 714: Track settings open
+  React.useEffect(() => { track("settings_open"); }, []);
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuth();
   const { city, setCity } = useCity();

@@ -15,6 +15,7 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { LeaderboardMark } from "@/components/Logo";
 import { hapticPress } from "@/lib/audio";
+import { track } from "@/lib/analytics";
 
 export const ONBOARDING_KEY = "hasSeenOnboarding";
 
@@ -148,6 +149,13 @@ export default function OnboardingScreen() {
   const topPad = Platform.OS === "web" ? 20 : insets.top;
   const bottomPad = Platform.OS === "web" ? 34 : insets.bottom;
 
+  // Sprint 714: Track onboarding start on mount
+  const hasTrackedStart = useRef(false);
+  if (!hasTrackedStart.current) {
+    hasTrackedStart.current = true;
+    track("onboarding_start");
+  }
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const progressWidth = useSharedValue(1 / SLIDES.length);
@@ -179,6 +187,7 @@ export default function OnboardingScreen() {
   }, [currentIndex]);
 
   const completeOnboarding = async () => {
+    track("onboarding_complete", { slides_viewed: currentIndex + 1 });
     await AsyncStorage.setItem(ONBOARDING_KEY, "true");
     router.replace("/(tabs)");
   };
@@ -194,6 +203,7 @@ export default function OnboardingScreen() {
 
   const skip = () => {
     hapticPress();
+    track("onboarding_skip", { skipped_at_slide: currentIndex + 1 });
     completeOnboarding();
   };
 

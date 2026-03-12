@@ -136,14 +136,14 @@ describe("settings.tsx uses NotificationSettings", () => {
 describe("settings.tsx LOC reduction", () => {
   const src = readFile("app/settings.tsx");
 
-  it("settings.tsx is under 380 LOC (was 557, +build info Sprint 704)", () => {
+  it("settings.tsx is under 385 LOC (was 557, +analytics Sprint 714)", () => {
     const lines = src.split("\n").length;
-    expect(lines).toBeLessThan(380);
+    expect(lines).toBeLessThan(385);
   });
 
-  it("settings.tsx reduced by at least 185 LOC", () => {
+  it("settings.tsx reduced by at least 180 LOC", () => {
     const lines = src.split("\n").length;
-    expect(557 - lines).toBeGreaterThanOrEqual(185);
+    expect(557 - lines).toBeGreaterThanOrEqual(180);
   });
 });
 
