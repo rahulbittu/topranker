@@ -19,6 +19,9 @@ import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { useAuth } from "@/lib/auth-context";
 import { getApiUrl } from "@/lib/query-client";
+import { hapticPress } from "@/lib/audio";
+import { track } from "@/lib/analytics";
+import Constants from "expo-constants";
 
 const CATEGORIES = [
   { key: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -42,8 +45,17 @@ export default function FeedbackScreen() {
 
   const canSubmit = rating > 0 && message.trim().length > 0 && category;
 
+  // Sprint 719: Device context for better bug reports
+  const deviceContext = {
+    platform: Platform.OS,
+    osVersion: Platform.Version,
+    appVersion: Constants.expoConfig?.version || "unknown",
+    buildNumber: Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "dev",
+  };
+
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
+    hapticPress();
     setSubmitting(true);
     try {
       const res = await fetch(getApiUrl() + "/api/feedback", {
@@ -55,10 +67,12 @@ export default function FeedbackScreen() {
           category,
           message: message.trim(),
           screenContext: "feedback_screen",
+          deviceContext,
         }),
       });
       if (res.ok) {
         setSubmitted(true);
+        track("feedback_submitted" as any, { category, rating });
       } else {
         Alert.alert("Error", "Failed to submit feedback. Please try again.");
       }
@@ -116,7 +130,7 @@ export default function FeedbackScreen() {
             <TouchableOpacity
               key={cat.key}
               style={[styles.categoryChip, category === cat.key && styles.categoryChipActive]}
-              onPress={() => setCategory(cat.key)}
+              onPress={() => { hapticPress(); setCategory(cat.key); }}
               accessibilityRole="button"
               accessibilityLabel={cat.label}
             >
@@ -138,7 +152,7 @@ export default function FeedbackScreen() {
           {RATINGS.map((r) => (
             <TouchableOpacity
               key={r}
-              onPress={() => setRating(r)}
+              onPress={() => { hapticPress(); setRating(r); }}
               style={[styles.starBtn, rating >= r && styles.starBtnActive]}
               accessibilityRole="button"
               accessibilityLabel={`${r} star${r > 1 ? "s" : ""}`}
