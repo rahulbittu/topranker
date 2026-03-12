@@ -3282,6 +3282,7 @@ var init_featured_placements = __esm({
 });
 
 // server/storage/claims.ts
+import crypto2 from "crypto";
 import { eq as eq15, and as and12, count as count9, desc as desc12 } from "drizzle-orm";
 async function submitClaim(businessId, memberId, verificationMethod) {
   const [claim] = await db.insert(businessClaims).values({ businessId, memberId, verificationMethod }).returning();
@@ -3333,7 +3334,7 @@ async function getClaimsByMember(memberId) {
   }).from(businessClaims).leftJoin(businesses, eq15(businessClaims.businessId, businesses.id)).where(eq15(businessClaims.memberId, memberId)).orderBy(desc12(businessClaims.submittedAt));
 }
 async function submitClaimWithCode(businessId, memberId, verificationMethod) {
-  const code = String(Math.floor(1e5 + Math.random() * 9e5));
+  const code = String(crypto2.randomInt(1e5, 999999));
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1e3);
   const [claim] = await db.insert(businessClaims).values({
     businessId,
@@ -4350,12 +4351,12 @@ var init_analytics2 = __esm({
 });
 
 // server/email-tracking.ts
-import crypto4 from "crypto";
+import crypto6 from "crypto";
 function findEvent(eventId) {
   return events.find((e) => e.id === eventId);
 }
 function trackEmailSent(to, template, metadata) {
-  const id = crypto4.randomUUID();
+  const id = crypto6.randomUUID();
   const event = {
     id,
     to,
@@ -4909,11 +4910,11 @@ __export(moderation_queue_exports, {
   getResolvedItems: () => getResolvedItems,
   rejectItem: () => rejectItem
 });
-import crypto5 from "crypto";
+import crypto7 from "crypto";
 function addToQueue(item) {
   const modItem = {
     ...item,
-    id: crypto5.randomUUID(),
+    id: crypto7.randomUUID(),
     status: "pending",
     moderatorId: null,
     moderatorNote: null,
@@ -5230,12 +5231,12 @@ __export(photo_moderation_exports, {
   submitPhoto: () => submitPhoto
 });
 import { eq as eq22, desc as desc16, sql as sql14, and as and14, count as count15 } from "drizzle-orm";
-import crypto7 from "crypto";
+import crypto9 from "crypto";
 async function submitPhoto(businessId, memberId, url, caption, fileSize, mimeType) {
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) return { error: `Invalid mime type: ${mimeType}` };
   if (fileSize > MAX_FILE_SIZE) return { error: "File too large (max 10MB)" };
   if (caption.length > MAX_CAPTION_LENGTH) return { error: "Caption too long (max 500 chars)" };
-  const id = crypto7.randomUUID();
+  const id = crypto9.randomUUID();
   const [row] = await db.insert(photoSubmissions).values({
     id,
     businessId,
@@ -5343,10 +5344,10 @@ __export(photo_hash_exports, {
   preloadHashIndex: () => preloadHashIndex,
   registerPhotoHash: () => registerPhotoHash
 });
-import crypto8 from "crypto";
+import crypto10 from "crypto";
 import { isNotNull as isNotNull2, eq as eq23 } from "drizzle-orm";
 function computePhotoHash(buffer2) {
-  return crypto8.createHash("sha256").update(buffer2).digest("hex");
+  return crypto10.createHash("sha256").update(buffer2).digest("hex");
 }
 function checkDuplicate(hash) {
   return hashIndex.get(hash) ?? null;
@@ -8607,7 +8608,7 @@ async function authenticateAppleUser(identityToken, fullName, clientEmail) {
 // server/deploy.ts
 init_logger();
 import { exec } from "child_process";
-import * as crypto2 from "crypto";
+import * as crypto3 from "crypto";
 var deployLog = log2.tag("Deploy");
 var deployStatus = {
   status: "idle",
@@ -8623,10 +8624,10 @@ function verifySignature(req) {
   const signature = req.header("x-hub-signature-256");
   if (!signature) return false;
   const body = req.rawBody;
-  const hmac2 = crypto2.createHmac("sha256", secret);
+  const hmac2 = crypto3.createHmac("sha256", secret);
   hmac2.update(body);
   const expected = `sha256=${hmac2.digest("hex")}`;
-  return crypto2.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  return crypto3.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 function runCommand(cmd, cwd) {
   return new Promise((resolve2, reject) => {
@@ -9097,6 +9098,7 @@ var BUDGETS = [
 
 // server/alerting.ts
 init_logger();
+import crypto4 from "crypto";
 var alertLog = log2.tag("Alerting");
 var alerts = [];
 var MAX_ALERTS = 200;
@@ -9151,7 +9153,7 @@ function fireAlert(ruleName, message, severity = "warning", metadata) {
   }
   lastFired.set(ruleName, now);
   const alert = {
-    id: `alert_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `alert_${crypto4.randomUUID()}`,
     rule: ruleName,
     severity,
     message,
@@ -9538,7 +9540,7 @@ function registerAdminAnalyticsRoutes(app2) {
 
 // server/email-ab-testing.ts
 init_logger();
-import crypto3 from "crypto";
+import crypto5 from "crypto";
 var abLog = log2.tag("EmailAB");
 var experiments = [];
 var assignments = /* @__PURE__ */ new Map();
@@ -9548,11 +9550,11 @@ function createExperiment(name, variants) {
     experiments.shift();
   }
   const experiment = {
-    id: crypto3.randomUUID(),
+    id: crypto5.randomUUID(),
     name,
     variants: variants.map((v) => ({
       ...v,
-      id: crypto3.randomUUID(),
+      id: crypto5.randomUUID(),
       weight: v.weight || 1
     })),
     createdAt: /* @__PURE__ */ new Date(),
@@ -10708,7 +10710,7 @@ init_logger();
 
 // server/email-templates.ts
 init_logger();
-import crypto6 from "crypto";
+import crypto8 from "crypto";
 var tmplLog = log2.tag("EmailTemplates");
 var templates = /* @__PURE__ */ new Map();
 var MAX_TEMPLATES = 200;
@@ -10758,7 +10760,7 @@ function initBuiltInTemplates() {
   for (const t of BUILT_IN_TEMPLATES) {
     const tmpl = {
       ...t,
-      id: crypto6.randomUUID(),
+      id: crypto8.randomUUID(),
       createdAt: (/* @__PURE__ */ new Date()).toISOString(),
       updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
@@ -10780,7 +10782,7 @@ function createTemplate(tmpl) {
   }
   const created = {
     ...tmpl,
-    id: crypto6.randomUUID(),
+    id: crypto8.randomUUID(),
     createdAt: (/* @__PURE__ */ new Date()).toISOString(),
     updatedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
@@ -13042,7 +13044,7 @@ init_logger();
 init_storage();
 init_tier_staleness();
 init_file_storage();
-import crypto9 from "node:crypto";
+import crypto11 from "node:crypto";
 function registerMemberRoutes(app2) {
   app2.post("/api/members/me/avatar", requireAuth, wrapAsync(async (req, res) => {
     const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -13070,7 +13072,7 @@ function registerMemberRoutes(app2) {
     const fileBuffer = file.buffer;
     const contentType = file.mimetype;
     const ext = contentType === "image/png" ? "png" : contentType === "image/webp" ? "webp" : "jpg";
-    const uniqueId = crypto9.randomBytes(8).toString("hex");
+    const uniqueId = crypto11.randomBytes(8).toString("hex");
     const key2 = `avatars/${req.user.id}-${uniqueId}.${ext}`;
     const avatarUrl = await fileStorage.upload(key2, fileBuffer, contentType);
     const { updateMemberAvatar: updateMemberAvatar2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
@@ -13531,8 +13533,8 @@ function registerBusinessRoutes(app2) {
     }
     const { fileStorage: fileStorage2 } = await Promise.resolve().then(() => (init_file_storage(), file_storage_exports));
     const ext = mimeType.split("/")[1] || "jpeg";
-    const crypto14 = await import("crypto");
-    const key2 = `community-photos/${businessId}/${memberId}-${crypto14.randomUUID()}.${ext}`;
+    const crypto17 = await import("crypto");
+    const key2 = `community-photos/${businessId}/${memberId}-${crypto17.randomUUID()}.${ext}`;
     const url = await fileStorage2.upload(key2, buffer2, mimeType);
     const { submitPhoto: submitPhoto2 } = await Promise.resolve().then(() => (init_photo_moderation(), photo_moderation_exports));
     const result = await submitPhoto2(businessId, memberId, url, caption, buffer2.length, mimeType);
@@ -14353,10 +14355,10 @@ init_logger();
 import { eq as eq31 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
-import crypto10 from "crypto";
+import crypto12 from "crypto";
 var SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
 function hmac(data) {
-  return crypto10.createHmac("sha256", SECRET).update(data).digest("base64url");
+  return crypto12.createHmac("sha256", SECRET).update(data).digest("base64url");
 }
 function verifyUnsubscribeToken(token) {
   const parts = token.split(".");
@@ -14365,7 +14367,7 @@ function verifyUnsubscribeToken(token) {
   const type = parts.pop();
   const memberId = parts.join(".");
   const expected = hmac(`${memberId}.${type}`);
-  if (!crypto10.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+  if (!crypto12.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
     return null;
   }
   return { memberId, type };
@@ -14456,7 +14458,7 @@ function registerUnsubscribeRoutes(app2) {
 
 // server/routes-webhooks.ts
 init_logger();
-import crypto11 from "node:crypto";
+import crypto13 from "node:crypto";
 init_email_tracking();
 
 // server/email-id-mapping.ts
@@ -14469,8 +14471,8 @@ function getTrackingIdFromResend(resendId) {
 
 // server/routes-webhooks.ts
 function verifySignature2(payload, signature, secret) {
-  const expected = crypto11.createHmac("sha256", secret).update(payload).digest("hex");
-  return crypto11.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const expected = crypto13.createHmac("sha256", secret).update(payload).digest("hex");
+  return crypto13.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 function registerWebhookRoutes(app2) {
   app2.post("/api/webhooks/resend", wrapAsync(async (req, res) => {
@@ -14586,7 +14588,7 @@ init_logger();
 
 // server/push-notifications.ts
 init_logger();
-import crypto12 from "crypto";
+import crypto14 from "crypto";
 var pushLog2 = log2.tag("PushNotifications");
 var tokens = /* @__PURE__ */ new Map();
 var messageLog2 = [];
@@ -14623,7 +14625,7 @@ function getMemberTokens(memberId) {
 }
 function sendPushNotification2(memberId, title, body, data) {
   const msg = {
-    id: crypto12.randomUUID(),
+    id: crypto14.randomUUID(),
     memberId,
     title,
     body,
@@ -15148,7 +15150,7 @@ init_file_storage();
 init_logger();
 init_photo_hash();
 init_phash();
-import crypto13 from "crypto";
+import crypto15 from "crypto";
 var photoLog = log2.tag("RatingPhoto");
 var ALLOWED_MIME_TYPES2 = ["image/jpeg", "image/png", "image/webp"];
 var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
@@ -15185,7 +15187,7 @@ function registerRatingPhotoRoutes(app2) {
     const pHash = computePerceptualHash(buffer2);
     const nearDup = !dupResult.isDuplicate ? findNearDuplicates(pHash, memberId) : null;
     const ext = mimeType === "image/png" ? "png" : mimeType === "image/webp" ? "webp" : "jpg";
-    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto13.randomUUID().slice(0, 8)}.${ext}`;
+    const cdnKey = `rating-photos/${rating.businessId}/${ratingId}-${crypto15.randomUUID().slice(0, 8)}.${ext}`;
     try {
       const photoUrl = await fileStorage.upload(cdnKey, buffer2, mimeType);
       const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
@@ -15939,6 +15941,7 @@ import * as path2 from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 // server/security-headers.ts
+import crypto16 from "crypto";
 function buildAllowedOrigins() {
   const origins = /* @__PURE__ */ new Set();
   origins.add("https://topranker.com");
@@ -15981,8 +15984,7 @@ function securityHeaders(req, res, next) {
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("X-API-Version", "1.0.0");
-    const requestId2 = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    res.setHeader("X-Request-Id", requestId2);
+    res.setHeader("X-Request-Id", crypto16.randomUUID());
     return next();
   }
   const wildcardAllowed = allowedOrigins.has("*");
@@ -16028,8 +16030,7 @@ function securityHeaders(req, res, next) {
     "max-age=31536000; includeSubDomains; preload"
   );
   res.setHeader("X-API-Version", "1.0.0");
-  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  res.setHeader("X-Request-Id", requestId);
+  res.setHeader("X-Request-Id", crypto16.randomUUID());
   next();
 }
 

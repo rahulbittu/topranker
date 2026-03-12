@@ -201,7 +201,9 @@ export default function LeaderboardScreen() {
       <Modal visible={showSuggest} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <SuggestCategory
-            onSubmit={(s) => submitCategorySuggestion(s).catch(() => {})}
+            onSubmit={(s) => submitCategorySuggestion(s).catch((e) => {
+              if (__DEV__) console.warn("[Suggest] Failed to submit:", e);
+            })}
             onClose={() => setShowSuggest(false)}
           />
         </View>

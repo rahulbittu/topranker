@@ -7,6 +7,7 @@
  * aggregates top offenders and top paths, and exposes stats for the admin dashboard.
  */
 
+import crypto from "crypto";
 import { log } from "./logger";
 
 const rlDashLog = log.tag("RateLimitDash");
@@ -38,7 +39,7 @@ const MAX_EVENTS = 5000;
 export function recordRateLimitHit(ip: string, path: string, blocked: boolean): void {
   const now = Date.now();
   const event: RateLimitEvent = {
-    id: `rl_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `rl_${crypto.randomUUID()}`,
     ip,
     path,
     timestamp: new Date(now).toISOString(),

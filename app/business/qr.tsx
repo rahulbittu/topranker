@@ -23,7 +23,9 @@ export default function QRCodeScreen() {
         message: `Rate ${name} on TopRanker!\n${qrUrl}`,
         url: qrUrl,
       });
-    } catch {}
+    } catch (e) {
+      if (__DEV__) console.warn("[QR] Share failed:", e);
+    }
   };
 
   return (
@@ -89,13 +91,14 @@ export default function QRCodeScreen() {
                 // Open a clean print window with just the QR code
                 const printWindow = window.open("", "_blank");
                 if (printWindow) {
+                  const safeName = (name || "").replace(/[<>"&]/g, (c: string) => ({ "<": "&lt;", ">": "&gt;", '"': "&quot;", "&": "&amp;" }[c] || c));
                   printWindow.document.write(`
-                    <html><head><title>QR Code — ${name}</title>
+                    <html><head><title>QR Code — ${safeName}</title>
                     <style>body{margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif}
                     h1{font-size:28px;color:#0D1B2A;margin:0 0 4px}p{color:#888;font-size:14px;margin:0 0 24px}
                     img{width:240px;height:240px;border:3px solid #0D1B2A;border-radius:12px;padding:8px}
                     .url{font-size:11px;color:#aaa;margin-top:12px}.brand{color:#C49A1A;font-weight:900;font-size:11px;letter-spacing:1px;margin-top:20px}</style></head>
-                    <body><h1>${name}</h1><p>Scan to rate on TopRanker</p>
+                    <body><h1>${safeName}</h1><p>Scan to rate on TopRanker</p>
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}&color=0D1B2A" />
                     <div class="url">${qrUrl}</div><div class="brand">TOPRANKER</div></body></html>`);
                   printWindow.document.close();

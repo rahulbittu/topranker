@@ -2,6 +2,7 @@
  * Claims & Flags Storage — Admin review for business claims and rating flags
  * Owner: Sage (Backend Engineer #2) + Priya (RBAC Lead)
  */
+import crypto from "crypto";
 import { eq, and, count, desc } from "drizzle-orm";
 import {
   businessClaims, ratingFlags, businesses, members, ratings,
@@ -110,7 +111,7 @@ export async function submitClaimWithCode(
   memberId: string,
   verificationMethod: string,
 ): Promise<BusinessClaim> {
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const code = String(crypto.randomInt(100000, 999999));
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
   const [claim] = await db
     .insert(businessClaims)

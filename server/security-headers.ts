@@ -4,6 +4,7 @@
  * Owner: Nadia Kaur (Cybersecurity)
  */
 import type { Request, Response, NextFunction } from "express";
+import crypto from "crypto";
 
 /**
  * Builds the set of allowed CORS origins from environment + hardcoded production domains.
@@ -73,8 +74,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     res.setHeader("X-API-Version", "1.0.0");
-    const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    res.setHeader("X-Request-Id", requestId);
+    res.setHeader("X-Request-Id", crypto.randomUUID());
     return next();
   }
 
@@ -137,8 +137,7 @@ export function securityHeaders(req: Request, res: Response, next: NextFunction)
   );
 
   res.setHeader("X-API-Version", "1.0.0");
-  const requestId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  res.setHeader("X-Request-Id", requestId);
+  res.setHeader("X-Request-Id", crypto.randomUUID());
 
   next();
 }

@@ -470,7 +470,9 @@ export default function RootLayout() {
 
       // Sprint 501: Report notification open for analytics
       const notifId = response.notification.request.identifier;
-      reportNotificationOpened(notifId, notifType).catch(() => {});
+      reportNotificationOpened(notifId, notifType).catch((e) => {
+        if (__DEV__) console.warn("[Notification] Failed to report open:", e);
+      });
       // Sprint 507: Client-side notification analytics
       Analytics.notificationOpenReported(notifId, notifType);
       // Sprint 717: Breadcrumb for notification tap

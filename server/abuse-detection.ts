@@ -7,6 +7,7 @@
  * Each pattern has a configurable threshold and time window.
  */
 
+import crypto from "crypto";
 import { log } from "./logger";
 import { fireAlert } from "./alerting";
 
@@ -76,7 +77,7 @@ export function detectAbuse(pattern: string, source: string, count: number): boo
 
   const now = Date.now();
   const incident: AbuseIncident = {
-    id: `abuse_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `abuse_${crypto.randomUUID()}`,
     pattern,
     source,
     count,

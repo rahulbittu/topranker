@@ -38,8 +38,9 @@ describe("Sprint 501: Client Notification Open Wiring", () => {
       expect(src).toContain("reportNotificationOpened(notifId");
     });
 
-    it("uses fire-and-forget pattern for analytics", () => {
-      expect(src).toContain(".catch(() => {})");
+    it("uses fire-and-forget pattern for analytics with dev logging", () => {
+      expect(src).toContain("reportNotificationOpened(notifId");
+      expect(src).toMatch(/\.catch\(/);
     });
 
     it("falls back to unknown for missing notification type", () => {

@@ -7,6 +7,7 @@
  * Phase 1: Console + in-memory log. Phase 2: PagerDuty/Opsgenie/Slack.
  */
 
+import crypto from "crypto";
 import { log } from "./logger";
 
 const alertLog = log.tag("Alerting");
@@ -96,7 +97,7 @@ export function fireAlert(
   lastFired.set(ruleName, now);
 
   const alert: Alert = {
-    id: `alert_${now}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `alert_${crypto.randomUUID()}`,
     rule: ruleName,
     severity,
     message,
