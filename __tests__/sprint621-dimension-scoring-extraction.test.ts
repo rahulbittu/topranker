@@ -115,8 +115,8 @@ describe("Sprint 621 — Dimension Scoring Step Extraction", () => {
       expect(thresholds.files["components/rate/DimensionScoringStep.tsx"]).toBeDefined();
     });
 
-    it("tracks 31 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(31);
+    it("tracks 33 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(33);
     });
   });
 });

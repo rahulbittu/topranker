@@ -2,7 +2,9 @@
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
     "shared/schema.ts": { "maxLOC": 960, "current": 905, "notes": "Sprint 626: +action URL fields (898→905)" },
-    "server/routes.ts": { "maxLOC": 400, "current": 377, "notes": "Sprint 623: +/api/google-places-fallback (367→377)" },
+    "server/routes.ts": { "maxLOC": 400, "current": 382, "notes": "Sprint 660: +registerClaimRoutes (377→382)" },
+    "server/routes-claims.ts": { "maxLOC": 130, "current": 107, "notes": "Sprint 659: extracted from routes-businesses.ts" },
+    "app/business/claim.tsx": { "maxLOC": 520, "current": 496, "notes": "Sprint 654: +code verification UI (366→496)" },
     "server/storage/businesses.ts": { "maxLOC": 650, "current": 637, "notes": "Sprint 626: +updateBusinessActions (624→637)" },
     "server/routes-owner-dashboard.ts": { "maxLOC": 100, "current": 87, "notes": "Sprint 559: hours conversion wired" },
     "server/hours-utils.ts": { "maxLOC": 220, "current": 201, "notes": "Sprint 557: conversion utils" },
@@ -39,6 +41,6 @@
   },
   "tests": {
     "minCount": 10800,
-    "currentCount": 11695
+    "currentCount": 11697
   }
 }

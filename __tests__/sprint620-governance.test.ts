@@ -124,8 +124,8 @@ describe("Sprint 620 — Governance", () => {
   describe("file health", () => {
     const thresholds = JSON.parse(readFile("shared/thresholds.json"));
 
-    it("tracks 31 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(31);
+    it("tracks 33 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(33);
     });
 
     it("build under 750kb", () => {

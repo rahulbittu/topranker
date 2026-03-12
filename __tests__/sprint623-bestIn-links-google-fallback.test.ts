@@ -137,8 +137,8 @@ describe("Sprint 623 — Best In Links + Google Places Fallback", () => {
       expect(thresholds.files["components/search/GooglePlacesFallback.tsx"]).toBeDefined();
     });
 
-    it("tracks 31 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(31);
+    it("tracks 33 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(33);
     });
 
     it("build under 750kb", () => {

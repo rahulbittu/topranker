@@ -91,8 +91,8 @@ describe("Sprint 630 — Action CTA Attribution", () => {
       expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
-    it("tracks 31 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(31);
+    it("tracks 33 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(33);
     });
   });
 });
