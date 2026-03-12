@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, RefreshControl, Share,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import { hapticPullRefresh } from "@/lib/audio";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -89,8 +89,8 @@ function ProfileContent({ profile, refetch, isRefetching }: { profile: ApiMember
 
   const { badges, earnedCount: earnedBadgeCount, totalPossible } = useBadgeContext(profile, tier, impact);
 
-  // Sprint 701: Consistent refresh pattern — use React Query isRefetching (matches Rankings/Discover)
-  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
+  // Sprint 706: Centralized haptic functions (Sprint 701: isRefetching pattern)
+  const onRefresh = useCallback(() => { hapticPullRefresh(); refetch(); }, [refetch]);
 
   return (
     <>

@@ -10,7 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
-import * as Haptics from "expo-haptics";
+import { hapticPullRefresh, hapticPress } from "@/lib/audio";
 import { fetchBusinessSearch, fetchTrending, fetchJustRated, fetchAutocomplete, fetchPopularCategories, fetchPopularQueries, trackSearchQuery as trackQuery, type AutocompleteSuggestion } from "@/lib/api";
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { useSearchActions } from "@/lib/hooks/useSearchActions";
@@ -194,7 +194,8 @@ export default function SearchScreen() {
     staleTime: 60000,
   });
 
-  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
+  // Sprint 706: Centralized haptic functions
+  const onRefresh = useCallback(() => { hapticPullRefresh(); refetch(); }, [refetch]);
 
   const requestLocation = useCallback(async () => {
     if (userLocation) return;
@@ -345,7 +346,7 @@ export default function SearchScreen() {
         <View style={styles.viewToggle}>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "list" && styles.viewToggleBtnActive]}
-            onPress={() => { Haptics.selectionAsync(); setViewMode("list"); }}
+            onPress={() => { hapticPress(); setViewMode("list"); }}
             accessibilityRole="button"
             accessibilityLabel="List view"
             accessibilityState={{ selected: viewMode === "list" }}
@@ -355,7 +356,7 @@ export default function SearchScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.viewToggleBtn, viewMode === "map" && styles.viewToggleBtnActive]}
-            onPress={() => { Haptics.selectionAsync(); setViewMode("map"); }}
+            onPress={() => { hapticPress(); setViewMode("map"); }}
             accessibilityRole="button"
             accessibilityLabel="Map view"
             accessibilityState={{ selected: viewMode === "map" }}

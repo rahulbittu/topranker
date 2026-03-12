@@ -77,7 +77,7 @@ describe("Sprint 306 — Cuisine-to-Dish Drill-Down", () => {
   });
 
   it("dish chip triggers haptics", () => {
-    expect(indexSrc).toContain("Haptics.selectionAsync()");
+    expect(indexSrc).toContain("hapticPress()");
   });
 
   it("dish chip tracks analytics", () => {

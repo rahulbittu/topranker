@@ -16,7 +16,7 @@ import { type ApiChallenger } from "@/lib/api";
 import { fetchActiveChallenges } from "@/lib/api";
 import { useCity } from "@/lib/city-context";
 import { BRAND } from "@/constants/brand";
-import * as Haptics from "expo-haptics";
+import { hapticPullRefresh } from "@/lib/audio";
 import { ChallengerSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState, EmptyState } from "@/components/NetworkBanner";
@@ -40,8 +40,8 @@ export default function ChallengerScreen() {
 
   const { showTip: showChallengerTip, dismissTip: dismissChallengerTip } = useChallengerTip();
 
-  // Sprint 701: Consistent refresh pattern — use React Query isRefetching (matches Rankings/Discover)
-  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
+  // Sprint 706: Centralized haptic functions (Sprint 701: isRefetching pattern)
+  const onRefresh = useCallback(() => { hapticPullRefresh(); refetch(); }, [refetch]);
 
   return (
     <ErrorBoundary>

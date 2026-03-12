@@ -28,7 +28,7 @@ describe("Sprint 701: Rankings refresh pattern", () => {
   });
 
   it("has haptic feedback on refresh", () => {
-    expect(src).toContain("Haptics.selectionAsync()");
+    expect(src).toContain("hapticPullRefresh()");
   });
 });
 
@@ -50,7 +50,7 @@ describe("Sprint 701: Discover refresh pattern", () => {
   });
 
   it("has haptic feedback on refresh", () => {
-    expect(src).toContain("Haptics.selectionAsync()");
+    expect(src).toContain("hapticPullRefresh()");
   });
 });
 
@@ -76,7 +76,7 @@ describe("Sprint 701: Challenger refresh pattern", () => {
   });
 
   it("has haptic feedback on refresh", () => {
-    expect(src).toContain("Haptics.selectionAsync()");
+    expect(src).toContain("hapticPullRefresh()");
   });
 });
 
@@ -106,7 +106,7 @@ describe("Sprint 701: Profile refresh pattern", () => {
   });
 
   it("has haptic feedback on refresh", () => {
-    expect(src).toContain("Haptics.selectionAsync()");
+    expect(src).toContain("hapticPullRefresh()");
   });
 });
 

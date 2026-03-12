@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
-import * as Haptics from "expo-haptics";
+import { hapticPullRefresh, hapticPress } from "@/lib/audio";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { getCategoryDisplay, BRAND } from "@/constants/brand";
@@ -105,7 +105,8 @@ export default function LeaderboardScreen() {
     staleTime: 30000,
   });
 
-  const onRefresh = useCallback(() => { Haptics.selectionAsync(); refetch(); }, [refetch]);
+  // Sprint 706: Centralized haptic functions
+  const onRefresh = useCallback(() => { hapticPullRefresh(); refetch(); }, [refetch]);
 
   // Filter by search query
   const filteredBiz = useMemo(() => {
@@ -152,7 +153,7 @@ export default function LeaderboardScreen() {
             <TouchableOpacity
               key={c}
               style={[styles.cityPickerItem, c === city && styles.cityPickerItemActive]}
-              onPress={() => { setCity(c); setShowCityPicker(false); Haptics.selectionAsync(); }}
+              onPress={() => { setCity(c); setShowCityPicker(false); hapticPress(); }}
               accessibilityRole="button"
               accessibilityLabel={`Switch to ${c}`}
             >
