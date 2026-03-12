@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Platform, RefreshControl, Share,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -89,6 +90,7 @@ function ProfileContent({ profile, refetch }: { profile: ApiMemberProfile; refet
 
   const [refreshing, setRefreshing] = useState(false);
   const onRefresh = useCallback(async () => {
+    Haptics.selectionAsync();
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
