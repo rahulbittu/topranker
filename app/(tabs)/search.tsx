@@ -33,6 +33,7 @@ import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/NetworkBanner";
 import { decodeSearchParams } from "@/lib/search-url-params";
+import { formatTimeAgo } from "@/lib/data";
 import { PresetChips } from "@/components/search/PresetChips";
 import { DiscoverSections } from "@/components/search/DiscoverSections";
 import type { FilterPreset } from "@/lib/search-filter-presets";
@@ -115,7 +116,7 @@ export default function SearchScreen() {
   const {
     businesses: allBusinesses,
     isLoading, isError, refetch, isRefetching,
-    isFetchingNextPage, hasNextPage, fetchNextPage, totalCount,
+    isFetchingNextPage, hasNextPage, fetchNextPage, totalCount, dataUpdatedAt,
   } = useInfiniteSearch(debouncedQuery, city, selectedCuisine, searchOpts);
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();

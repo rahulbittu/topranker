@@ -20,6 +20,7 @@ import * as Haptics from "expo-haptics";
 import { ChallengerSkeleton } from "@/components/Skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/NetworkBanner";
+import { formatTimeAgo } from "@/lib/data";
 import { useChallengerTip, ChallengerTipCard } from "@/components/challenger/ChallengerTip";
 import { ChallengeCard } from "@/components/challenger/ChallengeCard";
 
@@ -29,7 +30,7 @@ export default function ChallengerScreen() {
   const { city } = useCity();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
 
-  const { data: challenges = [], isLoading, isError, refetch } = useQuery({
+  const { data: challenges = [], isLoading, isError, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["challengers", city],
     queryFn: () => fetchActiveChallenges(city),
     staleTime: 30000,
@@ -60,6 +61,9 @@ export default function ChallengerScreen() {
       <Text style={styles.headerSub}>
         Head-to-head battles. Community-weighted votes. Real winners.
       </Text>
+      {dataUpdatedAt > 0 && (
+        <Text style={styles.lastUpdated}>Updated {formatTimeAgo(dataUpdatedAt)}</Text>
+      )}
 
       {isLoading ? (
         <ChallengerSkeleton />
@@ -123,6 +127,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     marginTop: 2,
+  },
+  lastUpdated: {
+    fontSize: 9, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    paddingHorizontal: 20, marginTop: -12, marginBottom: 8, opacity: 0.7,
   },
   liveBadge: {
     flexDirection: "row", alignItems: "center", gap: 4,

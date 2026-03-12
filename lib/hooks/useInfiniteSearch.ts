@@ -49,6 +49,7 @@ export function useInfiniteSearch(
     fetchNextPage,
     refetch,
     isRefetching,
+    dataUpdatedAt,
   } = useInfiniteQuery({
     queryKey: [
       "infinite-search", city, query, cuisine,
@@ -90,5 +91,6 @@ export function useInfiniteSearch(
     refetch,
     isRefetching,
     totalCount,
+    dataUpdatedAt,
   };
 }
