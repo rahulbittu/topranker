@@ -31,7 +31,7 @@ import { registerRatingPhotoRoutes } from "./routes-rating-photos";
 import { registerScoreBreakdownRoutes } from "./routes-score-breakdown";
 import { registerRatingRoutes } from "./routes-ratings";
 import { handleStripeWebhook } from "./stripe-webhook";
-import { addClient, broadcast } from "./sse";
+import { addClient, broadcast, getClientCount } from "./sse";
 import { log, getLogStats } from "./logger";
 import { config } from "./config";
 import {
@@ -117,6 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       },
       push: pushStats,
       logs: getLogStats(),
+      sseClients: getClientCount(),
     });
   });
 
