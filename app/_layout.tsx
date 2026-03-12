@@ -450,7 +450,7 @@ export default function RootLayout() {
   useEffect(() => {
     registerForPushNotifications().then((token) => {
       if (token) {
-        console.log("[Push] Token:", token);
+        if (__DEV__) console.log("[Push] Token:", token);
         // Store token on backend
         savePushToken(token);
       }

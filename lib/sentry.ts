@@ -19,37 +19,43 @@ const MAX_BREADCRUMBS = 50;
 
 /** Initialize Sentry with the given config */
 export function initSentry(config: SentryConfig): void {
-  console.log("[Sentry] Initializing with config:", {
-    dsn: config.dsn,
-    environment: config.environment,
-    release: config.release,
-    tracesSampleRate: config.tracesSampleRate,
-  });
+  if (__DEV__) {
+    console.log("[Sentry] Initializing with config:", {
+      dsn: config.dsn,
+      environment: config.environment,
+      release: config.release,
+      tracesSampleRate: config.tracesSampleRate,
+    });
+  }
   initialized = true;
 }
 
 /** Capture an exception and send to Sentry */
 export function captureException(error: Error, context?: Record<string, unknown>): void {
-  if (initialized) {
-    console.log("[Sentry] Captured:", error.message, context || "");
-  } else {
-    console.error("[Sentry] Not initialized — fallback:", error.message, context || "");
+  if (__DEV__) {
+    if (initialized) {
+      console.log("[Sentry] Captured:", error.message, context || "");
+    } else {
+      console.error("[Sentry] Not initialized — fallback:", error.message, context || "");
+    }
   }
 }
 
 /** Capture a message at a given severity level */
 export function captureMessage(message: string, level?: "info" | "warning" | "error"): void {
-  if (initialized) {
-    console.log(`[Sentry] Message (${level || "info"}):`, message);
-  } else {
-    console.error("[Sentry] Not initialized — fallback message:", message);
+  if (__DEV__) {
+    if (initialized) {
+      console.log(`[Sentry] Message (${level || "info"}):`, message);
+    } else {
+      console.error("[Sentry] Not initialized — fallback message:", message);
+    }
   }
 }
 
 /** Set the current user context for Sentry */
 export function setUser(user: { id: string; email?: string } | null): void {
   currentUser = user;
-  if (initialized) {
+  if (__DEV__ && initialized) {
     console.log("[Sentry] User set:", user ? user.id : "cleared");
   }
 }
@@ -60,7 +66,7 @@ export function addBreadcrumb(category: string, message: string): void {
   if (breadcrumbs.length > MAX_BREADCRUMBS) {
     breadcrumbs.splice(0, breadcrumbs.length - MAX_BREADCRUMBS);
   }
-  if (initialized) {
+  if (__DEV__ && initialized) {
     console.log(`[Sentry] Breadcrumb (${category}):`, message);
   }
 }

@@ -23,6 +23,8 @@ import { hapticPress } from "@/lib/audio";
 import { track } from "@/lib/analytics";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import { getPerfSummary, getRecentApiErrors } from "@/lib/perf-tracker";
+import { getRecentBreadcrumbs } from "@/lib/sentry";
 
 const CATEGORIES = [
   { key: "bug", label: "Bug Report", icon: "bug-outline" },
@@ -72,6 +74,12 @@ export default function FeedbackScreen() {
           message: message.trim(),
           screenContext: "feedback_screen",
           deviceContext,
+          // Sprint 729: Diagnostic context for faster bug resolution
+          diagnostics: {
+            perf: getPerfSummary(),
+            recentErrors: getRecentApiErrors(5),
+            breadcrumbs: getRecentBreadcrumbs(15),
+          },
         }),
       });
       if (res.ok) {
