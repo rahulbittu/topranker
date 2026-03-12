@@ -184,6 +184,14 @@ function configureExpoAndLanding(app: express.Application) {
     next();
   });
 
+  // Sprint 736: AASA must be served with application/json content type
+  app.get("/.well-known/apple-app-site-association", (_req: Request, res: Response) => {
+    const aasaPath = path.resolve(process.cwd(), "public/.well-known/apple-app-site-association");
+    res.setHeader("Content-Type", "application/json");
+    res.sendFile(aasaPath);
+  });
+  // Sprint 736: Serve public/ for robots.txt and other static files
+  app.use(express.static(path.resolve(process.cwd(), "public"), { index: false }));
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
   app.use(express.static(path.resolve(process.cwd(), "static-build"), { index: false }));
 

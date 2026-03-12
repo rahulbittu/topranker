@@ -91,6 +91,26 @@
               "scheme": "https",
               "host": "topranker.com",
               "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.io",
+              "pathPrefix": "/business/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.io",
+              "pathPrefix": "/share/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.io",
+              "pathPrefix": "/dish/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.io",
+              "pathPrefix": "/join"
             }
           ],
           "category": [

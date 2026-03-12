@@ -36,6 +36,8 @@ import { decodeSearchParams } from "@/lib/search-url-params";
 import { formatTimeAgo } from "@/lib/data";
 import { PresetChips } from "@/components/search/PresetChips";
 import { DiscoverSections } from "@/components/search/DiscoverSections";
+import { useOfflineAware } from "@/lib/hooks/useOfflineAware";
+import { StaleBanner } from "@/components/StaleBanner";
 import type { FilterPreset } from "@/lib/search-filter-presets";
 
 const AMBER = BRAND.colors.amber;
@@ -118,6 +120,10 @@ export default function SearchScreen() {
     isLoading, isError, refetch, isRefetching,
     isFetchingNextPage, hasNextPage, fetchNextPage, totalCount, dataUpdatedAt,
   } = useInfiniteSearch(debouncedQuery, city, selectedCuisine, searchOpts);
+
+  // Sprint 736: Offline-aware — show cached data with stale indicator
+  const { isStale, staleLabel, showError } = useOfflineAware(isError, dataUpdatedAt, allBusinesses.length > 0);
+
   const handleLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
@@ -369,9 +375,11 @@ export default function SearchScreen() {
 
       {isLoading ? (
         <SearchResultsSkeleton />
-      ) : isError ? (
+      ) : showError ? (
         <ErrorState title="Could not load results" onRetry={() => refetch()} />
-      ) : <SkeletonToContent visible={!isLoading}>{viewMode === "map" ? (
+      ) : <SkeletonToContent visible={!isLoading}>
+        {isStale && staleLabel && <StaleBanner label={staleLabel} />}
+        {viewMode === "map" ? (
         /* Sprint 527: Map split view extracted */
         <SearchMapSplitView
           filtered={filtered}

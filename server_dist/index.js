@@ -16193,6 +16193,12 @@ function configureExpoAndLanding(app2) {
     }
     next();
   });
+  app2.get("/.well-known/apple-app-site-association", (_req, res) => {
+    const aasaPath = path2.resolve(process.cwd(), "public/.well-known/apple-app-site-association");
+    res.setHeader("Content-Type", "application/json");
+    res.sendFile(aasaPath);
+  });
+  app2.use(express.static(path2.resolve(process.cwd(), "public"), { index: false }));
   app2.use("/assets", express.static(path2.resolve(process.cwd(), "assets")));
   app2.use(express.static(path2.resolve(process.cwd(), "static-build"), { index: false }));
   const distPath = path2.resolve(process.cwd(), "dist");

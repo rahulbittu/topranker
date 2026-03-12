@@ -1,0 +1,8 @@
+# TopRanker — Beta Phase
+# Allow search engine crawling for public pages
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+Sitemap: https://topranker.io/sitemap.xml
