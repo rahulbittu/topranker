@@ -57,7 +57,7 @@ export function registerBestInRoutes(app: Express) {
       data: {
         ...category,
         title,
-        businesses: [], // TODO: wire to storage layer
+        businesses: [], // Sprint 817: Intentionally empty until real Best In ratings exist. Triggers "Not enough ratings" UX.
       },
     });
   }));

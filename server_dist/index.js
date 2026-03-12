@@ -6360,6 +6360,7 @@ var push_notifications_exports = {};
 __export(push_notifications_exports, {
   MAX_MESSAGES: () => MAX_MESSAGES,
   MAX_TOKENS_PER_MEMBER: () => MAX_TOKENS_PER_MEMBER,
+  MAX_UNIQUE_MEMBERS: () => MAX_UNIQUE_MEMBERS,
   clearPushData: () => clearPushData,
   getMemberTokens: () => getMemberTokens,
   getPushStats: () => getPushStats,
@@ -6371,7 +6372,17 @@ __export(push_notifications_exports, {
 });
 import crypto14 from "crypto";
 function registerPushToken(memberId, token, platform) {
-  tokens.has(memberId) || tokens.set(memberId, []);
+  if (!tokens.has(memberId)) {
+    if (tokens.size >= MAX_UNIQUE_MEMBERS) {
+      let lruMember = "", lruTime = "";
+      for (let [mid, memberTokens] of tokens) {
+        let newest = memberTokens.reduce((a, b) => a.lastUsed > b.lastUsed ? a : b);
+        (!lruMember || newest.lastUsed < lruTime) && (lruMember = mid, lruTime = newest.lastUsed);
+      }
+      lruMember && (tokens.delete(lruMember), pushLog2.info(`Push member evicted (LRU): ${lruMember}, lastActive=${lruTime}`));
+    }
+    tokens.set(memberId, []);
+  }
   let existing = tokens.get(memberId).find((t) => t.token === token);
   if (existing)
     return existing.lastUsed = (/* @__PURE__ */ new Date()).toISOString(), existing;
@@ -6383,8 +6394,11 @@ function registerPushToken(memberId, token, platform) {
     lastUsed: (/* @__PURE__ */ new Date()).toISOString()
   }, memberList = tokens.get(memberId);
   if (memberList.length >= MAX_TOKENS_PER_MEMBER) {
-    let evicted = memberList.shift();
-    evicted && pushLog2.info(`Push token evicted (oldest): ${evicted.platform} for ${memberId}`);
+    let lruIdx = 0, lruTime = memberList[0].lastUsed;
+    for (let i = 1; i < memberList.length; i++)
+      memberList[i].lastUsed < lruTime && (lruIdx = i, lruTime = memberList[i].lastUsed);
+    let evicted = memberList.splice(lruIdx, 1)[0];
+    pushLog2.info(`Push token evicted (LRU): ${evicted.platform} for ${memberId}, lastUsed=${evicted.lastUsed}`);
   }
   return memberList.push(entry), pushLog2.info(`Push token registered: ${platform} for ${memberId}`), entry;
 }
@@ -6432,11 +6446,11 @@ function getRecentMessages2(limit) {
 function clearPushData() {
   tokens.clear(), messageLog2.length = 0;
 }
-var pushLog2, tokens, messageLog2, MAX_MESSAGES, MAX_TOKENS_PER_MEMBER, init_push_notifications = __esm({
+var pushLog2, tokens, messageLog2, MAX_MESSAGES, MAX_TOKENS_PER_MEMBER, MAX_UNIQUE_MEMBERS, init_push_notifications = __esm({
   "server/push-notifications.ts"() {
     "use strict";
     init_logger();
-    pushLog2 = log.tag("PushNotifications"), tokens = /* @__PURE__ */ new Map(), messageLog2 = [], MAX_MESSAGES = 5e3, MAX_TOKENS_PER_MEMBER = 10;
+    pushLog2 = log.tag("PushNotifications"), tokens = /* @__PURE__ */ new Map(), messageLog2 = [], MAX_MESSAGES = 5e3, MAX_TOKENS_PER_MEMBER = 10, MAX_UNIQUE_MEMBERS = 1e4;
   }
 });
 
@@ -12348,7 +12362,7 @@ function registerBestInRoutes(app2) {
         ...category,
         title,
         businesses: []
-        // TODO: wire to storage layer
+        // Sprint 817: Intentionally empty until real Best In ratings exist. Triggers "Not enough ratings" UX.
       }
     });
   })), app2.get("/api/best-in/:slug/leaderboard", wrapAsync(async (req, res) => {
@@ -12740,7 +12754,17 @@ function registerHealthRoutes(app2) {
       res.status(503).json({ status: "not_ready", db: "disconnected" });
     }
   }), app2.get("/api/health", (_req, res) => {
-    let uptime = process.uptime(), memUsage = process.memoryUsage(), pushStats = { totalTokens: 0, uniqueMembers: 0, messagesSent: 0, messagesFailed: 0 };
+    res.json({
+      status: "healthy",
+      version: "1.0.0",
+      uptime: Math.floor(process.uptime()),
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }), app2.get("/api/health/diagnostics", async (req, res) => {
+    let { isAdminEmail: isAdminEmail2 } = await Promise.resolve().then(() => (init_admin(), admin_exports));
+    if (!req.user || !isAdminEmail2(req.user.email))
+      return res.status(403).json({ error: "Admin access required" });
+    let memUsage = process.memoryUsage(), pushStats = { totalTokens: 0, uniqueMembers: 0, messagesSent: 0, messagesFailed: 0 };
     try {
       let { getPushStats: getPushStats2 } = (init_push_notifications(), __toCommonJS(push_notifications_exports));
       pushStats = getPushStats2();
@@ -12749,11 +12773,10 @@ function registerHealthRoutes(app2) {
     res.json({
       status: "healthy",
       version: "1.0.0",
-      uptime: Math.floor(uptime),
+      uptime: Math.floor(process.uptime()),
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       nodeVersion: process.version,
       environment: config.nodeEnv,
-      memoryUsage: memUsage.heapUsed,
       memory: {
         heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
         heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),

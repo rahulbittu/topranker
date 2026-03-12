@@ -38,13 +38,13 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 690.1,
+    "currentSizeKb": 690.2,
     "warnAtKb": 720,
     "escalation": "720kb=warn, 735kb=block-new-features, 750kb=mandatory-optimization"
   },
   "tests": {
     "minCount": 12800,
-    "currentCount": 13612
+    "currentCount": 13621
   },
   "config": {
     "maxFields": 35,
