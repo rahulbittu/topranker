@@ -45,6 +45,7 @@ import { useRealtimeEvents } from "@/lib/use-realtime";
 import { Analytics } from "@/lib/analytics";
 import { addBreadcrumb } from "@/lib/sentry";
 import { reportError } from "@/lib/error-reporting";
+import { markAppStart, markAppReady } from "@/lib/perf-tracker";
 
 async function savePushToken(token: string) {
   try {
@@ -64,6 +65,7 @@ async function reportNotificationOpened(notificationId: string, category: string
 }
 
 SplashScreen.preventAutoHideAsync();
+markAppStart(); // Sprint 718: Track startup time
 
 const { width: SPLASH_W, height: SPLASH_H } = Dimensions.get("window");
 
@@ -373,6 +375,7 @@ export default function RootLayout() {
 
   const handleSplashFinish = useRef(() => {
     setShowSplash(false);
+    markAppReady(); // Sprint 718: Startup time complete
     // Navigate to onboarding if first launch (flag already prefetched)
     if (onboardingSeen.current === false || onboardingSeen.current === null) {
       AsyncStorage.getItem(ONBOARDING_KEY).then((seen) => {
