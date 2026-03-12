@@ -288,6 +288,19 @@ export default function RateScreen() {
     }
   };
 
+  // Sprint 703: Show users what's needed before they can proceed
+  const validationHint = (): string | null => {
+    if (canProceed()) return null;
+    if (step === 0) return "Select how you visited";
+    if (step === 1) {
+      const missing: string[] = [];
+      if (q1Score === 0 || q2Score === 0 || q3Score === 0) missing.push("Rate all dimensions");
+      if (wouldReturn === null) missing.push("Answer \"Would you return?\"");
+      return missing.join(" · ");
+    }
+    return null;
+  };
+
   const goNext = () => {
     if (step === 0) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -445,6 +458,10 @@ export default function RateScreen() {
           {(step === 0 || step === 1 || step === 2) && canProceed() && <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />}
         </TouchableOpacity>
       </View>
+      {/* Sprint 703: Validation hint when Next is disabled */}
+      {validationHint() && (
+        <Text style={styles.validationHint}>{validationHint()}</Text>
+      )}
     </View>
   );
 }
@@ -497,6 +514,10 @@ const styles = StyleSheet.create({
     fontSize: 16, fontWeight: "700" as const, color: "#FFFFFF", fontFamily: "DMSans_700Bold",
   },
   primaryButtonTextDisabled: { color: Colors.textTertiary },
+  validationHint: {
+    fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
+    textAlign: "center", paddingHorizontal: 20, paddingBottom: 4, marginTop: -4,
+  },
   errorBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.redFaint, borderRadius: 10, padding: 12,

@@ -97,14 +97,14 @@ describe("Sprint 621 — Dimension Scoring Step Extraction", () => {
       expect(rateSrc).not.toMatch(/import.*DimensionTooltip[^s]/);
     });
 
-    it("dropped below 520 LOC (was 601)", () => {
+    it("dropped below 540 LOC (was 601, validation hints added Sprint 703)", () => {
       const loc = rateSrc.split("\n").length;
-      expect(loc).toBeLessThan(520);
+      expect(loc).toBeLessThan(540);
     });
 
-    it("stays below 75% of 700 LOC threshold", () => {
+    it("stays below 80% of 700 LOC threshold", () => {
       const loc = rateSrc.split("\n").length;
-      expect(loc / 700).toBeLessThan(0.75);
+      expect(loc / 700).toBeLessThan(0.80);
     });
   });
 
