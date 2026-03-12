@@ -42,7 +42,7 @@ describe("Sprint 711 — Onboarding Polish", () => {
   });
 
   it("updates progressWidth on viewable items change", () => {
-    expect(source).toContain("progressWidth.value = withTiming");
+    expect(source).toContain("progressWidth.value");
   });
 
   // ── Back Button ──

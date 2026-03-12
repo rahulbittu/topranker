@@ -1,7 +1,7 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity, Platform,
-  Dimensions, FlatList, type ViewToken,
+  Dimensions, FlatList, type ViewToken, AccessibilityInfo,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -156,6 +156,14 @@ export default function OnboardingScreen() {
     track("onboarding_start");
   }
 
+  // Sprint 722: Respect reduced motion accessibility preference
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+    const sub = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
+    return () => sub.remove();
+  }, []);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const progressWidth = useSharedValue(1 / SLIDES.length);
@@ -163,11 +171,12 @@ export default function OnboardingScreen() {
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
       setCurrentIndex(viewableItems[0].index);
-      progressWidth.value = withTiming(
-        (viewableItems[0].index + 1) / SLIDES.length,
-        { duration: 300 },
-      );
-      hapticPress();
+      const target = (viewableItems[0].index + 1) / SLIDES.length;
+      // Sprint 722: Skip animation when reduced motion is enabled
+      progressWidth.value = reduceMotion
+        ? target
+        : withTiming(target, { duration: 300 });
+      if (!reduceMotion) hapticPress();
     }
   }).current;
 

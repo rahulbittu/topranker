@@ -188,6 +188,10 @@ export function resetAnalytics(): void {
 // ─── Convenience Functions ───────────────────────────────────
 
 export const Analytics = {
+  // Sprint 722: App lifecycle
+  appOpen: () => track("app_open"),
+  appBackground: () => track("app_background"),
+
   // Discovery
   searchQuery: (query: string, resultsCount: number) =>
     track("search_query", { query, results_count: resultsCount }),

@@ -16,7 +16,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, View, Text, Dimensions, StatusBar, Platform } from "react-native";
+import { StyleSheet, View, Text, Dimensions, StatusBar, Platform, AppState } from "react-native";
 import * as Notifications from "expo-notifications";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay,
@@ -414,6 +414,16 @@ export default function RootLayout() {
       errorHandlerInstalled.current = false;
       ErrorUtils.setGlobalHandler(originalHandler);
     };
+  }, []);
+
+  // Sprint 722: App lifecycle analytics (app_open, app_background)
+  useEffect(() => {
+    Analytics.appOpen();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") Analytics.appOpen();
+      else if (state === "background") Analytics.appBackground();
+    });
+    return () => sub.remove();
   }, []);
 
   useEffect(() => {
