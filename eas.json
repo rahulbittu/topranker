@@ -38,7 +38,7 @@
     "production": {
       "ios": {
         "appleId": "rahulpitta4@gmail.com",
-        "ascAppId": "topranker",
+        "ascAppId": "REPLACE_WITH_NUMERIC_APP_ID",
         "appleTeamId": "RKGRR7XGWD"
       },
       "android": {
