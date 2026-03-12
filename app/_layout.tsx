@@ -16,7 +16,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, View, Text, Dimensions, StatusBar, Platform, AppState } from "react-native";
+import { StyleSheet, View, Text, Dimensions, StatusBar, Platform, AppState, AccessibilityInfo } from "react-native";
 import * as Notifications from "expo-notifications";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay,
@@ -69,7 +69,7 @@ markAppStart(); // Sprint 718: Track startup time
 
 const { width: SPLASH_W, height: SPLASH_H } = Dimensions.get("window");
 
-function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
+function AnimatedSplash({ onFinish, reduceMotion }: { onFinish: () => void; reduceMotion: boolean }) {
   // Background pulse
   const bgGlow = useSharedValue(0);
   // Crown
@@ -94,6 +94,21 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const ringOpacity = useSharedValue(0);
 
   useEffect(() => {
+    // Sprint 723: Skip animations when reduced motion is enabled
+    if (reduceMotion) {
+      crownScale.value = 1;
+      logoOpacity.value = 1;
+      logoScale.value = 1;
+      logoLetterSpacing.value = 0;
+      taglineOpacity.value = 1;
+      taglineY.value = 0;
+      // Brief display then exit
+      containerOpacity.value = withDelay(800, withTiming(0, { duration: 200 }, () => {
+        runOnJS(onFinish)();
+      }));
+      return;
+    }
+
     // Sprint 699: Tightened splash from ~2.9s to ~2.1s for faster time-to-interactive
 
     // Phase 1: Radial glow ring expands (0ms)
@@ -358,6 +373,12 @@ export default function RootLayout() {
 
   const [showSplash, setShowSplash] = useState(true);
 
+  // Sprint 723: Respect reduced motion for splash animation
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled().then(setReduceMotion);
+  }, []);
+
   // Sprint 699: Prefetch onboarding flag + initial data during splash
   const onboardingSeen = useRef<boolean | null>(null);
   useEffect(() => {
@@ -494,7 +515,7 @@ export default function RootLayout() {
                   <RootLayoutNav />
                   <NetworkBanner />
                   <CookieConsent />
-                  {showSplash && <AnimatedSplash onFinish={handleSplashFinish} />}
+                  {showSplash && <AnimatedSplash onFinish={handleSplashFinish} reduceMotion={reduceMotion} />}
                 </KeyboardProvider>
               </GestureHandlerRootView>
               </BookmarksProvider>

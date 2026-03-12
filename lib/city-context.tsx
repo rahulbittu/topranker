@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getActiveCities } from "@shared/city-config";
+import { track } from "@/lib/analytics";
 
 const STORAGE_KEY = "topranker_selected_city";
 const DEFAULT_CITY = "Dallas";
@@ -37,6 +38,8 @@ export function CityProvider({ children }: { children: React.ReactNode }) {
   const setCity = useCallback((newCity: SupportedCity) => {
     setCityState(newCity);
     AsyncStorage.setItem(STORAGE_KEY, newCity);
+    // Sprint 723: Track city changes for geo engagement analytics
+    track("city_change", { city: newCity });
   }, []);
 
   return (
