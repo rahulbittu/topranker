@@ -70,8 +70,8 @@ export function RatingReviewStep({
 
   return (
     <Animated.View entering={FadeIn.duration(300)} style={s.container} key="step3-review">
-      <View style={s.header}>
-        <Text style={s.title}>Review Your Rating</Text>
+      <View style={s.header} accessible accessibilityRole="header">
+        <Text style={s.title} accessibilityRole="header">Review Your Rating</Text>
         <Text style={s.subtitle}>Confirm everything looks right before submitting</Text>
       </View>
 

@@ -61,29 +61,29 @@ export function DimensionScoringStep({
           </Text>
         </View>
       )}
-      <Animated.View style={[s.compactQuestion, dim0Style]} onLayout={(e) => onDimensionLayout(0, e.nativeEvent.layout.y)}>
+      <Animated.View style={[s.compactQuestion, dim0Style]} onLayout={(e) => onDimensionLayout(0, e.nativeEvent.layout.y)} accessible accessibilityLabel={`${q1Label} dimension, ${q1Score > 0 ? `scored ${q1Score}` : 'not yet scored'}`}>
         <View style={s.labelWithTooltip}>
-          <Text style={s.compactLabel}>{q1Label}</Text>
+          <Text style={s.compactLabel} accessibilityRole="header">{q1Label}</Text>
           <DimensionTooltip tooltip={dimensionTooltips[0]} visible={activeTooltip === 0} onToggle={() => setActiveTooltip(activeTooltip === 0 ? null : 0)} />
         </View>
         <CircleScorePicker value={q1Score} onChange={onQ1Change} circleSize={circleSize} />
       </Animated.View>
-      <Animated.View style={[s.compactQuestion, dim1Style]} onLayout={(e) => onDimensionLayout(1, e.nativeEvent.layout.y)}>
+      <Animated.View style={[s.compactQuestion, dim1Style]} onLayout={(e) => onDimensionLayout(1, e.nativeEvent.layout.y)} accessible accessibilityLabel={`${q2Label} dimension, ${q2Score > 0 ? `scored ${q2Score}` : 'not yet scored'}`}>
         <View style={s.labelWithTooltip}>
-          <Text style={s.compactLabel}>{q2Label}</Text>
+          <Text style={s.compactLabel} accessibilityRole="header">{q2Label}</Text>
           <DimensionTooltip tooltip={dimensionTooltips[1]} visible={activeTooltip === 1} onToggle={() => setActiveTooltip(activeTooltip === 1 ? null : 1)} />
         </View>
         <CircleScorePicker value={q2Score} onChange={onQ2Change} circleSize={circleSize} />
       </Animated.View>
-      <Animated.View style={[s.compactQuestion, dim2Style]} onLayout={(e) => onDimensionLayout(2, e.nativeEvent.layout.y)}>
+      <Animated.View style={[s.compactQuestion, dim2Style]} onLayout={(e) => onDimensionLayout(2, e.nativeEvent.layout.y)} accessible accessibilityLabel={`${q3Label} dimension, ${q3Score > 0 ? `scored ${q3Score}` : 'not yet scored'}`}>
         <View style={s.labelWithTooltip}>
-          <Text style={s.compactLabel}>{q3Label}</Text>
+          <Text style={s.compactLabel} accessibilityRole="header">{q3Label}</Text>
           <DimensionTooltip tooltip={dimensionTooltips[2]} visible={activeTooltip === 2} onToggle={() => setActiveTooltip(activeTooltip === 2 ? null : 2)} />
         </View>
         <CircleScorePicker value={q3Score} onChange={onQ3Change} circleSize={circleSize} />
       </Animated.View>
-      <Animated.View style={[s.compactQuestion, dim3Style]} onLayout={(e) => onDimensionLayout(3, e.nativeEvent.layout.y)}>
-        <Text style={s.compactLabel}>{returnLabel}</Text>
+      <Animated.View style={[s.compactQuestion, dim3Style]} onLayout={(e) => onDimensionLayout(3, e.nativeEvent.layout.y)} accessible accessibilityLabel={`${returnLabel}, ${wouldReturn === true ? 'yes' : wouldReturn === false ? 'no' : 'not yet answered'}`}>
+        <Text style={s.compactLabel} accessibilityRole="header">{returnLabel}</Text>
         <View style={s.yesNoRow}>
           <TouchableOpacity style={[s.yesNoBtn, wouldReturn === true && s.yesNoBtnYes]} onPress={() => onReturnChange(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Yes, would return" accessibilityState={{ selected: wouldReturn === true }}>
             <Ionicons name="checkmark-circle" size={24} color={wouldReturn === true ? "#fff" : Colors.textTertiary} />

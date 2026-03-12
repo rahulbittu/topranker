@@ -28,7 +28,7 @@ interface VisitTypeStepProps {
 export function VisitTypeStep({ businessName, visitType, onSelect }: VisitTypeStepProps) {
   return (
     <Animated.View entering={FadeIn.duration(300)} style={s.container} key="step0">
-      <Text style={s.title}>How did you experience {businessName}?</Text>
+      <Text style={s.title} accessibilityRole="header">How did you experience {businessName}?</Text>
       {VISIT_OPTIONS.map((opt) => (
         <TouchableOpacity
           key={opt.type}
