@@ -7,7 +7,6 @@ import {
 } from "@expo-google-fonts/dm-sans";
 import {
   PlayfairDisplay_400Regular,
-  PlayfairDisplay_400Regular_Italic,
   PlayfairDisplay_700Bold,
   PlayfairDisplay_800ExtraBold,
   PlayfairDisplay_900Black,
@@ -91,56 +90,57 @@ function AnimatedSplash({ onFinish }: { onFinish: () => void }) {
   const ringOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Phase 1: Radial glow ring expands (0ms)
-    ringOpacity.value = withTiming(0.4, { duration: 600 });
-    ringScale.value = withTiming(1, { duration: 800, easing: Easing.out(Easing.cubic) });
+    // Sprint 699: Tightened splash from ~2.9s to ~2.1s for faster time-to-interactive
 
-    // Phase 2: Crown drops with heavy haptic (150ms)
-    setTimeout(() => hapticSplashCrown(), 150);
-    crownScale.value = withDelay(150, withSequence(
-      withSpring(1.3, { damping: 5, stiffness: 180 }),
-      withSpring(1, { damping: 8, stiffness: 120 }),
+    // Phase 1: Radial glow ring expands (0ms)
+    ringOpacity.value = withTiming(0.4, { duration: 400 });
+    ringScale.value = withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) });
+
+    // Phase 2: Crown drops with heavy haptic (100ms)
+    setTimeout(() => hapticSplashCrown(), 100);
+    crownScale.value = withDelay(100, withSequence(
+      withSpring(1.3, { damping: 6, stiffness: 200 }),
+      withSpring(1, { damping: 10, stiffness: 140 }),
     ));
-    crownRotate.value = withDelay(150, withSequence(
-      withSpring(12, { damping: 5, stiffness: 150 }),
-      withSpring(-3, { damping: 6 }),
-      withSpring(0, { damping: 10 }),
+    crownRotate.value = withDelay(100, withSequence(
+      withSpring(10, { damping: 6, stiffness: 180 }),
+      withSpring(0, { damping: 12 }),
     ));
     // Crown golden glow pulse
-    crownGlow.value = withDelay(300, withSequence(
-      withTiming(1, { duration: 300 }),
-      withTiming(0.6, { duration: 400 }),
+    crownGlow.value = withDelay(200, withSequence(
+      withTiming(1, { duration: 200 }),
+      withTiming(0.6, { duration: 300 }),
     ));
 
-    // Phase 3: Logo text fades in with scale and track-in (400ms)
-    setTimeout(() => hapticSplashLogo(), 400);
-    logoOpacity.value = withDelay(400, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    logoScale.value = withDelay(400, withSequence(
-      withSpring(1.08, { damping: 8, stiffness: 100 }),
-      withSpring(1, { damping: 12 }),
+    // Phase 3: Logo text fades in with scale and track-in (300ms)
+    setTimeout(() => hapticSplashLogo(), 300);
+    logoOpacity.value = withDelay(300, withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) }));
+    logoScale.value = withDelay(300, withSequence(
+      withSpring(1.08, { damping: 10, stiffness: 120 }),
+      withSpring(1, { damping: 14 }),
     ));
-    logoLetterSpacing.value = withDelay(400, withTiming(0, { duration: 600, easing: Easing.out(Easing.cubic) }));
+    logoLetterSpacing.value = withDelay(300, withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) }));
 
-    // Phase 4: Background ambient glow pulse (600ms)
-    bgGlow.value = withDelay(600, withSequence(
-      withTiming(1, { duration: 500 }),
-      withTiming(0.5, { duration: 800 }),
+    // Phase 4: Background ambient glow pulse (450ms)
+    bgGlow.value = withDelay(450, withSequence(
+      withTiming(1, { duration: 350 }),
+      withTiming(0.5, { duration: 500 }),
     ));
 
-    // Phase 5: Decorative line extends (800ms)
-    lineOpacity.value = withDelay(800, withTiming(1, { duration: 300 }));
-    lineWidth.value = withDelay(800, withTiming(140, { duration: 700, easing: Easing.out(Easing.cubic) }));
+    // Phase 5: Decorative line extends (600ms)
+    lineOpacity.value = withDelay(600, withTiming(1, { duration: 200 }));
+    lineWidth.value = withDelay(600, withTiming(140, { duration: 500, easing: Easing.out(Easing.cubic) }));
 
-    // Phase 6: Tagline reveals (1100ms)
-    taglineOpacity.value = withDelay(1100, withTiming(1, { duration: 500, easing: Easing.out(Easing.cubic) }));
-    taglineY.value = withDelay(1100, withSpring(0, { damping: 14, stiffness: 80 }));
+    // Phase 6: Tagline reveals (800ms)
+    taglineOpacity.value = withDelay(800, withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) }));
+    taglineY.value = withDelay(800, withSpring(0, { damping: 16, stiffness: 100 }));
 
-    // Phase 7: Ring fades (1400ms)
-    ringOpacity.value = withDelay(1400, withTiming(0, { duration: 600 }));
+    // Phase 7: Ring fades (1000ms)
+    ringOpacity.value = withDelay(1000, withTiming(0, { duration: 400 }));
 
-    // Phase 8: Cinematic zoom exit (2400ms)
-    containerScale.value = withDelay(2400, withTiming(1.12, { duration: 500, easing: Easing.in(Easing.cubic) }));
-    containerOpacity.value = withDelay(2400, withTiming(0, { duration: 500, easing: Easing.in(Easing.cubic) }, () => {
+    // Phase 8: Cinematic zoom exit (1700ms)
+    containerScale.value = withDelay(1700, withTiming(1.12, { duration: 400, easing: Easing.in(Easing.cubic) }));
+    containerOpacity.value = withDelay(1700, withTiming(0, { duration: 400, easing: Easing.in(Easing.cubic) }, () => {
       runOnJS(onFinish)();
     }));
   }, []);
@@ -347,7 +347,6 @@ export default function RootLayout() {
     DMSans_700Bold,
     DMSans_800ExtraBold,
     PlayfairDisplay_400Regular,
-    PlayfairDisplay_400Regular_Italic,
     PlayfairDisplay_700Bold,
     PlayfairDisplay_800ExtraBold,
     PlayfairDisplay_900Black,
@@ -355,14 +354,29 @@ export default function RootLayout() {
 
   const [showSplash, setShowSplash] = useState(true);
 
+  // Sprint 699: Prefetch onboarding flag + initial data during splash
+  const onboardingSeen = useRef<boolean | null>(null);
+  useEffect(() => {
+    // Start prefetching while splash animation plays
+    AsyncStorage.getItem(ONBOARDING_KEY).then((seen) => {
+      onboardingSeen.current = !!seen;
+    });
+    // Prefetch default leaderboard so Rankings tab loads instantly
+    queryClient.prefetchQuery({
+      queryKey: ["leaderboard", "Dallas", "restaurant", null, null, null],
+      queryFn: () => import("@/lib/api").then(m => m.fetchLeaderboard("Dallas", "restaurant")),
+      staleTime: 30000,
+    });
+  }, []);
+
   const handleSplashFinish = useRef(() => {
     setShowSplash(false);
-    // Check onboarding flag — navigate if first launch
-    AsyncStorage.getItem(ONBOARDING_KEY).then((seen) => {
-      if (!seen) {
-        router.replace("/onboarding");
-      }
-    });
+    // Navigate to onboarding if first launch (flag already prefetched)
+    if (onboardingSeen.current === false || onboardingSeen.current === null) {
+      AsyncStorage.getItem(ONBOARDING_KEY).then((seen) => {
+        if (!seen) router.replace("/onboarding");
+      });
+    }
   }).current;
 
   useEffect(() => {
