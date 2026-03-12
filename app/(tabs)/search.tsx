@@ -15,7 +15,7 @@ import { fetchBusinessSearch, fetchTrending, fetchJustRated, fetchAutocomplete, 
 import { useInfiniteSearch } from "@/lib/hooks/useInfiniteSearch";
 import { useSearchActions } from "@/lib/hooks/useSearchActions";
 import { InfiniteScrollFooter } from "@/components/search/InfiniteScrollFooter";
-import { DiscoverSkeleton } from "@/components/Skeleton";
+import { DiscoverSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { SearchResultsSkeleton } from "@/components/search/SearchResultsSkeleton";
 
 import * as Location from "expo-location";
@@ -370,7 +370,7 @@ export default function SearchScreen() {
         <SearchResultsSkeleton />
       ) : isError ? (
         <ErrorState title="Could not load results" onRetry={() => refetch()} />
-      ) : viewMode === "map" ? (
+      ) : <SkeletonToContent visible={!isLoading}>{viewMode === "map" ? (
         /* Sprint 527: Map split view extracted */
         <SearchMapSplitView
           filtered={filtered}
@@ -479,7 +479,7 @@ export default function SearchScreen() {
             </>
           }
         />
-      )}
+      )}</SkeletonToContent>}
     </View>
     </ErrorBoundary>
   );

@@ -14,7 +14,7 @@ import {
   type CredibilityTier,
 } from "@/lib/data";
 import { useAuth } from "@/lib/auth-context";
-import { ProfileSkeleton } from "@/components/Skeleton";
+import { ProfileSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { getApiUrl } from "@/lib/query-client";
 import { fetchMemberProfile, fetchMemberImpact, deleteRatingApi, type ApiMemberProfile } from "@/lib/api";
 import { BRAND } from "@/constants/brand";
@@ -307,7 +307,7 @@ export default function ProfileScreen() {
     );
   }
 
-  return <ErrorBoundary><ProfileContent profile={profile} refetch={refetch} /></ErrorBoundary>;
+  return <ErrorBoundary><SkeletonToContent visible={!profileLoading}><ProfileContent profile={profile} refetch={refetch} /></SkeletonToContent></ErrorBoundary>;
 }
 
 const styles = StyleSheet.create({

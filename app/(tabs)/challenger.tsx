@@ -17,7 +17,7 @@ import { fetchActiveChallenges } from "@/lib/api";
 import { useCity } from "@/lib/city-context";
 import { BRAND } from "@/constants/brand";
 import * as Haptics from "expo-haptics";
-import { ChallengerSkeleton } from "@/components/Skeleton";
+import { ChallengerSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorState } from "@/components/NetworkBanner";
 import { formatTimeAgo } from "@/lib/data";
@@ -70,6 +70,7 @@ export default function ChallengerScreen() {
       ) : isError ? (
         <ErrorState title="Couldn't load challenges" onRetry={() => refetch()} />
       ) : (
+        <SkeletonToContent visible={!isLoading}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -98,6 +99,7 @@ export default function ChallengerScreen() {
             ))
           )}
         </ScrollView>
+        </SkeletonToContent>
       )}
     </View>
     </ErrorBoundary>
