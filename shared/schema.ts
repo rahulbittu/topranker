@@ -81,6 +81,12 @@ export const businesses = pgTable(
     openingHours: jsonb("opening_hours"),
     isOpenNow: boolean("is_open_now").notNull().default(false),
     hoursLastUpdated: timestamp("hours_last_updated"),
+    // Sprint 678: Service flags from Google Places
+    servesBreakfast: boolean("serves_breakfast").notNull().default(false),
+    servesLunch: boolean("serves_lunch").notNull().default(false),
+    servesDinner: boolean("serves_dinner").notNull().default(false),
+    servesBeer: boolean("serves_beer").notNull().default(false),
+    servesWine: boolean("serves_wine").notNull().default(false),
     // Sprint 626: Decision-to-Action fields
     menuUrl: text("menu_url"),
     orderUrl: text("order_url"),

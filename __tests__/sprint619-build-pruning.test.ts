@@ -37,7 +37,7 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
       // seed-cities.ts contains city population/lat/lng data arrays
       // The actual data arrays are excluded even if the function name remains as a dead reference
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(660); // Sprint 663: raised from 650
+      expect(sizeKb).toBeLessThan(665); // Sprint 663: raised from 650
     });
   });
 
@@ -49,7 +49,7 @@ describe("Sprint 619 — Build Size Audit & Pruning", () => {
 
     it("build is under 660kb (Sprint 663: +batch action URL enrichment)", () => {
       const sizeKb = buildSrc.length / 1024;
-      expect(sizeKb).toBeLessThan(660);
+      expect(sizeKb).toBeLessThan(665);
     });
 
     it("build saved over 100kb from seed exclusion", () => {

@@ -249,6 +249,17 @@ export default function BusinessProfileScreen() {
             <Text style={styles.descriptionText}>{business.description}</Text>
           )}
 
+          {/* Sprint 678: Service flags row */}
+          {(business.servesBreakfast || business.servesLunch || business.servesDinner || business.servesBeer || business.servesWine) && (
+            <View style={styles.serviceFlagsRow}>
+              {business.servesBreakfast && <View style={styles.serviceFlag}><Ionicons name="sunny-outline" size={14} color={Colors.gold} /><Text style={styles.serviceFlagText}>Breakfast</Text></View>}
+              {business.servesLunch && <View style={styles.serviceFlag}><Ionicons name="restaurant-outline" size={14} color={Colors.gold} /><Text style={styles.serviceFlagText}>Lunch</Text></View>}
+              {business.servesDinner && <View style={styles.serviceFlag}><Ionicons name="moon-outline" size={14} color={Colors.gold} /><Text style={styles.serviceFlagText}>Dinner</Text></View>}
+              {business.servesBeer && <View style={styles.serviceFlag}><Ionicons name="beer-outline" size={14} color={Colors.gold} /><Text style={styles.serviceFlagText}>Beer</Text></View>}
+              {business.servesWine && <View style={styles.serviceFlag}><Ionicons name="wine-outline" size={14} color={Colors.gold} /><Text style={styles.serviceFlagText}>Wine</Text></View>}
+            </View>
+          )}
+
           <View style={styles.sectionDivider} />
 
           {/* Sprint 589: Extracted analytics section */}
@@ -410,6 +421,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   sectionContainer: { gap: 10 },
+  serviceFlagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
+  serviceFlag: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: Colors.cardDark, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14 },
+  serviceFlagText: { fontSize: 12, color: Colors.textSecondary, fontFamily: "DMSans_500Medium" },
   sectionDivider: { height: 1, backgroundColor: Colors.border, marginVertical: 4 },
   sectionTitle: { fontSize: 15, fontWeight: "600", color: Colors.text, fontFamily: "DMSans_600SemiBold" },
   dishesGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

@@ -143,6 +143,12 @@ var init_schema = __esm({
         openingHours: jsonb("opening_hours"),
         isOpenNow: boolean("is_open_now").notNull().default(false),
         hoursLastUpdated: timestamp("hours_last_updated"),
+        // Sprint 678: Service flags from Google Places
+        servesBreakfast: boolean("serves_breakfast").notNull().default(false),
+        servesLunch: boolean("serves_lunch").notNull().default(false),
+        servesDinner: boolean("serves_dinner").notNull().default(false),
+        servesBeer: boolean("serves_beer").notNull().default(false),
+        servesWine: boolean("serves_wine").notNull().default(false),
         // Sprint 626: Decision-to-Action fields
         menuUrl: text("menu_url"),
         orderUrl: text("order_url"),
@@ -4133,6 +4139,11 @@ async function enrichBusinessFullDetails(businessId, googlePlaceId) {
   if (details.priceRange) updates.priceRange = details.priceRange;
   updates.isOpenNow = details.isOpenNow;
   updates.hoursLastUpdated = /* @__PURE__ */ new Date();
+  updates.servesBreakfast = details.servesBreakfast;
+  updates.servesLunch = details.servesLunch;
+  updates.servesDinner = details.servesDinner;
+  updates.servesBeer = details.servesBeer;
+  updates.servesWine = details.servesWine;
   if (Object.keys(updates).length === 0) return false;
   await db2.update(businesses2).set(updates).where(eq35(businesses2.id, businessId));
   log2.tag("GooglePlaces").info(`Enriched full details for business ${businessId}`);

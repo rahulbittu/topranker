@@ -439,6 +439,12 @@ export async function enrichBusinessFullDetails(
   if (details.priceRange) updates.priceRange = details.priceRange;
   updates.isOpenNow = details.isOpenNow;
   updates.hoursLastUpdated = new Date();
+  // Sprint 678: Service flags
+  updates.servesBreakfast = details.servesBreakfast;
+  updates.servesLunch = details.servesLunch;
+  updates.servesDinner = details.servesDinner;
+  updates.servesBeer = details.servesBeer;
+  updates.servesWine = details.servesWine;
 
   if (Object.keys(updates).length === 0) return false;
 
