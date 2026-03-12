@@ -31,6 +31,8 @@ import { ErrorState } from "@/components/NetworkBanner";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { TopRankHighlight } from "@/components/animations/TopRankHighlight";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
+import { useOfflineAware } from "@/lib/hooks/useOfflineAware";
+import { StaleBanner } from "@/components/StaleBanner";
 
 const AMBER = BRAND.colors.amber;
 const CARD_PADDING = 16;
@@ -104,6 +106,9 @@ export default function LeaderboardScreen() {
     queryFn: () => fetchLeaderboard(city, activeCategory, 50, selectedCuisine || undefined, neighborhoodFilter || undefined, priceFilter || undefined),
     staleTime: 30000,
   });
+
+  // Sprint 734: Offline-aware — show cached data with stale indicator instead of error state
+  const { isStale, staleLabel, showError } = useOfflineAware(isError, dataUpdatedAt, businesses.length > 0);
 
   // Sprint 706: Centralized haptic functions
   const onRefresh = useCallback(() => { hapticPullRefresh(); refetch(); }, [refetch]);
@@ -226,10 +231,11 @@ export default function LeaderboardScreen() {
 
       {isLoading ? (
         <LeaderboardSkeleton />
-      ) : isError ? (
+      ) : showError ? (
         <ErrorState title="Could not load rankings" onRetry={() => refetch()} />
       ) : (
         <SkeletonToContent visible={!isLoading}>
+        {isStale && staleLabel && <StaleBanner label={staleLabel} />}
         <FlatList
           data={restBiz}
           keyExtractor={item => item.id}
