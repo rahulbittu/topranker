@@ -16405,9 +16405,11 @@ function setupErrorHandler(app2) {
   const { prerenderMiddleware: prerenderMiddleware2 } = await Promise.resolve().then(() => (init_prerender(), prerender_exports));
   app.use(prerenderMiddleware2);
   const server = await registerRoutes(app);
-  const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
-  log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
+  const stack = app._router?.stack ?? [];
+  const directRoutes = stack.filter((layer) => layer.route).length;
+  const routers = stack.filter((layer) => layer.name === "router").length;
+  log2(`[TopRanker] ${directRoutes + routers} route handlers registered (${directRoutes} direct, ${routers} routers)`);
   setupErrorHandler(app);
   const port = parseInt(process.env.PORT || "5000", 10);
   server.keepAliveTimeout = 65e3;

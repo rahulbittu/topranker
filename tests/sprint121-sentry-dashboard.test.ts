@@ -165,7 +165,7 @@ describe("Sprint 121 — Startup Banner Enhancement", () => {
   const serverSource = fs.readFileSync(serverPath, "utf-8");
 
   it("contains routes registered banner", () => {
-    expect(serverSource).toContain("routes registered");
+    expect(serverSource).toContain("route handlers registered");
   });
 
   it("banner includes [TopRanker] prefix", () => {
@@ -173,7 +173,7 @@ describe("Sprint 121 — Startup Banner Enhancement", () => {
   });
 
   it("counts routes from app router stack", () => {
-    expect(serverSource).toContain("routeCount");
+    expect(serverSource).toContain("directRoutes");
   });
 });
 

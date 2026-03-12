@@ -386,13 +386,13 @@ function setupErrorHandler(app: express.Application) {
 
   const server = await registerRoutes(app);
 
-  // Startup banner: count registered routes (Sprint 121)
-  const routeCount = app._router?.stack
-    ?.filter((layer: any) => layer.route)
-    ?.length ?? 0;
-  log(`[TopRanker] ${routeCount} routes registered`);
-
   configureExpoAndLanding(app);
+
+  // Sprint 764: Count routes + routers accurately (fixes "0 routes" log)
+  const stack = app._router?.stack ?? [];
+  const directRoutes = stack.filter((layer: any) => layer.route).length;
+  const routers = stack.filter((layer: any) => layer.name === "router").length;
+  log(`[TopRanker] ${directRoutes + routers} route handlers registered (${directRoutes} direct, ${routers} routers)`);
 
   setupErrorHandler(app);
 
