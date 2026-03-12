@@ -81,14 +81,24 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// Sprint 687: Retry only network errors, not 4xx client errors
+function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) return false;
+  const msg = error instanceof Error ? error.message : String(error);
+  // Don't retry client errors (401, 403, 404, 422)
+  if (/^4\d{2}:/.test(msg)) return false;
+  // Retry network errors and 5xx server errors
+  return true;
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchOnWindowFocus: true,
       staleTime: 10000, // 10s — SSE invalidation handles most refreshes
-      retry: 1,
-      retryDelay: 1000,
+      retry: shouldRetry,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     },
     mutations: {
       retry: false,
