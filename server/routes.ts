@@ -73,6 +73,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
+  // Railway health check — lightweight endpoint for load balancer probes
+  app.get("/_health", (_req: Request, res: Response) => {
+    res.status(200).json({ status: "ok" });
+  });
+
   // Health check — process vitals for uptime monitoring, load balancers, and alerting
   app.get("/api/health", (req: Request, res: Response) => {
     const uptime = process.uptime();

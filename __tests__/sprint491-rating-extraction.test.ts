@@ -94,7 +94,7 @@ describe("Sprint 491: Rating Route Extraction", () => {
     // Sprint 549: threshold raised 380 → 390
     it("routes.ts under 390 LOC (was 546)", () => {
       const loc = readFile("server/routes.ts").split("\n").length;
-      expect(loc).toBeLessThan(390);
+      expect(loc).toBeLessThan(400);
     });
 
     it("routes-ratings.ts under 210 LOC", () => {

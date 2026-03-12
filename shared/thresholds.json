@@ -2,7 +2,7 @@
   "_comment": "Sprint 595: Centralized file health thresholds. Update here instead of per-sprint test files.",
   "files": {
     "shared/schema.ts": { "maxLOC": 960, "current": 905, "notes": "Sprint 626: +action URL fields (898→905)" },
-    "server/routes.ts": { "maxLOC": 400, "current": 382, "notes": "Sprint 660: +registerClaimRoutes (377→382)" },
+    "server/routes.ts": { "maxLOC": 400, "current": 390, "notes": "Sprint 751: +/_health endpoint for Railway (382→390)" },
     "server/routes-claims.ts": { "maxLOC": 130, "current": 107, "notes": "Sprint 659: extracted from routes-businesses.ts" },
     "app/business/claim.tsx": { "maxLOC": 520, "current": 496, "notes": "Sprint 654: +code verification UI (366→496)" },
     "server/storage/businesses.ts": { "maxLOC": 650, "current": 637, "notes": "Sprint 626: +updateBusinessActions (624→637)" },
@@ -38,10 +38,10 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 664.3
+    "currentSizeKb": 664.4
   },
   "tests": {
     "minCount": 12800,
-    "currentCount": 12945
+    "currentCount": 12962
   }
 }

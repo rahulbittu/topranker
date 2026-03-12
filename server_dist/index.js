@@ -15720,6 +15720,9 @@ async function registerRoutes(app2) {
     };
     next();
   });
+  app2.get("/_health", (_req, res) => {
+    res.status(200).json({ status: "ok" });
+  });
   app2.get("/api/health", (req, res) => {
     const uptime = process.uptime();
     const memUsage = process.memoryUsage();
