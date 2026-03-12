@@ -217,5 +217,32 @@ export function registerAdminEnrichmentRoutes(app: Router): void {
     res.json({ enriched, message: `Enriched ${enriched} businesses with action URLs` });
   });
 
+  // Sprint 671: Batch enrich full details (hours, description, price) from Google Places
+  app.post("/api/admin/enrichment/full-details", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    enrichLog.info("Starting batch full details enrichment");
+    const { isNotNull, isNull, and } = await import("drizzle-orm");
+    const { enrichBusinessFullDetails } = await import("./google-places");
+
+    const unenriched = await db
+      .select({ id: businesses.id, googlePlaceId: businesses.googlePlaceId })
+      .from(businesses)
+      .where(and(isNotNull(businesses.googlePlaceId), isNull(businesses.openingHours)))
+      .limit(50);
+
+    let enriched = 0;
+    for (const biz of unenriched) {
+      if (!biz.googlePlaceId) continue;
+      try {
+        const success = await enrichBusinessFullDetails(biz.id, biz.googlePlaceId);
+        if (success) enriched++;
+        await new Promise(r => setTimeout(r, 200));
+      } catch (err) {
+        enrichLog.error(`Batch full details failed for ${biz.id}: ${err}`);
+      }
+    }
+
+    res.json({ enriched, total: unenriched.length, message: `Enriched ${enriched}/${unenriched.length} businesses with full details` });
+  });
+
   // Sprint 467: Bulk operations extracted to routes-admin-enrichment-bulk.ts
 }

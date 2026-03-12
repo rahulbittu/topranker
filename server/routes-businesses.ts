@@ -21,7 +21,7 @@ import {
   autocompleteBusinesses, getPopularCategories,
 } from "./storage";
 import { getCommunityPhotoCount } from "./photo-moderation";
-import { fetchAndStorePhotos, enrichBusinessActionUrls } from "./google-places";
+import { fetchAndStorePhotos, enrichBusinessActionUrls, enrichBusinessFullDetails } from "./google-places";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
@@ -136,6 +136,11 @@ export function registerBusinessRoutes(app: Express) {
     // Sprint 662: Auto-enrich action URLs from Google Places when missing
     if (business.googlePlaceId && !business.menuUrl && !business.doordashUrl) {
       enrichBusinessActionUrls(business.id, business.googlePlaceId, business.name, business.city || "Dallas").catch(() => {});
+    }
+
+    // Sprint 671: Auto-enrich full details (hours, description, price) if stale or missing
+    if (business.googlePlaceId && (!business.openingHours || !business.hoursLastUpdated || Date.now() - new Date(business.hoursLastUpdated).getTime() > 86400000)) {
+      enrichBusinessFullDetails(business.id, business.googlePlaceId).catch(() => {});
     }
 
     const photoUrls = photos.length > 0 ? photos : (business.photoUrl ? [business.photoUrl] : []);

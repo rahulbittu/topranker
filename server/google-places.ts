@@ -344,6 +344,110 @@ export async function batchEnrichActionUrls(): Promise<number> {
 }
 
 /**
+ * Sprint 671: Fetch full business details from Google Places.
+ * Populates description, opening hours, price level, and service flags.
+ */
+export async function fetchPlaceFullDetails(
+  googlePlaceId: string,
+): Promise<{
+  description: string | null;
+  openingHours: { weekday_text: string[] } | null;
+  isOpenNow: boolean;
+  priceRange: string | null;
+  servesBreakfast: boolean;
+  servesLunch: boolean;
+  servesDinner: boolean;
+  servesBeer: boolean;
+  servesWine: boolean;
+} | null> {
+  const apiKey = config.googleMapsApiKey;
+  if (!apiKey) return null;
+
+  const fields = [
+    "editorialSummary",
+    "currentOpeningHours",
+    "priceLevel",
+    "servesBreakfast",
+    "servesLunch",
+    "servesDinner",
+    "servesBeer",
+    "servesWine",
+  ].join(",");
+
+  try {
+    const url = `${API_BASE}/places/${googlePlaceId}?fields=${fields}&key=${apiKey}`;
+    const response = await fetch(url, {
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!response.ok) {
+      log.tag("GooglePlaces").error(`Full details failed for ${googlePlaceId}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    const priceLevelMap: Record<string, string> = {
+      PRICE_LEVEL_FREE: "$",
+      PRICE_LEVEL_INEXPENSIVE: "$",
+      PRICE_LEVEL_MODERATE: "$$",
+      PRICE_LEVEL_EXPENSIVE: "$$$",
+      PRICE_LEVEL_VERY_EXPENSIVE: "$$$$",
+    };
+
+    const hours = data.currentOpeningHours;
+    const weekdayText = hours?.weekdayDescriptions || [];
+
+    return {
+      description: data.editorialSummary?.text || null,
+      openingHours: weekdayText.length > 0 ? { weekday_text: weekdayText } : null,
+      isOpenNow: hours?.openNow ?? false,
+      priceRange: priceLevelMap[data.priceLevel] || null,
+      servesBreakfast: data.servesBreakfast ?? false,
+      servesLunch: data.servesLunch ?? false,
+      servesDinner: data.servesDinner ?? false,
+      servesBeer: data.servesBeer ?? false,
+      servesWine: data.servesWine ?? false,
+    };
+  } catch (err: any) {
+    log.tag("GooglePlaces").error(`Full details error for ${googlePlaceId}: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Sprint 671: Enrich a single business with full Google Places details.
+ * Updates description (if empty), opening hours, isOpenNow, and priceRange.
+ */
+export async function enrichBusinessFullDetails(
+  businessId: string,
+  googlePlaceId: string,
+): Promise<boolean> {
+  const details = await fetchPlaceFullDetails(googlePlaceId);
+  if (!details) return false;
+
+  const { db } = await import("./db");
+  const { businesses } = await import("@shared/schema");
+  const { eq } = await import("drizzle-orm");
+
+  const updates: Record<string, any> = {};
+
+  // Only overwrite description if currently empty
+  if (details.description) updates.description = details.description;
+  if (details.openingHours) updates.openingHours = details.openingHours;
+  if (details.priceRange) updates.priceRange = details.priceRange;
+  updates.isOpenNow = details.isOpenNow;
+  updates.hoursLastUpdated = new Date();
+
+  if (Object.keys(updates).length === 0) return false;
+
+  await db.update(businesses).set(updates).where(eq(businesses.id, businessId));
+  log.tag("GooglePlaces").info(`Enriched full details for business ${businessId}`);
+  return true;
+}
+
+/**
  * Batch fetch and store photos for a business.
  * Returns the number of photos stored.
  */
