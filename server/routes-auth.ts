@@ -192,10 +192,17 @@ export function registerAuthRoutes(app: Express) {
     }
   }));
 
+  // Sprint 788: Destroy session on logout — clears server-side session record and cookie
   app.post("/api/auth/logout", (req: Request, res: Response) => {
     req.logout((err) => {
       if (err) return res.status(500).json({ error: "Logout failed" });
-      return res.json({ data: { message: "Logged out" } });
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          log.warn("Session destroy failed on logout:", destroyErr);
+        }
+        res.clearCookie("connect.sid");
+        return res.json({ data: { message: "Logged out" } });
+      });
     });
   });
 
