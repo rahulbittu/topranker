@@ -189,35 +189,34 @@ export async function sendRatingReminderPush(): Promise<number> {
   try {
     const { db } = await import("./db");
     const { members, ratings } = await import("@shared/schema");
-    const { isNotNull, sql } = await import("drizzle-orm");
+    const { isNotNull, sql, eq } = await import("drizzle-orm");
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
 
-    // Find users with push tokens who haven't rated in 7+ days
-    const inactiveUsers = await db
+    // Sprint 658: Batch query — LEFT JOIN to find inactive users in one query (eliminates N+1)
+    const usersWithActivity = await db
       .select({
         id: members.id,
         pushToken: members.pushToken,
         displayName: members.displayName,
         notificationPrefs: members.notificationPrefs,
         selectedCity: members.selectedCity,
+        recentRatingCount: sql<number>`count(${ratings.id})`.as("recentRatingCount"),
       })
       .from(members)
-      .where(isNotNull(members.pushToken));
+      .leftJoin(
+        ratings,
+        sql`${ratings.memberId} = ${members.id} AND ${ratings.createdAt} > ${sevenDaysAgo}`,
+      )
+      .where(isNotNull(members.pushToken))
+      .groupBy(members.id);
 
     let sent = 0;
-    for (const user of inactiveUsers) {
+    for (const user of usersWithActivity) {
       if (!user.pushToken) continue;
       const prefs = (user.notificationPrefs as Record<string, boolean>) || {};
       if (prefs.ratingReminders === false) continue;
-
-      // Check if user has rated in the last 7 days
-      const recentRatings = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(ratings)
-        .where(sql`${ratings.memberId} = ${user.id} AND ${ratings.createdAt} > ${sevenDaysAgo}`);
-
-      if (recentRatings[0]?.count > 0) continue; // Active user, skip
+      if (user.recentRatingCount > 0) continue; // Active user, skip
 
       const firstName = (user.displayName || "").split(" ")[0] || "there";
       const city = (user as any).selectedCity || "your city";
@@ -231,7 +230,7 @@ export async function sendRatingReminderPush(): Promise<number> {
     }
 
     triggerLog.info(`Rating reminder push sent to ${sent} inactive users`);
-    recordPushDelivery("ratingReminder", "all", inactiveUsers.length, sent, inactiveUsers.length - sent);
+    recordPushDelivery("ratingReminder", "all", usersWithActivity.length, sent, usersWithActivity.length - sent);
     return sent;
   } catch (err) {
     triggerLog.error("Rating reminder push failed:", err);
