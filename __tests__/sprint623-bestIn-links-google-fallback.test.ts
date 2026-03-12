@@ -29,10 +29,12 @@ describe("Sprint 623 — Best In Links + Google Places Fallback", () => {
       expect(layoutSrc).toContain('name="share/[slug]"');
     });
 
-    it("dish/[slug] uses slide_from_right animation", () => {
-      const match = layoutSrc.match(/dish\/\[slug\].*?animation.*?"([^"]+)"/);
-      expect(match).toBeTruthy();
-      expect(match![1]).toBe("slide_from_right");
+    it("dish/[slug] uses slide_from_right animation (via cardOpts)", () => {
+      // Sprint 669: cardOpts extracted to shared variable with slide_from_right
+      const line = layoutSrc.split("\n").find((l: string) => l.includes('dish/[slug]'));
+      expect(line).toBeDefined();
+      expect(line).toContain("cardOpts");
+      expect(layoutSrc).toContain('animation: "slide_from_right" as const');
     });
   });
 

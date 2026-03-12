@@ -46,22 +46,29 @@ describe("Root _layout.tsx screen transitions", () => {
     expect(privacyLine).toContain('animation: "fade"');
   });
 
-  it("uses slide_from_right for business/[id]", () => {
+  it("uses slide_from_right for business/[id] (via cardOpts)", () => {
+    // Sprint 669: cardOpts extracted to shared variable
+    expect(src).toContain("cardOpts");
     const line = src.split("\n").find((l) => l.includes('business/[id]'));
     expect(line).toBeDefined();
-    expect(line).toContain('animation: "slide_from_right"');
+    expect(line).toContain("cardOpts");
+    // Verify cardOpts definition includes slide_from_right
+    expect(src).toContain('animation: "slide_from_right" as const');
   });
 
-  it("uses slide_from_bottom for auth/login modal", () => {
+  it("uses slide_from_bottom for auth/login modal (via modalOpts)", () => {
+    // Sprint 669: modalOpts extracted to shared variable
     const line = src.split("\n").find((l) => l.includes('auth/login'));
     expect(line).toBeDefined();
-    expect(line).toContain('animation: "slide_from_bottom"');
+    expect(line).toContain("modalOpts");
+    // Verify modalOpts definition includes slide_from_bottom
+    expect(src).toContain('animation: "slide_from_bottom" as const');
   });
 
-  it("uses slide_from_bottom for rate/[id] modal", () => {
+  it("uses slide_from_bottom for rate/[id] modal (via modalOpts)", () => {
     const line = src.split("\n").find((l) => l.includes('rate/[id]'));
     expect(line).toBeDefined();
-    expect(line).toContain('animation: "slide_from_bottom"');
+    expect(line).toContain("modalOpts");
   });
 
   it("uses fade animation for onboarding", () => {

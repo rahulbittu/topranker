@@ -17,7 +17,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack, router } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState, useRef } from "react";
-import { StyleSheet, View, Text, Dimensions } from "react-native";
+import { StyleSheet, View, Text, Dimensions, StatusBar, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay,
@@ -285,6 +285,24 @@ const splashStyles = StyleSheet.create({
   },
 });
 
+// Sprint 669: Shared modal options for native polish (swipe-to-dismiss on iOS)
+const modalOpts = {
+  headerShown: false,
+  presentation: "modal" as const,
+  animation: "slide_from_bottom" as const,
+  animationDuration: 250,
+  gestureEnabled: true,
+  fullScreenGestureEnabled: true,
+};
+
+const cardOpts = {
+  headerShown: false,
+  presentation: "card" as const,
+  animation: "slide_from_right" as const,
+  animationDuration: 250,
+  gestureEnabled: true,
+};
+
 function RootLayoutNav() {
   return (
     <Stack
@@ -293,29 +311,30 @@ function RootLayoutNav() {
         contentStyle: { backgroundColor: Colors.background },
         animation: "slide_from_right",
         animationDuration: 250,
+        gestureEnabled: true,
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false, animation: "fade", animationDuration: 200 }} />
-      <Stack.Screen name="business/[id]" options={{ headerShown: false, presentation: "card", animation: "slide_from_right", animationDuration: 250 }} />
-      <Stack.Screen name="business/claim" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="business/enter-challenger" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="business/enter-featured" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="business/enter-dashboard-pro" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="business/qr" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="business/dashboard" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="business/[id]" options={cardOpts} />
+      <Stack.Screen name="business/claim" options={modalOpts} />
+      <Stack.Screen name="business/enter-challenger" options={modalOpts} />
+      <Stack.Screen name="business/enter-featured" options={modalOpts} />
+      <Stack.Screen name="business/enter-dashboard-pro" options={modalOpts} />
+      <Stack.Screen name="business/qr" options={modalOpts} />
+      <Stack.Screen name="business/dashboard" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
       <Stack.Screen name="legal/terms" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
       <Stack.Screen name="legal/privacy" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
-      <Stack.Screen name="admin/index" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
-      <Stack.Screen name="dish/[slug]" options={{ headerShown: false, presentation: "card", animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="admin/index" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
+      <Stack.Screen name="dish/[slug]" options={cardOpts} />
       <Stack.Screen name="share/[slug]" options={{ headerShown: false, animation: "fade", animationDuration: 250 }} />
-      <Stack.Screen name="rate/[id]" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="saved" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
-      <Stack.Screen name="referral" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
-      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
-      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250 }} />
+      <Stack.Screen name="rate/[id]" options={modalOpts} />
+      <Stack.Screen name="saved" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
+      <Stack.Screen name="referral" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
+      <Stack.Screen name="settings" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
+      <Stack.Screen name="edit-profile" options={{ headerShown: false, animation: "slide_from_right", animationDuration: 250, gestureEnabled: true }} />
       <Stack.Screen name="onboarding" options={{ headerShown: false, animation: "fade", animationDuration: 300 }} />
-      <Stack.Screen name="auth/login" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
-      <Stack.Screen name="auth/signup" options={{ headerShown: false, presentation: "modal", animation: "slide_from_bottom", animationDuration: 250 }} />
+      <Stack.Screen name="auth/login" options={modalOpts} />
+      <Stack.Screen name="auth/signup" options={modalOpts} />
     </Stack>
   );
 }
@@ -415,6 +434,9 @@ export default function RootLayout() {
             <CityProvider>
               <BookmarksProvider>
               <GestureHandlerRootView style={styles.root}>
+                {Platform.OS !== "web" && (
+                  <StatusBar barStyle="light-content" backgroundColor={BRAND.colors.navy} />
+                )}
                 <KeyboardProvider>
                   <RootLayoutNav />
                   <NetworkBanner />
