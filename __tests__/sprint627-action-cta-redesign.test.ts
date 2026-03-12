@@ -99,8 +99,8 @@ describe("Sprint 627 — Business Detail Action CTAs", () => {
       expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
-    it("tracks 33 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(33);
+    it("tracks 34 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(34);
     });
   });
 });

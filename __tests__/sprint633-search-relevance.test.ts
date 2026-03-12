@@ -78,8 +78,8 @@ describe("Sprint 633 — Search Relevance Tuning", () => {
     it("build under 750kb", () => {
       expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
-    it("tracks 33 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(33);
+    it("tracks 34 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(34);
     });
   });
 });

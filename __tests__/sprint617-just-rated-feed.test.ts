@@ -158,8 +158,8 @@ describe("Sprint 617 — Just Rated Feed", () => {
       expect(thresholds.files["components/search/JustRatedSection.tsx"]).toBeDefined();
     });
 
-    it("tracks 33 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(33);
+    it("tracks 34 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(34);
     });
 
     it("server build under 750kb", () => {

@@ -115,8 +115,8 @@ describe("Sprint 626 — Decision-to-Action Action Fields", () => {
       expect(thresholds.build.currentSizeKb).toBeLessThan(750);
     });
 
-    it("tracks 33 files", () => {
-      expect(Object.keys(thresholds.files).length).toBe(33);
+    it("tracks 34 files", () => {
+      expect(Object.keys(thresholds.files).length).toBe(34);
     });
   });
 });
