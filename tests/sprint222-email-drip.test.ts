@@ -8,10 +8,23 @@
  * 4. Template content integrity
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { DRIP_SEQUENCE, getDripStepForDay, getDripStepNames } from "../server/email-drip";
+
+// Sprint 792: Dynamic import to allow env setup before config.ts loads
+let DRIP_SEQUENCE: any[];
+let getDripStepForDay: any;
+let getDripStepNames: any;
+
+beforeAll(async () => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgres://test:test@localhost/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-secret-for-vitest";
+  const mod = await import("../server/email-drip");
+  DRIP_SEQUENCE = mod.DRIP_SEQUENCE;
+  getDripStepForDay = mod.getDripStepForDay;
+  getDripStepNames = mod.getDripStepNames;
+});
 
 const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");

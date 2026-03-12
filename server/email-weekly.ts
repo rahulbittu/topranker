@@ -1,4 +1,5 @@
 import { log } from "./logger";
+import { config } from "./config";
 
 const digestLog = log.tag("WeeklyDigest");
 
@@ -166,7 +167,7 @@ function generateDigestHtml(data: WeeklyDigestData): string {
 
     <!-- CTA -->
     <div style="background:#fff;padding:24px;text-align:center;border-radius:0 0 12px 12px;">
-      <a href="https://topranker.io" style="display:inline-block;background:#C49A1A;color:#fff;text-decoration:none;padding:14px 32px;border-radius:24px;font-size:14px;font-weight:700;">
+      <a href="${config.siteUrl}" style="display:inline-block;background:#C49A1A;color:#fff;text-decoration:none;padding:14px 32px;border-radius:24px;font-size:14px;font-weight:700;">
         Open TopRanker
       </a>
     </div>
@@ -175,9 +176,9 @@ function generateDigestHtml(data: WeeklyDigestData): string {
     <div style="text-align:center;padding:24px;font-size:11px;color:#aaa;">
       <div>TopRanker Inc. &middot; Dallas, TX</div>
       <div style="margin-top:8px;">
-        <a href="https://topranker.io/settings" style="color:#aaa;text-decoration:underline;">Manage preferences</a>
+        <a href="${config.siteUrl}/settings" style="color:#aaa;text-decoration:underline;">Manage preferences</a>
         &nbsp;&middot;&nbsp;
-        <a href="https://topranker.io/unsubscribe" style="color:#aaa;text-decoration:underline;">Unsubscribe</a>
+        <a href="${config.siteUrl}/unsubscribe" style="color:#aaa;text-decoration:underline;">Unsubscribe</a>
       </div>
     </div>
   </div>

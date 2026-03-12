@@ -5,6 +5,7 @@
  */
 import { log } from "./logger";
 import { trackEmailSent, trackEmailFailed } from "./email-tracking";
+import { config } from "./config";
 
 const emailLog = log.tag("Email");
 
@@ -134,7 +135,7 @@ export async function sendWelcomeEmail(params: {
           </div>
 
           <!-- CTA -->
-          <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+          <a href="${config.siteUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
             Start Exploring ${city}
           </a>
         </td></tr>
@@ -143,7 +144,7 @@ export async function sendWelcomeEmail(params: {
         <tr><td style="padding:20px 24px;border-top:1px solid #E8E6E1;text-align:center;">
           <p style="margin:0;color:#999;font-size:11px;">
             TopRanker — Trust-weighted rankings for ${city}<br>
-            <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+            <a href="${config.siteUrl}/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
           </p>
         </td></tr>
       </table>
@@ -162,7 +163,7 @@ You've joined the ${city} ranking community as @${username}.
 
 Your starting tier: New Member (0.10x vote weight)
 
-Start exploring: https://topranker.io
+Start exploring: ${config.siteUrl}
 
 — The TopRanker Team`;
 
@@ -414,7 +415,7 @@ export async function sendClaimApprovedEmail(params: {
               <li>Display the verified owner badge</li>
             </ul>
           </div>
-          <a href="https://topranker.io/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+          <a href="${config.siteUrl}/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
             View Your Dashboard
           </a>
         </td></tr>
@@ -436,7 +437,7 @@ What you can do now:
 - Respond to customer ratings
 - Display the verified owner badge
 
-View your dashboard: https://topranker.io/business/${businessSlug}/dashboard
+View your dashboard: ${config.siteUrl}/business/${businessSlug}/dashboard
 
 — The TopRanker Team`;
 
@@ -514,7 +515,7 @@ export async function sendVerificationEmail(params: {
 }): Promise<void> {
   const { email, displayName, token } = params;
   const firstName = displayName.split(" ")[0];
-  const verifyUrl = `https://topranker.io/verify-email?token=${token}`;
+  const verifyUrl = `${config.siteUrl}/verify-email?token=${token}`;
 
   const html = `
 <!DOCTYPE html>
@@ -574,7 +575,7 @@ export async function sendPasswordResetEmail(params: {
 }): Promise<void> {
   const { email, displayName, token } = params;
   const firstName = displayName.split(" ")[0];
-  const resetUrl = `https://topranker.io/reset-password?token=${token}`;
+  const resetUrl = `${config.siteUrl}/reset-password?token=${token}`;
 
   const html = `
 <!DOCTYPE html>
@@ -636,7 +637,7 @@ export async function sendBetaInviteEmail(params: {
 }): Promise<void> {
   const { email, displayName, referralCode, invitedBy } = params;
   const firstName = displayName.split(" ")[0];
-  const joinUrl = `https://topranker.io/join?ref=${encodeURIComponent(referralCode)}`;
+  const joinUrl = `${config.siteUrl}/join?ref=${encodeURIComponent(referralCode)}`;
 
   const inviteContext = invitedBy
     ? `${invitedBy} thinks you'd be a great addition to our trust network.`
@@ -728,7 +729,7 @@ export async function sendClaimAdminNotification(params: {
         <li><strong>Business:</strong> ${params.businessName}</li>
         <li><strong>Claimant:</strong> ${params.claimantName} (${params.claimantEmail})</li>
       </ul>
-      <p>Review at: https://topranker.io/admin</p>`,
+      <p>Review at: ${config.siteUrl}/admin</p>`,
     text: `New claim: ${params.businessName} by ${params.claimantName} (${params.claimantEmail})`,
   });
 }

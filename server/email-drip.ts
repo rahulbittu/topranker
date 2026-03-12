@@ -1,5 +1,6 @@
 import { log } from "./logger";
 import { sendEmail as sendEmailReal } from "./email";
+import { config } from "./config";
 
 const dripLog = log.tag("EmailDrip");
 
@@ -64,7 +65,7 @@ const BRAND_FOOTER = `
 <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
   <p style="margin:0;color:#999;font-size:10px;">
     TopRanker — Trust-weighted rankings<br>
-    <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+    <a href="${config.siteUrl}/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
   </p>
 </td></tr>`;
 
@@ -79,7 +80,7 @@ export async function sendDay2Email(params: DripEmailParams) {
   <tr><td style="padding:24px;">
     <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Top 5 near you, ${firstName}</h2>
     <p style="color:#555;font-size:14px;line-height:1.5;">You've been exploring ${city}'s rankings for 2 days now. Have you checked out the top spots in your neighborhood?</p>
-    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">See ${city}'s Top 5</a>
+    <a href="${config.siteUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">See ${city}'s Top 5</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -102,7 +103,7 @@ export async function sendDay3Email(params: DripEmailParams) {
       <p style="margin:0;color:#0D1B2A;font-size:13px;"><strong style="color:#C49A1A;">Your tier:</strong> New Member (0.10x)</p>
       <p style="margin:4px 0 0;color:#888;font-size:12px;">Rate 10+ businesses to reach Regular (0.35x)</p>
     </div>
-    <a href="https://topranker.io" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
+    <a href="${config.siteUrl}" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -134,7 +135,7 @@ export async function sendDay7Email(params: DripEmailParams & { ratingsCount: nu
         </td>
       </tr>
     </table>
-    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Keep Rating</a>
+    <a href="${config.siteUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Keep Rating</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -153,7 +154,7 @@ export async function sendDay14Email(params: DripEmailParams) {
   <tr><td style="padding:24px;">
     <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Live challenges in ${city} ⚡</h2>
     <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, the Challenger tab has live head-to-head competitions. Your weighted vote can decide which restaurant claims the #1 spot.</p>
-    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Vote in Live Challenges</a>
+    <a href="${config.siteUrl}" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Vote in Live Challenges</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -191,7 +192,7 @@ export async function sendDay30Email(params: DripEmailParams & { totalRatings: n
       </tr>
     </table>
     <p style="color:#555;font-size:13px;text-align:center;">Thank you for being part of the trust movement.</p>
-    <a href="https://topranker.io" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:12px;">View Your Profile</a>
+    <a href="${config.siteUrl}" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:12px;">View Your Profile</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;

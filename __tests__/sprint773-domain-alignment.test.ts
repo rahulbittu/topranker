@@ -33,39 +33,47 @@ describe("Sprint 773: Domain Alignment", () => {
     });
   });
 
-  describe("server/email.ts — CTA links", () => {
+  describe("server/email.ts — CTA links use config.siteUrl", () => {
     const src = readFile("server/email.ts");
 
-    it("verify email link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/verify-email");
+    it("verify email link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/verify-email");
     });
 
-    it("reset password link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/reset-password");
+    it("reset password link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/reset-password");
     });
 
-    it("join referral link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/join?ref=");
+    it("join referral link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/join?ref=");
     });
 
-    it("unsubscribe link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/unsubscribe");
+    it("unsubscribe link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/unsubscribe");
     });
 
     it("support email uses topranker.io", () => {
       expect(src).toContain("support@topranker.io");
     });
+
+    it("imports config", () => {
+      expect(src).toContain('import { config } from "./config"');
+    });
   });
 
-  describe("server/email-owner-outreach.ts — CTA links", () => {
+  describe("server/email-owner-outreach.ts — CTA links use config.siteUrl", () => {
     const src = readFile("server/email-owner-outreach.ts");
 
-    it("claim link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/claim");
+    it("claim link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/claim");
     });
 
-    it("unsubscribe link uses topranker.io", () => {
-      expect(src).toContain("topranker.io/unsubscribe");
+    it("unsubscribe link uses config.siteUrl", () => {
+      expect(src).toContain("config.siteUrl}/unsubscribe");
+    });
+
+    it("imports config", () => {
+      expect(src).toContain('import { config } from "./config"');
     });
   });
 

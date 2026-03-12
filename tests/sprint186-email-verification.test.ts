@@ -143,7 +143,7 @@ describe("Email — verification template", () => {
   });
 
   it("includes verification URL with token", () => {
-    expect(src).toContain("topranker.io/verify-email?token=");
+    expect(src).toContain("config.siteUrl}/verify-email?token=");
   });
 
   it("has HTML and plain text versions", () => {
@@ -167,7 +167,7 @@ describe("Email — password reset template", () => {
   });
 
   it("includes reset URL with token", () => {
-    expect(src).toContain("topranker.io/reset-password?token=");
+    expect(src).toContain("config.siteUrl}/reset-password?token=");
   });
 
   it("mentions 1-hour expiry", () => {

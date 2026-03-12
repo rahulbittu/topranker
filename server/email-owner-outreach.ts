@@ -1,5 +1,6 @@
 import { sendEmail } from "./email";
 import { log } from "./logger";
+import { config } from "./config";
 
 /**
  * Restaurant owner outreach email templates
@@ -17,7 +18,7 @@ const BRAND_FOOTER = `
 <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
   <p style="margin:0;color:#999;font-size:10px;">
     TopRanker — Trust-weighted rankings<br>
-    <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+    <a href="${config.siteUrl}/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
   </p>
 </td></tr>`;
 
@@ -59,7 +60,7 @@ export async function sendOwnerClaimInviteEmail(params: {
       <li>Respond to community ratings</li>
       <li>Display a verified owner badge</li>
     </ul>
-    <a href="https://topranker.io/claim" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Claim Your Business</a>
+    <a href="${config.siteUrl}/claim" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Claim Your Business</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -74,7 +75,7 @@ Claiming your business is free and gives you access to:
 - Respond to community ratings
 - Display a verified owner badge
 
-Claim your business: https://topranker.io/claim
+Claim your business: ${config.siteUrl}/claim
 
 — The TopRanker Team`;
 
@@ -130,7 +131,7 @@ export async function sendOwnerProUpgradeEmail(params: {
         <li>Priority support from the TopRanker team</li>
       </ul>
     </div>
-    <a href="https://topranker.io/business-pro" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Upgrade to Pro</a>
+    <a href="${config.siteUrl}/business-pro" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Upgrade to Pro</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -145,7 +146,7 @@ Upgrade to Business Pro ($49/mo) to unlock:
 - Featured placement in search results
 - Priority support from the TopRanker team
 
-Upgrade now: https://topranker.io/business-pro
+Upgrade now: ${config.siteUrl}/business-pro
 
 — The TopRanker Team`;
 
@@ -211,7 +212,7 @@ export async function sendOwnerWeeklyDigestEmail(params: {
         </td>
       </tr>
     </table>
-    <a href="https://topranker.io/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">View Full Dashboard</a>
+    <a href="${config.siteUrl}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">View Full Dashboard</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -224,7 +225,7 @@ Hi ${firstName}, here's how ${businessName} performed in ${city} this week:
 - New Ratings: ${weeklyRatings}
 - Rank Change: ${rankChangePlain}
 
-View your full dashboard: https://topranker.io/dashboard
+View your full dashboard: ${config.siteUrl}/dashboard
 
 — The TopRanker Team`;
 
