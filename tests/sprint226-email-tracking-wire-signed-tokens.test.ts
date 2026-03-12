@@ -8,15 +8,24 @@
  * 4. Integration — routes-unsubscribe.ts
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import {
-  generateUnsubscribeToken,
-  verifyUnsubscribeToken,
-  buildUnsubscribeUrl,
-} from "../server/unsubscribe-tokens";
 import { getBetaCities, getCityBadge } from "../shared/city-config";
+
+// Sprint 742: Dynamic import for modules that depend on config.ts (needs DATABASE_URL)
+let generateUnsubscribeToken: (memberId: string, type: string) => string;
+let verifyUnsubscribeToken: (token: string) => { memberId: string; type: string } | null;
+let buildUnsubscribeUrl: (memberId: string, type: string) => string;
+
+beforeAll(async () => {
+  process.env.DATABASE_URL = process.env.DATABASE_URL || "postgresql://test:test@localhost:5432/test";
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || "test-session-secret";
+  const mod = await import("../server/unsubscribe-tokens");
+  generateUnsubscribeToken = mod.generateUnsubscribeToken;
+  verifyUnsubscribeToken = mod.verifyUnsubscribeToken;
+  buildUnsubscribeUrl = mod.buildUnsubscribeUrl;
+});
 
 const readFile = (relPath: string) =>
   fs.readFileSync(path.resolve(__dirname, "..", relPath), "utf-8");

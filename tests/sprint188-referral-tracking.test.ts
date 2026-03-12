@@ -133,8 +133,9 @@ describe("Referral routes — endpoints", () => {
     expect(src).toContain("username.toUpperCase()");
   });
 
-  it("generates share URL", () => {
-    expect(src).toContain("topranker.com/join?ref=");
+  it("generates share URL via config.siteUrl", () => {
+    expect(src).toContain("config.siteUrl");
+    expect(src).toContain("/join?ref=");
   });
 
   it("calls getReferralStats", () => {

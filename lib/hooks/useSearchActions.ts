@@ -3,7 +3,7 @@ import { Platform, Share } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Analytics } from "@/lib/analytics";
 import { buildSearchUrl, encodeSearchParams, type SearchFilterState } from "@/lib/search-url-params";
-import { copyShareLink, getSearchShareText } from "@/lib/sharing";
+import { copyShareLink, getSearchShareText, SHARE_BASE_URL } from "@/lib/sharing";
 import type { DietaryTag, DistanceOption, HoursFilter } from "@/components/search/DiscoverFilters";
 
 interface UseSearchActionsParams {
@@ -49,7 +49,7 @@ export function useSearchActions({
   // Sprint 644/646: Share search results — native share sheet with clipboard fallback
   const handleShareSearch = useCallback(async () => {
     Haptics.selectionAsync();
-    const url = buildSearchUrl("https://topranker.com/search", currentFilters);
+    const url = buildSearchUrl(`${SHARE_BASE_URL}/search`, currentFilters);
     const text = getSearchShareText(query, city, resultCount, url);
     Analytics.searchShare(query, city, resultCount);
     try {

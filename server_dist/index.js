@@ -3828,6 +3828,8 @@ var init_config = __esm({
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || null,
       // Email (optional — console fallback if not set)
       resendApiKey: process.env.RESEND_API_KEY || null,
+      // Site URL (optional — used for emails, SEO, QR codes)
+      siteUrl: optional("SITE_URL", "https://topranker.com"),
       // Hosting platform (optional — for CORS)
       replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
       replitDomains: process.env.REPLIT_DOMAINS || null,
@@ -6868,8 +6870,9 @@ var init_prerender = __esm({
   "server/prerender.ts"() {
     "use strict";
     init_logger();
+    init_config();
     prerenderLog = log2.tag("Prerender");
-    SITE_URL = process.env.SITE_URL || "https://topranker.com";
+    SITE_URL = config.siteUrl;
     BOT_AGENTS = [
       "googlebot",
       "bingbot",
@@ -12348,6 +12351,7 @@ function broadcast(type, payload = {}) {
 }
 
 // server/routes-payments.ts
+init_config();
 init_logger();
 function registerPaymentRoutes(app2) {
   app2.use("/api/payments", paymentRateLimiter);
@@ -12404,7 +12408,7 @@ function registerPaymentRoutes(app2) {
       return res.status(409).json({ error: "Business already has an active subscription" });
     }
     const { createDashboardProSubscription: createDashboardProSubscription2 } = await Promise.resolve().then(() => (init_payments2(), payments_exports));
-    const siteUrl = process.env.SITE_URL || "https://topranker.com";
+    const siteUrl = config.siteUrl;
     const checkout = await createDashboardProSubscription2({
       businessId: business.id,
       businessName: business.name,
@@ -13990,7 +13994,8 @@ function registerDishRoutes(app2) {
 
 // server/routes-seo.ts
 init_storage();
-var SITE_URL2 = process.env.SITE_URL || "https://topranker.com";
+init_config();
+var SITE_URL2 = config.siteUrl;
 function registerSeoRoutes(app2) {
   app2.get("/robots.txt", (_req, res) => {
     res.type("text/plain").send(`User-agent: *
@@ -14131,8 +14136,9 @@ Sitemap: ${SITE_URL2}/sitemap.xml
 // server/routes-qr.ts
 init_storage();
 init_logger();
+init_config();
 var qrLog = log2.tag("QR");
-var SITE_URL3 = process.env.SITE_URL || "https://topranker.com";
+var SITE_URL3 = config.siteUrl;
 function registerQrRoutes(app2) {
   app2.get("/api/businesses/:slug/qr", wrapAsync(async (req, res) => {
     const business = await getBusinessBySlug(req.params.slug);
@@ -14320,12 +14326,13 @@ function registerNotificationRoutes(app2) {
 }
 
 // server/routes-referrals.ts
+init_config();
 function registerReferralRoutes(app2) {
   app2.get("/api/referrals/me", requireAuth, wrapAsync(async (req, res) => {
     const { getReferralStats: getReferralStats2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
     const stats2 = await getReferralStats2(req.user.id);
     const code = req.user.username.toUpperCase();
-    const shareUrl = `https://topranker.com/join?ref=${encodeURIComponent(code)}`;
+    const shareUrl = `${config.siteUrl}/join?ref=${encodeURIComponent(code)}`;
     return res.json({
       data: {
         code,
@@ -14355,6 +14362,7 @@ init_logger();
 import { eq as eq31 } from "drizzle-orm";
 
 // server/unsubscribe-tokens.ts
+init_config();
 import crypto12 from "crypto";
 var SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
 function hmac(data) {

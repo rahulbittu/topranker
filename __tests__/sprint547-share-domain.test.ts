@@ -27,12 +27,12 @@ describe("Sprint 547: Share Domain Alignment", () => {
       expect(domainsLine).not.toContain("topranker.app");
     });
 
-    it("getShareUrl generates topranker.com URLs", () => {
-      expect(src).toContain("https://topranker.com/${type}/${slug}");
+    it("getShareUrl uses SHARE_BASE_URL constant", () => {
+      expect(src).toContain("${SHARE_BASE_URL}/${type}/${slug}");
     });
 
-    it("getShareText uses topranker.com", () => {
-      expect(src).toContain("https://topranker.com");
+    it("exports SHARE_BASE_URL pointing to topranker.com", () => {
+      expect(src).toContain('SHARE_BASE_URL = "https://topranker.com"');
     });
 
     it("getDeepLinkParams accepts topranker.com", () => {

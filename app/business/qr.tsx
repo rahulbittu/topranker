@@ -8,13 +8,14 @@ import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
+import { SHARE_BASE_URL } from "@/lib/sharing";
 import * as Haptics from "expo-haptics";
 
 export default function QRCodeScreen() {
   const insets = useSafeAreaInsets();
   const { name, slug } = useLocalSearchParams<{ name: string; slug: string }>();
   const topPad = Platform.OS === "web" ? 20 : insets.top;
-  const qrUrl = `https://topranker.com/business/${slug}`;
+  const qrUrl = `${SHARE_BASE_URL}/business/${slug}`;
 
   const shareQR = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

@@ -165,10 +165,10 @@ describe("Social Sharing Utility", () => {
     expect(content).toContain("slug: string");
   });
 
-  it("getShareUrl returns topranker.com URL", () => {
-    // Sprint 547: domain aligned from topranker.app → topranker.com
+  it("getShareUrl uses SHARE_BASE_URL constant", () => {
+    // Sprint 742: URL centralized to SHARE_BASE_URL constant
     const content = fs.readFileSync(modulePath, "utf-8");
-    expect(content).toContain("https://topranker.com/${type}/${slug}");
+    expect(content).toContain("${SHARE_BASE_URL}/${type}/${slug}");
   });
 
   it("exports getShareText function", () => {

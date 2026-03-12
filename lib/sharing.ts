@@ -7,18 +7,21 @@
 // Sprint 547: Aligned share domain from topranker.app → topranker.com (matches app.json deeplinks)
 export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com", "topranker.io", "www.topranker.io"] as const;
 
+// Sprint 742: Centralized share base URL — always production, never changes per environment
+export const SHARE_BASE_URL = "https://topranker.com" as const;
+
 /**
  * Generate a shareable URL for a business, challenger match, or profile.
  */
 export function getShareUrl(type: "business" | "challenger" | "profile" | "share", slug: string): string {
-  return `https://topranker.com/${type}/${slug}`;
+  return `${SHARE_BASE_URL}/${type}/${slug}`;
 }
 
 /**
  * Generate formatted share text for a business with its rating.
  */
 export function getShareText(businessName: string, rating: number): string {
-  return `Check out ${businessName} on TopRanker — rated ${rating.toFixed(1)}/5! https://topranker.com`;
+  return `Check out ${businessName} on TopRanker — rated ${rating.toFixed(1)}/5! ${SHARE_BASE_URL}`;
 }
 
 /**
@@ -123,7 +126,7 @@ export function getProfileShareText(
   tier: string,
 ): string {
   const tierTitle = tier.charAt(0).toUpperCase() + tier.slice(1);
-  return `🏆 ${displayName} is a ${tierTitle} Judge on TopRanker with ${ratingCount} rating${ratingCount !== 1 ? "s" : ""}!\n\nJoin and rate your favorite spots:\nhttps://topranker.com`;
+  return `🏆 ${displayName} is a ${tierTitle} Judge on TopRanker with ${ratingCount} rating${ratingCount !== 1 ? "s" : ""}!\n\nJoin and rate your favorite spots:\n${SHARE_BASE_URL}`;
 }
 
 /**

@@ -3,6 +3,7 @@
  */
 
 import crypto from "crypto";
+import { config } from "./config";
 
 const SECRET = process.env.UNSUBSCRIBE_SECRET || "topranker-unsub-dev-secret";
 
@@ -38,5 +39,5 @@ export function verifyUnsubscribeToken(
 
 export function buildUnsubscribeUrl(memberId: string, type: string): string {
   const token = generateUnsubscribeToken(memberId, type);
-  return `https://topranker.com/api/unsubscribe?token=${encodeURIComponent(token)}`;
+  return `${config.siteUrl}/api/unsubscribe?token=${encodeURIComponent(token)}`;
 }

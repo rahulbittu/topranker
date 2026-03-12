@@ -9,6 +9,7 @@
 import type { Express, Request, Response } from "express";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
+import { config } from "./config";
 
 export function registerReferralRoutes(app: Express) {
   // Get current user's referral stats
@@ -18,7 +19,7 @@ export function registerReferralRoutes(app: Express) {
 
     // Generate referral code (uppercase username)
     const code = req.user!.username.toUpperCase();
-    const shareUrl = `https://topranker.com/join?ref=${encodeURIComponent(code)}`;
+    const shareUrl = `${config.siteUrl}/join?ref=${encodeURIComponent(code)}`;
 
     return res.json({
       data: {

@@ -8,6 +8,7 @@ import { wrapAsync } from "./wrap-async";
 import { getBusinessBySlug, createPaymentRecord, createFeaturedPlacement, getPaymentById, updatePaymentStatus, expireFeaturedByPayment } from "./storage";
 import { sendPaymentReceiptEmail } from "./email";
 import { broadcast } from "./sse";
+import { config } from "./config";
 import { log } from "./logger";
 import { sanitizeString, sanitizeSlug } from "./sanitize";
 import { paymentRateLimiter } from "./rate-limiter";
@@ -78,7 +79,7 @@ export function registerPaymentRoutes(app: Express) {
       }
 
       const { createDashboardProSubscription } = await import("./payments");
-      const siteUrl = process.env.SITE_URL || "https://topranker.com";
+      const siteUrl = config.siteUrl;
       const checkout = await createDashboardProSubscription({
         businessId: business.id,
         businessName: business.name,

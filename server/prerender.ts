@@ -14,10 +14,11 @@
 
 import type { Request, Response, NextFunction } from "express";
 import { log } from "./logger";
+import { config } from "./config";
 
 const prerenderLog = log.tag("Prerender");
 
-const SITE_URL = process.env.SITE_URL || "https://topranker.com";
+const SITE_URL = config.siteUrl;
 
 // Bot user-agent detection
 const BOT_AGENTS = [

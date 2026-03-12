@@ -6,8 +6,9 @@
 import type { Express, Request, Response } from "express";
 import { wrapAsync } from "./wrap-async";
 import { getDishLeaderboards, getBusinessBySlug } from "./storage";
+import { config } from "./config";
 
-const SITE_URL = process.env.SITE_URL || "https://topranker.com";
+const SITE_URL = config.siteUrl;
 
 export function registerSeoRoutes(app: Express) {
   // ── robots.txt ──────────────────────────────────────────

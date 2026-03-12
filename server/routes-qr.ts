@@ -13,10 +13,11 @@ import { requireAuth } from "./middleware";
 import { getBusinessBySlug } from "./storage";
 import { sanitizeString } from "./sanitize";
 import { log } from "./logger";
+import { config } from "./config";
 
 const qrLog = log.tag("QR");
 
-const SITE_URL = process.env.SITE_URL || "https://topranker.com";
+const SITE_URL = config.siteUrl;
 
 export function registerQrRoutes(app: Express) {
   /**
