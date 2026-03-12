@@ -72,9 +72,13 @@ export function registerBusinessRoutes(app: Express) {
     const dietaryParam = sanitizeString(req.query.dietary, 200) || "";
     const dietaryTags = dietaryParam ? dietaryParam.split(",").map(t => t.trim()).filter(Boolean) : [];
     // Sprint 442: Distance filter (km) with user lat/lng
-    const userLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
-    const userLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
-    const maxDistanceKm = req.query.maxDistance ? parseFloat(req.query.maxDistance as string) : undefined;
+    // Sprint 785: Validate NaN — parseFloat("abc") returns NaN, which silently breaks distance calc
+    const rawLat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+    const rawLng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+    const rawDist = req.query.maxDistance ? parseFloat(req.query.maxDistance as string) : undefined;
+    const userLat = rawLat != null && !isNaN(rawLat) ? rawLat : undefined;
+    const userLng = rawLng != null && !isNaN(rawLng) ? rawLng : undefined;
+    const maxDistanceKm = rawDist != null && !isNaN(rawDist) ? rawDist : undefined;
     // Sprint 447: Hours-based search filters
     const openNow = req.query.openNow === "true";
     const openLate = req.query.openLate === "true";
