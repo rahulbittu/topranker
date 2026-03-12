@@ -13,6 +13,7 @@ import compression from "compression";
 import { initErrorTracking } from "./error-tracking";
 import { cacheHeaders } from "./cache-headers";
 import { setFlushHandler } from "./analytics";
+import { config } from "./config";
 
 const app = express();
 
@@ -371,6 +372,11 @@ function setupErrorHandler(app: express.Application) {
 }
 
 (async () => {
+  // Sprint 786: Trust proxy for Railway reverse proxy — fixes req.ip, req.protocol, secure cookies
+  if (config.isProduction) {
+    app.set("trust proxy", 1);
+  }
+
   // Security headers middleware handles CORS + OWASP headers (must be first)
   app.use(securityHeaders);
   // Sprint 759: Response compression — gzip/deflate for API responses
