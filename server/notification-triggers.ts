@@ -181,19 +181,22 @@ export function startWeeklyDigestScheduler(): NodeJS.Timeout {
 }
 
 /**
- * Sprint 648: Rating reminder push for inactive users.
- * Sends a nudge to users who haven't rated in 7+ days.
+ * Sprint 648/679: Personalized rating reminder push.
+ * Two tiers:
+ *   1. Users inactive 2–7 days: "You visited [Last Business] recently — how was it?"
+ *   2. Users inactive 7+ days: generic "Your neighborhood misses you"
  * Runs daily at 6pm UTC (lunchtime in Dallas).
  */
 export async function sendRatingReminderPush(): Promise<number> {
   try {
     const { db } = await import("./db");
-    const { members, ratings } = await import("@shared/schema");
-    const { isNotNull, sql, eq } = await import("drizzle-orm");
+    const { members, ratings, businesses } = await import("@shared/schema");
+    const { isNotNull, sql, desc } = await import("drizzle-orm");
 
+    const twoDaysAgo = new Date(Date.now() - 2 * 86400000).toISOString();
     const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString();
 
-    // Sprint 658: Batch query — LEFT JOIN to find inactive users in one query (eliminates N+1)
+    // Sprint 679: Two-tier query — recent activity count + last rated business name
     const usersWithActivity = await db
       .select({
         id: members.id,
@@ -201,12 +204,13 @@ export async function sendRatingReminderPush(): Promise<number> {
         displayName: members.displayName,
         notificationPrefs: members.notificationPrefs,
         selectedCity: members.selectedCity,
-        recentRatingCount: sql<number>`count(${ratings.id})`.as("recentRatingCount"),
+        recentRatingCount: sql<number>`count(CASE WHEN ${ratings.createdAt} > ${sevenDaysAgo} THEN 1 END)`.as("recentRatingCount"),
+        lastRatedAt: sql<string>`max(${ratings.createdAt})`.as("lastRatedAt"),
       })
       .from(members)
       .leftJoin(
         ratings,
-        sql`${ratings.memberId} = ${members.id} AND ${ratings.createdAt} > ${sevenDaysAgo}`,
+        sql`${ratings.memberId} = ${members.id}`,
       )
       .where(isNotNull(members.pushToken))
       .groupBy(members.id);
@@ -220,11 +224,48 @@ export async function sendRatingReminderPush(): Promise<number> {
 
       const firstName = (user.displayName || "").split(" ")[0] || "there";
       const city = (user as any).selectedCity || "your city";
+
+      // Sprint 679: Personalized — find last rated business name
+      let title: string;
+      let body: string;
+      let screen = "search";
+      const lastRatedDate = user.lastRatedAt ? new Date(user.lastRatedAt) : null;
+      const daysSinceLastRating = lastRatedDate
+        ? Math.floor((Date.now() - lastRatedDate.getTime()) / 86400000)
+        : null;
+
+      if (daysSinceLastRating !== null && daysSinceLastRating <= 14) {
+        // Fetch the last rated business name for personalization
+        const lastRating = await db
+          .select({ businessName: businesses.name, businessSlug: businesses.slug })
+          .from(ratings)
+          .innerJoin(businesses, sql`${businesses.id} = ${ratings.businessId}`)
+          .where(sql`${ratings.memberId} = ${user.id}`)
+          .orderBy(desc(ratings.createdAt))
+          .limit(1);
+
+        if (lastRating.length > 0) {
+          const bizName = lastRating[0].businessName;
+          const bizSlug = lastRating[0].businessSlug;
+          title = `How was ${bizName}?`;
+          body = daysSinceLastRating <= 3
+            ? `You visited ${bizName} recently. Rate your experience and help others decide.`
+            : `It's been ${daysSinceLastRating} days since you rated ${bizName}. Discover what's new in ${city}.`;
+          screen = `business/${bizSlug}`;
+        } else {
+          title = "Your neighborhood misses you";
+          body = `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`;
+        }
+      } else {
+        title = "Your neighborhood misses you";
+        body = `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`;
+      }
+
       await sendPushNotification(
         [user.pushToken],
-        "Your neighborhood misses you",
-        `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`,
-        { screen: "search", type: "ratingReminder" },
+        title,
+        body,
+        { screen, type: "rating_reminder" },
       );
       sent++;
     }

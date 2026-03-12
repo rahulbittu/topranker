@@ -7746,8 +7746,9 @@ function startWeeklyDigestScheduler() {
 async function sendRatingReminderPush() {
   try {
     const { db: db2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-    const { members: members4, ratings: ratings6 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { isNotNull: isNotNull8, sql: sql20, eq: eq35 } = await import("drizzle-orm");
+    const { members: members4, ratings: ratings6, businesses: businesses2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { isNotNull: isNotNull8, sql: sql20, desc: desc18 } = await import("drizzle-orm");
+    const twoDaysAgo = new Date(Date.now() - 2 * 864e5).toISOString();
     const sevenDaysAgo = new Date(Date.now() - 7 * 864e5).toISOString();
     const usersWithActivity = await db2.select({
       id: members4.id,
@@ -7755,10 +7756,11 @@ async function sendRatingReminderPush() {
       displayName: members4.displayName,
       notificationPrefs: members4.notificationPrefs,
       selectedCity: members4.selectedCity,
-      recentRatingCount: sql20`count(${ratings6.id})`.as("recentRatingCount")
+      recentRatingCount: sql20`count(CASE WHEN ${ratings6.createdAt} > ${sevenDaysAgo} THEN 1 END)`.as("recentRatingCount"),
+      lastRatedAt: sql20`max(${ratings6.createdAt})`.as("lastRatedAt")
     }).from(members4).leftJoin(
       ratings6,
-      sql20`${ratings6.memberId} = ${members4.id} AND ${ratings6.createdAt} > ${sevenDaysAgo}`
+      sql20`${ratings6.memberId} = ${members4.id}`
     ).where(isNotNull8(members4.pushToken)).groupBy(members4.id);
     let sent = 0;
     for (const user of usersWithActivity) {
@@ -7768,11 +7770,32 @@ async function sendRatingReminderPush() {
       if (user.recentRatingCount > 0) continue;
       const firstName = (user.displayName || "").split(" ")[0] || "there";
       const city = user.selectedCity || "your city";
+      let title;
+      let body;
+      let screen = "search";
+      const lastRatedDate = user.lastRatedAt ? new Date(user.lastRatedAt) : null;
+      const daysSinceLastRating = lastRatedDate ? Math.floor((Date.now() - lastRatedDate.getTime()) / 864e5) : null;
+      if (daysSinceLastRating !== null && daysSinceLastRating <= 14) {
+        const lastRating = await db2.select({ businessName: businesses2.name, businessSlug: businesses2.slug }).from(ratings6).innerJoin(businesses2, sql20`${businesses2.id} = ${ratings6.businessId}`).where(sql20`${ratings6.memberId} = ${user.id}`).orderBy(desc18(ratings6.createdAt)).limit(1);
+        if (lastRating.length > 0) {
+          const bizName = lastRating[0].businessName;
+          const bizSlug = lastRating[0].businessSlug;
+          title = `How was ${bizName}?`;
+          body = daysSinceLastRating <= 3 ? `You visited ${bizName} recently. Rate your experience and help others decide.` : `It's been ${daysSinceLastRating} days since you rated ${bizName}. Discover what's new in ${city}.`;
+          screen = `business/${bizSlug}`;
+        } else {
+          title = "Your neighborhood misses you";
+          body = `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`;
+        }
+      } else {
+        title = "Your neighborhood misses you";
+        body = `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`;
+      }
       await sendPushNotification(
         [user.pushToken],
-        "Your neighborhood misses you",
-        `Hey ${firstName}, new restaurants and live challenges are waiting in ${city}. Rate your latest visit!`,
-        { screen: "search", type: "ratingReminder" }
+        title,
+        body,
+        { screen, type: "rating_reminder" }
       );
       sent++;
     }

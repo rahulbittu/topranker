@@ -100,9 +100,9 @@ describe("Sprint 505: Governance", () => {
       expect(loc).toBeLessThan(390);
     });
 
-    it("notification-triggers.ts under 280 LOC (Sprint 648: +rating reminder)", () => {
+    it("notification-triggers.ts under 320 LOC (Sprint 679: +personalized rating reminder)", () => {
       const loc = readFile("server/notification-triggers.ts").split("\n").length;
-      expect(loc).toBeLessThan(280);
+      expect(loc).toBeLessThan(320);
     });
 
     it("notification-triggers-events.ts under 330 LOC (Sprint 533: added template resolution)", () => {

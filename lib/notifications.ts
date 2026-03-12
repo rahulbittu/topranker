@@ -169,4 +169,11 @@ export const NOTIFICATION_TEMPLATES = {
     body: "New businesses and live challenges are waiting for your voice.",
     data: { screen: "search" },
   }),
+
+  ratingReminder: (businessName: string, businessSlug: string): PushNotification => ({
+    type: "rating_reminder",
+    title: `How was ${businessName}?`,
+    body: `You visited ${businessName} recently. Rate your experience and help others decide.`,
+    data: { screen: `business/${businessSlug}` },
+  }),
 } as const;
