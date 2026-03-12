@@ -245,8 +245,9 @@ describe("routes.ts — module registration", () => {
 describe("routes.ts — retained core routes", () => {
   const routesSrc = readFile("server/routes.ts");
 
-  it("retains /api/health", () => {
-    expect(routesSrc).toContain("/api/health");
+  it("retains /api/health (via routes-health.ts)", () => {
+    // Sprint 804: Health routes extracted to routes-health.ts
+    expect(routesSrc).toContain("registerHealthRoutes");
   });
 
   it("retains /api/events (SSE)", () => {

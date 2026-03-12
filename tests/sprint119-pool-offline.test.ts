@@ -135,7 +135,8 @@ describe("Sprint 119 — Offline Sync Module", () => {
 
 // ── Health Check Enhancement ────────────────────────────────────────
 describe("Sprint 119 — Health Check Enhancement", () => {
-  const routesPath = path.resolve(__dirname, "..", "server", "routes.ts");
+  // Sprint 804: Health routes extracted to routes-health.ts
+  const routesPath = path.resolve(__dirname, "..", "server", "routes-health.ts");
   const routesSource = fs.readFileSync(routesPath, "utf-8");
 
   it("health endpoint includes process.uptime", () => {

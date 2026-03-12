@@ -39,15 +39,16 @@ describe("Sprint 751: Railway Health Check", () => {
   });
 
   describe("/api/health endpoint (existing)", () => {
-    const routes = readFile("server/routes.ts");
+    // Sprint 804: Health routes extracted to routes-health.ts
+    const healthRoutes = readFile("server/routes-health.ts");
 
     it("still exists", () => {
-      expect(routes).toContain('app.get("/api/health"');
+      expect(healthRoutes).toContain('app.get("/api/health"');
     });
 
     it("returns process vitals", () => {
-      expect(routes).toContain("process.uptime()");
-      expect(routes).toContain("process.memoryUsage()");
+      expect(healthRoutes).toContain("process.uptime()");
+      expect(healthRoutes).toContain("process.memoryUsage()");
     });
   });
 

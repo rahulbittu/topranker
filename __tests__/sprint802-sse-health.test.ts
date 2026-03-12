@@ -12,7 +12,8 @@ function readFile(rel: string): string {
 }
 
 describe("Sprint 802: SSE Health Tracking", () => {
-  const routesSrc = readFile("server/routes.ts");
+  // Sprint 804: Health routes extracted to routes-health.ts
+  const routesSrc = readFile("server/routes-health.ts");
   const sseSrc = readFile("server/sse.ts");
 
   describe("sse.ts exports", () => {
@@ -25,16 +26,14 @@ describe("Sprint 802: SSE Health Tracking", () => {
     });
   });
 
-  describe("routes.ts integration", () => {
+  describe("routes-health.ts integration", () => {
     it("imports getClientCount from sse", () => {
       expect(routesSrc).toContain("getClientCount");
       expect(routesSrc).toContain('./sse"');
     });
 
     it("includes sseClients in health response", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("sseClients: getClientCount()");
+      expect(routesSrc).toContain("sseClients: getClientCount()");
     });
   });
 

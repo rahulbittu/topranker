@@ -14,7 +14,8 @@ function readFile(rel: string): string {
 
 describe("Sprint 752: Readiness Probe", () => {
   describe("/_ready endpoint", () => {
-    const routes = readFile("server/routes.ts");
+    // Sprint 804: Health routes extracted to routes-health.ts
+    const routes = readFile("server/routes-health.ts");
 
     it("registers /_ready route", () => {
       expect(routes).toContain('app.get("/_ready"');

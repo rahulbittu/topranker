@@ -14,7 +14,8 @@ function readFile(rel: string): string {
 
 describe("Sprint 803: Rate Limiter Health Stats", () => {
   const rateLimiterSrc = readFile("server/rate-limiter.ts");
-  const routesSrc = readFile("server/routes.ts");
+  // Sprint 804: Health routes extracted to routes-health.ts
+  const routesSrc = readFile("server/routes-health.ts");
 
   describe("rate-limiter.ts exports", () => {
     it("exports getRateLimitStats", () => {
@@ -31,14 +32,12 @@ describe("Sprint 803: Rate Limiter Health Stats", () => {
   });
 
   describe("health endpoint integration", () => {
-    it("routes.ts imports getRateLimitStats", () => {
+    it("routes-health.ts imports getRateLimitStats", () => {
       expect(routesSrc).toContain("getRateLimitStats");
     });
 
     it("/api/health includes rateLimit field", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1400);
-      expect(healthBlock).toContain("rateLimit: getRateLimitStats()");
+      expect(routesSrc).toContain("rateLimit: getRateLimitStats()");
     });
   });
 

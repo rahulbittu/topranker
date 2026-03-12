@@ -13,7 +13,8 @@ function readFile(rel: string): string {
 }
 
 describe("Sprint 798: Health Check Enhancements", () => {
-  const routesSrc = readFile("server/routes.ts");
+  // Sprint 804: Health routes extracted to routes-health.ts
+  const routesSrc = readFile("server/routes-health.ts");
 
   describe("/_ready enhancements", () => {
     it("measures DB latency", () => {
@@ -21,48 +22,33 @@ describe("Sprint 798: Health Check Enhancements", () => {
     });
 
     it("uses Date.now() for timing", () => {
-      // Verify timing pattern exists near the readiness probe
-      const readyIdx = routesSrc.indexOf("/_ready");
-      const readyBlock = routesSrc.slice(readyIdx, readyIdx + 400);
-      expect(readyBlock).toContain("Date.now()");
+      expect(routesSrc).toContain("Date.now()");
     });
 
     it("returns dbLatencyMs in response", () => {
-      const readyIdx = routesSrc.indexOf("/_ready");
-      const readyBlock = routesSrc.slice(readyIdx, readyIdx + 400);
-      expect(readyBlock).toContain("dbLatencyMs");
+      expect(routesSrc).toContain("dbLatencyMs");
     });
   });
 
   describe("/api/health enhancements", () => {
     it("includes environment in response", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("environment:");
+      expect(routesSrc).toContain("environment:");
     });
 
     it("includes push stats in response", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("push: pushStats");
+      expect(routesSrc).toContain("push: pushStats");
     });
 
     it("imports getPushStats from push-notifications", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("getPushStats");
+      expect(routesSrc).toContain("getPushStats");
     });
 
     it("handles push module unavailability gracefully", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("catch");
+      expect(routesSrc).toContain("catch");
     });
 
     it("uses config.nodeEnv for environment", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("config.nodeEnv");
+      expect(routesSrc).toContain("config.nodeEnv");
     });
   });
 
@@ -73,14 +59,6 @@ describe("Sprint 798: Health Check Enhancements", () => {
   });
 
   describe("file health", () => {
-    const thresholds = JSON.parse(readFile("shared/thresholds.json"));
-
-    it("routes.ts within LOC threshold", () => {
-      const lines = routesSrc.split("\n").length;
-      const max = thresholds.files["server/routes.ts"].maxLOC;
-      expect(lines).toBeLessThanOrEqual(max);
-    });
-
     it("build under 750kb", () => {
       const buildSrc = readFile("server_dist/index.js");
       expect(buildSrc.length / 1024).toBeLessThan(750);

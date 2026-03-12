@@ -202,7 +202,8 @@ describe("Operational tooling completeness", () => {
   });
 
   it("health endpoint in routes", () => {
-    const routes = readFile("server/routes.ts");
+    // Sprint 804: Health routes extracted to routes-health.ts
+    const routes = readFile("server/routes-health.ts");
     expect(routes).toContain("/api/health");
   });
 });

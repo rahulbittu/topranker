@@ -14,7 +14,8 @@ function readFile(rel: string): string {
 
 describe("Sprint 799: Error Rate Tracking", () => {
   const loggerSrc = readFile("server/logger.ts");
-  const routesSrc = readFile("server/routes.ts");
+  // Sprint 804: Health routes extracted to routes-health.ts
+  const routesSrc = readFile("server/routes-health.ts");
 
   describe("logger exports", () => {
     it("exports getLogStats", () => {
@@ -51,14 +52,12 @@ describe("Sprint 799: Error Rate Tracking", () => {
   });
 
   describe("health endpoint integration", () => {
-    it("routes.ts imports getLogStats", () => {
+    it("routes-health.ts imports getLogStats", () => {
       expect(routesSrc).toContain("getLogStats");
     });
 
     it("/api/health includes logs field", () => {
-      const healthIdx = routesSrc.indexOf("/api/health");
-      const healthBlock = routesSrc.slice(healthIdx, healthIdx + 1200);
-      expect(healthBlock).toContain("logs: getLogStats()");
+      expect(routesSrc).toContain("logs: getLogStats()");
     });
   });
 
