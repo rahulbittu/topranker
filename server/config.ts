@@ -2,6 +2,22 @@
  * Centralized environment configuration.
  * Validates all required env vars at startup. Crashes if any required var is missing.
  * All server modules import from here — no direct process.env access.
+ *
+ * ARCHITECTURE BOUNDARY (Sprint 811 — formalized per external critique):
+ *
+ * Three bootstrap files are PERMANENTLY exempt from config.ts:
+ *   - db.ts      — DATABASE_URL (config.ts depends on this being available first)
+ *   - logger.ts  — NODE_ENV (logging must work before config validation)
+ *   - index.ts   — PORT, NODE_ENV (entry point, sets up process before config loads)
+ *
+ * These are PRE-CONFIG boundaries, not exceptions. They represent the
+ * initialization order: logger → db → config → everything else.
+ * This is permanent architecture, not temporary debt.
+ *
+ * GUARDRAILS (Sprint 811):
+ *   - Max fields: 35 (split into groups if exceeded)
+ *   - Current fields: 27
+ *   - Field groups required at: 35+ fields
  */
 
 function required(name: string): string {

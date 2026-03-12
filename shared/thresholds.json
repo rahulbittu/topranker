@@ -38,10 +38,19 @@
   },
   "build": {
     "maxSizeKb": 750,
-    "currentSizeKb": 688.9
+    "currentSizeKb": 688.9,
+    "warnAtKb": 720,
+    "escalation": "720kb=warn, 735kb=block-new-features, 750kb=mandatory-optimization"
   },
   "tests": {
     "minCount": 12800,
-    "currentCount": 13547
+    "currentCount": 13560
+  },
+  "config": {
+    "maxFields": 35,
+    "currentFields": 27,
+    "groupingRequiredAt": 35,
+    "bootstrapExempt": ["server/db.ts", "server/logger.ts", "server/index.ts"],
+    "notes": "Sprint 811: formalized per external critique. Bootstrap files are permanent pre-config boundaries."
   }
 }
