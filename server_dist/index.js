@@ -16168,7 +16168,7 @@ function setupRequestLogging(app2) {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "\u2026";
       }
-      log(logLine);
+      log2(logLine);
     });
     next();
   });
@@ -16211,8 +16211,8 @@ function serveLandingPage({
   const host = forwardedHost || req.get("host");
   const baseUrl = `${protocol}://${host}`;
   const expsUrl = `${host}`;
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
+  log2(`baseUrl`, baseUrl);
+  log2(`expsUrl`, expsUrl);
   const html = landingPageTemplate.replace(/BASE_URL_PLACEHOLDER/g, baseUrl).replace(/EXPS_URL_PLACEHOLDER/g, expsUrl).replace(/APP_NAME_PLACEHOLDER/g, appName);
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.status(200).send(html);
@@ -16227,7 +16227,7 @@ function configureExpoAndLanding(app2) {
   const landingPageTemplate = fs2.readFileSync(templatePath, "utf-8");
   const appName = getAppName();
   const isProduction = true;
-  log("Serving static Expo files with dynamic manifest routing");
+  log2("Serving static Expo files with dynamic manifest routing");
   app2.get("/_health", (_req, res) => {
     res.status(200).send("ok");
   });
@@ -16261,7 +16261,7 @@ function configureExpoAndLanding(app2) {
       maxAge: isProduction ? "1d" : 0,
       index: false
     }));
-    log(`Serving static web build from ${distPath}`);
+    log2(`Serving static web build from ${distPath}`);
   }
   if (!isProduction) {
     const metroProxy = createProxyMiddleware({
@@ -16345,13 +16345,13 @@ document.body.appendChild(s);
         return next();
       }
       if (req.path === "/" || req.path === "/index.html") {
-        log(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
+        log2(`[DEV] Serving bootstrap HTML for ${req.path} (${webIndexHtml.length} bytes)`);
         return res.status(200).type("html").send(webIndexHtml);
       }
       return metroProxy(req, res, next);
     });
-    log("Expo routing: Checking expo-platform header on / and /manifest");
-    log("Metro proxy: Forwarding web requests to localhost:8081");
+    log2("Expo routing: Checking expo-platform header on / and /manifest");
+    log2("Metro proxy: Forwarding web requests to localhost:8081");
   } else {
     app2.use((req, res, next) => {
       if (req.path.startsWith("/api")) {
@@ -16366,7 +16366,7 @@ document.body.appendChild(s);
       }
       return serveLandingPage({ req, res, landingPageTemplate, appName });
     });
-    log("Production mode: Serving static dist build (no Metro proxy)");
+    log2("Production mode: Serving static dist build (no Metro proxy)");
   }
 }
 function setupErrorHandler(app2) {
@@ -16406,7 +16406,7 @@ function setupErrorHandler(app2) {
   app.use(prerenderMiddleware2);
   const server = await registerRoutes(app);
   const routeCount = app._router?.stack?.filter((layer) => layer.route)?.length ?? 0;
-  log(`[TopRanker] ${routeCount} routes registered`);
+  log2(`[TopRanker] ${routeCount} routes registered`);
   configureExpoAndLanding(app);
   if (false) {
     const { seedDatabase } = await null;
@@ -16459,7 +16459,7 @@ function setupErrorHandler(app2) {
     port,
     "0.0.0.0",
     () => {
-      log(`express server serving on port ${port} (0.0.0.0)`);
+      log2(`express server serving on port ${port} (0.0.0.0)`);
       log2.info(`Node ${process.version} | PID ${process.pid} | ENV ${"production"}`);
     }
   );

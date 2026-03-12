@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
-import { log as logger } from "./logger";
+import { log } from "./logger";
 import { securityHeaders } from "./security-headers";
 import { apiRateLimiter } from "./rate-limiter";
 import { perfMonitor } from "./perf-monitor";
@@ -343,7 +343,7 @@ function setupErrorHandler(app: express.Application) {
     const status = error.status || error.statusCode || 500;
     const message = error.message || "Internal Server Error";
 
-    logger.error("Internal Server Error:", err);
+    log.error("Internal Server Error:", err);
 
     if (res.headersSent) {
       return next(err);
@@ -397,18 +397,18 @@ function setupErrorHandler(app: express.Application) {
   // Sprint 619: Skip seed in production — saves ~109kb from bundle
   if (process.env.NODE_ENV !== "production") {
     const { seedDatabase } = await import("./seed");
-    seedDatabase().catch((err) => logger.error("Seed error:", err));
+    seedDatabase().catch((err) => log.error("Seed error:", err));
   }
 
   // Sprint 593: Auto-import real Google Places data on startup (non-blocking)
   const { autoImportGooglePlaces } = await import("./google-places-import");
-  autoImportGooglePlaces().catch((err) => logger.error("Google Places auto-import error:", err));
+  autoImportGooglePlaces().catch((err) => log.error("Google Places auto-import error:", err));
 
   // Challenger closure batch job — runs hourly (Sprint 161)
   const { closeExpiredChallenges } = await import("./storage/challengers");
-  closeExpiredChallenges().catch((err) => logger.error("Initial challenger closure error:", err));
+  closeExpiredChallenges().catch((err) => log.error("Initial challenger closure error:", err));
   const challengerInterval = setInterval(() => {
-    closeExpiredChallenges().catch((err) => logger.error("Challenger closure error:", err));
+    closeExpiredChallenges().catch((err) => log.error("Challenger closure error:", err));
   }, 60 * 60 * 1000); // Every hour
 
   // Dish leaderboard recalculation — runs every 6 hours (Sprint 169)
@@ -424,9 +424,9 @@ function setupErrorHandler(app: express.Application) {
         const count = await recalculateDishLeaderboard(board.id);
         totalEntries += count;
       }
-      logger.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
+      log.info(`Dish leaderboard recalculation: ${boards.length} boards, ${totalEntries} entries`);
     } catch (err) {
-      logger.error("Dish leaderboard recalculation error:", err);
+      log.error("Dish leaderboard recalculation error:", err);
     }
   }
 
@@ -435,11 +435,11 @@ function setupErrorHandler(app: express.Application) {
 
   // Sprint 587: Preload photo hash index from DB for duplicate detection
   const { preloadHashIndex } = await import("./photo-hash");
-  preloadHashIndex().catch((err) => logger.error("Photo hash preload failed:", err));
+  preloadHashIndex().catch((err) => log.error("Photo hash preload failed:", err));
 
   // Sprint 592: Preload perceptual hash index from DB for near-duplicate detection
   const { preloadPHashIndex } = await import("./phash");
-  preloadPHashIndex().catch((err) => logger.error("PHash preload failed:", err));
+  preloadPHashIndex().catch((err) => log.error("PHash preload failed:", err));
 
   // Sprint 614: Search suggestions — build from DB + periodic refresh every 30 min
   const { startSuggestionRefresh } = await import("./search-suggestions");
@@ -476,13 +476,13 @@ function setupErrorHandler(app: express.Application) {
     "0.0.0.0",
     () => {
       log(`express server serving on port ${port} (0.0.0.0)`);
-      logger.info(`Node ${process.version} | PID ${process.pid} | ENV ${process.env.NODE_ENV || "development"}`);
+      log.info(`Node ${process.version} | PID ${process.pid} | ENV ${process.env.NODE_ENV || "development"}`);
     },
   );
 
   // Graceful shutdown
   function gracefulShutdown(signal: string) {
-    logger.info(`${signal} received. Starting graceful shutdown...`);
+    log.info(`${signal} received. Starting graceful shutdown...`);
     clearInterval(challengerInterval);
     clearInterval(dishRecalcInterval);
     clearTimeout(weeklyDigestTimeout);
@@ -491,13 +491,13 @@ function setupErrorHandler(app: express.Application) {
     clearTimeout(outreachSchedulerTimeout);
 
     server.close(() => {
-      logger.info("HTTP server closed");
+      log.info("HTTP server closed");
       process.exit(0);
     });
 
     // Force shutdown after 10 seconds
     setTimeout(() => {
-      logger.error("Forced shutdown after timeout");
+      log.error("Forced shutdown after timeout");
       process.exit(1);
     }, 10_000);
   }

@@ -2,6 +2,7 @@
   "name": "topranker",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "type": "module",
   "scripts": {
     "postinstall": "patch-package",
     "expo:dev": "npx expo start",
