@@ -47,7 +47,8 @@ describe("Sprint 507: Client-side Notification Analytics", () => {
     it("stays under 330 LOC", () => {
       // Sprint 644: +searchShare event
       const lines = src.split("\n").length;
-      expect(lines).toBeLessThan(330);
+      // Sprint 738: +15 lines for session ID tracking
+      expect(lines).toBeLessThan(350);
     });
   });
 

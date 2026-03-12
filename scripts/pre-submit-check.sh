@@ -83,7 +83,24 @@ fi
 
 echo ""
 
-# 4. Documentation checks
+# 4. Sprint 738: Static files checks
+echo "Static Files:"
+check "AASA file exists" "$([ -f public/.well-known/apple-app-site-association ] && echo true || echo false)"
+AASA_TEAM=$(node -e "try { const a = require('./public/.well-known/apple-app-site-association'); console.log(a.applinks.details[0].appIDs[0].includes('RKGRR7XGWD') ? 'true' : 'false') } catch { console.log('false') }" 2>/dev/null || echo false)
+check "AASA has correct Team ID" "$AASA_TEAM"
+check "robots.txt exists" "$([ -f public/robots.txt ] && echo true || echo false)"
+check "Store metadata config" "$([ -f config/store-metadata.ts ] && echo true || echo false)"
+
+echo ""
+
+# 5. Sprint 738: Rate limiter check
+echo "Security:"
+LIMITER_COUNT=$(grep -c "export const.*RateLimiter\|export const.*rateLimiter" server/rate-limiter.ts 2>/dev/null || echo 0)
+check "Rate limiters defined: $LIMITER_COUNT (expected 7+)" "$([ "$LIMITER_COUNT" -ge 7 ] && echo true || echo false)"
+
+echo ""
+
+# 6. Documentation checks
 echo "Documentation:"
 check "TestFlight setup doc" "$([ -f docs/app-store/TESTFLIGHT-SETUP.md ] && echo true || echo false)"
 check "App Store metadata" "$([ -f docs/app-store/APP-STORE-METADATA.md ] && echo true || echo false)"

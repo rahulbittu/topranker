@@ -78,7 +78,9 @@ describe("Sprint 719 — Feedback Collection", () => {
   // ── Analytics ──
   describe("Analytics tracking", () => {
     it("imports track from analytics", () => {
-      expect(source).toContain("import { track }");
+      // Sprint 738: feedback also imports getSessionId, getSessionDurationMs
+      expect(source).toContain("track");
+      expect(source).toContain("@/lib/analytics");
     });
 
     it("tracks feedback_submitted on success", () => {

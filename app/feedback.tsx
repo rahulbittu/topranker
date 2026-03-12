@@ -20,7 +20,7 @@ import { BRAND } from "@/constants/brand";
 import { useAuth } from "@/lib/auth-context";
 import { getApiUrl } from "@/lib/query-client";
 import { hapticPress } from "@/lib/audio";
-import { track } from "@/lib/analytics";
+import { track, getSessionId, getSessionDurationMs } from "@/lib/analytics";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { getPerfSummary, getRecentApiErrors } from "@/lib/perf-tracker";
@@ -75,10 +75,13 @@ export default function FeedbackScreen() {
           screenContext: "feedback_screen",
           deviceContext,
           // Sprint 729: Diagnostic context for faster bug resolution
+          // Sprint 738: Session ID for event correlation
           diagnostics: {
             perf: getPerfSummary(),
             recentErrors: getRecentApiErrors(5),
             breadcrumbs: getRecentBreadcrumbs(15),
+            sessionId: getSessionId(),
+            sessionDurationMs: getSessionDurationMs(),
           },
         }),
       });

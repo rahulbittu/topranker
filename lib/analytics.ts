@@ -116,6 +116,24 @@ interface EventProperties {
   [key: string]: string | number | boolean | undefined;
 }
 
+// Sprint 738: Session ID for correlating events from same app session
+let sessionId = generateSessionId();
+let sessionStartMs = Date.now();
+
+function generateSessionId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Get current session ID (for debugging and feedback reports) */
+export function getSessionId(): string {
+  return sessionId;
+}
+
+/** Get session duration in milliseconds */
+export function getSessionDurationMs(): number {
+  return Date.now() - sessionStartMs;
+}
+
 // Analytics provider interface — swap implementations for different providers
 interface AnalyticsProvider {
   track(event: string, properties?: EventProperties): void;
@@ -156,6 +174,8 @@ export function track(event: AnalyticsEvent, properties?: EventProperties): void
       ...properties,
       timestamp: Date.now(),
       platform: typeof navigator !== "undefined" ? "web" : "native",
+      session_id: sessionId,
+      session_duration_ms: Date.now() - sessionStartMs,
     });
   } catch (err) {
     // Analytics should never crash the app

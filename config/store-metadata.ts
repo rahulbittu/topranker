@@ -90,7 +90,7 @@ export const AASA_CONFIG = {
   applinks: {
     details: [
       {
-        appIDs: ["TEAM_ID.com.topranker.app"],
+        appIDs: ["RKGRR7XGWD.com.topranker.app"],
         components: [
           { "/": "/business/*", comment: "Business deep links" },
           { "/": "/dish/*", comment: "Dish deep links" },
