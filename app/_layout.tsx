@@ -38,6 +38,7 @@ import { NetworkBanner } from "@/components/NetworkBanner";
 import { CookieConsent } from "@/components/CookieConsent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { registerForPushNotifications } from "@/lib/notifications";
+import { initSyncService } from "@/lib/offline-sync-service";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 import { ONBOARDING_KEY } from "@/app/onboarding";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
@@ -353,6 +354,11 @@ export default function RootLayout() {
       }
     }
   }, [fontsLoaded, fontError]);
+
+  // Sprint 667: Initialize offline sync service
+  useEffect(() => {
+    initSyncService();
+  }, []);
 
   useEffect(() => {
     registerForPushNotifications().then((token) => {

@@ -5,6 +5,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
 import { apiRequest } from "@/lib/query-client";
+import { queueAction, persistQueue } from "@/lib/offline-sync";
 import { hapticRatingSuccess, hapticConfetti } from "@/lib/audio";
 import { setRatingImpact } from "@/lib/rating-impact";
 import { getBadgeById, type Badge } from "@/lib/badges";
@@ -135,7 +136,25 @@ export function useRatingSubmit({
       }
       const msg = err.message || "";
       if (msg.includes("Failed to fetch") || msg.includes("Network")) {
-        setSubmitError("No internet connection. Please check your network and try again.");
+        // Sprint 667: Queue rating for offline sync
+        if (businessId) {
+          const dishName = selectedDish || (dishInput.trim() || undefined);
+          queueAction({
+            type: "create",
+            endpoint: "/api/ratings",
+            payload: {
+              businessId, q1Score, q2Score, q3Score, wouldReturn,
+              visitType: visitType || undefined,
+              dishName: dishName || undefined,
+              note: note.trim() || undefined,
+              timeOnPageMs: timeOnPageMs > 0 ? timeOnPageMs : undefined,
+            },
+          });
+          persistQueue().catch(() => {});
+          setSubmitError("You're offline — your rating has been saved and will submit automatically when you're back online.");
+        } else {
+          setSubmitError("No internet connection. Please check your network and try again.");
+        }
       } else if (msg.includes("401")) {
         setSubmitError("Your session has expired. Please sign in again.");
       } else if (msg.includes("Already rated today") || msg.includes("already rated")) {
