@@ -37,6 +37,8 @@ export interface PushMessage {
 const tokens = new Map<string, PushToken[]>();   // memberId → tokens
 const messageLog: PushMessage[] = [];
 export const MAX_MESSAGES = 5000;
+// Sprint 796: Cap tokens per member to prevent unbounded growth (Audit M1)
+export const MAX_TOKENS_PER_MEMBER = 10;
 
 export function registerPushToken(memberId: string, token: string, platform: PushToken["platform"]): PushToken {
   if (!tokens.has(memberId)) tokens.set(memberId, []);
@@ -52,7 +54,15 @@ export function registerPushToken(memberId: string, token: string, platform: Pus
     registeredAt: new Date().toISOString(),
     lastUsed: new Date().toISOString(),
   };
-  tokens.get(memberId)!.push(entry);
+  const memberList = tokens.get(memberId)!;
+  // Sprint 796: Evict oldest token when per-member limit exceeded
+  if (memberList.length >= MAX_TOKENS_PER_MEMBER) {
+    const evicted = memberList.shift();
+    if (evicted) {
+      pushLog.info(`Push token evicted (oldest): ${evicted.platform} for ${memberId}`);
+    }
+  }
+  memberList.push(entry);
   pushLog.info(`Push token registered: ${platform} for ${memberId}`);
   return entry;
 }
