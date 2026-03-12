@@ -174,6 +174,6 @@ export const NOTIFICATION_TEMPLATES = {
     type: "rating_reminder",
     title: `How was ${businessName}?`,
     body: `You visited ${businessName} recently. Rate your experience and help others decide.`,
-    data: { screen: `business/${businessSlug}` },
+    data: { screen: "business", slug: businessSlug },
   }),
 } as const;
