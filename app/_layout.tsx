@@ -43,6 +43,8 @@ import { ONBOARDING_KEY } from "@/app/onboarding";
 import { apiRequest, getApiUrl } from "@/lib/query-client";
 import { useRealtimeEvents } from "@/lib/use-realtime";
 import { Analytics } from "@/lib/analytics";
+import { addBreadcrumb } from "@/lib/sentry";
+import { reportError } from "@/lib/error-reporting";
 
 async function savePushToken(token: string) {
   try {
@@ -393,6 +395,17 @@ export default function RootLayout() {
     initSyncService();
   }, []);
 
+  // Sprint 717: Global error handler + navigation breadcrumbs
+  useEffect(() => {
+    const originalHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      addBreadcrumb("error", `${isFatal ? "FATAL" : "ERROR"}: ${error.message}`);
+      reportError(error, { isFatal: !!isFatal, source: "global_handler" });
+      originalHandler(error, isFatal);
+    });
+    return () => ErrorUtils.setGlobalHandler(originalHandler);
+  }, []);
+
   useEffect(() => {
     registerForPushNotifications().then((token) => {
       if (token) {
@@ -417,6 +430,8 @@ export default function RootLayout() {
       reportNotificationOpened(notifId, notifType).catch(() => {});
       // Sprint 507: Client-side notification analytics
       Analytics.notificationOpenReported(notifId, notifType);
+      // Sprint 717: Breadcrumb for notification tap
+      addBreadcrumb("notification", `tap: ${notifType} → ${screen || "unknown"}`);
 
       // Sprint 672: Validate screen before navigation
       if (!isValidDeepLinkScreen(screen)) return;

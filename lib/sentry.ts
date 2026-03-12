@@ -15,6 +15,7 @@ export interface SentryConfig {
 let initialized = false;
 let currentUser: { id: string; email?: string } | null = null;
 const breadcrumbs: Array<{ category: string; message: string; timestamp: number }> = [];
+const MAX_BREADCRUMBS = 50;
 
 /** Initialize Sentry with the given config */
 export function initSentry(config: SentryConfig): void {
@@ -56,9 +57,22 @@ export function setUser(user: { id: string; email?: string } | null): void {
 /** Add a breadcrumb for debugging context */
 export function addBreadcrumb(category: string, message: string): void {
   breadcrumbs.push({ category, message, timestamp: Date.now() });
+  if (breadcrumbs.length > MAX_BREADCRUMBS) {
+    breadcrumbs.splice(0, breadcrumbs.length - MAX_BREADCRUMBS);
+  }
   if (initialized) {
     console.log(`[Sentry] Breadcrumb (${category}):`, message);
   }
+}
+
+/** Get recent breadcrumbs for debugging (Sprint 717) */
+export function getRecentBreadcrumbs(limit = 20): Array<{ category: string; message: string; timestamp: number }> {
+  return breadcrumbs.slice(-limit);
+}
+
+/** Get current user context */
+export function getCurrentUser(): { id: string; email?: string } | null {
+  return currentUser;
 }
 
 /** Check whether Sentry has been initialized */
