@@ -209,5 +209,13 @@ export function registerAdminEnrichmentRoutes(app: Router): void {
     });
   });
 
+  // Sprint 663: Batch enrich action URLs (DoorDash, Uber Eats, menu, Maps)
+  app.post("/api/admin/enrichment/action-urls", requireAuth, requireAdmin, async (_req: Request, res: Response) => {
+    enrichLog.info("Starting batch action URL enrichment");
+    const { batchEnrichActionUrls } = await import("./google-places");
+    const enriched = await batchEnrichActionUrls();
+    res.json({ enriched, message: `Enriched ${enriched} businesses with action URLs` });
+  });
+
   // Sprint 467: Bulk operations extracted to routes-admin-enrichment-bulk.ts
 }

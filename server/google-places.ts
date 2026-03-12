@@ -304,6 +304,46 @@ export async function enrichBusinessActionUrls(
 }
 
 /**
+ * Sprint 663: Batch enrich all businesses that have googlePlaceId but no action URLs.
+ * Processes in batches with delays to respect API rate limits.
+ */
+export async function batchEnrichActionUrls(): Promise<number> {
+  const { db } = await import("./db");
+  const { businesses } = await import("@shared/schema");
+  const { isNotNull, isNull, and } = await import("drizzle-orm");
+
+  const unenriched = await db
+    .select({
+      id: businesses.id,
+      googlePlaceId: businesses.googlePlaceId,
+      name: businesses.name,
+      city: businesses.city,
+    })
+    .from(businesses)
+    .where(and(
+      isNotNull(businesses.googlePlaceId),
+      isNull(businesses.doordashUrl),
+    ))
+    .limit(50); // Process max 50 per batch to limit API calls
+
+  let enriched = 0;
+  for (const biz of unenriched) {
+    if (!biz.googlePlaceId) continue;
+    try {
+      const success = await enrichBusinessActionUrls(biz.id, biz.googlePlaceId, biz.name, biz.city || "Dallas");
+      if (success) enriched++;
+      // Rate limit: 200ms between API calls
+      await new Promise(r => setTimeout(r, 200));
+    } catch (err) {
+      log.tag("GooglePlaces").error(`Batch enrich failed for ${biz.id}: ${err}`);
+    }
+  }
+
+  log.tag("GooglePlaces").info(`Batch enriched ${enriched}/${unenriched.length} businesses with action URLs`);
+  return enriched;
+}
+
+/**
  * Batch fetch and store photos for a business.
  * Returns the number of photos stored.
  */
