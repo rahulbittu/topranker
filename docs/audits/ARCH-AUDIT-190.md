@@ -1,101 +1,83 @@
-# Architecture Audit #20 — Sprint 190
+# Architectural Audit #190 — Sprint 735
 
-**Date:** 2026-03-09
+**Date:** 2026-03-11
 **Auditor:** Amir Patel (Architecture)
-**Grade:** A-
-**Previous Grade:** A- (Sprint 185)
+**Grade:** A
+**Previous Grade:** A (Audit #185, Sprint 730)
+
+---
 
 ## Executive Summary
 
-Codebase remains healthy at A-. Four clean sprints (186-189) added email verification, restaurant onboarding, referral tracking, and Redis caching without introducing regressions. Test suite grew from 2,942 to 3,124 (+182). No new CRITICAL or HIGH findings. One existing MEDIUM persists (search.tsx size).
+86th consecutive A-range audit. Sprints 731-734 added deep link handler, App Store metadata, rate limiting hardening, and offline graceful degradation. All changes follow established patterns. No architectural concerns.
 
-## Scorecard
+---
 
-| Category | Score | Trend |
-|----------|-------|-------|
-| Test Coverage | A+ | ↑ (3,124 tests, 122 files) |
-| Type Safety | B+ | → (108 `as any`, stable) |
-| Module Organization | A | → (13 routes, 17 storage) |
-| Performance | A | ↑ (Redis cache layer added) |
-| Security | A | → (OWASP compliant, email verification added) |
-| Documentation | A- | → (Sprint docs, retros, SLT meetings current) |
-| Infrastructure | B+ | ↑ (Redis ready, needs production config) |
+## Audit Scope
+
+| Area | Files Reviewed |
+|------|---------------|
+| Deep link handler | `app/_layout.tsx`, `lib/sharing.ts`, `app.json` |
+| Store metadata | `config/store-metadata.ts` |
+| Rate limiting | `server/rate-limiter.ts`, `server/routes-ratings.ts`, `server/routes.ts`, `server/routes-rating-photos.ts` |
+| Offline mode | `lib/hooks/useOfflineAware.ts`, `components/StaleBanner.tsx`, `app/(tabs)/index.tsx` |
+
+---
 
 ## Findings
 
-### CRITICAL — 0 findings
+### Critical (P0): 0
 
-### HIGH — 0 findings
+### High (P1): 0
 
-### MEDIUM — 2 findings
+### Medium (P2): 1
 
-**M1: search.tsx at 870 LOC** (Carried from Audit #19)
-- Still exceeds 750 LOC target
-- Contains autocomplete, recent searches, popular categories, search results
-- **Recommendation:** Extract autocomplete dropdown + recent searches into components
-- **Escalation:** 2nd audit at MEDIUM — escalates to HIGH at Audit #21 if not addressed
+| # | Finding | Location | Recommendation |
+|---|---------|----------|----------------|
+| 1 | AASA file not deployed | Server infrastructure | Deploy apple-app-site-association to topranker.com + topranker.io /.well-known/ |
 
-**M2: No production email service**
-- Using nodemailer directly — no deliverability guarantees
-- Email verification + password reset depend on reliable delivery
-- **Recommendation:** Integrate SendGrid or AWS SES before beta
-- **Owner:** Sarah Nakamura, Sprint 191
+### Low (P3): 2
 
-### LOW — 3 findings
+| # | Finding | Location | Recommendation |
+|---|---------|----------|----------------|
+| 1 | Only Rankings screen uses useOfflineAware | `app/(tabs)/index.tsx` | Extend to Discover, Profile, Business Detail post-beta |
+| 2 | Rate limiters are per-IP only | `server/rate-limiter.ts` | Add per-user rate limiting post-beta |
 
-**L1: 108 `as any` casts** (Stable)
-- Not growing. Majority in React Native style sheets and third-party type gaps
-- No action needed unless count increases
+---
 
-**L2: No automated DB backups**
-- Railway provides manual snapshots but no automated schedule
-- **Recommendation:** Configure Railway auto-backups or pg_dump cron
+## Health Metrics
 
-**L3: Cache warming not implemented**
-- First request after deploy always hits DB
-- Low impact at current scale, should address before high traffic
+| Metric | Value | Status |
+|--------|-------|--------|
+| Build size | 662.7kb / 750kb | Green (88.4%) |
+| Test count | 12,665 / 544 files | Green |
+| Schema LOC | 911 / 950 | Green (95.9%) |
+| Threshold violations | 0 | Green |
+| Rate limiters | 7 dedicated | Green |
+| Offline-aware screens | 1/4 | Yellow (Rankings only) |
 
-## Metrics
+---
 
-| Metric | Sprint 185 | Sprint 190 | Delta |
-|--------|-----------|-----------|-------|
-| Tests | 2,942 | 3,124 | +182 |
-| Test Files | 118 | 122 | +4 |
-| Route Modules | 13 | 14 | +1 (routes-referrals) |
-| Storage Modules | 16 | 17 | +1 (referrals) |
-| `as any` Casts | ~105 | 108 | +3 |
-| Suite Duration | <1.9s | <2.0s | +0.1s |
-| Largest File | search.tsx (870) | search.tsx (870) | 0 |
+## Architecture Quality
 
-## Key File Sizes
+| Dimension | Grade | Notes |
+|-----------|-------|-------|
+| Deep linking | A | Universal links + custom scheme, cold-start + hot links |
+| Security | A | 7 dedicated rate limiters, all write endpoints protected |
+| Offline UX | A- | Rankings screen degradation, other screens pending |
+| Store readiness | A | Metadata validated, AASA config ready to deploy |
+| Test coverage | A | 12,665 tests, source-reading pattern |
 
-| File | LOC | Status |
-|------|-----|--------|
-| search.tsx | 870 | MEDIUM (target: 750) |
-| profile.tsx | 659 | OK |
-| business/[id].tsx | 567 | OK |
-| members.ts (storage) | 566 | OK |
-| businesses.ts (storage) | 540 | OK |
-| challenger.tsx | 484 | OK |
-| ratings.ts (storage) | 464 | OK |
-| routes.ts | 406 | OK |
+---
 
-## Sprint 186-189 Architecture Impact
+## Grade History
 
-### Positive
-- **Redis layer** is cleanly abstracted with fail-open semantics — excellent
-- **Referral module** properly isolated (own storage, routes, barrel export)
-- **Email verification** uses one-time tokens with proper cleanup
-- **Google Places** integration isolated in server/google-places.ts
+| Audit | Sprint | Grade |
+|-------|--------|-------|
+| #180 | 725 | A |
+| #185 | 730 | A |
+| #190 | 735 | A |
 
-### Concerns
-- **Dynamic imports** increasing (referrals, schema modules) — watch for circular dependency risk
-- **Rate limiter** now has runtime Redis detection via `require("ioredis")` — potential for silent failure
+---
 
-## Recommendations for Next 5 Sprints
-
-1. **Sprint 191:** Production email ESP (SendGrid/SES) — closes M2
-2. **Sprint 192:** Extract search.tsx components — closes M1 before escalation
-3. **Sprint 193:** Mobile native testing + Expo build pipeline
-4. **Sprint 194:** Load testing + CDN for static assets
-5. **Sprint 195:** SLT + Audit #21 + Beta GO/NO-GO
+## Next Audit: Sprint 740 (Audit #195)
