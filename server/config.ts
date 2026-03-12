@@ -45,6 +45,7 @@ export const config = {
 
   // Email (optional — console fallback if not set)
   resendApiKey: process.env.RESEND_API_KEY || null,
+  emailFrom: optional("EMAIL_FROM", "TopRanker <noreply@topranker.com>"),
 
   // Site URL (optional — used for emails, SEO, QR codes)
   siteUrl: optional("SITE_URL", "https://topranker.io"),

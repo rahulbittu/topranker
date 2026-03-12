@@ -10,7 +10,8 @@ import { config } from "./config";
 const emailLog = log.tag("Email");
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
-const FROM_ADDRESS = process.env.EMAIL_FROM || "TopRanker <noreply@topranker.com>";
+// Sprint 797: Centralized to config.ts (was hardcoded process.env fallback)
+const FROM_ADDRESS = config.emailFrom;
 
 export interface EmailPayload {
   to: string;
