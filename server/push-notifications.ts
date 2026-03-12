@@ -39,9 +39,29 @@ const messageLog: PushMessage[] = [];
 export const MAX_MESSAGES = 5000;
 // Sprint 796: Cap tokens per member to prevent unbounded growth (Audit M1)
 export const MAX_TOKENS_PER_MEMBER = 10;
+// Sprint 814: Cap total unique members to prevent unbounded Map growth (critique 790-794)
+export const MAX_UNIQUE_MEMBERS = 10000;
 
 export function registerPushToken(memberId: string, token: string, platform: PushToken["platform"]): PushToken {
-  if (!tokens.has(memberId)) tokens.set(memberId, []);
+  if (!tokens.has(memberId)) {
+    // Sprint 814: Evict LRU member when total member count exceeded
+    if (tokens.size >= MAX_UNIQUE_MEMBERS) {
+      let lruMember = "";
+      let lruTime = "";
+      for (const [mid, memberTokens] of tokens) {
+        const newest = memberTokens.reduce((a, b) => a.lastUsed > b.lastUsed ? a : b);
+        if (!lruMember || newest.lastUsed < lruTime) {
+          lruMember = mid;
+          lruTime = newest.lastUsed;
+        }
+      }
+      if (lruMember) {
+        tokens.delete(lruMember);
+        pushLog.info(`Push member evicted (LRU): ${lruMember}, lastActive=${lruTime}`);
+      }
+    }
+    tokens.set(memberId, []);
+  }
   const existing = tokens.get(memberId)!.find(t => t.token === token);
   if (existing) {
     existing.lastUsed = new Date().toISOString();
