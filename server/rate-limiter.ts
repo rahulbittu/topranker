@@ -28,7 +28,7 @@ export interface RateLimitStore {
 // ---------------------------------------------------------------------------
 
 class MemoryStore implements RateLimitStore {
-  private windows = new Map<string, WindowEntry>();
+  readonly windows = new Map<string, WindowEntry>();
   private cleanupTimer: ReturnType<typeof setInterval>;
 
   constructor() {
@@ -91,6 +91,14 @@ function createDefaultStore(): RateLimitStore {
 }
 
 const defaultStore = createDefaultStore();
+
+// Sprint 803: Rate limiter stats for /api/health
+export function getRateLimitStats(): { activeWindows: number; storeType: string } {
+  return {
+    activeWindows: defaultStore instanceof MemoryStore ? defaultStore.windows.size : -1,
+    storeType: defaultStore instanceof MemoryStore ? "memory" : "redis",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Options & factory

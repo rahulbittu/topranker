@@ -90,7 +90,7 @@ describe("Sprint 733 — Rate Limiting Hardening", () => {
 
     it("feedback route uses feedbackRateLimiter", () => {
       expect(routesSource).toContain("feedbackRateLimiter");
-      expect(routesSource).toContain('import { feedbackRateLimiter } from "./rate-limiter"');
+      expect(routesSource).toContain('feedbackRateLimiter');
     });
 
     it("photo upload route uses uploadRateLimiter", () => {

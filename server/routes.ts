@@ -48,7 +48,7 @@ import {
 } from "./storage";
 import { insertCategorySuggestionSchema } from "@shared/schema";
 import { sanitizeString } from "./sanitize";
-import { feedbackRateLimiter } from "./rate-limiter";
+import { feedbackRateLimiter, getRateLimitStats } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
 
@@ -118,6 +118,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       push: pushStats,
       logs: getLogStats(),
       sseClients: getClientCount(),
+      rateLimit: getRateLimitStats(),
     });
   });
 
