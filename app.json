@@ -134,7 +134,7 @@
       [
         "expo-router",
         {
-          "origin": "https://topranker.com"
+          "origin": "https://topranker.io"
         }
       ],
       "expo-font",
@@ -170,7 +170,7 @@
         "projectId": "30a52864-563f-440f-baf2-842c37fb757c"
       },
       "router": {
-        "origin": "https://topranker.com"
+        "origin": "https://topranker.io"
       }
     },
     "owner": "rpitta4"

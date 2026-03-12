@@ -98,7 +98,7 @@ describe("App.json — production settings", () => {
     const routerPlugin = expo.plugins.find(
       (p: any) => Array.isArray(p) && p[0] === "expo-router"
     );
-    expect(routerPlugin[1].origin).toBe("https://topranker.com");
+    expect(routerPlugin[1].origin).toBe("https://topranker.io");
   });
 
   it("uses non-exempt encryption declaration for iOS", () => {

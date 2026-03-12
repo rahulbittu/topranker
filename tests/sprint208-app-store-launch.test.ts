@@ -158,9 +158,9 @@ describe("App.json production config — app.json", () => {
     expect(config.expo.android.package).toBe("com.topranker.app");
   });
 
-  it("has topranker.com origin", () => {
+  it("has topranker.io origin", () => {
     const routerPlugin = config.expo.plugins.find((p: any) => Array.isArray(p) && p[0] === "expo-router");
-    expect(routerPlugin[1].origin).toBe("https://topranker.com");
+    expect(routerPlugin[1].origin).toBe("https://topranker.io");
   });
 
   it("has deep link intent filters", () => {

@@ -243,7 +243,7 @@ describe("Sprint 712 — Deep Link Testing", () => {
 
   // ── Expo Router Origin ──
   describe("Expo Router origin", () => {
-    it("origin is topranker.com", async () => {
+    it("origin is topranker.io", async () => {
       const fs = await import("node:fs");
       const appJson = JSON.parse(
         fs.readFileSync(new URL("../app.json", import.meta.url), "utf-8"),
@@ -252,7 +252,7 @@ describe("Sprint 712 — Deep Link Testing", () => {
         (p: any) => Array.isArray(p) && p[0] === "expo-router",
       );
       expect(routerPlugin).toBeTruthy();
-      expect(routerPlugin[1].origin).toBe("https://topranker.com");
+      expect(routerPlugin[1].origin).toBe("https://topranker.io");
     });
   });
 });
