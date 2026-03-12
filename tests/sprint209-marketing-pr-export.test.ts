@@ -115,8 +115,8 @@ describe("Social sharing meta — app/+html.tsx", () => {
     expect(src).toContain('property="og:image"');
   });
 
-  it("og:image points to topranker.com", () => {
-    expect(src).toContain("topranker.com/assets/images/og-image.png");
+  it("og:image points to topranker.io", () => {
+    expect(src).toContain("topranker.io/og-image.png");
   });
 
   it("has og:image:width", () => {

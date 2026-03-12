@@ -26,15 +26,15 @@ export default function Root({ children }: PropsWithChildren) {
         <meta property="og:title" content="TopRanker - Where Your Rankings Matter" />
         <meta property="og:description" content="Trust-weighted restaurant rankings for Texas. Rate, discover, and track the best places to eat — powered by community credibility." />
         <meta property="og:site_name" content="TopRanker" />
-        <meta property="og:url" content="https://topranker.com" />
-        <meta property="og:image" content="https://topranker.com/assets/images/og-image.png" />
+        <meta property="og:url" content="https://topranker.io" />
+        <meta property="og:image" content="https://topranker.io/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="TopRanker - Trust-Weighted Rankings" />
         <meta name="twitter:description" content="Trust-weighted restaurant rankings for Texas." />
-        <meta name="twitter:image" content="https://topranker.com/assets/images/og-image.png" />
-        <link rel="canonical" href="https://topranker.com" />
+        <meta name="twitter:image" content="https://topranker.io/og-image.png" />
+        <link rel="canonical" href="https://topranker.io" />
 
         {/* Prevent text scaling on web */}
         <ScrollViewStyleReset />
