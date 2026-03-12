@@ -1,25 +1,34 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, View, StyleSheet, ViewStyle } from "react-native";
+import ReAnimated, {
+  useSharedValue, useAnimatedStyle, withRepeat, withTiming,
+  withSequence, Easing,
+} from "react-native-reanimated";
 import Colors from "@/constants/colors";
 
 
-function SkeletonBlock({ style }: { style?: ViewStyle }) {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+function SkeletonBlock({ style, delay = 0 }: { style?: ViewStyle; delay?: number }) {
+  // Sprint 691: Smoother shimmer with reanimated + staggered delay
+  const shimmer = useSharedValue(0.25);
 
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.7, duration: 600, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 600, useNativeDriver: true }),
-      ])
+    shimmer.value = withRepeat(
+      withSequence(
+        withTiming(0.65, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.25, { duration: 700, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      false,
     );
-    animation.start();
-    return () => animation.stop();
   }, []);
 
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: shimmer.value,
+  }));
+
   return (
-    <Animated.View
-      style={[styles.block, style, { opacity }]}
+    <ReAnimated.View
+      style={[styles.block, style, animStyle]}
     />
   );
 }
@@ -136,6 +145,32 @@ export function DiscoverSkeleton() {
       ))}
     </View>
   );
+}
+
+/**
+ * Sprint 691: Wrapper that fades content in when loading completes.
+ * Use around content that replaces a skeleton: the content slides up
+ * and fades in for a smooth skeleton→content transition.
+ */
+export function SkeletonToContent({ children, visible }: { children: React.ReactNode; visible: boolean }) {
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(8);
+
+  useEffect(() => {
+    if (visible) {
+      opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
+      translateY.value = withTiming(0, { duration: 350, easing: Easing.out(Easing.cubic) });
+    }
+  }, [visible]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  if (!visible) return null;
+
+  return <ReAnimated.View style={animStyle}>{children}</ReAnimated.View>;
 }
 
 const styles = StyleSheet.create({

@@ -18,7 +18,7 @@ import { fetchLeaderboard, fetchCategories, fetchNeighborhoods, submitCategorySu
 import { SuggestCategory } from "@/components/categories/SuggestCategory";
 import { formatTimeAgo } from "@/lib/data";
 import { AppLogo } from "@/components/Logo";
-import { LeaderboardSkeleton } from "@/components/Skeleton";
+import { LeaderboardSkeleton, SkeletonToContent } from "@/components/Skeleton";
 import { useCity, SUPPORTED_CITIES } from "@/lib/city-context";
 import { pct } from "@/lib/style-helpers";
 import { MappedBusiness } from "@/types/business";
@@ -228,6 +228,7 @@ export default function LeaderboardScreen() {
       ) : isError ? (
         <ErrorState title="Could not load rankings" onRetry={() => refetch()} />
       ) : (
+        <SkeletonToContent visible={!isLoading}>
         <FlatList
           data={restBiz}
           keyExtractor={item => item.id}
@@ -330,6 +331,7 @@ export default function LeaderboardScreen() {
             ) : null
           }
         />
+        </SkeletonToContent>
       )}
     </View>
     </ErrorBoundary>
