@@ -11823,6 +11823,9 @@ var apiRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 100, keyPrefix: "
 var paymentRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 20, keyPrefix: "payments" });
 var adminRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 30, keyPrefix: "admin" });
 var claimVerifyRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 5, keyPrefix: "claim-verify" });
+var ratingRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10, keyPrefix: "rating" });
+var feedbackRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 5, keyPrefix: "feedback" });
+var uploadRateLimiter = rateLimiter({ windowMs: 6e4, maxRequests: 10, keyPrefix: "upload" });
 
 // server/routes-admin.ts
 init_tier_staleness();
@@ -15152,7 +15155,7 @@ var MAX_FILE_SIZE2 = 10 * 1024 * 1024;
 var PHOTO_BOOST = 0.15;
 var MAX_VERIFICATION_BOOST = 0.5;
 function registerRatingPhotoRoutes(app2) {
-  app2.post("/api/ratings/:id/photo", requireAuth, wrapAsync(async (req, res) => {
+  app2.post("/api/ratings/:id/photo", uploadRateLimiter, requireAuth, wrapAsync(async (req, res) => {
     const ratingId = req.params.id;
     const memberId = req.user.id;
     const { getRatingById: getRatingById2 } = await Promise.resolve().then(() => (init_ratings(), ratings_exports));
@@ -15506,7 +15509,7 @@ function checkVelocity(businessId, raterId, raterIp) {
 
 // server/routes-ratings.ts
 function registerRatingRoutes(app2) {
-  app2.post("/api/ratings", requireAuth, wrapAsync(async (req, res) => {
+  app2.post("/api/ratings", ratingRateLimiter, requireAuth, wrapAsync(async (req, res) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -15891,7 +15894,7 @@ async function registerRoutes(app2) {
   app2.get("/share/badge/:badgeId", wrapAsync(handleBadgeShare));
   app2.get("/api/og-image/business/:slug", wrapAsync(handleBusinessOgImage));
   app2.get("/api/og-image/dish/:slug", wrapAsync(handleDishOgImage));
-  app2.post("/api/feedback", requireAuth, wrapAsync(async (req, res) => {
+  app2.post("/api/feedback", feedbackRateLimiter, requireAuth, wrapAsync(async (req, res) => {
     const { createFeedback: createFeedback2 } = await Promise.resolve().then(() => (init_feedback(), feedback_exports));
     const { rating, category, message, screenContext, appVersion } = req.body;
     if (!rating || !category || !message) {

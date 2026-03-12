@@ -17,6 +17,7 @@ import { log } from "./logger";
 import crypto from "crypto";
 import { detectDuplicate, registerPhotoHash } from "./photo-hash";
 import { computePerceptualHash, findNearDuplicates, registerPHash } from "./phash";
+import { uploadRateLimiter } from "./rate-limiter";
 
 const photoLog = log.tag("RatingPhoto");
 
@@ -32,7 +33,8 @@ export function registerRatingPhotoRoutes(app: Express): void {
    * Accepts base64-encoded photo, uploads to CDN, creates rating_photos record.
    * Updates rating verification boost and triggers score recalculation.
    */
-  app.post("/api/ratings/:id/photo", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+  // Sprint 733: Dedicated rate limit for photo uploads (10/min per IP)
+  app.post("/api/ratings/:id/photo", uploadRateLimiter, requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const ratingId = req.params.id;
     const memberId = req.user!.id;
 

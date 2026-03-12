@@ -23,10 +23,12 @@ import {
   checkVelocity,
   logRatingSubmission,
 } from "./rating-integrity";
+import { ratingRateLimiter } from "./rate-limiter";
 
 export function registerRatingRoutes(app: Express): void {
   // ── Rating Submission ──────────────────────────────────────
-  app.post("/api/ratings", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+  // Sprint 733: Dedicated rate limit for rating submissions (10/min per IP)
+  app.post("/api/ratings", ratingRateLimiter, requireAuth, wrapAsync(async (req: Request, res: Response) => {
     try {
       const parsed = insertRatingSchema.safeParse(req.body);
       if (!parsed.success) {

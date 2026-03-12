@@ -110,7 +110,9 @@ describe("Feedback endpoint — server/routes.ts", () => {
   });
 
   it("requires authentication", () => {
-    expect(src).toContain('"/api/feedback", requireAuth');
+    // Sprint 733: feedbackRateLimiter added before requireAuth
+    expect(src).toContain('"/api/feedback"');
+    expect(src).toContain("requireAuth");
   });
 
   it("validates rating range 1-5", () => {

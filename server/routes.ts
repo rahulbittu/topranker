@@ -47,6 +47,7 @@ import {
 } from "./storage";
 import { insertCategorySuggestionSchema } from "@shared/schema";
 import { sanitizeString } from "./sanitize";
+import { feedbackRateLimiter } from "./rate-limiter";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
 
@@ -338,7 +339,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/og-image/dish/:slug", wrapAsync(handleDishOgImage));
 
   // ── Sprint 211: Beta Feedback ───────────────────────────────
-  app.post("/api/feedback", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+  // Sprint 733: Dedicated rate limit for feedback (5/min per IP)
+  app.post("/api/feedback", feedbackRateLimiter, requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const { createFeedback } = await import("./storage/feedback");
     const { rating, category, message, screenContext, appVersion } = req.body;
     if (!rating || !category || !message) {

@@ -155,3 +155,12 @@ export const adminRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 30,
 
 /** Sprint 657: Claim verification — strict limit to prevent brute force (5 req/min per IP) */
 export const claimVerifyRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 5, keyPrefix: "claim-verify" });
+
+/** Sprint 733: Rating submission — prevent spam (10 ratings/min per IP, generous for real users) */
+export const ratingRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 10, keyPrefix: "rating" });
+
+/** Sprint 733: Feedback submission — prevent spam (5 submissions/min per IP) */
+export const feedbackRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 5, keyPrefix: "feedback" });
+
+/** Sprint 733: Photo upload — prevent abuse (10 uploads/min per IP) */
+export const uploadRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 10, keyPrefix: "upload" });
