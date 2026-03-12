@@ -12,7 +12,7 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/topranker"
+      "url": "https://u.expo.dev/30a52864-563f-440f-baf2-842c37fb757c"
     },
     "splash": {
       "image": "./assets/images/splash-icon.png",
@@ -22,7 +22,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.topranker.app",
-      "associatedDomains": ["applinks:topranker.com"],
+      "associatedDomains": [
+        "applinks:topranker.com"
+      ],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TopRanker uses your location to find restaurants near you.",
         "NSCameraUsageDescription": "TopRanker uses the camera for your profile photo.",
@@ -36,22 +38,34 @@
       "package": "com.topranker.app",
       "versionCode": 1,
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "VIBRATE",
-        "RECEIVE_BOOT_COMPLETED"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.RECORD_AUDIO"
       ],
       "intentFilters": [
         {
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "topranker.com", "pathPrefix": "/business/" },
-            { "scheme": "https", "host": "topranker.com", "pathPrefix": "/join" }
+            {
+              "scheme": "https",
+              "host": "topranker.com",
+              "pathPrefix": "/business/"
+            },
+            {
+              "scheme": "https",
+              "host": "topranker.com",
+              "pathPrefix": "/join"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "adaptiveIcon": {
@@ -102,8 +116,12 @@
     },
     "extra": {
       "eas": {
-        "projectId": "topranker"
+        "projectId": "30a52864-563f-440f-baf2-842c37fb757c"
+      },
+      "router": {
+        "origin": "https://topranker.com"
       }
-    }
+    },
+    "owner": "rpitta4"
   }
 }

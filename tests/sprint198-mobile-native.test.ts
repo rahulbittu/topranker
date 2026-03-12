@@ -91,7 +91,7 @@ describe("App.json — production settings", () => {
 
   it("has EAS project ID in extra", () => {
     expect(expo.extra.eas).toBeDefined();
-    expect(expo.extra.eas.projectId).toBe("topranker");
+    expect(expo.extra.eas.projectId).toBe("30a52864-563f-440f-baf2-842c37fb757c");
   });
 
   it("origin points to production domain (not Replit)", () => {
@@ -261,16 +261,17 @@ describe("Platform permissions — app.json", () => {
   });
 
   it("Android declares location permissions", () => {
-    expect(config.expo.android.permissions).toContain("ACCESS_FINE_LOCATION");
-    expect(config.expo.android.permissions).toContain("ACCESS_COARSE_LOCATION");
+    const perms = config.expo.android.permissions;
+    expect(perms.some((p: string) => p.includes("ACCESS_FINE_LOCATION"))).toBe(true);
+    expect(perms.some((p: string) => p.includes("ACCESS_COARSE_LOCATION"))).toBe(true);
   });
 
   it("Android declares camera permission", () => {
-    expect(config.expo.android.permissions).toContain("CAMERA");
+    expect(config.expo.android.permissions.some((p: string) => p.includes("CAMERA"))).toBe(true);
   });
 
   it("Android declares vibrate permission for haptics", () => {
-    expect(config.expo.android.permissions).toContain("VIBRATE");
+    expect(config.expo.android.permissions.some((p: string) => p.includes("VIBRATE"))).toBe(true);
   });
 });
 

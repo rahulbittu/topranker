@@ -65,7 +65,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: "topranker",
+      projectId: "30a52864-563f-440f-baf2-842c37fb757c",
     });
     return tokenData.data;
   } catch (err) {
