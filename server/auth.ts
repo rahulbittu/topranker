@@ -32,6 +32,8 @@ export function setupAuth(app: Express) {
       store: new PgStore({
         pool,
         createTableIfMissing: true,
+        // Sprint 794: Explicit session cleanup — prune expired sessions every 15 min
+        pruneSessionInterval: 15 * 60, // seconds
       }),
       secret: config.sessionSecret,
       resave: false,
