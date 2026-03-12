@@ -1,5 +1,7 @@
 import { fetch } from "expo/fetch";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { recordApiCall, recordApiError } from "@/lib/perf-tracker";
+import { addBreadcrumb } from "@/lib/sentry";
 
 /**
  * Gets the base URL for the Express API server (e.g., "http://localhost:3000")
@@ -48,16 +50,35 @@ export async function apiRequest(
 ): Promise<Response> {
   const baseUrl = getApiUrl();
   const url = new URL(route, baseUrl);
+  const startMs = Date.now();
 
-  const res = await fetch(url.toString(), {
-    method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+  try {
+    const res = await fetch(url.toString(), {
+      method,
+      headers: data ? { "Content-Type": "application/json" } : {},
+      body: data ? JSON.stringify(data) : undefined,
+      credentials: "include",
+    });
 
-  await throwIfResNotOk(res);
-  return res;
+    // Sprint 728: Record API timing and errors
+    const durationMs = Date.now() - startMs;
+    const endpoint = `${method} ${route}`;
+    recordApiCall(endpoint, durationMs);
+    if (!res.ok) {
+      recordApiError(endpoint, res.status);
+      addBreadcrumb("api", `${endpoint} → ${res.status} (${durationMs}ms)`);
+    }
+
+    await throwIfResNotOk(res);
+    return res;
+  } catch (err) {
+    // Sprint 728: Record network-level failures
+    const durationMs = Date.now() - startMs;
+    const endpoint = `${method} ${route}`;
+    recordApiError(endpoint, 0); // 0 = network error (no response)
+    addBreadcrumb("api", `${endpoint} → NETWORK_ERROR (${durationMs}ms)`);
+    throw err;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -68,13 +89,23 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const baseUrl = getApiUrl();
     const url = new URL(queryKey.join("/") as string, baseUrl);
+    const startMs = Date.now();
+    const endpoint = `GET ${queryKey.join("/")}`;
 
     const res = await fetch(url.toString(), {
       credentials: "include",
     });
 
+    // Sprint 728: Record query timing
+    const durationMs = Date.now() - startMs;
+    recordApiCall(endpoint, durationMs);
+
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
+    }
+
+    if (!res.ok) {
+      recordApiError(endpoint, res.status);
     }
 
     await throwIfResNotOk(res);
