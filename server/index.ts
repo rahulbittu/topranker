@@ -463,6 +463,11 @@ function setupErrorHandler(app: express.Application) {
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
+
+  // Sprint 758: Explicit timeout configuration for Railway
+  server.keepAliveTimeout = 65_000; // Slightly above Railway's 60s LB idle timeout
+  server.headersTimeout = 66_000; // Must be > keepAliveTimeout
+
   server.listen(
     port,
     "0.0.0.0",

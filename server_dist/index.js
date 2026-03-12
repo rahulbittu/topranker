@@ -16451,6 +16451,8 @@ function setupErrorHandler(app2) {
   const outreachSchedulerTimeout = startOutreachScheduler2();
   setupErrorHandler(app);
   const port = parseInt(process.env.PORT || "5000", 10);
+  server.keepAliveTimeout = 65e3;
+  server.headersTimeout = 66e3;
   server.listen(
     port,
     "0.0.0.0",
