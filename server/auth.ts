@@ -8,6 +8,7 @@ import bcrypt from "bcrypt";
 import type { Express, Request } from "express";
 import { config } from "./config";
 import { checkAndRefreshTier } from "./tier-staleness";
+import { log } from "./logger";
 
 declare global {
   namespace Express {
@@ -157,7 +158,8 @@ export async function authenticateGoogleUser(token: string) {
   let displayName: string;
   let avatarUrl: string | null;
 
-  const idTokenRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+  // Sprint 783: 10s timeout on Google OAuth calls (matching Apple JWKS pattern)
+  const idTokenRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`, { signal: AbortSignal.timeout(10000) });
   if (idTokenRes.ok) {
     // Web flow: ID token
     const payload = await idTokenRes.json() as {
@@ -174,6 +176,7 @@ export async function authenticateGoogleUser(token: string) {
     // Native flow: access token — get user info from Google
     const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
       headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10000),
     });
     if (!userInfoRes.ok) {
       throw new Error("Invalid Google token");
