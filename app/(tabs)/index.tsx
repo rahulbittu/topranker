@@ -27,6 +27,7 @@ import { RankingsListHeader } from "@/components/leaderboard/RankingsListHeader"
 import { CuisineChipRow } from "@/components/leaderboard/CuisineChipRow";
 import { LeaderboardFilterChips } from "@/components/leaderboard/LeaderboardFilterChips";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorState } from "@/components/NetworkBanner";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { TopRankHighlight } from "@/components/animations/TopRankHighlight";
 import EmptyStateAnimation from "@/components/animations/EmptyStateAnimation";
@@ -225,13 +226,7 @@ export default function LeaderboardScreen() {
       {isLoading ? (
         <LeaderboardSkeleton />
       ) : isError ? (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
-          <Text style={styles.emptyText}>Could not load rankings</Text>
-          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry loading rankings">
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState title="Could not load rankings" onRetry={() => refetch()} />
       ) : (
         <FlatList
           data={restBiz}

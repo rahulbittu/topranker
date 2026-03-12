@@ -22,6 +22,7 @@ import { getProfileShareText } from "@/lib/sharing";
 import { useBookmarks } from "@/lib/bookmarks-context";
 import { useBadgeContext } from "@/lib/hooks/useBadgeContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorState } from "@/components/NetworkBanner";
 import { FadeInView } from "@/components/animations/FadeInView";
 import { ProfileCredibilitySection } from "@/components/profile/ProfileCredibilitySection";
 import {
@@ -295,16 +296,7 @@ export default function ProfileScreen() {
   }
 
   if (isError) {
-    return (
-      <View style={[styles.errorContainer]}>
-        <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} />
-        <Text style={styles.errorTitle}>Couldn't load your profile</Text>
-        <Text style={styles.errorSubtitle}>Check your connection and try again</Text>
-        <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} activeOpacity={0.8} accessibilityRole="button" accessibilityLabel="Retry loading profile">
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return <ErrorState title="Couldn't load your profile" onRetry={() => refetch()} />;
   }
 
   if (profileLoading || !profile) {

@@ -31,6 +31,7 @@ import { AutocompleteDropdown, RecentSearchesPanel, PopularQueriesPanel } from "
 import { FilterChips, PriceChips, SortChips, SortResultsHeader, DietaryTagChips, DistanceChips, HoursFilterChips, type DietaryTag, type DistanceOption, type HoursFilter } from "@/components/search/DiscoverFilters";
 import { DiscoverEmptyState } from "@/components/search/DiscoverEmptyState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorState } from "@/components/NetworkBanner";
 import { decodeSearchParams } from "@/lib/search-url-params";
 import { PresetChips } from "@/components/search/PresetChips";
 import { DiscoverSections } from "@/components/search/DiscoverSections";
@@ -367,13 +368,7 @@ export default function SearchScreen() {
       {isLoading ? (
         <SearchResultsSkeleton />
       ) : isError ? (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="cloud-offline-outline" size={36} color={Colors.textTertiary} style={styles.errorIcon} />
-          <Text style={styles.emptyText}>Could not load results</Text>
-          <TouchableOpacity onPress={() => refetch()} style={styles.retryButton} accessibilityRole="button" accessibilityLabel="Retry loading results">
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+        <ErrorState title="Could not load results" onRetry={() => refetch()} />
       ) : viewMode === "map" ? (
         /* Sprint 527: Map split view extracted */
         <SearchMapSplitView
