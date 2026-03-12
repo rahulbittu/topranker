@@ -16086,6 +16086,7 @@ function securityHeaders(req, res, next) {
 
 // server/index.ts
 init_error_tracking();
+import compression from "compression";
 
 // server/cache-headers.ts
 var CACHE_RULES = {
@@ -16382,6 +16383,7 @@ function setupErrorHandler(app2) {
 }
 (async () => {
   app.use(securityHeaders);
+  app.use(compression({ threshold: 1024 }));
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
   app.use(cacheHeaders);

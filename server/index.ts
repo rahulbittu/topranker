@@ -9,6 +9,7 @@ import { log as logger } from "./logger";
 import { securityHeaders } from "./security-headers";
 import { apiRateLimiter } from "./rate-limiter";
 import { perfMonitor } from "./perf-monitor";
+import compression from "compression";
 import { initErrorTracking } from "./error-tracking";
 import { cacheHeaders } from "./cache-headers";
 import { setFlushHandler } from "./analytics";
@@ -355,6 +356,8 @@ function setupErrorHandler(app: express.Application) {
 (async () => {
   // Security headers middleware handles CORS + OWASP headers (must be first)
   app.use(securityHeaders);
+  // Sprint 759: Response compression — gzip/deflate for API responses
+  app.use(compression({ threshold: 1024 })); // Only compress responses > 1kb
   setupBodyParsing(app);
   app.use("/api", apiRateLimiter);
   app.use(cacheHeaders); // Sprint 194: HTTP cache headers for CDN
