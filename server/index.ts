@@ -354,7 +354,11 @@ function setupErrorHandler(app: express.Application) {
     };
 
     const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
+    // Sprint 779: Don't leak internal error details in production
+    const isProduction = process.env.NODE_ENV === "production";
+    const message = isProduction && status >= 500
+      ? "Internal Server Error"
+      : (error.message || "Internal Server Error");
 
     log.error("Internal Server Error:", err);
 

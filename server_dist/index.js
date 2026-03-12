@@ -9309,7 +9309,9 @@ function wrapAsync(fn) {
     fn(req, res, next).catch((err) => {
       log2.error(`Unhandled route error: ${req.method} ${req.path}`, err);
       if (!res.headersSent) {
-        res.status(500).json({ error: err.message || "Internal Server Error" });
+        const isProduction = true;
+        const message = isProduction ? "Internal Server Error" : err.message || "Internal Server Error";
+        res.status(500).json({ error: message });
       }
     });
   };
@@ -16389,7 +16391,8 @@ function setupErrorHandler(app2) {
   app2.use((err, _req, res, next) => {
     const error = err;
     const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
+    const isProduction = true;
+    const message = isProduction && status >= 500 ? "Internal Server Error" : error.message || "Internal Server Error";
     log2.error("Internal Server Error:", err);
     if (res.headersSent) {
       return next(err);
