@@ -25,6 +25,7 @@ import { fetchAndStorePhotos } from "./google-places";
 import { sanitizeString } from "./sanitize";
 import { wrapAsync } from "./wrap-async";
 import { requireAuth } from "./middleware";
+import { claimVerifyRateLimiter } from "./rate-limiter";
 import { computeOpenStatus } from "./hours-utils";
 // Sprint 476: Extracted search processing to dedicated module
 import { enrichSearchResults, applySearchFilters, sortByRelevance, haversineKm } from "./search-result-processor";
@@ -233,7 +234,8 @@ export function registerBusinessRoutes(app: Express) {
   }));
 
   // Sprint 649: Verify business claim with 6-digit code
-  app.post("/api/businesses/claims/:claimId/verify", requireAuth, wrapAsync(async (req: Request, res: Response) => {
+  // Sprint 657: IP-based rate limiting (5 req/min) + auth + attempt lockout (server-side, max 5)
+  app.post("/api/businesses/claims/:claimId/verify", claimVerifyRateLimiter, requireAuth, wrapAsync(async (req: Request, res: Response) => {
     const { claimId } = req.params;
     const code = sanitizeString(req.body.code, 6);
     if (!code || code.length !== 6) {

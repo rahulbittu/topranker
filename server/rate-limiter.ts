@@ -152,3 +152,6 @@ export const paymentRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 2
 
 /** Admin routes — moderate limit (30 req/min per IP) */
 export const adminRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 30, keyPrefix: "admin" });
+
+/** Sprint 657: Claim verification — strict limit to prevent brute force (5 req/min per IP) */
+export const claimVerifyRateLimiter = rateLimiter({ windowMs: 60_000, maxRequests: 5, keyPrefix: "claim-verify" });
