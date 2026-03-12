@@ -8,6 +8,7 @@
 import type { Express, Request, Response } from "express";
 import crypto from "node:crypto";
 import { log } from "./logger";
+import { config } from "./config";
 import { wrapAsync } from "./wrap-async";
 import {
   trackEmailOpened,
@@ -28,7 +29,8 @@ function verifySignature(payload: string, signature: string, secret: string): bo
 export function registerWebhookRoutes(app: Express) {
   app.post("/api/webhooks/resend", wrapAsync(async (req: Request, res: Response) => {
     const rawBody = JSON.stringify(req.body);
-    const secret = process.env.RESEND_WEBHOOK_SECRET;
+    // Sprint 801: Centralized to config.ts
+    const secret = config.resendWebhookSecret;
 
     // Verify webhook signature if secret is configured
     if (secret) {

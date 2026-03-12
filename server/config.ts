@@ -45,6 +45,7 @@ export const config = {
 
   // Email (optional — console fallback if not set)
   resendApiKey: process.env.RESEND_API_KEY || null,
+  resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET || null,
   emailFrom: optional("EMAIL_FROM", "TopRanker <noreply@topranker.com>"),
 
   // Site URL (optional — used for emails, SEO, QR codes)

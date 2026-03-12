@@ -9,7 +9,8 @@ import { config } from "./config";
 
 const emailLog = log.tag("Email");
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+// Sprint 801: Centralized to config.ts (was direct process.env access)
+const RESEND_API_KEY = config.resendApiKey || "";
 // Sprint 797: Centralized to config.ts (was hardcoded process.env fallback)
 const FROM_ADDRESS = config.emailFrom;
 
