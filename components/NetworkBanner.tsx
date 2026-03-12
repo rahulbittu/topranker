@@ -4,6 +4,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withSpring,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import NetInfo from "@react-native-community/netinfo";
 import Colors from "@/constants/colors";
 import { BRAND } from "@/constants/brand";
 import { TypedIcon } from "@/components/TypedIcon";
@@ -13,8 +14,8 @@ import { useQueryClient } from "@tanstack/react-query";
 /**
  * Network connectivity banner.
  * Shows a persistent bar when the device is offline or serving mock data.
- * Uses navigator.onLine + online/offline events on web (reliable, no CORS issues).
- * Does NOT ping external URLs — that causes false positives in dev.
+ * Web: navigator.onLine + online/offline events (reliable, no CORS issues).
+ * Native (Sprint 688): NetInfo for real-time connectivity monitoring.
  */
 export function NetworkBanner() {
   const [isOffline, setIsOffline] = useState(false);
@@ -35,28 +36,22 @@ export function NetworkBanner() {
   };
 
   useEffect(() => {
-    // On web: use navigator.onLine + online/offline events (reliable, no CORS).
-    // On native: use NetInfo or similar (future). For now, don't show offline banner
-    // unless the browser API explicitly says we're offline.
-    if (Platform.OS === "web" && typeof navigator !== "undefined") {
-      // Initial check
-      if (!navigator.onLine) {
-        setIsOffline(true);
-        wasOfflineRef.current = true;
+    const goOnline = () => {
+      if (wasOfflineRef.current) {
+        setWasOffline(true);
+        setTimeout(() => setWasOffline(false), 3000);
       }
+      wasOfflineRef.current = false;
+      setIsOffline(false);
+    };
+    const goOffline = () => {
+      setIsOffline(true);
+      wasOfflineRef.current = true;
+    };
 
-      const goOnline = () => {
-        if (wasOfflineRef.current) {
-          setWasOffline(true);
-          setTimeout(() => setWasOffline(false), 3000);
-        }
-        wasOfflineRef.current = false;
-        setIsOffline(false);
-      };
-      const goOffline = () => {
-        setIsOffline(true);
-        wasOfflineRef.current = true;
-      };
+    if (Platform.OS === "web" && typeof navigator !== "undefined") {
+      // Web: use navigator.onLine + online/offline events (reliable, no CORS)
+      if (!navigator.onLine) goOffline();
       window.addEventListener("online", goOnline);
       window.addEventListener("offline", goOffline);
       return () => {
@@ -64,8 +59,16 @@ export function NetworkBanner() {
         window.removeEventListener("offline", goOffline);
       };
     }
-    // On native platforms, don't falsely report offline
-    return undefined;
+
+    // Sprint 688: Native platforms — use NetInfo for real-time connectivity
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      if (state.isConnected === false || state.isInternetReachable === false) {
+        goOffline();
+      } else {
+        goOnline();
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
