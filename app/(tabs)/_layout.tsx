@@ -22,6 +22,9 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
   const scale = useSharedValue(1);
   const glowOpacity = useSharedValue(0);
   const glowScale = useSharedValue(0.6);
+  // Sprint 708: Animated active indicator dot
+  const dotScale = useSharedValue(0);
+  const dotOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (focused) {
@@ -30,12 +33,16 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
       scale.value = withSpring(1.12, springConfig);
       glowOpacity.value = withSpring(1, springConfig);
       glowScale.value = withSpring(1, springConfig);
+      dotScale.value = withSpring(1, springConfig);
+      dotOpacity.value = withTiming(1, { duration: 200 });
       hapticTabSwitch();
     } else {
       const springConfig = { damping: 16, stiffness: 140 };
       scale.value = withSpring(1, springConfig);
       glowOpacity.value = withSpring(0, springConfig);
       glowScale.value = withSpring(0.5, springConfig);
+      dotScale.value = withSpring(0, springConfig);
+      dotOpacity.value = withTiming(0, { duration: 150 });
     }
   }, [focused]);
 
@@ -48,6 +55,11 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
     transform: [{ scale: glowScale.value }],
   }));
 
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: dotOpacity.value,
+    transform: [{ scale: dotScale.value }],
+  }));
+
   return (
     <View style={tabStyles.iconContainer}>
       {/* Golden glow behind icon when selected */}
@@ -55,6 +67,8 @@ function TabIcon({ name, color, focused }: { name: React.ComponentProps<typeof I
       <Animated.View style={[tabStyles.iconWrap, iconStyle]}>
         <Ionicons name={name} size={22} color={color} />
       </Animated.View>
+      {/* Sprint 708: Active indicator dot */}
+      <Animated.View style={[tabStyles.activeDot, dotStyle]} />
     </View>
   );
 }
@@ -84,6 +98,16 @@ const tabStyles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
     zIndex: 1,
+  },
+  // Sprint 708: Active tab indicator dot
+  activeDot: {
+    position: "absolute",
+    bottom: -6,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: AMBER,
+    zIndex: 2,
   },
 });
 
