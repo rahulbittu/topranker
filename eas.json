@@ -28,7 +28,8 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_API_URL": "https://topranker-production.up.railway.app"
       },
       "channel": "production"
     }
@@ -36,9 +37,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "team@topranker.com",
+        "appleId": "rahulpitta4@gmail.com",
         "ascAppId": "topranker",
-        "appleTeamId": "TOPRANKER_TEAM"
+        "appleTeamId": "RKGRR7XGWD"
       },
       "android": {
         "serviceAccountKeyPath": "./google-services.json",
