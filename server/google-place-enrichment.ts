@@ -24,7 +24,8 @@ export async function findGooglePlaceId(
   const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`;
 
   try {
-    const res = await fetch(url);
+    // Sprint 784: 10s timeout for legacy Places API
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     const data = await res.json();
 
     if (!data.results?.length) return null;

@@ -22,12 +22,14 @@ export interface EmailPayload {
 async function sendWithRetry(payload: EmailPayload, maxRetries: number = 3): Promise<boolean> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      // Sprint 784: 10s timeout per attempt (retry loop handles transient failures)
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${RESEND_API_KEY}`,
           "Content-Type": "application/json",
         },
+        signal: AbortSignal.timeout(10000),
         body: JSON.stringify({
           from: FROM_ADDRESS,
           to: [payload.to],

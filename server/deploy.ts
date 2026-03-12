@@ -129,10 +129,12 @@ function sendNotification(title: string, message: string) {
   const topic = process.env.NTFY_TOPIC || "topranker-deploy";
   const url = `https://ntfy.sh/${topic}`;
 
+  // Sprint 784: 5s timeout — notifications are fire-and-forget, don't block
   fetch(url, {
     method: "POST",
     headers: { Title: title },
     body: message,
+    signal: AbortSignal.timeout(5000),
   }).catch((err) => {
     deployLog.warn(`Notification failed: ${err.message}`);
   });
