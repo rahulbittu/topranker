@@ -17,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
+  appleLogin: (identityToken: string, fullName?: { givenName: string | null; familyName: string | null } | null, email?: string | null) => Promise<void>;
   signup: (data: { displayName: string; username: string; email: string; password: string; city?: string; referralCode?: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -27,6 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   login: async () => {},
   googleLogin: async () => {},
+  appleLogin: async () => {},
   signup: async () => {},
   logout: async () => {},
   refreshUser: async () => {},
@@ -80,6 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(json.data);
   };
 
+  const appleLogin = async (identityToken: string, fullName?: { givenName: string | null; familyName: string | null } | null, email?: string | null) => {
+    const res = await apiRequest("POST", "/api/auth/apple", { identityToken, fullName, email });
+    const json = await res.json();
+    setUser(json.data);
+  };
+
   const signup = async (data: { displayName: string; username: string; email: string; password: string; city?: string; referralCode?: string }) => {
     const res = await apiRequest("POST", "/api/auth/signup", data);
     const json = await res.json();
@@ -93,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, signup, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, isLoading, login, googleLogin, appleLogin, signup, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

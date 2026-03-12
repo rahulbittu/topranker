@@ -16,7 +16,7 @@
 
 import type { Express, Request, Response } from "express";
 import passport from "passport";
-import { registerMember, authenticateGoogleUser } from "./auth";
+import { registerMember, authenticateGoogleUser, authenticateAppleUser } from "./auth";
 import { sendWelcomeEmail, sendVerificationEmail, sendPasswordResetEmail } from "./email";
 import { log } from "./logger";
 import {
@@ -126,6 +126,36 @@ export function registerAuthRoutes(app: Express) {
       }
 
       const member = await authenticateGoogleUser(idToken);
+
+      req.login(
+        {
+          id: member.id,
+          displayName: member.displayName,
+          username: member.username,
+          email: member.email,
+          city: member.city,
+          credibilityScore: member.credibilityScore,
+          credibilityTier: member.credibilityTier,
+        },
+        (err) => {
+          if (err) return res.status(500).json({ error: "Login failed" });
+          return res.json({ data: req.user });
+        },
+      );
+    } catch (err: any) {
+      return res.status(400).json({ error: err.message });
+    }
+  }));
+
+  // Sprint 664: Apple Sign-In
+  app.post("/api/auth/apple", authRateLimiter, wrapAsync(async (req: Request, res: Response) => {
+    try {
+      const { identityToken, fullName, email } = req.body;
+      if (!identityToken) {
+        return res.status(400).json({ error: "Identity token is required" });
+      }
+
+      const member = await authenticateAppleUser(identityToken, fullName, email);
 
       req.login(
         {

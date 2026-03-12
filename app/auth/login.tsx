@@ -12,11 +12,17 @@ import { useAuth } from "@/lib/auth-context";
 import { AppLogo } from "@/components/Logo";
 import { BRAND } from "@/constants/brand";
 import { signInWithGoogle, isGoogleAuthAvailable } from "@/lib/google-auth";
+import { signInWithApple, isAppleAuthAvailable } from "@/lib/apple-auth";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
-  const { login, googleLogin } = useAuth();
+  const { login, googleLogin, appleLogin } = useAuth();
   const googleAvailable = isGoogleAuthAvailable();
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  React.useEffect(() => {
+    isAppleAuthAvailable().then(setAppleAvailable);
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -95,6 +101,34 @@ export default function LoginScreen() {
             </View>
           )}
         </TouchableOpacity>
+
+        {appleAvailable && (
+          <TouchableOpacity
+            style={styles.appleButton}
+            activeOpacity={0.7}
+            disabled={loading}
+            onPress={async () => {
+              setError("");
+              setLoading(true);
+              try {
+                const result = await signInWithApple();
+                if (result) {
+                  await appleLogin(result.identityToken, result.fullName, result.email);
+                  router.back();
+                }
+              } catch (err: any) {
+                if (!err.message?.includes("cancelled") && !err.message?.includes("ERR_REQUEST_CANCELED")) {
+                  setError(err.message || "Apple sign-in failed");
+                }
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            <Ionicons name="logo-apple" size={20} color="#fff" />
+            <Text style={styles.appleButtonText}>Continue with Apple</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
@@ -228,6 +262,14 @@ const styles = StyleSheet.create({
   },
   googleButtonTextActive: {
     color: Colors.text,
+  },
+  appleButton: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: "#000", borderRadius: 14, paddingVertical: 15, marginTop: 10,
+  },
+  appleButtonText: {
+    fontSize: 15, fontWeight: "600", color: "#fff",
+    fontFamily: "DMSans_600SemiBold",
   },
   comingSoonBadge: {
     backgroundColor: Colors.border, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,

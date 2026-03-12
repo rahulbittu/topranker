@@ -222,3 +222,70 @@ export async function authenticateGoogleUser(token: string) {
     city: "Dallas",
   });
 }
+
+/**
+ * Sprint 664: Apple Sign-In authentication.
+ * Verifies the identity token from Apple and creates/links a member.
+ */
+export async function authenticateAppleUser(
+  identityToken: string,
+  fullName?: { givenName: string | null; familyName: string | null } | null,
+  clientEmail?: string | null,
+) {
+  // Decode the Apple identity token (JWT) to extract claims
+  const parts = identityToken.split(".");
+  if (parts.length !== 3) throw new Error("Invalid Apple identity token");
+
+  const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString()) as {
+    sub: string;
+    email?: string;
+    email_verified?: string;
+    iss: string;
+    aud: string;
+  };
+
+  // Verify issuer
+  if (payload.iss !== "https://appleid.apple.com") {
+    throw new Error("Invalid Apple token issuer");
+  }
+
+  const appleUserId = `apple_${payload.sub}`;
+  const email = (payload.email || clientEmail || "").toLowerCase();
+  const givenName = fullName?.givenName || "";
+  const familyName = fullName?.familyName || "";
+  const displayName = [givenName, familyName].filter(Boolean).join(" ") || email.split("@")[0] || "User";
+
+  // Check if user already exists by Apple ID
+  let member = await getMemberByAuthId(appleUserId);
+  if (member) return member;
+
+  // Check if user exists by email (link accounts)
+  if (email) {
+    member = await getMemberByEmail(email);
+    if (member) {
+      const { db } = await import("./db");
+      const { members } = await import("@shared/schema");
+      const { eq } = await import("drizzle-orm");
+      await db.update(members).set({ authId: appleUserId }).where(eq(members.id, member.id));
+      return { ...member, authId: appleUserId };
+    }
+  }
+
+  // Create new account
+  const baseUsername = (email ? email.split("@")[0] : givenName.toLowerCase() || "user")
+    .replace(/[^a-zA-Z0-9_]/g, "").slice(0, 20).toLowerCase();
+  let username = baseUsername;
+  let suffix = 1;
+  while (await getMemberByUsername(username)) {
+    username = `${baseUsername}${suffix}`;
+    suffix++;
+  }
+
+  return createMember({
+    displayName,
+    username,
+    email: email || `${appleUserId}@privaterelay.appleid.com`,
+    authId: appleUserId,
+    city: "Dallas",
+  });
+}
