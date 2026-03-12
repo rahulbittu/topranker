@@ -37,7 +37,7 @@ import Colors from "@/constants/colors";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { CookieConsent } from "@/components/CookieConsent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { registerForPushNotifications } from "@/lib/notifications";
+import { registerForPushNotifications, isValidDeepLinkScreen } from "@/lib/notifications";
 import { initSyncService } from "@/lib/offline-sync-service";
 import { hapticSplashCrown, hapticSplashLogo } from "@/lib/audio";
 import { ONBOARDING_KEY } from "@/app/onboarding";
@@ -390,18 +390,22 @@ export default function RootLayout() {
 
     // Handle notification taps — navigate to the right screen
     // Sprint 182: Enhanced deep linking with entity-level navigation
+    // Sprint 672: Validated screen extraction with type guard
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data;
-      const screen = data?.screen as string | undefined;
-      const slug = data?.slug as string | undefined;
-      const id = data?.id as string | undefined;
-      const notifType = data?.type as string | undefined;
+      const screen = data?.screen;
+      const slug = typeof data?.slug === "string" ? data.slug : undefined;
+      const id = typeof data?.id === "string" ? data.id : undefined;
+      const notifType = typeof data?.type === "string" ? data.type : "unknown";
 
       // Sprint 501: Report notification open for analytics
       const notifId = response.notification.request.identifier;
-      reportNotificationOpened(notifId, notifType || "unknown").catch(() => {});
+      reportNotificationOpened(notifId, notifType).catch(() => {});
       // Sprint 507: Client-side notification analytics
-      Analytics.notificationOpenReported(notifId, notifType || "unknown");
+      Analytics.notificationOpenReported(notifId, notifType);
+
+      // Sprint 672: Validate screen before navigation
+      if (!isValidDeepLinkScreen(screen)) return;
 
       if (screen === "business" && slug) {
         router.push({ pathname: "/business/[id]", params: { id: slug } });

@@ -64,7 +64,8 @@ describe("Sprint 507: Client-side Notification Analytics", () => {
     });
 
     it("passes notifId and category to analytics", () => {
-      expect(src).toContain('Analytics.notificationOpenReported(notifId, notifType || "unknown")');
+      // Sprint 672: notifType default moved to extraction, no longer needs || "unknown" here
+      expect(src).toContain('Analytics.notificationOpenReported(notifId, notifType)');
     });
 
     it("retains existing reportNotificationOpened server call", () => {

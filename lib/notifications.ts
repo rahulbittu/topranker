@@ -53,14 +53,43 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  // Android notification channel
+  // Sprint 672: Multi-channel Android notification categories
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "TopRanker",
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: "#C49A1A",
-    });
+    await Promise.all([
+      Notifications.setNotificationChannelAsync("default", {
+        name: "General",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#C49A1A",
+      }),
+      Notifications.setNotificationChannelAsync("tier_upgrade", {
+        name: "Tier Promotions",
+        description: "When your credibility tier increases",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 200, 100, 200],
+        lightColor: "#C49A1A",
+      }),
+      Notifications.setNotificationChannelAsync("challenger", {
+        name: "Challenges",
+        description: "New challenges and results",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#C49A1A",
+      }),
+      Notifications.setNotificationChannelAsync("digest", {
+        name: "Weekly Digest",
+        description: "Your weekly activity summary",
+        importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 150],
+        lightColor: "#C49A1A",
+      }),
+      Notifications.setNotificationChannelAsync("reminders", {
+        name: "Reminders",
+        description: "Re-engagement reminders",
+        importance: Notifications.AndroidImportance.LOW,
+        lightColor: "#C49A1A",
+      }),
+    ]);
   }
 
   try {
@@ -113,6 +142,26 @@ export async function getBadgeCount(): Promise<number> {
  */
 export async function setBadgeCount(count: number): Promise<void> {
   await Notifications.setBadgeCountAsync(count);
+}
+
+// Sprint 672: Map notification types to Android channel IDs
+export const NOTIFICATION_CHANNEL_MAP: Record<NotificationType, string> = {
+  tier_upgrade: "tier_upgrade",
+  challenger_result: "challenger",
+  challenger_started: "challenger",
+  weekly_digest: "digest",
+  drip_reminder: "reminders",
+};
+
+// Sprint 672: Valid deep link screens for notification tap handling
+export const VALID_DEEP_LINK_SCREENS = [
+  "business", "challenger", "profile", "search", "dish",
+] as const;
+
+export type DeepLinkScreen = typeof VALID_DEEP_LINK_SCREENS[number];
+
+export function isValidDeepLinkScreen(screen: unknown): screen is DeepLinkScreen {
+  return typeof screen === "string" && VALID_DEEP_LINK_SCREENS.includes(screen as DeepLinkScreen);
 }
 
 // Notification templates

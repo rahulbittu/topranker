@@ -30,7 +30,8 @@ describe("Sprint 501: Client Notification Open Wiring", () => {
     });
 
     it("extracts notification type from data", () => {
-      expect(src).toContain('data?.type as string');
+      // Sprint 672: validated extraction with typeof guard
+      expect(src).toContain('data?.type');
     });
 
     it("calls reportNotificationOpened in response listener", () => {

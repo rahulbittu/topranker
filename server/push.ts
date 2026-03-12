@@ -39,13 +39,24 @@ export async function sendPushNotification(
 ): Promise<ExpoPushTicket[]> {
   if (tokens.length === 0) return [];
 
+  // Sprint 672: Map notification type to Android channel ID
+  const channelMap: Record<string, string> = {
+    tier_upgrade: "tier_upgrade",
+    challenger_result: "challenger",
+    challenger_started: "challenger",
+    weekly_digest: "digest",
+    drip_reminder: "reminders",
+  };
+  const notifType = data?.type || "";
+  const channelId = channelMap[notifType] || "default";
+
   const messages: ExpoPushMessage[] = tokens.map((token) => ({
     to: token,
     title,
     body,
     data,
-    sound: "default",
-    channelId: "default",
+    sound: channelId === "reminders" ? null : "default",
+    channelId,
   }));
 
   // In development, log instead of sending
