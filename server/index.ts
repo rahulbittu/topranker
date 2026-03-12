@@ -184,11 +184,24 @@ function configureExpoAndLanding(app: express.Application) {
     next();
   });
 
-  // Sprint 736: AASA must be served with application/json content type
+  // Sprint 772: AASA inline — sendFile fails silently on Railway when cwd differs
   app.get("/.well-known/apple-app-site-association", (_req: Request, res: Response) => {
-    const aasaPath = path.resolve(process.cwd(), "public/.well-known/apple-app-site-association");
     res.setHeader("Content-Type", "application/json");
-    res.sendFile(aasaPath);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.json({
+      applinks: {
+        details: [{
+          appIDs: ["RKGRR7XGWD.com.topranker.app"],
+          components: [
+            { "/": "/business/*", comment: "Business detail deep links" },
+            { "/": "/dish/*", comment: "Dish leaderboard deep links" },
+            { "/": "/challenger/*", comment: "Challenger deep links" },
+            { "/": "/share/*", comment: "Share deep links" },
+            { "/": "/join", comment: "Join/referral deep link" }
+          ]
+        }]
+      }
+    });
   });
   // Sprint 736: Serve public/ for robots.txt and other static files
   app.use(express.static(path.resolve(process.cwd(), "public"), { index: false }));
