@@ -5,7 +5,7 @@
  * Owner: Sarah Nakamura (Lead Eng)
  */
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
@@ -19,6 +19,7 @@ import {
 import { BadgeGridFull } from "@/components/profile/BadgeGrid";
 import { NotificationPreferencesCard } from "@/components/profile/NotificationPreferencesCard";
 import { type EarnedBadge } from "@/lib/badges";
+import { APP_VERSION, BUILD_NUMBER } from "@/lib/app-env";
 
 export interface ProfileBottomSectionProps {
   tier: CredibilityTier;
@@ -99,6 +100,11 @@ export function ProfileBottomSection({
       <NotificationPreferencesCard />
 
       <LegalLinksSection />
+
+      {/* Sprint 756: App version for beta debugging */}
+      <Text style={styles.versionLabel}>
+        TopRanker v{APP_VERSION} ({BUILD_NUMBER}) · {Platform.OS}
+      </Text>
     </>
   );
 }
@@ -115,5 +121,9 @@ const styles = StyleSheet.create({
   actionLinkText: {
     flex: 1, fontSize: 14, fontWeight: "600", color: BRAND.colors.amber,
     fontFamily: "DMSans_600SemiBold",
+  },
+  versionLabel: {
+    textAlign: "center", fontSize: 11, color: Colors.textTertiary,
+    fontFamily: "DMSans_400Regular", marginTop: 8, marginBottom: 24,
   },
 });
