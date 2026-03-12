@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, View, StyleSheet, ViewStyle } from "react-native";
+import React, { useEffect } from "react";
+import { View, StyleSheet, ViewStyle } from "react-native";
 import ReAnimated, {
   useSharedValue, useAnimatedStyle, withRepeat, withTiming,
   withSequence, Easing,

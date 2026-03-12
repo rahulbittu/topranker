@@ -152,15 +152,4 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  errorState: { alignItems: "center", paddingTop: 60, gap: 8 },
-  errorText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
-  errorSubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-  retryButton: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    backgroundColor: BRAND.colors.amber,
-    borderRadius: 20,
-  },
-  retryText: { fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold" },
 });

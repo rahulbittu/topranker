@@ -550,14 +550,4 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold" },
   emptySubtext: { fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
 
-  retryButton: {
-    marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: AMBER, borderRadius: 10,
-  },
-  retryButtonText: {
-    color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13,
-  },
-
-  errorIcon: { marginBottom: 12 },
-
 });

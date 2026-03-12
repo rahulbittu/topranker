@@ -340,8 +340,6 @@ export default function LeaderboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  errorIcon: { marginBottom: 12 },
-
   header: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingBottom: 10, paddingTop: 2,
@@ -391,12 +389,6 @@ const styles = StyleSheet.create({
   listFooter: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 20, paddingHorizontal: 16 },
   listFooterLine: { flex: 1, height: 1, backgroundColor: Colors.border },
   listFooterText: { fontSize: 11, color: Colors.textTertiary, fontFamily: "DMSans_400Regular" },
-
-  retryButton: {
-    marginTop: 12, paddingHorizontal: 20, paddingVertical: 10,
-    backgroundColor: AMBER, borderRadius: 10,
-  },
-  retryButtonText: { color: "#fff", fontWeight: "600", fontFamily: "DMSans_600SemiBold", fontSize: 13 },
 
   // Sprint 386: bestIn, suggest, cuisine styles moved to RankingsListHeader
   modalOverlay: {

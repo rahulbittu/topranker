@@ -312,23 +312,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  errorContainer: {
-    flex: 1, backgroundColor: Colors.background,
-    alignItems: "center", justifyContent: "center", gap: 8,
-  },
-  errorTitle: {
-    fontSize: 15, fontWeight: "600", color: Colors.textSecondary, fontFamily: "DMSans_600SemiBold",
-  },
-  errorSubtitle: {
-    fontSize: 12, color: Colors.textTertiary, fontFamily: "DMSans_400Regular",
-  },
-  retryButton: {
-    marginTop: 8, paddingHorizontal: 24, paddingVertical: 10,
-    backgroundColor: AMBER, borderRadius: 20,
-  },
-  retryButtonText: {
-    fontSize: 14, fontWeight: "600", color: "#fff", fontFamily: "DMSans_600SemiBold",
-  },
   content: { paddingHorizontal: 16, gap: 12 },
   header: {
     paddingTop: 4, paddingBottom: 4,
