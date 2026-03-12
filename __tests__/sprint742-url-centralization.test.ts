@@ -20,7 +20,7 @@ describe("Sprint 742: Client URL Centralization", () => {
     const src = readSource("lib/sharing.ts");
 
     it("exports SHARE_BASE_URL constant", () => {
-      expect(src).toContain('export const SHARE_BASE_URL = "https://topranker.com"');
+      expect(src).toContain('export const SHARE_BASE_URL = "https://topranker.io"');
     });
 
     it("getShareUrl uses SHARE_BASE_URL", () => {
@@ -92,8 +92,8 @@ describe("Sprint 742: Server URL Centralization", () => {
       expect(src).toContain("siteUrl:");
     });
 
-    it("defaults to topranker.com", () => {
-      expect(src).toMatch(/optional\("SITE_URL",\s*"https:\/\/topranker\.com"\)/);
+    it("defaults to topranker.io", () => {
+      expect(src).toMatch(/optional\("SITE_URL",\s*"https:\/\/topranker\.io"\)/);
     });
   });
 

@@ -78,7 +78,7 @@ describe("claim notification emails", () => {
 
   it("rejected email includes contact information", () => {
     expect(emailSrc).toContain("unable to verify your claim");
-    expect(emailSrc).toContain("support@topranker.com");
+    expect(emailSrc).toContain("support@topranker.io");
   });
 
   it("rejected email suggests next steps", () => {

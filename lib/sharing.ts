@@ -7,8 +7,8 @@
 // Sprint 547: Aligned share domain from topranker.app → topranker.com (matches app.json deeplinks)
 export const SHARE_DOMAINS = ["topranker.com", "www.topranker.com", "topranker.io", "www.topranker.io"] as const;
 
-// Sprint 742: Centralized share base URL — always production, never changes per environment
-export const SHARE_BASE_URL = "https://topranker.com" as const;
+// Sprint 773: Aligned share domain to topranker.io (topranker.com DNS not configured)
+export const SHARE_BASE_URL = "https://topranker.io" as const;
 
 /**
  * Generate a shareable URL for a business, challenger match, or profile.

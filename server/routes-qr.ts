@@ -66,7 +66,7 @@ export function registerQrRoutes(app: Express) {
         printTemplate: {
           headline: `Rate ${business.name}`,
           subline: "Scan to rate on TopRanker",
-          footer: "topranker.com",
+          footer: "topranker.io",
         },
       },
     });

@@ -3832,7 +3832,7 @@ var init_config = __esm({
       // Email (optional — console fallback if not set)
       resendApiKey: process.env.RESEND_API_KEY || null,
       // Site URL (optional — used for emails, SEO, QR codes)
-      siteUrl: optional("SITE_URL", "https://topranker.com"),
+      siteUrl: optional("SITE_URL", "https://topranker.io"),
       // Hosting platform (optional — for CORS)
       replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,
       replitDomains: process.env.REPLIT_DOMAINS || null,
@@ -5908,7 +5908,7 @@ async function sendWelcomeEmail(params) {
           </div>
 
           <!-- CTA -->
-          <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+          <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
             Start Exploring ${city}
           </a>
         </td></tr>
@@ -5917,7 +5917,7 @@ async function sendWelcomeEmail(params) {
         <tr><td style="padding:20px 24px;border-top:1px solid #E8E6E1;text-align:center;">
           <p style="margin:0;color:#999;font-size:11px;">
             TopRanker \u2014 Trust-weighted rankings for ${city}<br>
-            <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+            <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
           </p>
         </td></tr>
       </table>
@@ -5935,7 +5935,7 @@ You've joined the ${city} ranking community as @${username}.
 
 Your starting tier: New Member (0.10x vote weight)
 
-Start exploring: https://topranker.com
+Start exploring: https://topranker.io
 
 \u2014 The TopRanker Team`;
   await sendEmail({
@@ -6039,7 +6039,7 @@ async function sendPaymentReceiptEmail(params) {
           </table>
 
           <p style="margin:0;color:#888;font-size:12px;line-height:1.5;">
-            Questions about this charge? Contact us at support@topranker.com
+            Questions about this charge? Contact us at support@topranker.io
           </p>
         </td></tr>
         <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
@@ -6061,7 +6061,7 @@ Business: ${businessName}
 Amount: $${dollars}
 Reference: ${paymentId}
 
-Questions? Contact support@topranker.com
+Questions? Contact support@topranker.io
 
 \u2014 The TopRanker Team`;
   await sendEmail({
@@ -6144,7 +6144,7 @@ async function sendClaimApprovedEmail(params) {
               <li>Display the verified owner badge</li>
             </ul>
           </div>
-          <a href="https://topranker.com/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
+          <a href="https://topranker.io/business/${businessSlug}/dashboard" style="display:block;text-align:center;background:#0D1B2A;color:#FFFFFF;padding:14px 24px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;">
             View Your Dashboard
           </a>
         </td></tr>
@@ -6165,7 +6165,7 @@ What you can do now:
 - Respond to customer ratings
 - Display the verified owner badge
 
-View your dashboard: https://topranker.com/business/${businessSlug}/dashboard
+View your dashboard: https://topranker.io/business/${businessSlug}/dashboard
 
 \u2014 The TopRanker Team`;
   await sendEmail({
@@ -6198,7 +6198,7 @@ async function sendClaimRejectedEmail(params) {
             <p style="margin:0 0 4px;color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Next Steps</p>
             <p style="margin:8px 0 0;color:#0D1B2A;font-size:14px;line-height:1.6;">
               If you believe this was in error, please contact us at
-              <a href="mailto:support@topranker.com" style="color:#C49A1A;">support@topranker.com</a>
+              <a href="mailto:support@topranker.io" style="color:#C49A1A;">support@topranker.io</a>
               with additional verification documents.
             </p>
           </div>
@@ -6215,7 +6215,7 @@ async function sendClaimRejectedEmail(params) {
 
 We were unable to verify your claim for ${businessName} at this time.
 
-If you believe this was in error, please contact us at support@topranker.com with additional verification documents.
+If you believe this was in error, please contact us at support@topranker.io with additional verification documents.
 
 \u2014 The TopRanker Team`;
   await sendEmail({
@@ -6228,7 +6228,7 @@ If you believe this was in error, please contact us at support@topranker.com wit
 async function sendVerificationEmail(params) {
   const { email, displayName, token } = params;
   const firstName = displayName.split(" ")[0];
-  const verifyUrl = `https://topranker.com/verify-email?token=${token}`;
+  const verifyUrl = `https://topranker.io/verify-email?token=${token}`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -6279,7 +6279,7 @@ If you didn't create a TopRanker account, you can safely ignore this email.
 async function sendPasswordResetEmail(params) {
   const { email, displayName, token } = params;
   const firstName = displayName.split(" ")[0];
-  const resetUrl = `https://topranker.com/reset-password?token=${token}`;
+  const resetUrl = `https://topranker.io/reset-password?token=${token}`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -6331,7 +6331,7 @@ If you didn't request a password reset, you can safely ignore this email.
 async function sendBetaInviteEmail(params) {
   const { email, displayName, referralCode, invitedBy } = params;
   const firstName = displayName.split(" ")[0];
-  const joinUrl = `https://topranker.com/join?ref=${encodeURIComponent(referralCode)}`;
+  const joinUrl = `https://topranker.io/join?ref=${encodeURIComponent(referralCode)}`;
   const inviteContext = invitedBy ? `${invitedBy} thinks you'd be a great addition to our trust network.` : `You've been selected as one of our first 25 beta testers.`;
   const html = `
 <!DOCTYPE html>
@@ -6402,7 +6402,7 @@ Your referral code: ${referralCode}
   });
 }
 async function sendClaimAdminNotification(params) {
-  const adminEmail = "admin@topranker.com";
+  const adminEmail = "admin@topranker.io";
   await sendEmail({
     to: adminEmail,
     subject: `New claim: ${params.businessName} by ${params.claimantName}`,
@@ -6411,7 +6411,7 @@ async function sendClaimAdminNotification(params) {
         <li><strong>Business:</strong> ${params.businessName}</li>
         <li><strong>Claimant:</strong> ${params.claimantName} (${params.claimantEmail})</li>
       </ul>
-      <p>Review at: https://topranker.com/admin</p>`,
+      <p>Review at: https://topranker.io/admin</p>`,
     text: `New claim: ${params.businessName} by ${params.claimantName} (${params.claimantEmail})`
   });
 }
@@ -7939,7 +7939,7 @@ async function sendDay2Email(params) {
   <tr><td style="padding:24px;">
     <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Top 5 near you, ${firstName}</h2>
     <p style="color:#555;font-size:14px;line-height:1.5;">You've been exploring ${city}'s rankings for 2 days now. Have you checked out the top spots in your neighborhood?</p>
-    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">See ${city}'s Top 5</a>
+    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">See ${city}'s Top 5</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -7959,7 +7959,7 @@ async function sendDay3Email(params) {
       <p style="margin:0;color:#0D1B2A;font-size:13px;"><strong style="color:#C49A1A;">Your tier:</strong> New Member (0.10x)</p>
       <p style="margin:4px 0 0;color:#888;font-size:12px;">Rate 10+ businesses to reach Regular (0.35x)</p>
     </div>
-    <a href="https://topranker.com" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
+    <a href="https://topranker.io" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Rate Your First Restaurant</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -7988,7 +7988,7 @@ async function sendDay7Email(params) {
         </td>
       </tr>
     </table>
-    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Keep Rating</a>
+    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;">Keep Rating</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -8004,7 +8004,7 @@ async function sendDay14Email(params) {
   <tr><td style="padding:24px;">
     <h2 style="margin:0 0 8px;color:#0D1B2A;font-size:20px;">Live challenges in ${city} \u26A1</h2>
     <p style="color:#555;font-size:14px;line-height:1.5;">${firstName}, the Challenger tab has live head-to-head competitions. Your weighted vote can decide which restaurant claims the #1 spot.</p>
-    <a href="https://topranker.com" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Vote in Live Challenges</a>
+    <a href="https://topranker.io" style="display:block;text-align:center;background:#0D1B2A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Vote in Live Challenges</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -8039,7 +8039,7 @@ async function sendDay30Email(params) {
       </tr>
     </table>
     <p style="color:#555;font-size:13px;text-align:center;">Thank you for being part of the trust movement.</p>
-    <a href="https://topranker.com" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:12px;">View Your Profile</a>
+    <a href="https://topranker.io" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:12px;">View Your Profile</a>
   </td></tr>
   ${BRAND_FOOTER}
   </table></td></tr></table></body></html>`;
@@ -8067,7 +8067,7 @@ var init_email_drip = __esm({
 <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
   <p style="margin:0;color:#999;font-size:10px;">
     TopRanker \u2014 Trust-weighted rankings<br>
-    <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+    <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
   </p>
 </td></tr>`;
   }
@@ -8180,7 +8180,7 @@ async function sendOwnerProUpgradeEmail(params) {
         <li>Priority support from the TopRanker team</li>
       </ul>
     </div>
-    <a href="https://topranker.com/business-pro" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Upgrade to Pro</a>
+    <a href="https://topranker.io/business-pro" style="display:block;text-align:center;background:#C49A1A;color:#fff;padding:12px;border-radius:10px;font-weight:700;text-decoration:none;margin-top:16px;">Upgrade to Pro</a>
   </td></tr>
   ${BRAND_FOOTER2}
   </table></td></tr></table></body></html>`;
@@ -8194,7 +8194,7 @@ Upgrade to Business Pro ($49/mo) to unlock:
 - Featured placement in search results
 - Priority support from the TopRanker team
 
-Upgrade now: https://topranker.com/business-pro
+Upgrade now: https://topranker.io/business-pro
 
 \u2014 The TopRanker Team`;
   await sendEmail({
@@ -8219,7 +8219,7 @@ var init_email_owner_outreach = __esm({
 <tr><td style="padding:16px 24px;border-top:1px solid #E8E6E1;text-align:center;">
   <p style="margin:0;color:#999;font-size:10px;">
     TopRanker \u2014 Trust-weighted rankings<br>
-    <a href="https://topranker.com/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
+    <a href="https://topranker.io/unsubscribe" style="color:#C49A1A;text-decoration:none;">Unsubscribe</a>
   </p>
 </td></tr>`;
   }
@@ -8982,7 +8982,7 @@ function generateBusinessSvg(opts) {
   <!-- Branding -->
   <text x="600" y="490" text-anchor="middle" fill="${AMBER}" font-size="24" font-weight="bold" font-family="sans-serif">TopRanker</text>
   <text x="600" y="520" text-anchor="middle" fill="#636366" font-size="16" font-family="sans-serif">Trustworthy rankings by real people</text>
-  <text x="600" y="555" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.com</text>
+  <text x="600" y="555" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.io</text>
 </svg>`;
 }
 function generateDishSvg(opts) {
@@ -9009,7 +9009,7 @@ function generateDishSvg(opts) {
   <!-- Branding -->
   <text x="600" y="510" text-anchor="middle" fill="${AMBER}" font-size="24" font-weight="bold" font-family="sans-serif">TopRanker</text>
   <text x="600" y="540" text-anchor="middle" fill="#636366" font-size="16" font-family="sans-serif">Trustworthy rankings by real people</text>
-  <text x="600" y="570" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.com</text>
+  <text x="600" y="570" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.io</text>
 </svg>`;
 }
 async function handleBusinessOgImage(req, res) {
@@ -14209,7 +14209,7 @@ function registerQrRoutes(app2) {
         printTemplate: {
           headline: `Rate ${business.name}`,
           subline: "Scan to rate on TopRanker",
-          footer: "topranker.com"
+          footer: "topranker.io"
         }
       }
     });

@@ -33,7 +33,7 @@ describe("Beta invite email — server/email.ts", () => {
   });
 
   it("generates join URL with referral code", () => {
-    expect(src).toContain("topranker.com/join?ref=");
+    expect(src).toContain("topranker.io/join?ref=");
   });
 
   it("includes branded HTML template with navy header", () => {

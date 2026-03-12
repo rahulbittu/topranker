@@ -47,7 +47,7 @@ export const config = {
   resendApiKey: process.env.RESEND_API_KEY || null,
 
   // Site URL (optional — used for emails, SEO, QR codes)
-  siteUrl: optional("SITE_URL", "https://topranker.com"),
+  siteUrl: optional("SITE_URL", "https://topranker.io"),
 
   // Hosting platform (optional — for CORS)
   replitDevDomain: process.env.REPLIT_DEV_DOMAIN || null,

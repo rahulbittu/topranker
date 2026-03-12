@@ -62,7 +62,7 @@ function generateBusinessSvg(opts: {
   <!-- Branding -->
   <text x="600" y="490" text-anchor="middle" fill="${AMBER}" font-size="24" font-weight="bold" font-family="sans-serif">TopRanker</text>
   <text x="600" y="520" text-anchor="middle" fill="#636366" font-size="16" font-family="sans-serif">Trustworthy rankings by real people</text>
-  <text x="600" y="555" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.com</text>
+  <text x="600" y="555" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.io</text>
 </svg>`;
 }
 
@@ -97,7 +97,7 @@ function generateDishSvg(opts: {
   <!-- Branding -->
   <text x="600" y="510" text-anchor="middle" fill="${AMBER}" font-size="24" font-weight="bold" font-family="sans-serif">TopRanker</text>
   <text x="600" y="540" text-anchor="middle" fill="#636366" font-size="16" font-family="sans-serif">Trustworthy rankings by real people</text>
-  <text x="600" y="570" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.com</text>
+  <text x="600" y="570" text-anchor="middle" fill="#4A5568" font-size="14" font-family="sans-serif">topranker.io</text>
 </svg>`;
 }
 
