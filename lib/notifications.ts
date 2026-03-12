@@ -29,7 +29,7 @@ export interface PushNotification {
 export async function registerForPushNotifications(): Promise<string | null> {
   // Must be a physical device
   if (!Device.isDevice) {
-    console.log("[Notifications] Push notifications require a physical device");
+    if (__DEV__) console.log("[Notifications] Push notifications require a physical device");
     return null;
   }
 
@@ -44,7 +44,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (finalStatus !== "granted") {
-    console.log("[Notifications] Permission not granted");
+    if (__DEV__) console.log("[Notifications] Permission not granted");
     return null;
   }
 

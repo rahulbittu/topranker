@@ -144,13 +144,13 @@ interface AnalyticsProvider {
 // Console logger for development
 const consoleProvider: AnalyticsProvider = {
   track(event, properties) {
-    console.log(`[Analytics] ${event}`, properties || "");
+    if (__DEV__) console.log(`[Analytics] ${event}`, properties || "");
   },
   identify(userId, traits) {
-    console.log(`[Analytics] identify: ${userId}`, traits || "");
+    if (__DEV__) console.log(`[Analytics] identify: ${userId}`, traits || "");
   },
   reset() {
-    console.log("[Analytics] reset");
+    if (__DEV__) console.log("[Analytics] reset");
   },
 };
 
@@ -179,7 +179,7 @@ export function track(event: AnalyticsEvent, properties?: EventProperties): void
     });
   } catch (err) {
     // Analytics should never crash the app
-    console.warn("[Analytics] track error:", err);
+    if (__DEV__) console.warn("[Analytics] track error:", err);
   }
 }
 
@@ -190,7 +190,7 @@ export function identify(userId: string, traits?: EventProperties): void {
   try {
     provider.identify(userId, traits);
   } catch (err) {
-    console.warn("[Analytics] identify error:", err);
+    if (__DEV__) console.warn("[Analytics] identify error:", err);
   }
 }
 
@@ -201,7 +201,7 @@ export function resetAnalytics(): void {
   try {
     provider.reset();
   } catch (err) {
-    console.warn("[Analytics] reset error:", err);
+    if (__DEV__) console.warn("[Analytics] reset error:", err);
   }
 }
 
