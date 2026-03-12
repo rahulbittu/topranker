@@ -16,6 +16,7 @@ import { useTheme, type ThemePreference } from "@/lib/theme-context";
 import { hapticPress } from "@/lib/audio";
 import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import packageJson from "../package.json";
+import Constants from "expo-constants";
 
 const CITY_LABELS: Record<SupportedCity, string> = {
   Dallas: "Dallas, TX",
@@ -215,7 +216,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* About */}
+        {/* About — Sprint 704: Enhanced build info for beta testers */}
         <SectionHeader title="ABOUT" />
         <View style={styles.card}>
           <View style={styles.settingRow}>
@@ -224,6 +225,20 @@ export default function SettingsScreen() {
               <Text style={styles.settingLabel}>Version</Text>
             </View>
             <Text style={styles.versionText}>{packageJson.version}</Text>
+          </View>
+          <View style={styles.settingRow}>
+            <Ionicons name="hammer-outline" size={18} color={Colors.textSecondary} />
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Build</Text>
+            </View>
+            <Text style={styles.versionText}>{Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "dev"}</Text>
+          </View>
+          <View style={styles.settingRow}>
+            <Ionicons name="server-outline" size={18} color={Colors.textSecondary} />
+            <View style={styles.settingInfo}>
+              <Text style={styles.settingLabel}>Environment</Text>
+            </View>
+            <Text style={styles.versionText}>{getApiUrl().includes("localhost") ? "Local" : "Production"}</Text>
           </View>
         </View>
 
